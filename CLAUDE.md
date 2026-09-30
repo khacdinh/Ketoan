@@ -19,7 +19,7 @@ npm run watch:css         # Tailwind watch while editing UI
 
 Env vars: `PORT` (default 3939; auto-increments up to 20 ports if busy, and if the port is already held by this app it just opens the browser and exits), `KETOAN_DATA` (data directory, default `./data`). Use `KETOAN_DATA` pointing at a scratch dir when experimenting so the real `data/ketoan.json` isn't touched.
 
-There are no tests or linter configured.
+No linter is configured. `npm test` runs `tests/*.test.js` with `node --test` (real server on a random port + scratch data dir; no extra dependencies). Groups: `a-` environment/startup, `b-` storage/backup/constraints, `c-` business regression (`c-giao-dien` drives Chromium via a globally installed Playwright and is skipped without it), `e-` Excel import/export and reconciliation (LibreOffice recalculation is skipped without `soffice`; `RUN_NPM_INSTALL=1` also runs the clean-install test). Frozen data fixtures are in `tests/fixtures/`. To reconcile against the real cost workbook run `node tests/doi-chieu-xlsm.js <file.xlsm>`.
 
 ## Architecture
 

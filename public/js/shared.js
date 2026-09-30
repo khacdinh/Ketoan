@@ -118,6 +118,8 @@
     let s = String(input == null ? '' : input).trim().toLowerCase().replace(/\s+/g, '').replace(/đ$/, '');
     if (!s) return 0;
     s = s.replace(/^=/, '');
+    // "2tr5", "1tr250k": chữ số dán ngay sau đơn vị — không đoán ý người nhập, tránh ghi sai số tiền
+    if (/(tỷ|ty|triệu|trieu|tr|nghìn|nghin|ngàn|ngan|k)\d/.test(s)) return NaN;
     s = s.replace(/(\d+(?:[.,]\d+)?)(tỷ|ty|triệu|trieu|tr|nghìn|nghin|ngàn|ngan|k)/g, function (m, num, suf) {
       const v = parseFloat(num.replace(',', '.'));
       const mul = /^t(ỷ|y)$/.test(suf) ? 1e9 : /^tr/.test(suf) ? 1e6 : 1e3;
@@ -144,7 +146,10 @@
   }
 
   function isISODate(s) {
-    return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s + 'T00:00:00Z'));
+    if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+    const t = Date.parse(s + 'T00:00:00Z');
+    // V8 chấp nhận 30/02, 31/04 (tự nhảy sang tháng sau) nên phải so lại với ngày chuẩn hóa
+    return !isNaN(t) && new Date(t).toISOString().slice(0, 10) === s;
   }
 
   function fmtDate(iso) {
@@ -513,8 +518,16 @@
 
   // Thành tiền = Số lượng × Đơn giá, làm tròn đến đồng (tính bằng số nguyên để không lệch)
   function costAmount(soLuong, donGia) {
+    // Toàn bộ bằng số nguyên: SL có tối đa 4 số lẻ, ĐG tối đa 2 số lẻ; làm tròn nửa lên ở bước cuối.
     const sl = Math.round((Number(soLuong) || 0) * 10000);
-    return Math.round((sl * (Number(donGia) || 0)) / 10000);
+    const dg = Math.round((Number(donGia) || 0) * 100);
+    const p = sl * dg;
+    if (p >= 0 && p < 4503599627370496) { // 2^52: phép cộng bên dưới vẫn chính xác
+      const t = p * 2 + 1000000;
+      return (t - (t % 2000000)) / 2000000;
+    }
+    if (typeof BigInt === 'function') return Number((BigInt(sl) * BigInt(dg) * BigInt(2) + BigInt(1000000)) / BigInt(2000000));
+    return Math.round(p / 1000000);
   }
 
   function costIndexes(db) {

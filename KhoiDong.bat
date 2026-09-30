@@ -12,6 +12,16 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
+node -e "process.exit(Number(process.versions.node.split('.')[0])<18?1:0)" >nul 2>nul
+if errorlevel 1 (
+  echo.
+  echo   Node.js tren may qua cu - phan mem can Node.js 18 tro len.
+  echo   Hay cai ban LTS moi tai https://nodejs.org roi bam dup lai file nay.
+  echo.
+  start "" "https://nodejs.org"
+  pause
+  exit /b 1
+)
 if not exist "node_modules\exceljs\package.json" (
   echo   Dang cai thu vien lan dau, vui long cho...
   call npm install --omit=dev --no-audit --no-fund

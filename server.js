@@ -3,6 +3,16 @@
  * Sổ Thu Chi — máy chủ chạy trên máy tính của bạn (chỉ nghe trên 127.0.0.1).
  * Chạy: node server.js   (hoặc bấm đúp KhoiDong.bat)
  */
+// Kiểm tra phiên bản Node trước khi nạp các thư viện khác (báo lỗi dễ hiểu thay vì lỗi cú pháp khó đọc)
+const MIN_NODE = 18;
+if (Number(process.versions.node.split('.')[0]) < MIN_NODE) {
+  console.error('');
+  console.error('  Phiên bản Node.js trên máy là ' + process.versions.node + ' — quá cũ.');
+  console.error('  Phần mềm cần Node.js ' + MIN_NODE + ' trở lên. Hãy cài bản LTS mới tại https://nodejs.org rồi chạy lại.');
+  console.error('');
+  process.exit(1);
+}
+
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -26,7 +36,15 @@ const PUBLIC = path.join(ROOT, 'public');
 const DATA_DIR = process.env.KETOAN_DATA || path.join(ROOT, 'data');
 const NO_OPEN = process.argv.includes('--no-open') || process.env.NO_OPEN === '1';
 
-const store = new Store(DATA_DIR);
+let store;
+try {
+  store = new Store(DATA_DIR);
+} catch (e) {
+  console.error('');
+  console.error('  Không mở được dữ liệu: ' + e.message);
+  console.error('');
+  process.exit(1);
+}
 
 /* ---------------- tiện ích HTTP ---------------- */
 
@@ -461,6 +479,9 @@ const server = http.createServer(async (req, res) => {
       // Chặn trang web lạ gọi API (chỉ chấp nhận yêu cầu từ chính ứng dụng)
       const origin = req.headers.origin;
       if (origin && !/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(origin)) throw new HttpError(403, 'Không được phép');
+      // Chống DNS rebinding: trang web lạ trỏ tên miền về 127.0.0.1 vẫn gửi Host là tên miền đó
+      const host = req.headers.host;
+      if (host && !/^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i.test(host)) throw new HttpError(403, 'Không được phép');
       await handleApi(req, res, url);
     } else {
       serveStatic(req, res, url);
@@ -496,6 +517,9 @@ function isOurApp(port) {
 
 function listen(port, attempt) {
   server.once('error', async (err) => {
+    // Bỏ hàm 'listening' của lần thử thất bại, nếu không nó vẫn chạy khi cổng kế tiếp mở được
+    // (in sai cổng và mở trình duyệt vào cổng đang bị chương trình khác chiếm).
+    server.removeAllListeners('listening');
     if (err.code === 'EADDRINUSE') {
       if (await isOurApp(port)) {
         const link = 'http://localhost:' + port;
