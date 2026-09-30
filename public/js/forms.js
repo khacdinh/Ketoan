@@ -14,13 +14,15 @@ export function openEntryForm(entry, opts) {
   const isEdit = !!(entry && entry.id && !opts.duplicate);
   // Dòng Nháp (hoặc dòng mới) được chọn giữa Lưu nháp và Ghi sổ; dòng đã ghi sổ chỉ Lưu thay đổi
   const isDraftRec = isEdit && KT.isDraft(entry);
-  const canDraft = !isEdit || isDraftRec;
+  const lockedRec = isEdit && KT.isLockedDate(S.all, entry.ngay); // tháng đã khóa sổ: chỉ xem
+  const canDraft = (!isEdit || isDraftRec) && !lockedRec;
   const e = Object.assign({ ngay: lastUsed.ngay || KT.todayISO(), soPhieu: '', maDuAn: '', maNCC: '', noiDung: '', thu: 0, chi: 0, nguoiNhan: '', ghiChu: '' }, entry || {});
   if (opts.duplicate) { e.id = undefined; }
   let loai = e.thu > 0 && e.chi > 0 ? 'ca-hai' : e.thu > 0 ? 'thu' : (entry && entry.id) ? 'chi' : (opts.loai || lastUsed.loai || 'chi');
 
   const body =
     '<form id="entry-form" class="grid grid-cols-2 gap-x-5 gap-y-4 max-sm:grid-cols-1" novalidate autocomplete="off">' +
+    (lockedRec ? '<p class="form-error col-span-2 max-sm:col-span-1" role="note">' + icon('lock') + '<span>' + esc(KT.lockMessage(KT.monthOf(entry.ngay), 'sửa')) + '</span></p>' : '') +
     datalists() +
     '<div class="col-span-2 max-sm:col-span-1"><div class="seg" role="radiogroup" aria-label="Loại nghiệp vụ">' +
     [['chi', 'Chi tiền'], ['thu', 'Thu tiền'], ['ca-hai', 'Thu và chi cùng lúc']].map(([v, l]) =>
@@ -48,13 +50,13 @@ export function openEntryForm(entry, opts) {
     '</form>';
 
   const footer =
-    (isEdit ? '<button type="button" class="btn btn-danger-ghost" data-act="delete">' + icon('trash') + 'Xóa dòng</button>' +
+    (isEdit ? (lockedRec ? '' : '<button type="button" class="btn btn-danger-ghost" data-act="delete">' + icon('trash') + 'Xóa dòng</button>') +
       '<button type="button" class="btn btn-ghost" data-act="history" title="Xem mọi lần thêm, sửa của dòng này trong nhật ký">' + icon('history') + 'Lịch sử</button>' : '') +
     '<span class="flex-1"></span>' +
     '<button type="button" class="btn btn-ghost" data-act="cancel">Hủy</button>' +
     (canDraft ? '<button type="button" class="btn btn-secondary" data-act="save-draft" title="Lưu lại để làm tiếp; dòng Nháp chưa tính vào tồn quỹ, báo cáo, công nợ">' + icon('draft') + 'Lưu nháp</button>' : '') +
     (isEdit ? '' : '<button type="button" class="btn btn-secondary" data-act="save-next" title="Ghi sổ rồi giữ lại ngày, số phiếu, dự án, nhà cung cấp để ghi dòng tiếp theo">Ghi sổ và ghi tiếp</button>') +
-    '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon(isEdit && !isDraftRec ? 'save' : 'check') + (isEdit && !isDraftRec ? 'Lưu thay đổi' : 'Ghi sổ') + '</button>';
+    (lockedRec ? '' : '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon(isEdit && !isDraftRec ? 'save' : 'check') + (isEdit && !isDraftRec ? 'Lưu thay đổi' : 'Ghi sổ') + '</button>');
 
   const m = openModal({
     title: isDraftRec ? 'Sửa dòng nháp (chưa ghi sổ)' : isEdit ? 'Sửa dòng sổ thu chi' : opts.duplicate ? 'Nhân bản dòng sổ thu chi' : 'Ghi thu / chi',
@@ -191,7 +193,9 @@ export function openEntryForm(entry, opts) {
         nguoiNhan: get('nguoiNhan').value.trim(),
         ghiChu: get('ghiChu').value.trim()
       };
+      if (lockedRec) return;
       if (!KT.isISODate(data.ngay)) return fail('ngay', 'Nhập ngày chứng từ, ví dụ 29/9');
+      if (KT.isLockedDate(S.all, data.ngay)) return fail('ngay', KT.lockMessage(KT.monthOf(data.ngay), 'ghi'));
       if (data.maDuAn && !projectByCode(data.maDuAn)) return fail('maDuAn', 'Mã dự án chưa có trong danh mục. Bấm “Thêm dự án này” hoặc chọn mã có sẵn');
       if (data.maNCC && !supplierByCode(data.maNCC)) return fail('maNCC', 'Mã nhà cung cấp chưa có trong danh mục. Bấm “Thêm nhà cung cấp này” hoặc chọn mã có sẵn');
       if (!data.noiDung) return fail('noiDung', 'Nhập nội dung thu, chi');
@@ -232,6 +236,7 @@ export function openEntryForm(entry, opts) {
     }
 
     applyLoai();
+    if (lockedRec) f.querySelectorAll('input, textarea, select, button').forEach((x) => { x.disabled = true; });
     daHint();
     nccHint();
     let touched = false;

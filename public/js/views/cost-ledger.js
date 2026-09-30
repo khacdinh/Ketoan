@@ -111,6 +111,8 @@ export function renderCostLedger(root) {
     } else if (act === 'del' && c) {
       if (!(await confirmDialog({ trash: true, title: 'Xóa dòng chi phí', html: 'Xóa dòng ngày <b class="text-ink">' + fdate(c.ngay) + '</b>, ' + esc(c.maVT || c.dienGiai) + ', thành tiền <b class="text-ink">' + money(c.thanhTien) + ' đ</b>?', okText: 'Xóa dòng', danger: true }))) return;
       try { await api('DELETE', '/api/costs/' + c.id); toast('Đã xóa dòng chi phí, chuyển vào Thùng rác'); } catch (err) { showError(err); }
+    } else if (act === 'locked' && c) {
+      toast(KT.lockMessage(KT.monthOf(c.ngay), 'sửa'), 'info');
     } else if (act === 'post' && c) {
       try { const r = await api('POST', '/api/cost-slips/' + c.phieuId + '/post'); toast('Đã ghi sổ phiếu nháp (' + r.posted + ' dòng), đã tính vào chi phí và công nợ'); } catch (err) { showError(err); }
     } else if (act === 'slip' && c) {
@@ -190,9 +192,10 @@ function rowHtml(r, q) {
     '<td class="actions no-print">' +
     (nhap ? '<button type="button" class="icon-btn" data-act="post" title="Ghi sổ cả phiếu nháp này" aria-label="Ghi sổ phiếu nháp của dòng ' + r.stt + '">' + icon('check') + '</button>' : '') +
     '<button type="button" class="icon-btn" data-act="slip" title="Mở cả phiếu nhập" aria-label="Mở phiếu của dòng ' + r.stt + '">' + icon('notePencil') + '</button>' +
-    '<button type="button" class="icon-btn" data-act="edit" title="Sửa dòng" aria-label="Sửa dòng ' + r.stt + '">' + icon('edit') + '</button>' +
-    '<button type="button" class="icon-btn" data-act="dup" title="Nhân bản dòng" aria-label="Nhân bản dòng ' + r.stt + '">' + icon('copy') + '</button>' +
-    '<button type="button" class="icon-btn danger" data-act="del" title="Xóa dòng" aria-label="Xóa dòng ' + r.stt + '">' + icon('trash') + '</button>' +
+    (KT.isLockedDate(S.all, r.ngay) ? '<button type="button" class="icon-btn" data-act="locked" title="' + esc(KT.lockMessage(KT.monthOf(r.ngay), 'sửa')) + '" aria-label="Tháng đã khóa sổ">' + icon('lock') + '</button>' :
+      '<button type="button" class="icon-btn" data-act="edit" title="Sửa dòng" aria-label="Sửa dòng ' + r.stt + '">' + icon('edit') + '</button>' +
+      '<button type="button" class="icon-btn" data-act="dup" title="Nhân bản dòng" aria-label="Nhân bản dòng ' + r.stt + '">' + icon('copy') + '</button>' +
+      '<button type="button" class="icon-btn danger" data-act="del" title="Xóa dòng" aria-label="Xóa dòng ' + r.stt + '">' + icon('trash') + '</button>') +
     '</td></tr>';
 }
 
@@ -201,6 +204,7 @@ function inlineEdit(td) {
   const tr = td.closest('tr[data-id]');
   const c = S.all.costs.find((x) => x.id === Number(tr.dataset.id));
   if (!c) return;
+  if (KT.isLockedDate(S.all, c.ngay)) { toast(KT.lockMessage(KT.monthOf(c.ngay), 'sửa'), 'info'); return; }
   const field = td.dataset.edit;
   const old = td.innerHTML;
   let input;

@@ -1,5 +1,5 @@
 /* Kiểm soát sổ sách: nhật ký thay đổi, thùng rác (và các thẻ khác của nhóm "độ chính xác và truy vết"). */
-import { $, esc, money, icon, api, toast, showError, confirmDialog, openModal, freshRoot, debounce, dateField, LS } from '../ui.js';
+import { $, esc, money, icon, api, toast, showError, confirmDialog, openModal, freshRoot, debounce, dateField, LS, fieldError } from '../ui.js';
 import { S } from '../state.js';
 
 const KT = window.KT;
@@ -204,6 +204,83 @@ function renderTrash(el) {
   load();
 }
 
+/* ============================== KHÓA SỔ ============================== */
+
+function monthRows() {
+  const m = new Map();
+  const get = (t) => { if (!m.has(t)) m.set(t, { thang: t, nE: 0, thu: 0, chi: 0, nC: 0, cp: 0, nhap: 0 }); return m.get(t); };
+  S.all.entries.forEach((e) => { const r = get(KT.monthOf(e.ngay)); if (KT.isDraft(e)) { r.nhap++; return; } r.nE++; r.thu += e.thu || 0; r.chi += e.chi || 0; });
+  S.all.costs.forEach((c) => { const r = get(KT.monthOf(c.ngay)); if (KT.isDraft(c)) { r.nhap++; return; } r.nC++; r.cp += c.thanhTien || 0; });
+  (S.all.locks || []).forEach((l) => get(l.thang));
+  get(KT.monthOf(KT.todayISO()));
+  return Array.from(m.values()).filter((r) => /^\d{4}-\d{2}$/.test(r.thang)).sort((a, b) => (a.thang < b.thang ? 1 : -1));
+}
+
+function renderLocks(el) {
+  const locks = new Map((S.all.locks || []).map((l) => [l.thang, l]));
+  const rows = monthRows();
+  const open = rows.filter((r) => !locks.has(r.thang) && (r.nE || r.nC));
+  // mặc định đề xuất khóa đến tháng trước (tháng hiện tại thường còn phát sinh)
+  const cur = KT.monthOf(KT.todayISO());
+  const defTo = (open.find((r) => r.thang < cur) || open[0] || {}).thang;
+  el.innerHTML =
+    '<section class="sheet"><div class="sheet-head"><div><h2 class="sheet-title">Khóa sổ theo tháng</h2>' +
+    '<p class="sheet-note">Tháng đã khóa thì không thêm, sửa, xóa, khôi phục dòng nào trong tháng đó (kể cả nhập Excel). Làm khi đã đối chiếu xong số liệu tháng. ' +
+    'Cần sửa thì mở khóa (phải ghi lý do, có lưu nhật ký) rồi khóa lại.</p></div>' +
+    (open.length ? '<div class="flex flex-wrap items-center gap-2"><label class="label" for="lk-den">Khóa sổ đến hết tháng</label>' +
+      '<select id="lk-den" class="input w-auto">' + open.map((r) => '<option value="' + r.thang + '"' + (r.thang === defTo ? ' selected' : '') + '>' + KT.monthLabel(r.thang) + '</option>').join('') + '</select>' +
+      '<button type="button" class="btn btn-primary" data-act="lock-to">' + icon('lock') + 'Khóa sổ</button></div>' : '') + '</div>' +
+    '<div class="table-scroll overflow-auto"><table class="ledger"><thead><tr><th>Tháng</th><th class="num">Dòng sổ thu chi</th><th class="num money">Thu</th><th class="num money">Chi</th>' +
+    '<th class="num">Dòng chi phí</th><th class="num money">Chi phí</th><th class="num">Nháp</th><th>Trạng thái</th><th class="no-print"><span class="sr-only">Thao tác</span></th></tr></thead><tbody>' +
+    rows.map((r) => {
+      const l = locks.get(r.thang);
+      return '<tr data-thang="' + r.thang + '"><td class="font-semibold">' + KT.monthLabel(r.thang) + '</td>' +
+        '<td class="num">' + (r.nE || '') + '</td><td class="num money thu">' + (r.thu ? money(r.thu) : '') + '</td><td class="num money">' + (r.chi ? money(r.chi) : '') + '</td>' +
+        '<td class="num">' + (r.nC || '') + '</td><td class="num money">' + (r.cp ? money(r.cp) : '') + '</td>' +
+        '<td class="num">' + (r.nhap ? '<span class="chip chip-draft">' + r.nhap + '</span>' : '') + '</td>' +
+        '<td>' + (l ? '<span class="chip chip-ok">' + icon('lock') + 'Đã khóa</span><div class="text-[12px] text-ink-3">' + esc(fmtTime(l.at)) + (l.by ? ' · ' + esc(l.by) : '') + '</div>'
+          : '<span class="chip chip-idle">' + icon('unlock') + 'Đang mở</span>') + '</td>' +
+        '<td class="actions no-print">' + (l ? '<button type="button" class="btn btn-secondary btn-sm" data-act="unlock">' + icon('unlock') + 'Mở khóa</button>'
+          : '<button type="button" class="btn btn-ghost btn-sm" data-act="lock"' + (r.nhap ? ' disabled title="Còn dòng nháp chưa ghi sổ"' : '') + '>' + icon('lock') + 'Khóa</button>') + '</td></tr>';
+    }).join('') + '</tbody></table></div></section>';
+
+  const doLock = async (months) => {
+    const n = months.length;
+    const ok = await confirmDialog({
+      title: 'Khóa sổ', okText: 'Khóa sổ ' + (n > 1 ? n + ' tháng' : 'tháng ' + KT.monthLabel(months[0])),
+      html: 'Khóa sổ ' + (n > 1 ? '<b class="text-ink">' + n + ' tháng</b> (' + months.map(KT.monthLabel).join(', ') + ')' : 'tháng <b class="text-ink">' + KT.monthLabel(months[0]) + '</b>') +
+        '?<p class="mt-2 text-[13px] text-ink-3">Sau khi khóa, không thêm, sửa, xóa dòng nào của tháng này được nữa cho tới khi mở khóa.</p>'
+    });
+    if (!ok) return;
+    try { await api('POST', '/api/locks', { months }); toast('Đã khóa sổ ' + months.map(KT.monthLabel).join(', ')); } catch (err) { showError(err); }
+  };
+  el.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-act]');
+    if (!a) return;
+    const tr = a.closest('tr[data-thang]');
+    if (a.dataset.act === 'lock' && tr) doLock([tr.dataset.thang]);
+    else if (a.dataset.act === 'lock-to') {
+      const den = $('#lk-den', el).value;
+      doLock(open.filter((r) => r.thang <= den).map((r) => r.thang).sort());
+    } else if (a.dataset.act === 'unlock' && tr) {
+      const t = tr.dataset.thang;
+      const m = openModal({
+        title: 'Mở khóa sổ tháng ' + KT.monthLabel(t), size: 'small',
+        body: '<p class="text-ink-2">Mở khóa để sửa số liệu tháng <b class="text-ink">' + KT.monthLabel(t) + '</b>. Việc mở khóa được ghi vào nhật ký kèm lý do. Sửa xong nên khóa lại.</p>' +
+          '<label class="field mt-3"><span class="label">Lý do mở khóa <b class="req">*</b></span><textarea class="input" id="uk-ly" rows="2" placeholder="VD: bổ sung hóa đơn nhận muộn"></textarea></label>',
+        footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="no">Hủy</button><button type="button" class="btn btn-danger" data-act="yes">' + icon('unlock') + 'Mở khóa</button>'
+      });
+      m.el.querySelector('[data-act=no]').addEventListener('click', () => m.close());
+      m.el.querySelector('[data-act=yes]').addEventListener('click', async () => {
+        const ly = m.el.querySelector('#uk-ly');
+        if (!ly.value.trim()) { fieldError(ly, 'Ghi lý do mở khóa'); return; }
+        try { await api('POST', '/api/locks/unlock', { thang: t, lyDo: ly.value.trim() }); toast('Đã mở khóa sổ tháng ' + KT.monthLabel(t)); m.close(); } catch (err) { showError(err); }
+      });
+    }
+  });
+}
+
+registerTab({ key: 'khoa-so', order: 30, label: 'Khóa sổ', icon: 'lock', render: renderLocks });
 registerTab({ key: 'nhat-ky', order: 40, label: 'Nhật ký thay đổi', icon: 'history', render: renderAudit });
 registerTab({ key: 'thung-rac', order: 50, label: 'Thùng rác', icon: 'trash', render: renderTrash });
 

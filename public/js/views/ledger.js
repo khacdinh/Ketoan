@@ -78,6 +78,7 @@ export function renderLedger(root) {
     else if (act === 'edit' && entry) openEntryForm(entry);
     else if (act === 'dup' && entry) openEntryForm(entry, { duplicate: true });
     else if (act === 'del' && entry) deleteEntry(entry);
+    else if (act === 'locked' && entry) toast(KT.lockMessage(KT.monthOf(entry.ngay), 'sửa'), 'info');
     else if (act === 'post' && entry) {
       api('POST', '/api/entries/post', { ids: [entry.id] }).then(() => toast('Đã ghi sổ dòng nháp, đã tính vào tồn quỹ')).catch(showError);
     }
@@ -159,9 +160,11 @@ function rowHtml(r, q) {
     '<td class="num money font-medium' + (r.ton < 0 ? ' neg' : '') + '">' + (nhap ? '<span class="text-ink-3" title="Dòng nháp không tính vào tồn quỹ">—</span>' : money(r.ton)) + '</td>' +
     '<td class="actions no-print">' +
     (nhap ? '<button type="button" class="icon-btn" data-act="post" title="Ghi sổ dòng nháp này" aria-label="Ghi sổ dòng nháp">' + icon('check') + '</button>' : '') +
-    '<button type="button" class="icon-btn" data-act="edit" title="Sửa" aria-label="Sửa dòng ' + r.stt + '">' + icon('edit') + '</button>' +
-    '<button type="button" class="icon-btn" data-act="dup" title="Nhân bản" aria-label="Nhân bản dòng ' + r.stt + '">' + icon('copy') + '</button>' +
-    '<button type="button" class="icon-btn danger" data-act="del" title="Xóa" aria-label="Xóa dòng ' + r.stt + '">' + icon('trash') + '</button>' +
+    (KT.isLockedDate(S.all, r.ngay) ? '<button type="button" class="icon-btn" data-act="locked" title="' + esc(KT.lockMessage(KT.monthOf(r.ngay), 'sửa')) + '" aria-label="Tháng đã khóa sổ">' + icon('lock') + '</button>' +
+      '<button type="button" class="icon-btn" data-act="dup" title="Nhân bản (đổi sang ngày chưa khóa)" aria-label="Nhân bản dòng ' + r.stt + '">' + icon('copy') + '</button>' :
+      '<button type="button" class="icon-btn" data-act="edit" title="Sửa" aria-label="Sửa dòng ' + r.stt + '">' + icon('edit') + '</button>' +
+      '<button type="button" class="icon-btn" data-act="dup" title="Nhân bản" aria-label="Nhân bản dòng ' + r.stt + '">' + icon('copy') + '</button>' +
+      '<button type="button" class="icon-btn danger" data-act="del" title="Xóa" aria-label="Xóa dòng ' + r.stt + '">' + icon('trash') + '</button>') +
     '</td></tr>';
 }
 

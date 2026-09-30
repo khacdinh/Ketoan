@@ -83,7 +83,8 @@ export function renderCostEntry(root) {
   }
   const h = st.header;
   const editing = st.mode === 'edit';
-  const editingPosted = editing && !st.nhap; // phiếu đã ghi sổ: chỉ Lưu thay đổi; phiếu mới / nháp: Lưu nháp hoặc Ghi sổ
+  const editingPosted = editing && !st.nhap;
+  const lockedSlip = editing && KT.isLockedDate(S.all, h.ngay); // phiếu thuộc tháng đã khóa sổ: chỉ xem // phiếu đã ghi sổ: chỉ Lưu thay đổi; phiếu mới / nháp: Lưu nháp hoặc Ghi sổ
 
   root.innerHTML =
     '<div id="cp-dl">' + costDatalists(h.maCT) + '</div>' +
@@ -91,6 +92,7 @@ export function renderCostEntry(root) {
     '<div class="sheet-head"><div><h2 id="h-dau" class="sheet-title">' + (editing ? (st.nhap ? 'Sửa phiếu nháp (chưa ghi sổ)' : 'Sửa phiếu nhập chi phí') : st.mode === 'dup' ? 'Nhân bản phiếu nhập chi phí' : 'Đầu phiếu') + '</h2>' +
     '<p class="sheet-note">' + (editing ? 'Lưu lại sẽ thay các dòng cũ của phiếu bằng các dòng bên dưới.' : 'Khai báo một lần cho cả phiếu, rồi liệt kê từng mặt hàng ở bảng dưới.') + '</p></div>' +
     (st.mode !== 'new' ? '<a href="#/cp-nhap" class="btn btn-ghost btn-sm" data-act="new">' + icon('plus') + 'Lập phiếu mới</a>' : '') + '</div>' +
+    (lockedSlip ? '<p class="form-error mx-5 mb-3" role="note">' + icon('lock') + '<span>' + esc(KT.lockMessage(KT.monthOf(h.ngay), 'sửa')) + '</span></p>' : '') +
     '<form id="cp-head" class="grid grid-cols-3 gap-x-5 gap-y-3 px-5 pb-4 max-xl:grid-cols-2 max-sm:grid-cols-1" novalidate autocomplete="off">' +
     '<label class="field"><span class="label">Ngày <b class="req">*</b></span>' + dateField({ name: 'ngay', value: h.ngay, required: true, label: 'Ngày' }) + '<span class="hint"></span></label>' +
     headField('maCT', 'Công trình', h.maCT, 'dl-projects', 'Gõ mã hoặc tên công trình', true) +
@@ -113,13 +115,13 @@ export function renderCostEntry(root) {
     '<div class="flex flex-wrap items-center gap-2 border-t border-rule bg-[#F8FAF6] px-4 py-3">' +
     '<button type="button" class="btn btn-ghost btn-sm" data-act="add-row">' + icon('plus') + 'Thêm dòng</button>' +
     '<button type="button" class="btn btn-ghost btn-sm" data-act="clear">' + icon('eraser') + 'Xóa trắng các dòng</button>' +
-    (editing ? '<button type="button" class="btn btn-danger-ghost btn-sm" data-act="del-slip">' + icon('trash') + 'Xóa phiếu</button>' +
+    (editing ? (lockedSlip ? '' : '<button type="button" class="btn btn-danger-ghost btn-sm" data-act="del-slip">' + icon('trash') + 'Xóa phiếu</button>') +
       '<a class="btn btn-ghost btn-sm" href="#/cp-nhap?nhanban=' + esc(st.phieuId) + '">' + icon('copy') + 'Nhân bản phiếu</a>' +
       '<button type="button" class="btn btn-ghost btn-sm" data-act="history">' + icon('history') + 'Lịch sử phiếu</button>' : '') +
     '<span class="flex-1"></span>' +
     '<span class="text-[13px] text-ink-2" id="cp-summary"></span>' +
-    (editingPosted ? '' : '<button type="button" class="btn btn-secondary" data-act="save-draft" title="Lưu để làm tiếp; phiếu Nháp chưa tính vào chi phí, công nợ">' + icon('draft') + 'Lưu nháp</button>') +
-    '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon('save') + (editingPosted ? 'Lưu thay đổi' : st.nhap ? 'Ghi sổ' : 'Ghi vào sổ chi phí') + '</button>' +
+    (editingPosted || lockedSlip ? '' : '<button type="button" class="btn btn-secondary" data-act="save-draft" title="Lưu để làm tiếp; phiếu Nháp chưa tính vào chi phí, công nợ">' + icon('draft') + 'Lưu nháp</button>') +
+    (lockedSlip ? '' : '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon('save') + (editingPosted ? 'Lưu thay đổi' : st.nhap ? 'Ghi sổ' : 'Ghi vào sổ chi phí') + '</button>') +
     '</div></section>' +
     recentHtml(params.phieu || '');
 
@@ -432,7 +434,9 @@ export function renderCostEntry(root) {
   async function save(asDraft) {
     if (saving) return;
     readHeader();
+    if (lockedSlip) return fail(KT.lockMessage(KT.monthOf(h.ngay), 'sửa'), null, 'ngay');
     if (!KT.isISODate(h.ngay)) return fail('Nhập ngày của phiếu, ví dụ 29/9', null, 'ngay');
+    if (KT.isLockedDate(S.all, h.ngay)) return fail(KT.lockMessage(KT.monthOf(h.ngay), 'ghi'), null, 'ngay');
     const ct = projectByCode(resolveCode(S.db.projects, h.maCT));
     if (!ct) return fail(h.maCT ? 'Công trình "' + h.maCT + '" chưa có trong danh mục' : 'Chọn công trình', null, 'maCT');
     const ncc = supplierByCode(resolveCode(S.db.suppliers, h.maNCC));
