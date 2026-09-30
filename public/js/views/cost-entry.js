@@ -4,6 +4,7 @@ import { $, $$, esc, money, fdate, icon, api, toast, showError, confirmDialog, f
 import { S, costDatalists, resolveCode, resolveItem, materialByCode, itemByCode, houseByCode, projectByCode, supplierByCode, groupName, houseListOptions } from '../state.js';
 import { openProjectForm, openSupplierForm } from '../forms.js';
 import { openItemForm, openMaterialForm, openHouseForm } from './cost-catalogs.js';
+import { openHistory } from './control.js';
 
 const KT = window.KT;
 const COLS = ['maVT', 'dienGiai', 'soLuong', 'donGia', 'hm', 'loaiCP'];
@@ -112,7 +113,8 @@ export function renderCostEntry(root) {
     '<button type="button" class="btn btn-ghost btn-sm" data-act="add-row">' + icon('plus') + 'Thêm dòng</button>' +
     '<button type="button" class="btn btn-ghost btn-sm" data-act="clear">' + icon('eraser') + 'Xóa trắng các dòng</button>' +
     (editing ? '<button type="button" class="btn btn-danger-ghost btn-sm" data-act="del-slip">' + icon('trash') + 'Xóa phiếu</button>' +
-      '<a class="btn btn-ghost btn-sm" href="#/cp-nhap?nhanban=' + esc(st.phieuId) + '">' + icon('copy') + 'Nhân bản phiếu</a>' : '') +
+      '<a class="btn btn-ghost btn-sm" href="#/cp-nhap?nhanban=' + esc(st.phieuId) + '">' + icon('copy') + 'Nhân bản phiếu</a>' +
+      '<button type="button" class="btn btn-ghost btn-sm" data-act="history">' + icon('history') + 'Lịch sử phiếu</button>' : '') +
     '<span class="flex-1"></span>' +
     '<span class="text-[13px] text-ink-2" id="cp-summary"></span>' +
     '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon('save') + (editing ? 'Lưu thay đổi' : 'Ghi vào sổ chi phí') + '</button>' +
@@ -517,6 +519,7 @@ export function renderCostEntry(root) {
       renderCostEntry(document.getElementById('view'));
     };
     if (act === 'save') save();
+    else if (act === 'history') openHistory(st.phieuId);
     else if (act === 'add-row') { st.lines.push(blankLine()); drawRows(); focusCell(st.lines.length - 1, 'maVT'); }
     else if (act === 'del-row') removeRow(Number(a.closest('tr').dataset.row));
     else if (act === 'clear') {
@@ -537,8 +540,8 @@ export function renderCostEntry(root) {
       openMaterialForm({ ma: st.lines[i].maVT, maHM: lineHM(st.lines[i]) }, after(i, 'soLuong', (x) => { st.lines[i].maVT = x.ma; }));
     } else if (act === 'del-slip') {
       const n = slipLines(st.phieuId).length;
-      if (!(await confirmDialog({ title: 'Xóa phiếu nhập', html: 'Xóa phiếu này cùng <b class="text-ink">' + n + '</b> dòng trong sổ chi phí?<p class="mt-2 text-[13px] text-ink-3">Dữ liệu cũ vẫn còn trong bản sao lưu tự động.</p>', okText: 'Xóa phiếu', danger: true }))) return;
-      try { await api('DELETE', '/api/cost-slips/' + st.phieuId); draft = null; LS.set('cp.draft', null); toast('Đã xóa phiếu'); location.hash = '#/cp-nhap'; } catch (err) { showError(err); }
+      if (!(await confirmDialog({ trash: true, title: 'Xóa phiếu nhập', html: 'Xóa phiếu này cùng <b class="text-ink">' + n + '</b> dòng trong sổ chi phí?', okText: 'Xóa phiếu', danger: true }))) return;
+      try { await api('DELETE', '/api/cost-slips/' + st.phieuId); draft = null; LS.set('cp.draft', null); toast('Đã xóa phiếu, chuyển vào Thùng rác'); location.hash = '#/cp-nhap'; } catch (err) { showError(err); }
     }
   });
   bindRecent(root);
@@ -606,8 +609,8 @@ function bindRecent(root) {
     if (!b) return;
     const id = b.closest('tr').dataset.phieu;
     const n = slipLines(id).length;
-    if (!(await confirmDialog({ title: 'Xóa phiếu nhập', html: 'Xóa phiếu này cùng <b class="text-ink">' + n + '</b> dòng trong sổ chi phí?', okText: 'Xóa phiếu', danger: true }))) return;
-    try { await api('DELETE', '/api/cost-slips/' + id); toast('Đã xóa phiếu'); } catch (err) { showError(err); }
+    if (!(await confirmDialog({ trash: true, title: 'Xóa phiếu nhập', html: 'Xóa phiếu này cùng <b class="text-ink">' + n + '</b> dòng trong sổ chi phí?', okText: 'Xóa phiếu', danger: true }))) return;
+    try { await api('DELETE', '/api/cost-slips/' + id); toast('Đã xóa phiếu, chuyển vào Thùng rác'); } catch (err) { showError(err); }
   });
   drawRecent(root);
 }

@@ -287,8 +287,8 @@ export function renderCostCatalogs(root) {
       saveFilter('cpGia');
       location.hash = '#/cp-gia';
     } else if (act === 'del' && x) {
-      if (!(await confirmDialog({ title: 'Xóa khỏi danh mục', html: 'Xóa <b class="text-ink">' + esc(x.ma) + '</b>, ' + esc(x.ten) + '?', okText: 'Xóa', danger: true }))) return;
-      try { await api('DELETE', endpoint() + '/' + x.id); toast('Đã xóa ' + x.ma); } catch (err) { showError(err); }
+      if (!(await confirmDialog({ trash: true, title: 'Xóa khỏi danh mục', html: 'Xóa <b class="text-ink">' + esc(x.ma) + '</b>, ' + esc(x.ten) + '?', okText: 'Xóa', danger: true }))) return;
+      try { await api('DELETE', endpoint() + '/' + x.id); toast('Đã xóa ' + x.ma + ', chuyển vào Thùng rác'); } catch (err) { showError(err); }
     }
   });
   root.addEventListener('dblclick', (e) => {

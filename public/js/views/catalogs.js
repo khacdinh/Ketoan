@@ -86,8 +86,8 @@ export function renderProjects(root) {
       if (used) return toast('Không xóa được: dự án ' + p.ma + ' đang có ' + used + ' dòng sổ. Chuyển các dòng đó sang dự án khác trước.', 'error');
       const usedCost = S.db.costs.filter((x) => KT.keyOf(x.maCT) === KT.keyOf(p.ma)).length;
       if (usedCost) return toast('Không xóa được: công trình ' + p.ma + ' đang có ' + usedCost + ' dòng chi phí.', 'error');
-      if (!(await confirmDialog({ title: 'Xóa dự án', html: 'Xóa dự án <b class="text-ink">' + esc(p.ma) + '</b>, ' + esc(p.ten) + '?', okText: 'Xóa dự án', danger: true }))) return;
-      try { await api('DELETE', '/api/projects/' + p.id); toast('Đã xóa dự án ' + p.ma); } catch (err) { showError(err); }
+      if (!(await confirmDialog({ trash: true, title: 'Xóa dự án', html: 'Xóa dự án <b class="text-ink">' + esc(p.ma) + '</b>, ' + esc(p.ten) + '?', okText: 'Xóa dự án', danger: true }))) return;
+      try { await api('DELETE', '/api/projects/' + p.id); toast('Đã xóa dự án ' + p.ma + ', chuyển vào Thùng rác'); } catch (err) { showError(err); }
     }
   });
   root.addEventListener('dblclick', (e) => {
@@ -154,8 +154,8 @@ export function renderSuppliers(root) {
     else if (act === 'del' && s) {
       const used = S.db.entries.filter((x) => KT.keyOf(x.maNCC) === KT.keyOf(s.ma)).length;
       if (used) return toast('Không xóa được: ' + s.ma + ' đang có ' + used + ' dòng sổ. Chuyển các dòng đó sang nhà cung cấp khác trước.', 'error');
-      if (!(await confirmDialog({ title: 'Xóa nhà cung cấp', html: 'Xóa <b class="text-ink">' + esc(s.ma) + '</b>, ' + esc(s.ten) + '?', okText: 'Xóa', danger: true }))) return;
-      try { await api('DELETE', '/api/suppliers/' + s.id); toast('Đã xóa ' + s.ma); } catch (err) { showError(err); }
+      if (!(await confirmDialog({ trash: true, title: 'Xóa nhà cung cấp', html: 'Xóa <b class="text-ink">' + esc(s.ma) + '</b>, ' + esc(s.ten) + '?', okText: 'Xóa', danger: true }))) return;
+      try { await api('DELETE', '/api/suppliers/' + s.id); toast('Đã xóa ' + s.ma + ', chuyển vào Thùng rác'); } catch (err) { showError(err); }
     }
   });
   root.addEventListener('dblclick', (e) => {

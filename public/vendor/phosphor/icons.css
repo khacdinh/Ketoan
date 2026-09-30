@@ -180,6 +180,9 @@
 .ph.ph-scissors:before {
   content: "\eae0";
 }
+.ph.ph-shield-check:before {
+  content: "\e40c";
+}
 .ph.ph-squares-four:before {
   content: "\e464";
 }
@@ -630,6 +633,14 @@
 }
 .ph-duotone.ph-scissors:after {
   content: "\eae1";
+  margin-left: -1em;
+}
+.ph-duotone.ph-shield-check:before {
+  content: "\e40c";
+  opacity: 0.2;
+}
+.ph-duotone.ph-shield-check:after {
+  content: "\e40f";
   margin-left: -1em;
 }
 .ph-duotone.ph-squares-four:before {

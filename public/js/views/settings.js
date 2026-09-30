@@ -1,5 +1,5 @@
 /* Cài đặt: thông tin đơn vị, nhập Excel, xuất/sao lưu/khôi phục, xóa dữ liệu. */
-import { $, esc, money, icon, duo, download, api, toast, showError, confirmDialog, openModal, freshRoot, busy } from '../ui.js';
+import { $, esc, money, icon, duo, download, api, toast, showError, confirmDialog, openModal, freshRoot, busy, LS } from '../ui.js';
 import { S } from '../state.js';
 
 export function renderSettings(root) {
@@ -50,6 +50,13 @@ export function renderSettings(root) {
     '<button type="button" class="btn btn-secondary btn-sm" data-act="backup-now">' + icon('save') + 'Sao lưu ngay</button></div>' +
     '<div id="bk-list" class="max-h-[360px] overflow-auto"><p class="px-5 pb-5 text-ink-3">Đang tải danh sách</p></div></section>' +
 
+    /* ---- Người đang dùng máy này (ghi vào nhật ký thay đổi) ---- */
+    '<section class="sheet" aria-labelledby="h-nd"><div class="sheet-head"><div><h2 id="h-nd" class="sheet-title">Người đang dùng máy này</h2>' +
+    '<p class="sheet-note">Tên này được ghi vào <a class="font-semibold text-pen underline underline-offset-2" href="#/kiem-soat?tab=nhat-ky">nhật ký thay đổi</a> mỗi lần thêm, sửa, xóa. Chỉ lưu trên trình duyệt của máy này; mỗi máy đặt tên riêng. Để trống thì nhật ký ghi “không rõ”.</p></div></div>' +
+    '<form id="nd-form" class="flex flex-wrap items-end gap-3 px-5 pb-5" autocomplete="off"><label class="field min-w-[240px] flex-1"><span class="label">Tên người thao tác</span>' +
+    '<input name="nguoiDung" class="input" maxlength="60" value="' + esc(LS.get('nguoiDung', '')) + '" placeholder="VD: Thúy kế toán"></label>' +
+    '<button type="submit" class="btn btn-secondary">' + icon('save') + 'Lưu tên</button></form></section>' +
+
     /* ---- Xóa dữ liệu ---- */
     '<section class="sheet border-alert/30 xl:col-span-2" aria-labelledby="h-xoa"><div class="sheet-head items-center"><div><h2 id="h-xoa" class="sheet-title">Bắt đầu sổ mới</h2>' +
     '<p class="sheet-note">Xóa các dòng sổ thu chi, hoặc xóa riêng dữ liệu chi phí công trình. Hai phần độc lập với nhau; dữ liệu cũ được sao lưu tự động ngay trước khi xóa.</p></div>' +
@@ -65,6 +72,13 @@ export function renderSettings(root) {
     ['tenDonVi', 'diaChi', 'giamDoc', 'keToanTruong', 'thuQuy', 'nguoiLap', 'hinhThucMacDinh'].forEach((k) => { data[k] = fm.elements[k].value.trim(); });
     data.hienKeToanTruong = fm.elements.hienKeToanTruong.checked;
     try { await api('PUT', '/api/settings', data); toast('Đã lưu thông tin in trên phiếu'); } catch (err) { showError(err); }
+  });
+
+  $('#nd-form', root).addEventListener('submit', (e) => {
+    e.preventDefault();
+    const v = e.target.elements.nguoiDung.value.replace(/\s+/g, ' ').trim().slice(0, 60);
+    LS.set('nguoiDung', v);
+    toast(v ? 'Từ giờ nhật ký ghi người thao tác là “' + v + '”' : 'Đã bỏ tên người thao tác');
   });
 
   // ---- nhập Excel ----

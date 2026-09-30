@@ -118,7 +118,7 @@
   /* Màn hình thấp (laptop 1366×768): thu gọn khoảng cách để đủ 14 mục + ô tồn quỹ, không phải cuộn */
   @media (max-height: 900px) {
     .side-brand { @apply pt-4 pb-3; }
-    .nav-item { @apply my-px py-[7px]; }
+    .nav-item { @apply my-px py-[5px]; }
     .nav-sep { @apply my-1.5; }
     .side-foot { @apply py-2.5; }
   }

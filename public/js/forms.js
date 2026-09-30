@@ -1,6 +1,7 @@
 /* Biểu mẫu: ghi thu/chi, dự án, nhà cung cấp. */
 import { $, esc, api, openModal, toast, showError, bindMoneyInput, money, confirmDialog, icon, dateField, focusInput, fieldError, busy } from './ui.js';
 import { S, datalists, resolveCode, projectByCode, supplierByCode } from './state.js';
+import { openHistory } from './views/control.js';
 
 const KT = window.KT;
 
@@ -44,7 +45,8 @@ export function openEntryForm(entry, opts) {
     '</form>';
 
   const footer =
-    (isEdit ? '<button type="button" class="btn btn-danger-ghost" data-act="delete">' + icon('trash') + 'Xóa dòng</button>' : '') +
+    (isEdit ? '<button type="button" class="btn btn-danger-ghost" data-act="delete">' + icon('trash') + 'Xóa dòng</button>' +
+      '<button type="button" class="btn btn-ghost" data-act="history" title="Xem mọi lần thêm, sửa của dòng này trong nhật ký">' + icon('history') + 'Lịch sử</button>' : '') +
     '<span class="flex-1"></span>' +
     '<button type="button" class="btn btn-ghost" data-act="cancel">Hủy</button>' +
     (isEdit ? '' : '<button type="button" class="btn btn-secondary" data-act="save-next" title="Ghi sổ rồi giữ lại ngày, số phiếu, dự án, nhà cung cấp để ghi dòng tiếp theo">Ghi sổ và ghi tiếp</button>') +
@@ -144,6 +146,9 @@ export function openEntryForm(entry, opts) {
       } else if (act === 'add-supplier') {
         ev.preventDefault();
         openSupplierForm({ ma: get('maNCC').value.trim() }, (s) => { get('maNCC').value = s.ma; refreshLists(); nccHint(); });
+      } else if (act === 'history') {
+        m.close();
+        openHistory(e.id);
       } else if (act === 'cancel') {
         m.close();
       } else if (act === 'delete') {
@@ -230,17 +235,18 @@ export function openEntryForm(entry, opts) {
 
 export async function deleteEntry(e) {
   const ok = await confirmDialog({
+    trash: true,
     title: 'Xóa dòng sổ thu chi',
     html: 'Xóa dòng ngày <b class="text-ink">' + esc(KT.fmtDate(e.ngay)) + '</b>: “' + esc(e.noiDung || '') + '” ' +
       (e.chi ? '(chi <b class="text-ink">' + money(e.chi) + ' đ</b>)' : '(thu <b class="text-ink">' + money(e.thu) + ' đ</b>)') + '?' +
-      '<p class="mt-2 text-[13px] text-ink-3">Tồn quỹ các dòng sau tự tính lại. Dữ liệu cũ vẫn còn trong bản sao lưu tự động.</p>',
+      '<p class="mt-2 text-[13px] text-ink-3">Tồn quỹ các dòng sau tự tính lại.</p>',
     okText: 'Xóa dòng',
     danger: true
   });
   if (!ok) return false;
   try {
     await api('DELETE', '/api/entries/' + e.id);
-    toast('Đã xóa dòng sổ');
+    toast('Đã xóa dòng sổ, chuyển vào Thùng rác');
     return true;
   } catch (err) {
     showError(err);

@@ -132,7 +132,8 @@ const DUO = {
   tag: 'ph-tag',
   stack: 'ph-stack',
   squares: 'ph-squares-four',
-  package: 'ph-package'
+  package: 'ph-package',
+  shield: 'ph-shield-check'
 };
 
 export function icon(name, cls) {
@@ -149,9 +150,13 @@ export function onDatabase(fn) { onDb = fn; }
 export async function api(method, url, body, isRaw) {
   let res;
   try {
+    const headers = body === undefined ? {} : { 'Content-Type': isRaw ? 'application/octet-stream' : 'application/json' };
+    // Tên người đang dùng máy này (Cài đặt) để nhật ký thay đổi ghi được ai thao tác
+    const who = LS.get('nguoiDung', '');
+    if (who) headers['X-Nguoi-Dung'] = encodeURIComponent(who);
     res = await fetch(url, {
       method,
-      headers: body === undefined ? {} : { 'Content-Type': isRaw ? 'application/octet-stream' : 'application/json' },
+      headers,
       body: body === undefined ? undefined : isRaw ? body : JSON.stringify(body)
     });
   } catch (e) {
@@ -326,7 +331,8 @@ export function confirmDialog(o) {
     const m = openModal({
       title: o.title || 'Xác nhận',
       size: 'small',
-      body: '<div class="leading-relaxed text-ink-2">' + (o.html || esc(o.message || '')) + '</div>',
+      body: '<div class="leading-relaxed text-ink-2">' + (o.html || esc(o.message || '')) +
+        (o.trash ? '<p class="mt-2 flex items-start gap-1.5 text-[13px] text-ink-3">' + icon('info', 'mt-0.5') + '<span>Sẽ chuyển vào <b class="font-semibold text-ink-2">Thùng rác</b> (mục Kiểm soát sổ sách), khôi phục lại được bất cứ lúc nào.</span></p>' : '') + '</div>',
       // thao tác xóa/thay dữ liệu: con trỏ đặt sẵn ở nút Hủy để lỡ tay bấm Enter không mất dữ liệu
       footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="no"' + (o.danger ? ' autofocus' : '') + '>' + esc(o.cancelText || 'Hủy') + '</button>' +
         '<button type="button" class="btn ' + (o.danger ? 'btn-danger' : 'btn-primary') + '" data-act="yes"' + (o.danger ? '' : ' autofocus') + '>' + (o.danger && /^Xóa/.test(o.okText || '') ? icon('trash') : '') + esc(o.okText || 'Đồng ý') + '</button>',
