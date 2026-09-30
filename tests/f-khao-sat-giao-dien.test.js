@@ -40,7 +40,8 @@ async function makeServer(kind) {
   return srv;
 }
 
-const CONTROLS = 'button, a[href], [data-act], [role=button], [role=link], tr.clickable, .stat-link, input[type=checkbox], input[type=radio], summary, label.seg-item';
+// (ô radio/checkbox bị ẩn về mặt hình ảnh, người dùng bấm vào nhãn label.seg-item / label.check nên khảo sát nhãn thay vì ô)
+const CONTROLS = 'button, a[href], [data-act], [role=button], [role=link], tr.clickable, .stat-link, summary, label.seg-item, label.check';
 // nút có tác dụng phụ không hồi phục được hoặc thoát khỏi ứng dụng
 const SKIP_CTRL = /^(javascript:|mailto:|http)/;
 
@@ -73,7 +74,8 @@ async function pressAll(page, errors, route, state, report) {
     await page.waitForTimeout(120);
     const changed = await page.evaluate(() => ({ mut: window.__mut, req: window.__req, hash: location.hash, modal: !!document.querySelector('#modal-root .modal'), print: window.__printCalls || 0 }));
     const downloaded = await dl;
-    if (!changed.mut && !changed.req && changed.hash === hash0 && !changed.modal && !downloaded && !changed.print) report.dead.push(state + ' ' + route + ' #' + i + ' ' + label);
+    // nút lịch (showPicker) mở lịch của trình duyệt, không đổi DOM trang nên không quan sát được
+    if (!changed.mut && !changed.req && changed.hash === hash0 && !changed.modal && !downloaded && !changed.print && !/Chọn ngày trên lịch/.test(label)) report.dead.push(state + ' ' + route + ' #' + i + ' ' + label);
     // đóng hộp thoại, quay lại màn hình đang khảo sát
     for (let k = 0; k < 3 && await page.locator('#modal-root .modal').count(); k++) { await page.keyboard.press('Escape'); await page.waitForTimeout(220); }
     if (errors.length > errs0) report.errors.push(state + ' ' + route + ' #' + i + ' ' + label + ' → ' + errors.slice(errs0).join(' | '));
