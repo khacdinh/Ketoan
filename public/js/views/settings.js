@@ -213,7 +213,7 @@ async function previewImport(file, root) {
     const mode = b.dataset.imp;
     if (mode === 'replace' && !(await confirmDialog({
       title: 'Thay toàn bộ dữ liệu',
-      html: 'Dữ liệu hiện có (<b class="text-ink">' + S.db.entries.length + '</b> dòng sổ) sẽ được thay bằng dữ liệu trong file Excel.<p class="mt-2">Phần mềm tự sao lưu dữ liệu cũ trước khi thay.</p>',
+      html: 'Dữ liệu hiện có (<b class="text-ink">' + S.all.entries.length + '</b> dòng sổ) sẽ được thay bằng dữ liệu trong file Excel.<p class="mt-2">Phần mềm tự sao lưu dữ liệu cũ trước khi thay.</p>',
       okText: 'Thay dữ liệu', danger: true
     }))) return;
     const done = busy(b, 'Đang nhập…');
@@ -235,7 +235,7 @@ function openReset() {
   return openModal({
     title: 'Xóa dữ liệu sổ',
     size: 'small',
-    body: '<p class="leading-relaxed text-ink-2">Thao tác này xóa toàn bộ <b class="text-ink">' + S.db.entries.length + ' dòng sổ thu chi</b>. Một bản sao lưu được tạo ngay trước khi xóa.</p>' +
+    body: '<p class="leading-relaxed text-ink-2">Thao tác này xóa toàn bộ <b class="text-ink">' + S.all.entries.length + ' dòng sổ thu chi</b>. Một bản sao lưu được tạo ngay trước khi xóa.</p>' +
       '<label class="check mt-4"><input type="checkbox" id="rs-keep" checked>Giữ lại danh mục dự án và nhà cung cấp</label>' +
       '<label class="field mt-4"><span class="label">Gõ chữ XOA để xác nhận</span><input id="rs-confirm" class="input" autocomplete="off"></label>',
     footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="no">Hủy</button><button type="button" class="btn btn-danger" data-act="yes" disabled>Xóa dữ liệu sổ</button>',
@@ -299,7 +299,7 @@ function previewCostImport(file, buf, p, box, root) {
     const soQuy = !!(box.querySelector('#imp-soquy') && box.querySelector('#imp-soquy').checked);
     if (mode === 'replace' && !(await confirmDialog({
       title: 'Thay toàn bộ dữ liệu chi phí',
-      html: 'Sổ chi phí hiện có (<b class="text-ink">' + S.db.costs.length + '</b> dòng) và danh mục chi phí sẽ được thay bằng dữ liệu trong file. Sổ thu chi, danh mục dự án và nhà cung cấp được giữ nguyên.' +
+      html: 'Sổ chi phí hiện có (<b class="text-ink">' + S.all.costs.length + '</b> dòng) và danh mục chi phí sẽ được thay bằng dữ liệu trong file. Sổ thu chi, danh mục dự án và nhà cung cấp được giữ nguyên.' +
         '<p class="mt-2">Phần mềm tự sao lưu dữ liệu cũ trước khi thay.</p>',
       okText: 'Thay dữ liệu chi phí', danger: true
     }))) return;
@@ -321,7 +321,7 @@ function openResetCosts() {
   return openModal({
     title: 'Xóa dữ liệu chi phí công trình',
     size: 'small',
-    body: '<p class="leading-relaxed text-ink-2">Thao tác này xóa toàn bộ <b class="text-ink">' + S.db.costs.length + ' dòng chi phí</b>. Sổ thu chi không bị ảnh hưởng. Một bản sao lưu được tạo ngay trước khi xóa.</p>' +
+    body: '<p class="leading-relaxed text-ink-2">Thao tác này xóa toàn bộ <b class="text-ink">' + S.all.costs.length + ' dòng chi phí</b>. Sổ thu chi không bị ảnh hưởng. Một bản sao lưu được tạo ngay trước khi xóa.</p>' +
       '<label class="check mt-4"><input type="checkbox" id="rc-keep" checked>Giữ lại vật tư và nhà</label>' +
       '<label class="field mt-4"><span class="label">Gõ chữ XOA để xác nhận</span><input id="rc-confirm" class="input" autocomplete="off"></label>',
     footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="no">Hủy</button><button type="button" class="btn btn-danger" data-act="yes" disabled>Xóa dữ liệu chi phí</button>',

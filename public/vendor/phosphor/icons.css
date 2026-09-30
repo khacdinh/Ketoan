@@ -105,8 +105,20 @@
 .ph.ph-eraser:before {
   content: "\e21e";
 }
+.ph.ph-eye:before {
+  content: "\e220";
+}
+.ph.ph-eye-slash:before {
+  content: "\e224";
+}
+.ph.ph-file-dashed:before {
+  content: "\e704";
+}
 .ph.ph-file-xls:before {
   content: "\eb22";
+}
+.ph.ph-flag:before {
+  content: "\e244";
 }
 .ph.ph-floppy-disk:before {
   content: "\e248";
@@ -138,6 +150,12 @@
 .ph.ph-list-bullets:before {
   content: "\e2f2";
 }
+.ph.ph-lock-simple:before {
+  content: "\e308";
+}
+.ph.ph-lock-simple-open:before {
+  content: "\e30a";
+}
 .ph.ph-magnifying-glass:before {
   content: "\e30c";
 }
@@ -147,6 +165,9 @@
 .ph.ph-minus-circle:before {
   content: "\e32c";
 }
+.ph.ph-money:before {
+  content: "\e588";
+}
 .ph.ph-note-pencil:before {
   content: "\e34c";
 }
@@ -155,6 +176,9 @@
 }
 .ph.ph-package:before {
   content: "\e390";
+}
+.ph.ph-paperclip:before {
+  content: "\e39a";
 }
 .ph.ph-pencil-simple:before {
   content: "\e3b4";
@@ -435,12 +459,44 @@
   content: "\e21f";
   margin-left: -1em;
 }
+.ph-duotone.ph-eye:before {
+  content: "\e220";
+  opacity: 0.2;
+}
+.ph-duotone.ph-eye:after {
+  content: "\e221";
+  margin-left: -1em;
+}
+.ph-duotone.ph-eye-slash:before {
+  content: "\e224";
+  opacity: 0.2;
+}
+.ph-duotone.ph-eye-slash:after {
+  content: "\e225";
+  margin-left: -1em;
+}
+.ph-duotone.ph-file-dashed:before {
+  content: "\e704";
+  opacity: 0.2;
+}
+.ph-duotone.ph-file-dashed:after {
+  content: "\e705";
+  margin-left: -1em;
+}
 .ph-duotone.ph-file-xls:before {
   content: "\eb22";
   opacity: 0.2;
 }
 .ph-duotone.ph-file-xls:after {
   content: "\eb23";
+  margin-left: -1em;
+}
+.ph-duotone.ph-flag:before {
+  content: "\e244";
+  opacity: 0.2;
+}
+.ph-duotone.ph-flag:after {
+  content: "\e245";
   margin-left: -1em;
 }
 .ph-duotone.ph-floppy-disk:before {
@@ -523,6 +579,22 @@
   content: "\e2f3";
   margin-left: -1em;
 }
+.ph-duotone.ph-lock-simple:before {
+  content: "\e308";
+  opacity: 0.2;
+}
+.ph-duotone.ph-lock-simple:after {
+  content: "\e309";
+  margin-left: -1em;
+}
+.ph-duotone.ph-lock-simple-open:before {
+  content: "\e30a";
+  opacity: 0.2;
+}
+.ph-duotone.ph-lock-simple-open:after {
+  content: "\e30b";
+  margin-left: -1em;
+}
 .ph-duotone.ph-magnifying-glass:before {
   content: "\e30c";
   opacity: 0.2;
@@ -547,6 +619,14 @@
   content: "\e32d";
   margin-left: -1em;
 }
+.ph-duotone.ph-money:before {
+  content: "\e588";
+  opacity: 0.2;
+}
+.ph-duotone.ph-money:after {
+  content: "\e589";
+  margin-left: -1em;
+}
 .ph-duotone.ph-note-pencil:before {
   content: "\e34c";
   opacity: 0.2;
@@ -569,6 +649,14 @@
 }
 .ph-duotone.ph-package:after {
   content: "\e391";
+  margin-left: -1em;
+}
+.ph-duotone.ph-paperclip:before {
+  content: "\e39a";
+  opacity: 0.2;
+}
+.ph-duotone.ph-paperclip:after {
+  content: "\e39b";
   margin-left: -1em;
 }
 .ph-duotone.ph-pencil-simple:before {

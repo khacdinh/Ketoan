@@ -139,7 +139,7 @@ export function renderVouchers(root) {
       } catch (err) { showError(err); }
     } else if (a.dataset.act === 'edit-line') {
       const id = Number(a.closest('li').dataset.id);
-      const entry = S.db.entries.find((x) => x.id === id);
+      const entry = S.all.entries.find((x) => x.id === id);
       if (entry) openEntryForm(entry);
     }
   });

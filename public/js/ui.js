@@ -108,7 +108,15 @@ const ICONS = {
   rows: 'ph-rows',
   funnel: 'ph-funnel',
   grid: 'ph-squares-four',
-  spinner: 'ph-circle-notch'
+  spinner: 'ph-circle-notch',
+  draft: 'ph-file-dashed',
+  lock: 'ph-lock-simple',
+  unlock: 'ph-lock-simple-open',
+  flag: 'ph-flag',
+  paperclip: 'ph-paperclip',
+  money: 'ph-money',
+  eye: 'ph-eye',
+  eyeSlash: 'ph-eye-slash'
 };
 const DUO = {
   dashboard: 'ph-chart-line-up',

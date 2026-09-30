@@ -262,6 +262,11 @@
   .chip-ok { @apply bg-income-soft text-income; }
   .chip-none { @apply bg-transparent px-0 text-ink-3; }
   .chip-idle { @apply bg-transparent text-ink-3; }
+  /* Nháp: chưa ghi sổ — nền vàng nhạt, vạch trái màu nâu, không tính vào tồn quỹ / báo cáo */
+  .chip-draft { @apply bg-caution-soft px-2 text-caution; }
+  .ledger tbody tr.draft > td { background: #FFFBEF; }
+  .ledger tbody tr.draft > td:first-child { box-shadow: inset 3px 0 0 var(--color-caution); }
+  .ledger tbody tr.draft:hover > td { background: #FFF6DA; }
   .pill { @apply inline-block rounded-full bg-[#E8EDE6] px-2 text-[12px] font-medium text-ink-2; }
 
   /* ---------------- Đẳng thức sổ quỹ ---------------- */
@@ -324,7 +329,9 @@
   .modal-head { @apply flex items-center justify-between gap-3 border-b border-rule px-5 py-3.5; }
   .modal-head h2 { @apply text-[17px] font-semibold; font-stretch: 108%; }
   .modal-body { @apply overflow-auto px-5 py-4; }
-  .modal-foot { @apply flex items-center gap-2 rounded-b-xl border-t border-rule bg-[#F8FAF6] px-5 py-3; }
+  .modal-foot { @apply flex flex-wrap items-center justify-end gap-2 rounded-b-xl border-t border-rule bg-[#F8FAF6] px-5 py-3; }
+  /* điện thoại: nút chân hộp thoại xuống hàng, giãn đều, không đẩy hộp thoại tràn ngang */
+  @media (max-width: 639px) { .modal-foot > .btn { @apply flex-auto px-2.5; } .modal-foot > .flex-1 { @apply hidden; } }
 
   /* ---------------- Menu thả xuống ---------------- */
   .menu { @apply absolute z-[60] min-w-[300px] rounded-xl border border-rule bg-sheet p-1.5 shadow-[0_16px_40px_rgb(14_27_48/0.18)]; }

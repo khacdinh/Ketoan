@@ -4,7 +4,8 @@ import { LS, esc } from './ui.js';
 const KT = window.KT;
 
 export const S = {
-  db: null,
+  db: null,       // dữ liệu dùng cho báo cáo: đã bỏ các dòng Nháp (xem KT.postedDb)
+  all: null,      // toàn bộ dữ liệu kể cả Nháp: dùng khi tìm bản ghi để sửa, liệt kê nháp
   ledger: [],
   costLedger: [],
   _vouchers: null,
@@ -44,16 +45,32 @@ function markChanged(prev, db) {
 }
 
 export function setDb(db) {
-  markChanged(S.db, db);
-  S.db = db;
-  S.ledger = KT.buildLedger(db);
-  S.costLedger = KT.buildCostLedger(db);
+  markChanged(S.all, db);
+  S.all = db;
+  S.db = KT.postedDb(db);
+  S.drafts = KT.draftsOf(db);
+  S._allCostLedger = null;
+  S.ledger = KT.buildLedger(S.db);
+  S.costLedger = KT.buildCostLedger(S.db);
   S._vouchers = null;
   S.savedAt = new Date();
   S.listeners.forEach((fn) => fn());
 }
 
 export function onChange(fn) { S.listeners.push(fn); }
+
+// Sổ chi phí gồm cả dòng Nháp (để mở / sửa phiếu nháp, liệt kê phiếu đã nhập)
+export function allCostLedger() {
+  if (!S.drafts.costs.length) return S.costLedger;
+  if (!S._allCostLedger) S._allCostLedger = KT.buildCostLedger(S.all);
+  return S._allCostLedger;
+}
+
+// Các dòng Nháp của sổ thu chi dưới dạng dòng sổ (tên dự án, NCC...), chưa có tồn quỹ
+export function draftLedgerRows() {
+  if (!S.drafts.entries.length) return [];
+  return KT.buildLedger(Object.assign({}, S.all, { entries: S.drafts.entries })).map((r) => Object.assign(r, { stt: '', ton: null }));
+}
 
 export function vouchers() {
   if (!S._vouchers) S._vouchers = KT.buildVouchers(S.db, S.ledger);

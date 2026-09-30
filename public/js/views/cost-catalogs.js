@@ -98,7 +98,7 @@ export function openGroupForm(g, onSaved) {
 
 export function openItemForm(it, onSaved) {
   const isEdit = !!(it && it.id);
-  const used = isEdit ? S.db.costs.filter((c) => KT.keyOf(c.maHM) === KT.keyOf(it.ma)).length : 0;
+  const used = isEdit ? S.all.costs.filter((c) => KT.keyOf(c.maHM) === KT.keyOf(it.ma)).length : 0;
   return catalogForm({
     title: isEdit ? 'Sửa hạng mục' : 'Thêm hạng mục chi phí',
     endpoint: '/api/cost-items',
@@ -116,7 +116,7 @@ export function openItemForm(it, onSaved) {
 export function openMaterialForm(m, onSaved) {
   const isEdit = !!(m && m.id);
   const it = m && m.maHM ? itemByCode(m.maHM) : null;
-  const used = isEdit ? S.db.costs.filter((c) => KT.keyOf(c.maVT) === KT.keyOf(m.ma)).length : 0;
+  const used = isEdit ? S.all.costs.filter((c) => KT.keyOf(c.maVT) === KT.keyOf(m.ma)).length : 0;
   return catalogForm({
     title: isEdit ? 'Sửa vật tư ' + m.ma : 'Thêm vật tư',
     endpoint: '/api/materials',
@@ -138,7 +138,7 @@ export function openMaterialForm(m, onSaved) {
 
 export function openHouseForm(h, onSaved) {
   const isEdit = !!(h && h.id);
-  const used = isEdit ? S.db.costs.filter((c) => KT.keyOf(c.maNha) === KT.keyOf(h.ma)).length : 0;
+  const used = isEdit ? S.all.costs.filter((c) => KT.keyOf(c.maNha) === KT.keyOf(h.ma)).length : 0;
   return catalogForm({
     title: isEdit ? 'Sửa nhà / khu ' + h.ma : 'Thêm nhà / khu',
     endpoint: '/api/houses',

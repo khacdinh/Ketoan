@@ -12,6 +12,9 @@ let lastUsed = { ngay: '', soPhieu: '', maDuAn: '', maNCC: '', loai: 'chi' };
 export function openEntryForm(entry, opts) {
   opts = opts || {};
   const isEdit = !!(entry && entry.id && !opts.duplicate);
+  // Dòng Nháp (hoặc dòng mới) được chọn giữa Lưu nháp và Ghi sổ; dòng đã ghi sổ chỉ Lưu thay đổi
+  const isDraftRec = isEdit && KT.isDraft(entry);
+  const canDraft = !isEdit || isDraftRec;
   const e = Object.assign({ ngay: lastUsed.ngay || KT.todayISO(), soPhieu: '', maDuAn: '', maNCC: '', noiDung: '', thu: 0, chi: 0, nguoiNhan: '', ghiChu: '' }, entry || {});
   if (opts.duplicate) { e.id = undefined; }
   let loai = e.thu > 0 && e.chi > 0 ? 'ca-hai' : e.thu > 0 ? 'thu' : (entry && entry.id) ? 'chi' : (opts.loai || lastUsed.loai || 'chi');
@@ -49,11 +52,12 @@ export function openEntryForm(entry, opts) {
       '<button type="button" class="btn btn-ghost" data-act="history" title="Xem mọi lần thêm, sửa của dòng này trong nhật ký">' + icon('history') + 'Lịch sử</button>' : '') +
     '<span class="flex-1"></span>' +
     '<button type="button" class="btn btn-ghost" data-act="cancel">Hủy</button>' +
+    (canDraft ? '<button type="button" class="btn btn-secondary" data-act="save-draft" title="Lưu lại để làm tiếp; dòng Nháp chưa tính vào tồn quỹ, báo cáo, công nợ">' + icon('draft') + 'Lưu nháp</button>' : '') +
     (isEdit ? '' : '<button type="button" class="btn btn-secondary" data-act="save-next" title="Ghi sổ rồi giữ lại ngày, số phiếu, dự án, nhà cung cấp để ghi dòng tiếp theo">Ghi sổ và ghi tiếp</button>') +
-    '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon(isEdit ? 'save' : 'check') + (isEdit ? 'Lưu thay đổi' : 'Ghi sổ') + '</button>';
+    '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon(isEdit && !isDraftRec ? 'save' : 'check') + (isEdit && !isDraftRec ? 'Lưu thay đổi' : 'Ghi sổ') + '</button>';
 
   const m = openModal({
-    title: isEdit ? 'Sửa dòng sổ thu chi' : opts.duplicate ? 'Nhân bản dòng sổ thu chi' : 'Ghi thu / chi',
+    title: isDraftRec ? 'Sửa dòng nháp (chưa ghi sổ)' : isEdit ? 'Sửa dòng sổ thu chi' : opts.duplicate ? 'Nhân bản dòng sổ thu chi' : 'Ghi thu / chi',
     size: 'wide',
     body,
     footer,
@@ -116,7 +120,7 @@ export function openEntryForm(entry, opts) {
         return;
       }
       const t = KT.voucherType(so);
-      const others = S.db.entries.filter((x) => KT.voucherKey(x.soPhieu) === KT.voucherKey(so) && x.id !== e.id);
+      const others = S.all.entries.filter((x) => KT.voucherKey(x.soPhieu) === KT.voucherKey(so) && x.id !== e.id);
       let txt = t === 'thu' ? 'Phiếu thu' : 'Phiếu chi';
       if (others.length) txt += ', đã có ' + others.length + ' dòng cùng số (sẽ gộp khi in)';
       if (t === 'thu' && loai === 'chi') txt += '. Lưu ý: số phiếu PT dành cho khoản thu';
@@ -134,7 +138,7 @@ export function openEntryForm(entry, opts) {
         get('chi').dispatchEvent(new Event('input'));
         get('chi').focus();
       } else if (act === 'so-moi') {
-        get('soPhieu').value = KT.nextVoucherNo(S.db, loai === 'thu' ? 'thu' : 'chi', get('ngay').value);
+        get('soPhieu').value = KT.nextVoucherNo(S.all, loai === 'thu' ? 'thu' : 'chi', get('ngay').value);
         updateSoHint();
       } else if (act === 'so-truoc') {
         ev.preventDefault();
@@ -155,6 +159,8 @@ export function openEntryForm(entry, opts) {
         if (await deleteEntry(e)) m.close();
       } else if (act === 'save' || act === 'save-next') {
         save(act === 'save-next');
+      } else if (act === 'save-draft') {
+        save(false, true);
       }
     });
 
@@ -171,9 +177,10 @@ export function openEntryForm(entry, opts) {
     f.addEventListener('submit', (ev) => { ev.preventDefault(); save(false); });
 
     let saving = false;
-    async function save(next) {
+    async function save(next, asDraft) {
       if (saving) return;
       const data = {
+        trangThai: asDraft ? 'nhap' : '',
         ngay: get('ngay').value,
         soPhieu: get('soPhieu').value.trim(),
         maDuAn: resolveCode(S.db.projects, get('maDuAn').value),
@@ -194,13 +201,13 @@ export function openEntryForm(entry, opts) {
       if (loai === 'thu' && !data.thu) return fail('thu', 'Nhập số tiền thu');
       if (loai === 'ca-hai' && !data.thu && !data.chi) return fail('chi', 'Nhập số tiền thu hoặc chi');
       saving = true;
-      const btn = el.querySelector(next ? '[data-act=save-next]' : '[data-act=save]');
-      const done = busy(btn, isEdit ? 'Đang lưu…' : 'Đang ghi…');
+      const btn = el.querySelector(asDraft ? '[data-act=save-draft]' : next ? '[data-act=save-next]' : '[data-act=save]');
+      const done = busy(btn, isEdit || asDraft ? 'Đang lưu…' : 'Đang ghi…');
       try {
         if (isEdit) await api('PUT', '/api/entries/' + e.id, data);
         else await api('POST', '/api/entries', data);
         lastUsed = { ngay: data.ngay, soPhieu: data.soPhieu, maDuAn: data.maDuAn, maNCC: data.maNCC, loai };
-        toast(isEdit ? 'Đã lưu thay đổi' : 'Đã ghi sổ ' + (data.chi ? 'khoản chi ' + money(data.chi) : 'khoản thu ' + money(data.thu)) + ' đ');
+        toast(asDraft ? 'Đã lưu nháp (chưa ghi sổ, chưa tính vào tồn quỹ)' : isDraftRec ? 'Đã ghi sổ dòng nháp' : isEdit ? 'Đã lưu thay đổi' : 'Đã ghi sổ ' + (data.chi ? 'khoản chi ' + money(data.chi) : 'khoản thu ' + money(data.thu)) + ' đ');
         if (next) {
           ['noiDung', 'chi', 'thu', 'nguoiNhan', 'ghiChu'].forEach((n) => { get(n).value = ''; });
           get('chi').dispatchEvent(new Event('input'));
@@ -261,7 +268,7 @@ export const PROJECT_STATUSES = ['Đang thực hiện', 'Đang thi công', 'Tạ
 export function openProjectForm(p, onSaved) {
   const isEdit = !!(p && p.id);
   p = Object.assign({ ma: '', ten: '', nganSach: 0, trangThai: 'Đang thực hiện', ghiChu: '', ngayKhoiCong: '', diaChi: '' }, p || {});
-  const used = isEdit ? S.db.entries.filter((e) => KT.keyOf(e.maDuAn) === KT.keyOf(p.ma)).length + S.db.costs.filter((c) => KT.keyOf(c.maCT) === KT.keyOf(p.ma)).length : 0;
+  const used = isEdit ? S.all.entries.filter((e) => KT.keyOf(e.maDuAn) === KT.keyOf(p.ma)).length + S.all.costs.filter((c) => KT.keyOf(c.maCT) === KT.keyOf(p.ma)).length : 0;
   return openModal({
     title: isEdit ? 'Sửa dự án ' + p.ma : 'Thêm dự án',
     body:
@@ -312,7 +319,7 @@ export function openProjectForm(p, onSaved) {
 export function openSupplierForm(s, onSaved) {
   const isEdit = !!(s && s.id);
   s = Object.assign({ ma: '', ten: '', loai: '', sdt: '', diaChi: '', ghiChu: '' }, s || {});
-  const used = isEdit ? S.db.entries.filter((e) => KT.keyOf(e.maNCC) === KT.keyOf(s.ma)).length : 0;
+  const used = isEdit ? S.all.entries.filter((e) => KT.keyOf(e.maNCC) === KT.keyOf(s.ma)).length : 0;
   const types = Array.from(new Set(S.db.suppliers.map((x) => x.loai).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'vi'));
   openModal({
     title: isEdit ? 'Sửa ' + s.ma : 'Thêm nhà cung cấp, đối tượng',

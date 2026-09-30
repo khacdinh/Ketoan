@@ -1,6 +1,6 @@
 /* Sổ thu chi & tồn quỹ hàng ngày. */
-import { $, esc, money, fdate, icon, highlight, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, debounce, setDateValue, equationHtml } from '../ui.js';
-import { S, saveFilter, projectOptions, supplierOptions } from '../state.js';
+import { $, esc, money, fdate, icon, highlight, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, debounce, setDateValue, equationHtml, api, toast, showError } from '../ui.js';
+import { S, saveFilter, projectOptions, supplierOptions, draftLedgerRows } from '../state.js';
 import { openEntryForm, deleteEntry } from '../forms.js';
 import { printView } from '../print.js';
 
@@ -28,6 +28,10 @@ export function renderLedger(root) {
     '<div class="seg seg-sm" role="radiogroup" aria-label="Loại">' +
     [['', 'Thu và chi'], ['thu', 'Thu'], ['chi', 'Chi']].map(([v, l]) => '<label class="seg-item"><input type="radio" name="so-loai" value="' + v + '"' + ((f.loai || '') === v ? ' checked' : '') + '><span>' + l + '</span></label>').join('') +
     '</div>' +
+    // Lọc trạng thái chỉ hiện khi đang có dòng Nháp (người không dùng nháp không thấy thêm gì)
+    (S.drafts.entries.length || f.trangThai ? '<div class="seg seg-sm" role="radiogroup" aria-label="Trạng thái">' +
+      [['', 'Mọi trạng thái'], ['so', 'Đã ghi sổ'], ['nhap', 'Nháp (' + S.drafts.entries.length + ')']].map(([v, l]) => '<label class="seg-item"><input type="radio" name="so-tt" value="' + v + '"' + ((f.trangThai || '') === v ? ' checked' : '') + '><span>' + l + '</span></label>').join('') +
+      '</div>' : '') +
     '<label class="search min-w-[240px] flex-1">' + icon('search') + '<input id="so-q" type="search" class="input" placeholder="Tìm nội dung, số phiếu, số tiền" value="' + esc(f.q) + '" aria-label="Tìm trong sổ"></label>' +
     '<button type="button" class="btn btn-ghost btn-sm" data-act="clear" id="so-clear">' + icon('eraser') + 'Bỏ lọc</button>' +
     '</div>' +
@@ -54,6 +58,7 @@ export function renderLedger(root) {
   $('#so-duan', root).addEventListener('change', (e) => { f.duAn = e.target.value; saveFilter('so'); draw(); });
   $('#so-ncc', root).addEventListener('change', (e) => { f.ncc = e.target.value; saveFilter('so'); draw(); });
   root.querySelectorAll('input[name=so-loai]').forEach((r) => r.addEventListener('change', () => { f.loai = r.value; saveFilter('so'); draw(); }));
+  root.querySelectorAll('input[name=so-tt]').forEach((r) => r.addEventListener('change', () => { f.trangThai = r.value; saveFilter('so'); draw(); }));
   $('#so-q', root).addEventListener('input', debounce((e) => { f.q = e.target.value; saveFilter('so'); draw(); }, 150));
 
   root.addEventListener('click', (e) => {
@@ -61,9 +66,9 @@ export function renderLedger(root) {
     if (!a) return;
     const act = a.dataset.act;
     const tr = a.closest('tr[data-id]');
-    const entry = tr ? S.db.entries.find((x) => x.id === Number(tr.dataset.id)) : null;
+    const entry = tr ? S.all.entries.find((x) => x.id === Number(tr.dataset.id)) : null;
     if (act === 'clear') {
-      Object.assign(f, { period: 'tat-ca', from: '', to: '', duAn: '', ncc: '', loai: '', q: '' });
+      Object.assign(f, { period: 'tat-ca', from: '', to: '', duAn: '', ncc: '', loai: '', q: '', trangThai: '' });
       saveFilter('so');
       renderLedger(root);
     } else if (act === 'export') download('/api/export/ledger?' + exportQuery(f));
@@ -73,6 +78,9 @@ export function renderLedger(root) {
     else if (act === 'edit' && entry) openEntryForm(entry);
     else if (act === 'dup' && entry) openEntryForm(entry, { duplicate: true });
     else if (act === 'del' && entry) deleteEntry(entry);
+    else if (act === 'post' && entry) {
+      api('POST', '/api/entries/post', { ids: [entry.id] }).then(() => toast('Đã ghi sổ dòng nháp, đã tính vào tồn quỹ')).catch(showError);
+    }
     else if (act === 'voucher') {
       e.preventDefault();
       S.selectedVoucher = KT.voucherKey(a.dataset.so);
@@ -82,7 +90,7 @@ export function renderLedger(root) {
   root.addEventListener('dblclick', (e) => {
     const tr = e.target.closest('tr[data-id]');
     if (!tr || e.target.closest('button, a')) return;
-    const entry = S.db.entries.find((x) => x.id === Number(tr.dataset.id));
+    const entry = S.all.entries.find((x) => x.id === Number(tr.dataset.id));
     if (entry) openEntryForm(entry);
   });
   draw();
@@ -100,20 +108,26 @@ function drawRows(root, f) {
     dauLabel: f.from ? 'Tồn quỹ trước ngày ' + fdate(f.from) : 'Tồn quỹ đầu sổ',
     cuoiLabel: f.to ? 'Tồn quỹ đến ngày ' + fdate(f.to) : 'Tồn quỹ hiện tại'
   });
-  $('#so-count', root).innerHTML = '<b class="font-semibold text-ink">' + res.rows.length + '</b> dòng' +
+  // Dòng Nháp: hiện xen trong sổ (có nhãn Nháp) nhưng không cộng vào tồn quỹ và các tổng
+  const drafts = f.trangThai === 'so' ? [] : KT.filterLedger(draftLedgerRows(), f).rows;
+  const posted = f.trangThai === 'nhap' ? [] : res.rows;
+  const list = drafts.length ? posted.concat(drafts).sort(KT.compareEntries) : posted;
+  $('#so-count', root).innerHTML = '<b class="font-semibold text-ink">' + posted.length + '</b> dòng' +
     (filtered || f.from || f.to ? ' khớp bộ lọc, trong tổng số ' + S.ledger.length + ' dòng' : ' trong sổ') +
+    (drafts.length ? ', <b class="font-semibold text-caution">' + drafts.length + ' dòng nháp</b> chưa tính vào tồn quỹ' : '') +
     '. Bấm đúp một dòng để sửa.';
-  $('#so-clear', root).hidden = !(filtered || f.from || f.to);
+  $('#so-clear', root).hidden = !(filtered || f.from || f.to || f.trangThai);
 
-  const rows = res.rows.length > shown ? res.rows.slice(-shown) : res.rows;
+  const res2 = { rows: list };
+  const rows = res2.rows.length > shown ? res2.rows.slice(-shown) : res2.rows;
   const body = $('#so-body', root);
   if (!rows.length) {
     body.innerHTML = '<tr><td colspan="10" class="empty">' + (S.ledger.length
       ? 'Không có dòng nào khớp bộ lọc. Thử bỏ bớt điều kiện lọc.'
       : 'Sổ chưa có dòng nào. Bấm “Ghi thu / chi” để ghi khoản đầu tiên, hoặc nhập từ file Excel trong Cài đặt.') + '</td></tr>';
   } else {
-    body.innerHTML = (res.rows.length > rows.length ? '<tr><td colspan="10" class="text-[12.5px] text-ink-3">Đang hiện ' + rows.length + ' dòng gần nhất trong ' + res.rows.length + ' dòng. ' +
-      '<button type="button" class="btn btn-ghost btn-sm no-print" data-act="more">Hiện thêm ' + Math.min(PAGE, res.rows.length - rows.length) + ' dòng cũ hơn</button>' +
+    body.innerHTML = (res2.rows.length > rows.length ? '<tr><td colspan="10" class="text-[12.5px] text-ink-3">Đang hiện ' + rows.length + ' dòng gần nhất trong ' + res2.rows.length + ' dòng. ' +
+      '<button type="button" class="btn btn-ghost btn-sm no-print" data-act="more">Hiện thêm ' + Math.min(PAGE, res2.rows.length - rows.length) + ' dòng cũ hơn</button>' +
       '<button type="button" class="btn btn-ghost btn-sm no-print" data-act="all">Hiện tất cả</button><span class="no-print"> Hoặc lọc theo kỳ để thu hẹp.</span></td></tr>' : '') +
       rows.map((r) => rowHtml(r, f.q)).join('');
     // dòng vừa ghi / vừa sửa: cuộn tới để người dùng thấy ngay
@@ -130,8 +144,10 @@ function rowHtml(r, q) {
   const extra = [];
   if (r.nguoiNhan) extra.push('<span>Người nhận: <span class="text-ink-2">' + highlight(r.nguoiNhan, q) + '</span></span>');
   if (r.ghiChu) extra.push('<span>Ghi chú: <span class="text-ink-2">' + highlight(r.ghiChu, q) + '</span></span>');
-  return '<tr data-id="' + r.id + '"' + (S.flash.has('entries:' + r.id) ? ' class="flash"' : '') + '>' +
-    '<td class="num text-ink-3">' + r.stt + '</td>' +
+  const nhap = KT.isDraft(r);
+  const cls = [S.flash.has('entries:' + r.id) ? 'flash' : '', nhap ? 'draft' : ''].filter(Boolean).join(' ');
+  return '<tr data-id="' + r.id + '"' + (cls ? ' class="' + cls + '"' : '') + '>' +
+    '<td class="num text-ink-3">' + (nhap ? '<span class="chip chip-draft" title="Nháp: chưa ghi sổ, chưa tính vào tồn quỹ và báo cáo">' + icon('draft') + 'Nháp</span>' : r.stt) + '</td>' +
     '<td class="whitespace-nowrap">' + fdate(r.ngay) + '</td>' +
     '<td class="whitespace-nowrap">' + (r.soPhieu ? '<a href="#" class="font-semibold text-pen hover:underline" data-act="voucher" data-so="' + esc(r.soPhieu) + '" title="Xem và in phiếu">' + highlight(r.soPhieu, q) + '</a>' : '') + '</td>' +
     '<td class="whitespace-nowrap">' + projectCell(r, q) + '</td>' +
@@ -140,8 +156,9 @@ function rowHtml(r, q) {
     (extra.length ? '<div class="mt-0.5 flex flex-wrap gap-x-3 text-[12.5px] text-ink-3">' + extra.join('') + '</div>' : '') + '</td>' +
     '<td class="num money thu">' + (r.thu ? highlight(money(r.thu), q) : '') + '</td>' +
     '<td class="num money">' + (r.chi ? highlight(money(r.chi), q) : '') + '</td>' +
-    '<td class="num money font-medium' + (r.ton < 0 ? ' neg' : '') + '">' + money(r.ton) + '</td>' +
+    '<td class="num money font-medium' + (r.ton < 0 ? ' neg' : '') + '">' + (nhap ? '<span class="text-ink-3" title="Dòng nháp không tính vào tồn quỹ">—</span>' : money(r.ton)) + '</td>' +
     '<td class="actions no-print">' +
+    (nhap ? '<button type="button" class="icon-btn" data-act="post" title="Ghi sổ dòng nháp này" aria-label="Ghi sổ dòng nháp">' + icon('check') + '</button>' : '') +
     '<button type="button" class="icon-btn" data-act="edit" title="Sửa" aria-label="Sửa dòng ' + r.stt + '">' + icon('edit') + '</button>' +
     '<button type="button" class="icon-btn" data-act="dup" title="Nhân bản" aria-label="Nhân bản dòng ' + r.stt + '">' + icon('copy') + '</button>' +
     '<button type="button" class="icon-btn danger" data-act="del" title="Xóa" aria-label="Xóa dòng ' + r.stt + '">' + icon('trash') + '</button>' +
