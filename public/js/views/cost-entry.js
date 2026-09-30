@@ -1,6 +1,6 @@
 /* Phiếu nhập chi phí (tương đương sheet PHIEU_NHAP + macro GhiPhieuNhap):
  * khai báo đầu phiếu một lần, rồi nhập nhiều dòng Mã VT × Số lượng × Đơn giá. */
-import { $, $$, esc, money, fdate, icon, api, toast, showError, confirmDialog, freshRoot, debounce, dateField, highlight, LS, focusInput } from '../ui.js';
+import { $, $$, esc, money, fdate, icon, api, toast, showError, confirmDialog, freshRoot, debounce, dateField, highlight, LS, focusInput, fieldError, busy } from '../ui.js';
 import { S, costDatalists, resolveCode, resolveItem, materialByCode, itemByCode, houseByCode, projectByCode, supplierByCode, groupName, houseListOptions } from '../state.js';
 import { openProjectForm, openSupplierForm } from '../forms.js';
 import { openItemForm, openMaterialForm, openHouseForm } from './cost-catalogs.js';
@@ -102,9 +102,9 @@ export function renderCostEntry(root) {
     '<div class="flex flex-wrap items-center gap-3 border-b border-rule px-4 py-2.5"><h2 id="h-dong" class="sheet-title">Các dòng hàng</h2>' +
     '<span class="text-[12.5px] text-ink-3">' + icon('keyboard', 'mr-1 align-[-3px] text-[15px]') + '<kbd>Enter</kbd> sang ô kế tiếp, <kbd>↑</kbd> <kbd>↓</kbd> đổi dòng (ở ô có danh sách gợi ý thì bấm kèm <kbd>Ctrl</kbd>), <kbd>Ctrl</kbd> + <kbd>Enter</kbd> lưu phiếu. ' +
     'Số lượng nhận <b class="font-medium text-ink-2">2,5</b> hoặc <b class="font-medium text-ink-2">10+5</b>; đơn giá nhận <b class="font-medium text-ink-2">50tr</b>, <b class="font-medium text-ink-2">300k</b>, <b class="font-medium text-ink-2">1.250.000</b>.</span></div>' +
-    '<div class="overflow-x-auto"><table class="ledger grid-entry" id="cp-lines">' +
-    '<thead><tr><th class="num w-8">#</th><th class="w-[150px]">Mã VT</th><th>Tên vật tư</th><th class="w-[64px]">ĐVT</th><th>Diễn giải / quy cách</th>' +
-    '<th class="num w-[100px]">Số lượng</th><th class="num w-[130px]">Đơn giá</th><th class="num money w-[140px]">Thành tiền</th><th class="w-[170px]">Hạng mục riêng</th><th class="w-[172px]">Loại CP</th><th class="w-8"><span class="sr-only">Xóa dòng</span></th></tr></thead>' +
+    '<div class="scroll-x overflow-x-auto"><table class="ledger grid-entry" id="cp-lines">' +
+    '<thead><tr><th class="num w-8">#</th><th class="w-[150px] min-w-[140px]">Mã VT</th><th>Tên vật tư</th><th class="w-[64px]">ĐVT</th><th>Diễn giải / quy cách</th>' +
+    '<th class="num w-[100px] min-w-[90px]">Số lượng</th><th class="num w-[130px] min-w-[120px]">Đơn giá</th><th class="num money w-[140px]">Thành tiền</th><th class="w-[170px] min-w-[130px]">Hạng mục riêng</th><th class="w-[172px] min-w-[150px]">Loại CP</th><th class="w-8"><span class="sr-only">Xóa dòng</span></th></tr></thead>' +
     '<tbody id="cp-body"></tbody>' +
     '<tfoot><tr><td colspan="7" class="text-right" id="cp-total-label">Tổng phiếu</td><td class="num money"><span class="dbl" id="cp-total">0</span></td><td colspan="3" class="font-normal text-[12.5px] text-ink-3" id="cp-words"></td></tr></tfoot>' +
     '</table></div>' +
@@ -271,7 +271,22 @@ export function renderCostEntry(root) {
     // gợi ý đơn giá
     const dgInp = tr.querySelector('[data-col=donGia]');
     dgInp.classList.toggle('suggested', !!l.goiY);
-    dgInp.title = l.goiY || '';
+    // cảnh báo (không chặn) khi đơn giá lệch nhiều so với lần mua gần nhất: hay gặp khi gõ thừa/thiếu số 0
+    const warn = !l.goiY && m && !isNaN(dg) && dg > 0 ? priceWarn(m.ma, dg) : '';
+    dgInp.classList.toggle('warn', !!warn);
+    dgInp.title = l.goiY || warn;
+    let pw = dgInp.parentNode.querySelector('.price-warn');
+    if (warn && !pw) { pw = document.createElement('span'); pw.className = 'price-warn'; dgInp.parentNode.appendChild(pw); }
+    if (pw) { if (warn) pw.textContent = warn.split(' · ')[0]; else pw.remove(); }
+  }
+
+  function priceWarn(maVT, dg) {
+    const lp = KT.lastPrice(S.db, maVT, resolveCode(S.db.suppliers, h.maNCC));
+    if (!lp || !(lp.donGia > 0)) return '';
+    const r = dg / lp.donGia;
+    if (r < 1.5 && r > 1 / 1.5) return '';
+    const pct = Math.round((r - 1) * 100);
+    return (pct > 0 ? 'Cao hơn ' : 'Thấp hơn ') + Math.abs(pct).toLocaleString('vi-VN') + '% giá lần trước · Lần mua ' + fdate(lp.ngay) + ': ' + money(lp.donGia) + ' đ. Kiểm tra lại nếu gõ nhầm.';
   }
 
   function updateTotals() {
@@ -402,7 +417,12 @@ export function renderCostEntry(root) {
       el.addEventListener('input', () => el.classList.remove('invalid'), { once: true });
     }
   }
-  function fail(msg, row, col) { toast(msg, 'error'); mark(row, col); return false; }
+  // Ô ở đầu phiếu: báo ngay dưới ô; ô trong bảng: tô đỏ ô. Luôn kèm thông báo tóm tắt (cho biết dòng nào).
+  function fail(msg, row, col) {
+    toast(msg, 'error');
+    if (row == null) fieldError(get(col), msg); else mark(row, col);
+    return false;
+  }
 
   let saving = false;
   async function save() {
@@ -443,6 +463,7 @@ export function renderCostEntry(root) {
     if (!lines.length) return fail('Phiếu chưa có dòng hàng nào', 0, 'maVT');
     const payload = { header: { ngay: h.ngay, maCT: ct.ma, maNha: nha ? nha.ma : '', maNCC: ncc.ma, soPhieu: h.soPhieu, maHM: headHM }, lines };
     saving = true;
+    const done = busy(root.querySelector('[data-act=save]'), editing ? 'Đang lưu…' : 'Đang ghi…');
     try {
       const r = editing ? await api('PUT', '/api/cost-slips/' + st.phieuId, payload) : await api('POST', '/api/cost-slips', payload);
       toast((editing ? 'Đã lưu phiếu: ' : 'Đã ghi ') + r.count + ' dòng, tổng ' + money(r.total) + ' đ vào sổ chi phí');
@@ -461,6 +482,7 @@ export function renderCostEntry(root) {
       if (mm) focusCell(Number(mm[1]) - 1, 'maVT');
     } finally {
       saving = false;
+      done();
     }
   }
 

@@ -38,7 +38,7 @@ export function renderLedger(root) {
     '<button type="button" class="btn btn-ghost btn-sm" data-act="print">' + icon('print') + 'In sổ</button>' +
     '<button type="button" class="btn btn-secondary btn-sm" data-act="export">' + icon('excel') + 'Xuất Excel theo bộ lọc</button>' +
     '</div>' +
-    '<div class="table-scroll max-h-[calc(100vh-300px)] min-h-[260px] overflow-auto" id="so-wrap"><table class="ledger">' +
+    '<div class="table-scroll scroll-x max-h-[calc(100vh-300px)] min-h-[260px] overflow-auto" id="so-wrap"><table class="ledger">' +
     '<thead><tr><th class="num">STT</th><th>Ngày</th><th>Số phiếu</th><th>Dự án</th><th>Nhà cung cấp, đối tượng</th><th>Nội dung, người nhận, ghi chú</th>' +
     '<th class="num money">Thu</th><th class="num money">Chi</th><th class="num money">Tồn quỹ</th><th class="no-print"><span class="sr-only">Thao tác</span></th></tr></thead>' +
     '<tbody id="so-body"></tbody><tfoot id="so-foot"></tfoot></table></div>' +
@@ -116,6 +116,9 @@ function drawRows(root, f) {
       '<button type="button" class="btn btn-ghost btn-sm no-print" data-act="more">Hiện thêm ' + Math.min(PAGE, res.rows.length - rows.length) + ' dòng cũ hơn</button>' +
       '<button type="button" class="btn btn-ghost btn-sm no-print" data-act="all">Hiện tất cả</button><span class="no-print"> Hoặc lọc theo kỳ để thu hẹp.</span></td></tr>' : '') +
       rows.map((r) => rowHtml(r, f.q)).join('');
+    // dòng vừa ghi / vừa sửa: cuộn tới để người dùng thấy ngay
+    const fl = body.querySelector('tr.flash');
+    if (fl) fl.scrollIntoView({ block: 'nearest' });
   }
   $('#so-foot', root).innerHTML = res.rows.length
     ? '<tr><td colspan="6" class="text-right">Cộng phát sinh</td><td class="num money thu"><span class="dbl">' + money(res.tongThu) + '</span></td>' +
@@ -127,7 +130,7 @@ function rowHtml(r, q) {
   const extra = [];
   if (r.nguoiNhan) extra.push('<span>Người nhận: <span class="text-ink-2">' + highlight(r.nguoiNhan, q) + '</span></span>');
   if (r.ghiChu) extra.push('<span>Ghi chú: <span class="text-ink-2">' + highlight(r.ghiChu, q) + '</span></span>');
-  return '<tr data-id="' + r.id + '">' +
+  return '<tr data-id="' + r.id + '"' + (S.flash.has('entries:' + r.id) ? ' class="flash"' : '') + '>' +
     '<td class="num text-ink-3">' + r.stt + '</td>' +
     '<td class="whitespace-nowrap">' + fdate(r.ngay) + '</td>' +
     '<td class="whitespace-nowrap">' + (r.soPhieu ? '<a href="#" class="font-semibold text-pen hover:underline" data-act="voucher" data-so="' + esc(r.soPhieu) + '" title="Xem và in phiếu">' + highlight(r.soPhieu, q) + '</a>' : '') + '</td>' +

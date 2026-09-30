@@ -38,7 +38,7 @@ export function renderDashboard(root) {
     '<p class="balance mt-2' + (L.tonCuoiKy < 0 ? ' neg' : '') + '">' + money(L.tonCuoiKy) + '<span class="unit">đồng</span></p></div>' +
     '<div class="no-print flex flex-wrap items-center gap-2">' + periodControls(f, 'dash') +
     '<button type="button" class="btn btn-ghost" data-act="print">' + icon('print') + 'In</button>' +
-    '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất báo cáo</button></div>' +
+    '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất Excel</button></div>' +
     '</div>' +
     equationHtml({ dau: L.tonDauKy, thu: L.tongThu, chi: L.tongChi, cuoi: L.tonCuoiKy, dauLabel: f.from ? 'Tồn quỹ ngày ' + fdate(f.from) : 'Tồn quỹ đầu sổ' }) +
     '<div class="sheet px-5 pt-4 pb-3">' +

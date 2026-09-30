@@ -118,20 +118,29 @@ async function server(state) {
             await page.evaluate(() => document.body.classList.remove('printing-doc', 'printing-view'));
           }
         }
-        // mất kết nối máy chủ
-        if (state === 'mau' && sz === '1366x768') {
-          await page.evaluate(() => { location.hash = '#/so-thu-chi'; });
-          await page.waitForTimeout(300);
-          await srv.stop();
-          await page.keyboard.press('F2');
-          await page.waitForSelector('#entry-form');
-          await page.fill('#entry-form textarea[name=noiDung]', 'thử mất kết nối');
-          await page.fill('#entry-form input[name=chi]', '1000');
-          await page.keyboard.press('Control+Enter');
-          await page.waitForTimeout(800);
-          await page.screenshot({ path: path.join(dir, 'mat-ket-noi.png') });
-        }
         res._errors = errors;
+        await ctx.close();
+      }
+      // mất kết nối máy chủ (làm sau cùng vì phải tắt máy chủ)
+      if (state === 'mau') {
+        const ctx = await browser.newContext({ viewport: { width: 1366, height: 768 }, bypassCSP: true });
+        const page = await ctx.newPage();
+        await page.goto(srv.base + '/#/so-thu-chi');
+        await page.waitForSelector('#so-body tr');
+        await srv.stop();
+        await page.keyboard.press('F2');
+        await page.waitForSelector('#entry-form');
+        await page.fill('#entry-form textarea[name=noiDung]', 'thử mất kết nối');
+        await page.fill('#entry-form input[name=chi]', '1000');
+        await page.keyboard.press('Control+Enter');
+        await page.waitForTimeout(800);
+        await page.screenshot({ path: path.join(OUT, state, '1366x768', 'mat-ket-noi.png') });
+        await page.keyboard.press('Escape');
+        await page.evaluate(() => { location.hash = '#/cp-so'; });
+        await page.waitForTimeout(300);
+        await page.reload().catch(() => {});
+        await page.waitForTimeout(800);
+        await page.screenshot({ path: path.join(OUT, state, '1366x768', 'mat-ket-noi-tai-lai.png') }).catch(() => {});
         await ctx.close();
       }
     } finally { await srv.stop(); }

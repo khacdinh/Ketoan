@@ -1,5 +1,5 @@
 /* Biểu mẫu: ghi thu/chi, dự án, nhà cung cấp. */
-import { $, esc, api, openModal, toast, showError, bindMoneyInput, money, confirmDialog, icon, dateField, focusInput } from './ui.js';
+import { $, esc, api, openModal, toast, showError, bindMoneyInput, money, confirmDialog, icon, dateField, focusInput, fieldError, busy } from './ui.js';
 import { S, datalists, resolveCode, projectByCode, supplierByCode } from './state.js';
 
 const KT = window.KT;
@@ -18,7 +18,7 @@ export function openEntryForm(entry, opts) {
   const body =
     '<form id="entry-form" class="grid grid-cols-2 gap-x-5 gap-y-4 max-sm:grid-cols-1" novalidate autocomplete="off">' +
     datalists() +
-    '<div class="col-span-2 max-sm:col-span-1"><div class="seg" role="radiogroup" aria-label="Loại nghiệp vụ">' +
+    '<div class="col-span-2 max-sm:col-span-1"><div class="seg seg-wrap" role="radiogroup" aria-label="Loại nghiệp vụ">' +
     [['chi', 'Chi tiền'], ['thu', 'Thu tiền'], ['ca-hai', 'Thu và chi cùng lúc']].map(([v, l]) =>
       '<label class="seg-item"><input type="radio" name="loai" value="' + v + '"' + (loai === v ? ' checked' : '') + '><span>' + l + '</span></label>').join('') +
     '</div></div>' +
@@ -31,27 +31,27 @@ export function openEntryForm(entry, opts) {
     '<span class="hint" id="da-hint"></span></label>' +
     '<label class="field"><span class="label">Nhà cung cấp, đối tượng</span><input name="maNCC" class="input" list="dl-suppliers" value="' + esc(e.maNCC) + '" placeholder="Gõ mã hoặc tên">' +
     '<span class="hint" id="ncc-hint"></span></label>' +
-    '<label class="field col-span-2 max-sm:col-span-1"><span class="label">Nội dung thu, chi <b class="req">*</b></span><textarea name="noiDung" class="input" rows="2" placeholder="VD: Thanh toán công nợ vật tư">' + esc(e.noiDung) + '</textarea></label>' +
-    '<label class="field" data-show="chi"><span class="label">Số tiền chi (đồng)</span><input name="chi" inputmode="decimal" class="input money-input h-11" value="' + (e.chi ? money(e.chi) : '') + '" placeholder="0">' +
+    '<label class="field col-span-2 max-sm:col-span-1"><span class="label">Nội dung thu, chi <b class="req">*</b></span><textarea name="noiDung" class="input" rows="2" placeholder="VD: Thanh toán công nợ vật tư" required>' + esc(e.noiDung) + '</textarea></label>' +
+    '<label class="field" data-show="chi"><span class="label">Số tiền chi (đồng)</span><input name="chi" inputmode="decimal" class="input money-input h-11" value="' + (e.chi ? money(e.chi) : '') + '" placeholder="VD: 1.250.000 hoặc 50tr" aria-describedby="chi-hint">' +
     '<span class="hint" id="chi-hint"></span></label>' +
-    '<label class="field" data-show="thu"><span class="label">Số tiền thu (đồng)</span><input name="thu" inputmode="decimal" class="input money-input h-11" value="' + (e.thu ? money(e.thu) : '') + '" placeholder="0">' +
+    '<label class="field" data-show="thu"><span class="label">Số tiền thu (đồng)</span><input name="thu" inputmode="decimal" class="input money-input h-11" value="' + (e.thu ? money(e.thu) : '') + '" placeholder="VD: 1.250.000 hoặc 50tr" aria-describedby="thu-hint">' +
     '<span class="hint" id="thu-hint"></span></label>' +
     '<label class="field"><span class="label">Người nhận, người nộp</span><input name="nguoiNhan" class="input" value="' + esc(e.nguoiNhan) + '" placeholder="Để trống thì lấy theo nhà cung cấp khi in"></label>' +
     '<label class="field"><span class="label">Ghi chú</span><input name="ghiChu" class="input" value="' + esc(e.ghiChu) + '"></label>' +
     '<p class="col-span-2 text-[12.5px] leading-relaxed text-ink-3 max-sm:col-span-1">' + icon('keyboard', 'mr-1 align-[-3px] text-[15px]') +
     'Ô số tiền nhận <b class="font-medium text-ink-2">1.250.000</b>, <b class="font-medium text-ink-2">50tr</b>, <b class="font-medium text-ink-2">300k</b> hoặc phép tính <b class="font-medium text-ink-2">58000+11000</b>. ' +
-    'Lưu nhanh bằng <kbd>Ctrl</kbd> + <kbd>Enter</kbd>.</p>' +
+    'Ghi sổ nhanh bằng <kbd>Ctrl</kbd> + <kbd>Enter</kbd>, đóng bằng <kbd>Esc</kbd>.</p>' +
     '</form>';
 
   const footer =
     (isEdit ? '<button type="button" class="btn btn-danger-ghost" data-act="delete">' + icon('trash') + 'Xóa dòng</button>' : '') +
     '<span class="flex-1"></span>' +
     '<button type="button" class="btn btn-ghost" data-act="cancel">Hủy</button>' +
-    (isEdit ? '' : '<button type="button" class="btn btn-secondary" data-act="save-next" title="Lưu rồi giữ lại ngày, số phiếu, dự án, nhà cung cấp để nhập dòng tiếp theo">Lưu và nhập tiếp</button>') +
-    '<button type="button" class="btn btn-primary" data-act="save">' + (isEdit ? 'Lưu thay đổi' : 'Lưu') + '</button>';
+    (isEdit ? '' : '<button type="button" class="btn btn-secondary" data-act="save-next" title="Ghi sổ rồi giữ lại ngày, số phiếu, dự án, nhà cung cấp để ghi dòng tiếp theo">Ghi sổ và ghi tiếp</button>') +
+    '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon(isEdit ? 'save' : 'check') + (isEdit ? 'Lưu thay đổi' : 'Ghi sổ') + '</button>';
 
   const m = openModal({
-    title: isEdit ? 'Sửa dòng sổ thu chi' : opts.duplicate ? 'Nhân bản dòng sổ thu chi' : 'Ghi thu, chi mới',
+    title: isEdit ? 'Sửa dòng sổ thu chi' : opts.duplicate ? 'Nhân bản dòng sổ thu chi' : 'Ghi thu / chi',
     size: 'wide',
     body,
     footer,
@@ -180,15 +180,17 @@ export function openEntryForm(entry, opts) {
         ghiChu: get('ghiChu').value.trim()
       };
       if (!KT.isISODate(data.ngay)) return fail('ngay', 'Nhập ngày chứng từ, ví dụ 29/9');
-      if (isNaN(data.thu)) return fail('thu', 'Số tiền thu không hợp lệ');
-      if (isNaN(data.chi)) return fail('chi', 'Số tiền chi không hợp lệ');
+      if (data.maDuAn && !projectByCode(data.maDuAn)) return fail('maDuAn', 'Mã dự án chưa có trong danh mục. Bấm “Thêm dự án này” hoặc chọn mã có sẵn');
+      if (data.maNCC && !supplierByCode(data.maNCC)) return fail('maNCC', 'Mã nhà cung cấp chưa có trong danh mục. Bấm “Thêm nhà cung cấp này” hoặc chọn mã có sẵn');
+      if (!data.noiDung) return fail('noiDung', 'Nhập nội dung thu, chi');
+      if (isNaN(data.chi)) return fail('chi', 'Số tiền chi không hợp lệ. Ví dụ: 1.250.000, 50tr, 300k');
+      if (isNaN(data.thu)) return fail('thu', 'Số tiền thu không hợp lệ. Ví dụ: 1.250.000, 50tr, 300k');
       if (loai === 'chi' && !data.chi) return fail('chi', 'Nhập số tiền chi');
       if (loai === 'thu' && !data.thu) return fail('thu', 'Nhập số tiền thu');
-      if (loai === 'ca-hai' && !data.thu && !data.chi) return fail('chi', 'Nhập số tiền');
-      if (!data.noiDung) return fail('noiDung', 'Nhập nội dung thu, chi');
-      if (data.maDuAn && !projectByCode(data.maDuAn)) return fail('maDuAn', 'Mã dự án chưa có trong danh mục');
-      if (data.maNCC && !supplierByCode(data.maNCC)) return fail('maNCC', 'Mã nhà cung cấp chưa có trong danh mục');
+      if (loai === 'ca-hai' && !data.thu && !data.chi) return fail('chi', 'Nhập số tiền thu hoặc chi');
       saving = true;
+      const btn = el.querySelector(next ? '[data-act=save-next]' : '[data-act=save]');
+      const done = busy(btn, isEdit ? 'Đang lưu…' : 'Đang ghi…');
       try {
         if (isEdit) await api('PUT', '/api/entries/' + e.id, data);
         else await api('POST', '/api/entries', data);
@@ -208,17 +210,13 @@ export function openEntryForm(entry, opts) {
         showError(err);
       } finally {
         saving = false;
+        if (btn && btn.isConnected) done();
       }
     }
 
+    // Lỗi hiện ngay dưới ô (không che nút Ghi sổ như thông báo góc màn hình)
     function fail(name, msg) {
-      toast(msg, 'error');
-      const input = get(name);
-      if (input) {
-        const shown = focusInput(input);
-        shown.classList.add('invalid');
-        shown.addEventListener('input', () => shown.classList.remove('invalid'), { once: true });
-      }
+      if (!fieldError(get(name), msg)) toast(msg, 'error');
     }
 
     applyLoai();
@@ -279,15 +277,16 @@ export function openProjectForm(p, onSaved) {
       const save = async () => {
         const data = { ma: f.elements.ma.value.trim(), ten: f.elements.ten.value.trim(), nganSach: getNs(), trangThai: f.elements.trangThai.value, ghiChu: f.elements.ghiChu.value.trim(),
           ngayKhoiCong: f.elements.ngayKhoiCong.value, diaChi: f.elements.diaChi.value.trim() };
-        if (!data.ma) return toast('Nhập mã dự án', 'error');
-        if (!data.ten) return toast('Nhập tên dự án', 'error');
-        if (isNaN(data.nganSach)) return toast('Ngân sách không hợp lệ', 'error');
+        if (!data.ma) return fieldError(f.elements.ma, 'Nhập mã dự án');
+        if (!data.ten) return fieldError(f.elements.ten, 'Nhập tên dự án');
+        if (isNaN(data.nganSach)) return fieldError(f.elements.nganSach, 'Ngân sách không hợp lệ. Ví dụ: 500tr, 1.200.000.000');
+        const done = busy(el.querySelector('[data-act=save]'), 'Đang lưu…');
         try {
           const r = isEdit ? await api('PUT', '/api/projects/' + p.id, data) : await api('POST', '/api/projects', data);
           toast(isEdit ? 'Đã lưu dự án' + (r.renamed ? ', cập nhật mã trên ' + r.renamed + ' dòng sổ' : '') : 'Đã thêm dự án ' + data.ma);
           h.close();
           if (onSaved) onSaved(data);
-        } catch (err) { showError(err); }
+        } catch (err) { done(); showError(err); }
       };
       el.addEventListener('click', (ev) => {
         const a = ev.target.closest('[data-act]');
@@ -320,20 +319,21 @@ export function openSupplierForm(s, onSaved) {
       '<label class="field"><span class="label">Địa chỉ</span><input name="diaChi" class="input" value="' + esc(s.diaChi) + '"><span class="hint">Được in lên phiếu chi</span></label>' +
       '<label class="field col-span-2 max-sm:col-span-1"><span class="label">Ghi chú</span><input name="ghiChu" class="input" value="' + esc(s.ghiChu) + '"></label>' +
       '</form>',
-    footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="cancel">Hủy</button><button type="button" class="btn btn-primary" data-act="save">' + (isEdit ? 'Lưu thay đổi' : 'Thêm vào danh mục') + '</button>',
+    footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="cancel">Hủy</button><button type="button" class="btn btn-primary" data-act="save">' + (isEdit ? 'Lưu thay đổi' : 'Thêm nhà cung cấp') + '</button>',
     onMount(el, h) {
       const f = $('#s-form', el);
       const save = async () => {
         const data = {};
         ['ma', 'ten', 'loai', 'sdt', 'diaChi', 'ghiChu'].forEach((k) => { data[k] = f.elements[k].value.trim(); });
-        if (!data.ma) return toast('Nhập mã nhà cung cấp', 'error');
-        if (!data.ten) return toast('Nhập tên nhà cung cấp', 'error');
+        if (!data.ma) return fieldError(f.elements.ma, 'Nhập mã nhà cung cấp');
+        if (!data.ten) return fieldError(f.elements.ten, 'Nhập tên nhà cung cấp');
+        const done = busy(el.querySelector('[data-act=save]'), 'Đang lưu…');
         try {
           const r = isEdit ? await api('PUT', '/api/suppliers/' + s.id, data) : await api('POST', '/api/suppliers', data);
           toast(isEdit ? 'Đã lưu ' + data.ma + (r.renamed ? ', cập nhật mã trên ' + r.renamed + ' dòng sổ' : '') : 'Đã thêm ' + data.ma);
           h.close();
           if (onSaved) onSaved(data);
-        } catch (err) { showError(err); }
+        } catch (err) { done(); showError(err); }
       };
       el.addEventListener('click', (ev) => {
         const a = ev.target.closest('[data-act]');

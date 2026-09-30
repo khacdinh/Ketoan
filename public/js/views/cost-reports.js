@@ -1,6 +1,6 @@
 /* Báo cáo chi phí công trình: bảng điều khiển (TONGHOP), chi tiết theo nhóm (CHI_TIET_THEO_NHOM),
  * công nợ NCC (CONGNO_NCC), thống kê giá vật tư. */
-import { $, $$, esc, money, fdate, fmtShort, icon, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, debounce, highlight, LS } from '../ui.js';
+import { $, $$, esc, money, fdate, fmtShort, icon, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, debounce, highlight, LS, dateField } from '../ui.js';
 import { S, saveFilter, ctOptions, selectOptions, projectByCode, supplierByCode, materialByCode, itemByCode } from '../state.js';
 import { printView } from '../print.js';
 import { openEntryForm } from '../forms.js';
@@ -119,7 +119,10 @@ export function renderCostDashboard(root) {
       const st = LS.get('cp.th.open', {});
       st[g.dataset.group] = !(st[g.dataset.group] !== false);
       LS.set('cp.th.open', st);
+      const refocus = !!e.target.closest('.tree-toggle');
       rerender();
+      // vẽ lại cả màn hình: đưa tiêu điểm bàn phím về đúng nút nhóm vừa bấm
+      if (refocus) { const b = document.querySelector('#view tr[data-group="' + CSS.escape(g.dataset.group) + '"] .tree-toggle'); if (b) b.focus(); }
       return;
     }
     const it = e.target.closest('tr[data-item]');
@@ -133,7 +136,7 @@ export function renderCostDashboard(root) {
     }
   });
   root.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter') return;
+    if (e.key !== 'Enter' || e.target.closest('button, a')) return;
     const tr = e.target.closest('tr[data-group], tr[data-item], tr[data-ct], [data-tile]');
     if (tr) tr.click();
   });
@@ -156,8 +159,8 @@ function groupRowsHtml(s, openState) {
   s.groups.forEach((g) => {
     if (!g.total && !g.inCatalog) return;
     const open = openState[g.ma] !== false && g.total > 0;
-    html += '<tr class="grp clickable" data-group="' + esc(g.ma) + '" tabindex="0" aria-expanded="' + open + '">' +
-      '<td><span class="caret' + (open ? ' open' : '') + '">' + icon('caretRight') + '</span>' + esc(g.ten) + '</td>' +
+    html += '<tr class="grp clickable" data-group="' + esc(g.ma) + '">' +
+      '<td><button type="button" class="tree-toggle" aria-expanded="' + open + '"><span class="caret' + (open ? ' open' : '') + '">' + icon('caretRight') + '</span>' + esc(g.ten) + '</button></td>' +
       '<td class="num money"><div class="font-semibold">' + money(g.total) + '</div><div class="mbar" aria-hidden="true"><span class="mbar-fill" style="width:' + (g.total / max * 100).toFixed(2) + '%"></span></div></td>' +
       '<td class="num">' + (s.total ? pct(g.total / s.total) : '') + '</td>' +
       '<td class="num">' + (g.soDong || '') + '</td></tr>';
@@ -260,14 +263,14 @@ export function renderCostDetail(root) {
     s.groups.forEach((g) => {
       if (!g.total && !g.soDong) return;
       const gOpen = level >= 2 && open['g:' + g.ma] !== false;
-      html += '<tr class="grp clickable" data-toggle="g:' + esc(g.ma) + '" tabindex="0"><td colspan="8"><span class="caret' + (gOpen ? ' open' : '') + '">' + icon('caretRight') + '</span>' + esc(g.ten) +
+      html += '<tr class="grp clickable" data-toggle="g:' + esc(g.ma) + '"><td colspan="8"><button type="button" class="tree-toggle" aria-expanded="' + gOpen + '"><span class="caret' + (gOpen ? ' open' : '') + '">' + icon('caretRight') + '</span>' + esc(g.ten) + '</button>' +
         ' <span class="font-normal text-ink-3">· ' + g.soDong + ' dòng</span></td><td class="num money"><span class="dbl">' + money(g.total) + '</span></td></tr>';
       if (!gOpen) return;
       g.items.forEach((it) => {
         const rows = byItem.get(KT.keyOf(it.ma));
         if (!rows) return;
         const iOpen = level >= 3 && (heavy ? open['i:' + it.ma] === true : open['i:' + it.ma] !== false);
-        html += '<tr class="itm-sum clickable" data-toggle="i:' + esc(it.ma) + '" tabindex="0" id="hm-' + esc(it.ma) + '"><td colspan="8" class="pl-8"><span class="caret' + (iOpen ? ' open' : '') + '">' + icon('caretRight') + '</span>Cộng ' + esc(it.ten) +
+        html += '<tr class="itm-sum clickable" data-toggle="i:' + esc(it.ma) + '" id="hm-' + esc(it.ma) + '"><td colspan="8" class="pl-8"><button type="button" class="tree-toggle" aria-expanded="' + iOpen + '"><span class="caret' + (iOpen ? ' open' : '') + '">' + icon('caretRight') + '</span>Cộng ' + esc(it.ten) + '</button>' +
           ' <span class="font-normal text-ink-3">· ' + rows.length + ' dòng</span></td><td class="num money font-semibold">' + money(it.total) + '</td></tr>';
         if (!iOpen) return;
         html += rows.map((r) => '<tr class="dtl"><td class="whitespace-nowrap pl-14">' + fdate(r.ngay) + '</td>' +
@@ -307,11 +310,9 @@ export function renderCostDetail(root) {
     const isOpen = !!t.querySelector('.caret.open');
     open[k] = !isOpen;
     LS.set('cp.ct.open', open);
+    const refocus = !!e.target.closest('.tree-toggle');
     draw();
-  });
-  root.addEventListener('keydown', (e) => {
-    const t = e.target.closest('[data-toggle]');
-    if (t && e.key === 'Enter') t.click();
+    if (refocus) { const b = root.querySelector('tr[data-toggle="' + CSS.escape(k) + '"] .tree-toggle'); if (b) b.focus(); }
   });
   draw();
 }
@@ -335,7 +336,7 @@ export function renderDebt(root) {
     '<div class="print-only" id="print-head"></div>' +
     '<div class="no-print flex flex-wrap items-center gap-2">' +
     '<select id="cn-ct" class="input w-auto max-w-[300px]" aria-label="Công trình">' + ctOptions(f.ct) + '</select>' +
-    '<label class="flex items-center gap-2 text-[13.5px] text-ink-2">Đến ngày <input type="date" id="cn-to" class="input w-auto" value="' + esc(f.to || '') + '"></label>' +
+    '<span class="flex items-center gap-2 text-[13.5px] text-ink-2"><span aria-hidden="true">Đến ngày</span>' + dateField({ id: 'cn-to', value: f.to || '', label: 'Tính công nợ đến ngày' }) + '</span>' +
     '<select id="cn-pham" class="input w-auto" aria-label="Phạm vi nhà cung cấp">' + [['ct', 'NCC liên quan công trình'], ['active', 'Mọi NCC có phát sinh'], ['all', 'Tất cả NCC trong danh mục']].map(([v, l]) =>
       '<option value="' + v + '"' + (f.pham === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
     '<span class="flex-1"></span>' +
@@ -491,7 +492,7 @@ export function renderPrices(root) {
     '<label class="search">' + icon('search') + '<input id="gia-q" type="search" class="input" placeholder="Tìm mã, tên vật tư" value="' + esc(f.q) + '"></label>' +
     '<div class="flex gap-2"><select id="gia-ncc" class="input flex-1" aria-label="Nhà cung cấp">' + selectOptions(S.db.suppliers.filter((s) => usedNCC.has(KT.keyOf(s.ma))), f.ncc, { allLabel: 'Mọi nhà cung cấp', label: (s) => s.ten }) + '</select>' +
     '<select id="gia-hm" class="input flex-1" aria-label="Hạng mục">' + selectOptions(S.db.costItems, f.hm, { allLabel: 'Mọi hạng mục', label: (i) => i.ten }) + '</select></div></div>' +
-    '<div class="flex-1 overflow-auto"><table class="ledger ledger-compact"><thead><tr><th>Vật tư</th><th class="num">Lần</th><th class="num money">Giá gần nhất</th><th class="num">Biến động</th></tr></thead><tbody id="gia-list"></tbody></table></div></aside>' +
+    '<div class="flex-1 overflow-auto"><table class="ledger ledger-compact"><thead><tr><th>Vật tư</th><th class="num">Lần</th><th class="num money">Giá gần nhất</th><th class="num" title="Giá cao nhất so với giá thấp nhất">Chênh giá</th></tr></thead><tbody id="gia-list"></tbody></table></div></aside>' +
     '<section class="flex min-w-0 flex-col gap-4" id="gia-detail"></section></div>';
 
   const drawList = () => {
@@ -502,7 +503,7 @@ export function renderPrices(root) {
     $('#gia-list', root).innerHTML = stats.length ? stats.map((m) => {
       const spread = m.min > 0 ? (m.max - m.min) / m.min : 0;
       return '<tr class="clickable' + (KT.keyOf(m.ma) === KT.keyOf(f.vt) ? ' is-active' : '') + '" data-vt="' + esc(m.ma) + '" tabindex="0"><td><div class="font-semibold">' + highlight(m.ma, f.q) + '</div><div class="sub">' + highlight(m.ten, f.q) + (m.dvt ? ' · ' + esc(m.dvt) : '') + '</div></td>' +
-        '<td class="num">' + m.soLan + '</td><td class="num money">' + money(m.last) + '</td><td class="num text-[12.5px] ' + (spread > 0.05 ? 'text-caution font-semibold' : 'text-ink-3') + '">' + (m.soLan > 1 ? (spread ? '±' + pct(spread) : 'ổn định') : '') + '</td></tr>';
+        '<td class="num">' + m.soLan + '</td><td class="num money">' + money(m.last) + '</td><td class="num text-[12.5px] ' + (spread > 0.05 ? 'text-caution font-semibold' : 'text-ink-3') + '"' + (m.soLan > 1 && spread ? ' title="Giá cao nhất ' + money(m.max) + ' đ, thấp nhất ' + money(m.min) + ' đ: chênh ' + pct(spread) + '"' : '') + '>' + (m.soLan > 1 ? (spread ? pct(spread) : 'ổn định') : '') + '</td></tr>';
     }).join('') : '<tr><td colspan="4" class="empty">Chưa có vật tư nào được mua.</td></tr>';
   };
 

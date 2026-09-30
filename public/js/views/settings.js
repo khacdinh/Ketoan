@@ -1,5 +1,5 @@
 /* Cài đặt: thông tin đơn vị, nhập Excel, xuất/sao lưu/khôi phục, xóa dữ liệu. */
-import { $, esc, money, icon, duo, download, api, toast, showError, confirmDialog, openModal, freshRoot } from '../ui.js';
+import { $, esc, money, icon, duo, download, api, toast, showError, confirmDialog, openModal, freshRoot, busy } from '../ui.js';
 import { S } from '../state.js';
 
 export function renderSettings(root) {
@@ -41,7 +41,7 @@ export function renderSettings(root) {
     act('export-costs', 'crane', 'Xuất chi phí công trình ra Excel', 'Cấu trúc như file ChiPhi_CongTrinh: TONGHOP có biểu đồ, NHATKYCHUNG, CHI_TIET_THEO_NHOM, CONGNO_NCC, SO_QUY, giá vật tư, các danh mục. Giữ công thức SUMIFS, INDEX/MATCH.') +
     act('backup', 'database', 'Tải bản sao lưu (.json)', 'Một file chứa toàn bộ dữ liệu. Nên cất ra USB hoặc Google Drive định kỳ.') +
     act('restore', 'history', 'Khôi phục từ file sao lưu', 'Thay toàn bộ dữ liệu hiện tại bằng dữ liệu trong file .json đã tải trước đó.') +
-    '<input type="file" id="restore-file" accept=".json" class="sr-only">' +
+    '<input type="file" id="restore-file" accept=".json" class="sr-only" tabindex="-1" aria-label="Chọn file sao lưu .json để khôi phục">' +
     '</div></section>' +
 
     /* ---- Sao lưu tự động ---- */
@@ -165,7 +165,7 @@ async function loadBackups(root) {
 
 async function previewImport(file, root) {
   const box = $('#imp-preview', root);
-  box.innerHTML = '<p class="mt-3 text-ink-3">Đang đọc file ' + esc(file.name) + '</p>';
+  box.innerHTML = '<p class="mt-3 flex items-center gap-2 text-ink-2" role="status">' + icon('spinner', 'animate-spin text-[18px]') + 'Đang đọc file ' + esc(file.name) + '. File lớn có thể mất vài giây…</p>';
   let buf;
   try {
     buf = await file.arrayBuffer();
@@ -202,11 +202,14 @@ async function previewImport(file, root) {
       html: 'Dữ liệu hiện có (<b class="text-ink">' + S.db.entries.length + '</b> dòng sổ) sẽ được thay bằng dữ liệu trong file Excel.<p class="mt-2">Phần mềm tự sao lưu dữ liệu cũ trước khi thay.</p>',
       okText: 'Thay dữ liệu', danger: true
     }))) return;
+    const done = busy(b, 'Đang nhập…');
+    box.querySelectorAll('[data-imp]').forEach((x) => { x.disabled = true; });
     try {
       const r = await api('POST', '/api/import?mode=' + mode, buf, true);
       const a = r.result.added;
       toast('Đã nhập ' + a.entries + ' dòng sổ, ' + a.projects + ' dự án, ' + a.suppliers + ' nhà cung cấp' + (r.result.skipped ? '. Bỏ qua ' + r.result.skipped + ' dòng trùng' : ''));
     } catch (err) { showError(err); }
+    if (b.isConnected) { done(); box.querySelectorAll('[data-imp]').forEach((x) => { x.disabled = false; }); }
   };
 }
 
@@ -286,12 +289,17 @@ function previewCostImport(file, buf, p, box, root) {
         '<p class="mt-2">Phần mềm tự sao lưu dữ liệu cũ trước khi thay.</p>',
       okText: 'Thay dữ liệu chi phí', danger: true
     }))) return;
+    const done = busy(b, 'Đang nhập…');
+    box.querySelectorAll('[data-imp]').forEach((x) => { x.disabled = true; });
     try {
       const r = await api('POST', '/api/import?mode=' + mode + (soQuy ? '&soQuy=1' : '') + '&map=' + encodeURIComponent(JSON.stringify(map)), buf, true);
       const a = r.result.added;
       toast('Đã nhập ' + a.costs + ' dòng chi phí, ' + a.materials + ' vật tư, ' + a.items + ' hạng mục' + (a.entries ? ', ' + a.entries + ' dòng sổ thu chi' : '') +
         (r.result.skipped ? '. Bỏ qua ' + r.result.skipped + ' dòng trùng' : ''));
-    } catch (err) { showError(err); }
+    } catch (err) {
+      showError(err);
+      if (b.isConnected) { done(); box.querySelectorAll('[data-imp]').forEach((x) => { x.disabled = false; }); }
+    }
   };
 }
 

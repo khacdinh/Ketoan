@@ -107,7 +107,8 @@ const ICONS = {
   handCoins: 'ph-hand-coins',
   rows: 'ph-rows',
   funnel: 'ph-funnel',
-  grid: 'ph-squares-four'
+  grid: 'ph-squares-four',
+  spinner: 'ph-circle-notch'
 };
 const DUO = {
   dashboard: 'ph-chart-line-up',
@@ -154,13 +155,39 @@ export async function api(method, url, body, isRaw) {
       body: body === undefined ? undefined : isRaw ? body : JSON.stringify(body)
     });
   } catch (e) {
+    setOffline(true);
     throw new Error('Không kết nối được phần mềm. Kiểm tra cửa sổ KhoiDong.bat còn mở không.');
   }
+  setOffline(false);
   let data;
   try { data = await res.json(); } catch (e) { throw new Error('Máy chủ trả về dữ liệu không hợp lệ (mã ' + res.status + ')'); }
   if (!res.ok || data.ok === false) throw new Error(data.error || 'Lỗi ' + res.status);
   if (data.db && onDb) onDb(data.db);
   return data;
+}
+
+// Dải báo mất kết nối ở đầu trang: còn hiện đến khi gọi được máy chủ lại (dữ liệu đang gõ trong hộp thoại vẫn giữ nguyên)
+let offline = false;
+function setOffline(on) {
+  if (on === offline) return;
+  offline = on;
+  const root = document.getElementById('offline-root');
+  if (!root) return;
+  if (!on) { root.innerHTML = ''; toast('Đã kết nối lại với phần mềm'); return; }
+  root.innerHTML = '<div class="offline-bar no-print" role="alert">' + icon('warnTri', 'text-[18px]') +
+    '<span class="flex-1"><b class="font-semibold">Mất kết nối với phần mềm.</b> Các thay đổi chưa được lưu. Mở lại <b class="font-semibold">KhoiDong.bat</b> rồi bấm Thử lại.</span>' +
+    '<button type="button" class="btn" data-act="reconnect">' + icon('refresh') + 'Thử lại</button></div>';
+  root.querySelector('[data-act=reconnect]').addEventListener('click', () => { api('GET', '/api/db').catch(() => toast('Vẫn chưa kết nối được. Kiểm tra cửa sổ KhoiDong.bat.', 'error')); });
+}
+
+// Nút đang xử lý: khóa nút, đổi chữ (vd. "Đang lưu…"), trả về hàm khôi phục
+export function busy(btn, text) {
+  if (!btn) return () => {};
+  const html = btn.innerHTML;
+  btn.disabled = true;
+  btn.setAttribute('aria-busy', 'true');
+  if (text) btn.innerHTML = icon('spinner') + esc(text);
+  return () => { btn.disabled = false; btn.removeAttribute('aria-busy'); btn.innerHTML = html; };
 }
 
 export function download(url) {
@@ -179,13 +206,59 @@ export function toast(msg, type) {
   const el = document.createElement('div');
   el.className = 'toast ' + (type || 'ok');
   el.setAttribute('role', type === 'error' ? 'alert' : 'status');
-  el.innerHTML = icon(type === 'error' ? 'warn' : type === 'info' ? 'info' : 'checkCircle') + '<span>' + esc(msg) + '</span>';
+  el.innerHTML = icon(type === 'error' ? 'warn' : type === 'info' ? 'info' : 'checkCircle') + '<span>' + esc(msg) + '</span>' +
+    (type === 'error' ? '<button type="button" class="toast-x" aria-label="Đóng thông báo">' + icon('x') + '</button>' : '');
   root.appendChild(el);
   requestAnimationFrame(() => el.classList.add('show'));
-  setTimeout(() => {
-    el.classList.remove('show');
-    setTimeout(() => el.remove(), 250);
-  }, type === 'error' ? 6000 : 3200);
+  const close = () => { el.classList.remove('show'); setTimeout(() => el.remove(), 250); };
+  if (type === 'error') el.querySelector('.toast-x').addEventListener('click', close);
+  // lỗi để lâu hơn cho kịp đọc; rê chuột vào thì giữ lại
+  let t = setTimeout(close, type === 'error' ? 8000 : 3200);
+  el.addEventListener('mouseenter', () => clearTimeout(t));
+  el.addEventListener('mouseleave', () => { t = setTimeout(close, 2500); });
+}
+
+/* ---------------- Báo lỗi ngay tại ô nhập ---------------- */
+let errSeq = 0;
+// Hiện lỗi dưới ô (trong .field), đánh dấu aria-invalid, đưa con trỏ vào ô; tự xóa khi người dùng sửa
+export function fieldError(input, msg) {
+  if (!input) return null;
+  const shown = focusInput(input);
+  const field = shown.closest('.field');
+  clearFieldError(shown);
+  shown.classList.add('invalid');
+  shown.setAttribute('aria-invalid', 'true');
+  if (field) {
+    const id = 'ferr-' + (++errSeq);
+    const box = document.createElement('span');
+    box.className = 'field-error';
+    box.id = id;
+    box.setAttribute('role', 'alert');
+    box.innerHTML = icon('warn') + '<span>' + esc(msg) + '</span>';
+    const hint = field.querySelector(':scope > .hint');
+    if (hint) hint.hidden = true;
+    field.appendChild(box);
+    shown.setAttribute('aria-describedby', ((shown.getAttribute('aria-describedby') || '') + ' ' + id).trim());
+  }
+  const off = () => clearFieldError(shown);
+  shown.addEventListener('input', off, { once: true });
+  shown.addEventListener('change', off, { once: true });
+  return shown;
+}
+
+export function clearFieldError(input) {
+  if (!input) return;
+  input.classList.remove('invalid');
+  input.removeAttribute('aria-invalid');
+  const field = input.closest('.field');
+  if (!field) return;
+  field.querySelectorAll(':scope > .field-error').forEach((b) => {
+    const ids = (input.getAttribute('aria-describedby') || '').split(' ').filter((x) => x && x !== b.id);
+    if (ids.length) input.setAttribute('aria-describedby', ids.join(' ')); else input.removeAttribute('aria-describedby');
+    b.remove();
+  });
+  const hint = field.querySelector(':scope > .hint');
+  if (hint) hint.hidden = false;
 }
 
 export function showError(e) {
@@ -316,7 +389,8 @@ export function bindMoneyInput(input, hintEl) {
       hintEl.textContent = 'Số tiền không hợp lệ';
       hintEl.className = 'hint bad';
     } else {
-      hintEl.textContent = (/[^\d.]/.test(raw) ? '= ' + money(n) + ' đ. ' : '') + (KT.docTienBangChu(n) || 'Không đồng');
+      // luôn cho thấy số đã tách nhóm khi người dùng gõ liền (1250000) hoặc viết tắt (50tr, 300k, 58000+11000)
+      hintEl.textContent = (raw !== money(n) ? '= ' + money(n) + ' đ · ' : '') + (KT.docTienBangChu(n) || 'Không đồng');
       hintEl.className = 'hint';
     }
   }

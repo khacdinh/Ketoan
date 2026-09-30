@@ -81,6 +81,9 @@
 .ph.ph-circle:before {
   content: "\e18a";
 }
+.ph.ph-circle-notch:before {
+  content: "\eb44";
+}
 .ph.ph-clock-counter-clockwise:before {
   content: "\e1a0";
 }
@@ -363,6 +366,14 @@
 }
 .ph-duotone.ph-circle:after {
   content: "\e18b";
+  margin-left: -1em;
+}
+.ph-duotone.ph-circle-notch:before {
+  content: "\eb44";
+  opacity: 0.2;
+}
+.ph-duotone.ph-circle-notch:after {
+  content: "\eb45";
   margin-left: -1em;
 }
 .ph-duotone.ph-clock-counter-clockwise:before {

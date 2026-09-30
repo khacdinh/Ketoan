@@ -480,8 +480,8 @@ test('F4 Bảng điều khiển chi phí: số tổng, theo Loại CP, đã tr�
     assert.ok(nItems >= 9, 'bung hết: hạng mục hiện ' + nItems);
     await page.locator('tr[data-group]').first().click(); await settle(page);
     assert.ok(await page.locator('tr[data-item]').count() < nItems, 'bấm một nhóm thì thu gọn nhóm đó');
-    await page.keyboard.press('Tab'); // bàn phím: Enter trên dòng nhóm
-    await page.locator('tr[data-group]').first().focus();
+    // bàn phím: Enter trên nút bung/thu gọn của dòng nhóm (nút có aria-expanded cho trình đọc màn hình)
+    await page.locator('tr[data-group] .tree-toggle').first().focus();
     await page.keyboard.press('Enter'); await settle(page);
     assert.equal(await page.locator('tr[data-item]').count(), nItems, 'Enter bung lại');
     // đổi công trình

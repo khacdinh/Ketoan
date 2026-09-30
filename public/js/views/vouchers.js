@@ -20,7 +20,7 @@ export function renderVouchers(root) {
     '<div class="seg seg-sm self-start" role="radiogroup" aria-label="Loại phiếu">' +
     [['', 'Tất cả'], ['chi', 'Phiếu chi'], ['thu', 'Phiếu thu']].map(([v, l]) => '<label class="seg-item"><input type="radio" name="ph-loai" value="' + v + '"' + ((f.loai || '') === v ? ' checked' : '') + '><span>' + l + '</span></label>').join('') +
     '</div></div>' +
-    '<div class="flex-1 overflow-y-auto p-1.5" id="ph-list" role="listbox" aria-label="Danh sách phiếu"></div>' +
+    '<div class="flex-1 overflow-y-auto p-1.5" id="ph-list" aria-label="Danh sách phiếu"></div>' +
     '</aside>' +
     '<section class="flex min-w-0 flex-col gap-4 @container" id="ph-detail"></section>' +
     '</div>';
@@ -33,7 +33,7 @@ export function renderVouchers(root) {
       return KT.normalizeText([v.soPhieu, v.nguoiNhan, v.lyDo, KT.fmtMoney(v.soTien), v.duAn.join(' ')].join(' ')).includes(q);
     });
     $('#ph-list', root).innerHTML = list.length ? list.map((v) =>
-      '<button type="button" role="option" class="v-item' + (v.key === S.selectedVoucher ? ' active' : '') + '" data-key="' + esc(v.key) + '" aria-selected="' + (v.key === S.selectedVoucher) + '">' +
+      '<button type="button" class="v-item' + (v.key === S.selectedVoucher ? ' active' : '') + '" data-key="' + esc(v.key) + '"' + (v.key === S.selectedVoucher ? ' aria-current="true"' : '') + '>' +
       '<div class="flex items-baseline justify-between gap-2"><span class="font-semibold">' + highlight(v.soPhieu, f.q) + '</span>' +
       '<span class="font-semibold tabular-nums">' + money(v.soTien) + '</span></div>' +
       '<div class="mt-0.5 flex flex-wrap items-center gap-1.5 text-[12.5px] text-ink-2"><span class="tabular-nums">' + fdate(v.ngay) + '</span><span>' + highlight(v.nguoiNhan || 'Chưa có người nhận', f.q) + '</span>' +
@@ -121,7 +121,7 @@ export function renderVouchers(root) {
     const item = e.target.closest('.v-item');
     if (item) {
       S.selectedVoucher = item.dataset.key;
-      $$('.v-item', root).forEach((x) => { x.classList.toggle('active', x === item); x.setAttribute('aria-selected', x === item); });
+      $$('.v-item', root).forEach((x) => { x.classList.toggle('active', x === item); if (x === item) x.setAttribute('aria-current', 'true'); else x.removeAttribute('aria-current'); });
       drawDetail();
       return;
     }

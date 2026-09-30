@@ -23,10 +23,28 @@ export const S = {
     cpDm: LS.get('filter.cpDm', { tab: 'hang-muc', q: '' })
   },
   selectedVoucher: null,
+  flash: new Set(),
   listeners: []
 };
 
+// Dòng vừa ghi / vừa sửa (so với dữ liệu trước) để tô sáng trong sổ một lúc; không đổi dữ liệu
+let flashTimer = null;
+function markChanged(prev, db) {
+  S.flash = new Set();
+  if (!prev) return;
+  const sig = (x) => JSON.stringify(x);
+  [['entries', 'entries'], ['costs', 'costs']].forEach(([k]) => {
+    const old = new Map((prev[k] || []).map((x) => [x.id, sig(x)]));
+    const changed = (db[k] || []).filter((x) => old.get(x.id) !== sig(x));
+    // nhập Excel / khôi phục: quá nhiều dòng đổi → không tô
+    if (changed.length && changed.length <= 50) changed.forEach((x) => S.flash.add(k + ':' + x.id));
+  });
+  clearTimeout(flashTimer);
+  if (S.flash.size) flashTimer = setTimeout(() => { S.flash = new Set(); }, 2600);
+}
+
 export function setDb(db) {
+  markChanged(S.db, db);
   S.db = db;
   S.ledger = KT.buildLedger(db);
   S.costLedger = KT.buildCostLedger(db);

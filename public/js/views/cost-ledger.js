@@ -136,6 +136,8 @@ function drawRows(root, f) {
   body.innerHTML = rows.length ? (res.rows.length > rows.length ? moreRow(rows.length, res.rows.length, 10) : '') +
     rows.map((r) => rowHtml(r, f.q)).join('')
     : '<tr><td colspan="10" class="empty">' + (S.costLedger.length ? 'Không có dòng nào khớp bộ lọc.' : 'Sổ chi phí chưa có dòng nào. Bấm “Lập phiếu nhập” hoặc nhập file Excel chi phí trong Cài đặt.') + '</td></tr>';
+  const fl = body.querySelector('tr.flash');
+  if (fl) fl.scrollIntoView({ block: 'nearest' });
   $('#cl-foot', root).innerHTML = res.rows.length ? '<tr><td colspan="5" class="text-right">Cộng</td><td class="num">' + slTotalHtml(res) + '</td><td></td>' +
     '<td class="num money"><span class="dbl">' + money(res.total) + '</span></td><td colspan="2"></td></tr>' : '';
 }
@@ -147,19 +149,18 @@ function moreRow(n, total, cols) {
     '<span class="no-print"> Hoặc lọc theo kỳ để thu hẹp.</span></td></tr>';
 }
 
-// Tổng số lượng: một đơn vị thì ghi kèm ĐVT; nhiều đơn vị thì ghi tổng và tách theo từng ĐVT bên dưới
+// Tổng số lượng: một đơn vị thì ghi kèm ĐVT; nhiều đơn vị thì chỉ tách theo từng ĐVT (cộng lẫn m3 với kg không có nghĩa)
 function slTotalHtml(res) {
   const units = Object.keys(res.slTheoDvt);
   if (units.length === 1) return '<span class="dbl">' + KT.fmtQty(res.tongSL) + '</span>' + (units[0] ? ' <span class="text-[12px] font-normal text-ink-3">' + esc(units[0]) + '</span>' : '');
   const parts = units.sort((a, b) => res.slTheoDvt[b] - res.slTheoDvt[a])
     .map((u) => KT.fmtQty(res.slTheoDvt[u]) + ' ' + (u || '(không ĐVT)'));
-  return '<span class="dbl" title="Cộng lẫn nhiều đơn vị tính: ' + esc(parts.join(', ')) + '">' + KT.fmtQty(res.tongSL) + '</span>' +
-    '<div class="mt-1 max-w-[220px] text-[11.5px] leading-snug font-normal whitespace-normal text-ink-3">' + esc(parts.join(' · ')) + '</div>';
+  return '<div class="ml-auto max-w-[200px] text-[12px] leading-snug font-medium whitespace-normal text-ink-2" title="Số lượng theo từng đơn vị tính">' + esc(parts.join(' · ')) + '</div>';
 }
 
 function rowHtml(r, q) {
   const bad = (ok, text) => (ok ? text : '<span class="code bad" title="Mã chưa có trong danh mục">' + text + '</span>');
-  return '<tr data-id="' + r.id + '">' +
+  return '<tr data-id="' + r.id + '"' + (S.flash.has('costs:' + r.id) ? ' class="flash"' : '') + '>' +
     '<td class="whitespace-nowrap">' + fdate(r.ngay) + '</td>' +
     '<td class="whitespace-nowrap" data-edit="maNha">' + bad(r.ctHopLe, '<span class="code" title="' + esc(r.tenCT) + '">' + highlight(r.maCT, q) + '</span>') +
     (r.maNha && KT.keyOf(r.maNha) !== KT.keyOf(r.maCT) ? '<div class="sub" title="' + esc(r.tenNha) + '">' + bad(r.nhaHopLe, highlight(r.maNha, q)) + '</div>' : '') + '</td>' +

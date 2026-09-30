@@ -43,7 +43,7 @@ export function renderProjects(root) {
     '<section class="sheet overflow-hidden">' +
     '<p class="no-print border-b border-rule px-4 py-2.5 text-[13px] text-ink-2" id="pj-count"></p>' +
     '<div class="overflow-x-auto"><table class="ledger">' +
-    '<thead><tr><th>Mã dự án</th><th>Tên dự án</th><th class="num money">Ngân sách dự kiến</th><th class="num money">Đã chi</th><th class="num money">Còn lại</th><th>Ngân sách</th><th>Trạng thái</th><th>Khởi công</th><th class="num">Số dòng</th><th>Ghi chú</th><th class="no-print"><span class="sr-only">Thao tác</span></th></tr></thead>' +
+    '<thead><tr><th>Mã dự án</th><th>Tên dự án</th><th class="num money">Ngân sách dự kiến</th><th class="num money">Đã chi</th><th class="num money">Còn lại</th><th>Ngân sách</th><th>Trạng thái · khởi công</th><th class="num">Số dòng</th><th>Ghi chú</th><th class="no-print"><span class="sr-only">Thao tác</span></th></tr></thead>' +
     '<tbody id="pj-body"></tbody><tfoot id="pj-foot"></tfoot></table></div></section>';
 
   const draw = () => {
@@ -60,14 +60,13 @@ export function renderProjects(root) {
         '<td class="num money font-semibold">' + money(r.chi) + '</td>' +
         '<td class="num money' + (r.chenhLech < 0 && p.nganSach ? ' neg' : '') + '">' + (p.nganSach ? money(r.chenhLech) : '') + '</td>' +
         '<td>' + statusChip(r) + '</td>' +
-        '<td class="whitespace-nowrap">' + esc(p.trangThai || '') + '</td>' +
-        '<td class="whitespace-nowrap text-ink-2">' + (p.ngayKhoiCong ? fdate(p.ngayKhoiCong) : '') + '</td>' +
+        '<td class="whitespace-nowrap">' + esc(p.trangThai || '') + (p.ngayKhoiCong ? '<div class="text-[12.5px] text-ink-2">Khởi công ' + fdate(p.ngayKhoiCong) + '</div>' : '') + '</td>' +
         '<td class="num">' + r.soDong + '</td>' +
         '<td class="text-[12.5px] text-ink-2">' + highlight(p.ghiChu || '', state.q) + '</td>' +
         rowActions(p.ma) + '</tr>';
-    }).join('') : '<tr><td colspan="11" class="empty">Không có dự án nào khớp. Thử từ khóa khác hoặc thêm dự án mới.</td></tr>';
+    }).join('') : '<tr><td colspan="10" class="empty">Không có dự án nào khớp. Thử từ khóa khác hoặc thêm dự án mới.</td></tr>';
     $('#pj-foot', root).innerHTML = '<tr><td colspan="2">Tổng cộng</td><td class="num money">' + money(ps.total.nganSach) + '</td>' +
-      '<td class="num money"><span class="dbl">' + money(ps.total.chi) + '</span></td><td class="money"></td><td colspan="3"></td><td class="num">' + ps.total.soDong + '</td><td colspan="2"></td></tr>';
+      '<td class="num money"><span class="dbl">' + money(ps.total.chi) + '</span></td><td class="money"></td><td colspan="2"></td><td class="num">' + ps.total.soDong + '</td><td colspan="2"></td></tr>';
   };
 
   $('#pj-q', root).addEventListener('input', debounce((e) => { state.q = e.target.value; LS.set('q.projects', state.q); draw(); }, 120));

@@ -189,7 +189,7 @@ export function renderCostCatalogs(root) {
   if (!TABS.some((t) => t[0] === f.tab)) f.tab = 'hang-muc';
   root.innerHTML =
     '<div class="no-print flex flex-wrap items-center gap-2">' +
-    '<div class="seg" role="tablist" aria-label="Loại danh mục">' + TABS.map(([k, l]) =>
+    '<div class="seg" role="radiogroup" aria-label="Loại danh mục">' + TABS.map(([k, l]) =>
       '<label class="seg-item"><input type="radio" name="dm-tab" value="' + k + '"' + (f.tab === k ? ' checked' : '') + '><span>' + l + '</span></label>').join('') + '</div>' +
     '<label class="search min-w-[240px]">' + icon('search') + '<input id="dm-q" type="search" class="input" placeholder="Tìm mã, tên" value="' + esc(f.q) + '" aria-label="Tìm trong danh mục"></label>' +
     '<span class="flex-1"></span>' +

@@ -58,7 +58,7 @@ function current() {
 
 function renderShell() {
   $('#nav').innerHTML = NAV.map((group, gi) =>
-    (gi ? '<div class="mx-5 my-2.5 h-px bg-white/10 max-lg:mx-3" aria-hidden="true"></div>' : '') +
+    (gi ? '<div class="nav-sep" aria-hidden="true"></div>' : '') +
     (NAV_HEAD[gi] ? '<div class="nav-head max-lg:sr-only">' + esc(NAV_HEAD[gi]) + '</div>' : '') +
     group.map((k) =>
       '<a href="#/' + k + '" class="nav-item max-lg:ml-2 max-lg:justify-center max-lg:px-0" data-route="' + k + '" title="' + esc(ROUTES[k].title) + '">' +
@@ -114,14 +114,33 @@ function updateFooter() {
   const s = S.db.settings;
   $('#org-name').textContent = s.tenDonVi || 'Chưa đặt tên đơn vị';
   const ton = S.ledger.length ? S.ledger[S.ledger.length - 1].ton : 0;
-  $('#side-fund').innerHTML = '<div class="text-[12px] text-[#DDE9E0]/65">Tồn quỹ hiện tại</div>' +
+  $('#side-fund').innerHTML = '<div class="text-[12px] text-cover-ink-2">Tồn quỹ hiện tại</div>' +
     '<div class="mt-0.5 text-[20px] font-semibold tabular-nums font-stretch-[110%] ' + (ton < 0 ? 'text-[#FFB4AB]' : 'text-white') + '">' +
-    KT.fmtMoney(ton) + '<span class="ml-1 text-[12px] font-medium text-[#DDE9E0]/65">đ</span></div>';
+    KT.fmtMoney(ton) + '<span class="ml-1 text-[12px] font-medium text-cover-ink-2">đ</span></div>';
   const t = S.savedAt;
   $('#save-state').textContent = t ? 'Đã lưu lúc ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') + ', ' + S.db.entries.length + ' dòng sổ' : '';
 }
 
 window.addEventListener('hashchange', render);
+
+// Khung bảng cuộn được: cho phép dùng bàn phím (Tab vào rồi ← →) khi bên trong không có ô/nút nào nhận tiêu điểm
+function enhanceScrollers() {
+  document.querySelectorAll('#view :is(.overflow-x-auto, .overflow-auto, .table-scroll):not([data-sx])').forEach((el) => {
+    if (!el.querySelector(':scope > table')) return;
+    el.dataset.sx = '1';
+    if (el.querySelector('a[href], button, input, select, textarea, [tabindex]')) return;
+    el.tabIndex = 0;
+    el.setAttribute('role', 'region');
+    const h = el.closest('section') && el.closest('section').querySelector('h2, h3');
+    el.setAttribute('aria-label', (h ? h.textContent + ': ' : '') + 'bảng, dùng phím mũi tên để cuộn');
+  });
+}
+let sxPending = false;
+new MutationObserver(() => {
+  if (sxPending) return;
+  sxPending = true;
+  requestAnimationFrame(() => { sxPending = false; enhanceScrollers(); });
+}).observe(document.getElementById('view').parentNode, { childList: true, subtree: true });
 
 document.addEventListener('keydown', (e) => {
   if (hasOpenModal()) return;
