@@ -1,6 +1,6 @@
 /* Khung ứng dụng: điều hướng, thanh trên cùng, tải dữ liệu. */
 import { $, esc, api, onDatabase, showError, duo, attachMenu, download, hasOpenModal } from './ui.js';
-import { S, setDb, onChange, vouchers } from './state.js';
+import { S, setDb, onChange, vouchers, anomalies } from './state.js';
 import { openEntryForm } from './forms.js';
 import { renderDashboard } from './views/dashboard.js';
 import { renderLedger } from './views/ledger.js';
@@ -49,7 +49,7 @@ const NAV_LABEL = {
   'cp-cong-no': 'Công nợ NCC',
   'cp-gia': 'Giá vật tư',
   'cp-danh-muc': 'Danh mục chi phí',
-  'kiem-soat': 'Kiểm soát sổ sách'
+  'kiem-soat': 'Kiểm soát'
 };
 const NAV = [['tong-quan', 'so-thu-chi', 'phieu'], ['du-an', 'ncc', 'tong-hop-ncc'],
   ['cp-tong-hop', 'cp-nhap', 'cp-so', 'cp-chi-tiet', 'cp-cong-no', 'cp-gia', 'cp-danh-muc'], ['kiem-soat', 'cai-dat']];
@@ -66,7 +66,8 @@ function renderShell() {
     (NAV_HEAD[gi] ? '<div class="nav-head max-lg:sr-only">' + esc(NAV_HEAD[gi]) + '</div>' : '') +
     group.map((k) =>
       '<a href="#/' + k + '" class="nav-item max-lg:ml-2 max-lg:justify-center max-lg:px-0" data-route="' + k + '" title="' + esc(ROUTES[k].title) + '">' +
-      duo(ROUTES[k].icon) + '<span class="max-lg:sr-only">' + esc(NAV_LABEL[k]) + '</span></a>').join('')
+      duo(ROUTES[k].icon) + '<span class="max-lg:sr-only">' + esc(NAV_LABEL[k]) + '</span>' +
+      (k === 'kiem-soat' ? '<span class="nav-badge" id="nav-badge" hidden></span>' : '') + '</a>').join('')
   ).join('');
 
   attachMenu($('#btn-export'), () => {
@@ -112,6 +113,22 @@ function render() {
   window.scrollTo(0, lastRoute === k ? keepScroll : 0);
   lastRoute = k;
   updateFooter();
+  scheduleBadge();
+}
+
+// Số cảnh báo chưa xử lý trên menu: tính sau khi đã vẽ xong màn hình để không làm chậm thao tác
+let badgeTimer = null;
+function scheduleBadge() {
+  clearTimeout(badgeTimer);
+  badgeTimer = setTimeout(() => {
+    const b = $('#nav-badge');
+    if (!b || !S.all) return;
+    const n = anomalies().open;
+    b.hidden = !n;
+    b.textContent = n > 99 ? '99+' : String(n);
+    b.title = n + ' việc cần xử lý';
+    b.closest('a').setAttribute('aria-label', 'Kiểm soát sổ sách' + (n ? ', ' + n + ' việc cần xử lý' : ''));
+  }, 60);
 }
 
 function updateFooter() {

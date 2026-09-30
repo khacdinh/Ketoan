@@ -1,6 +1,9 @@
 /* Kiểm soát sổ sách: nhật ký thay đổi, thùng rác (và các thẻ khác của nhóm "độ chính xác và truy vết"). */
 import { $, esc, money, icon, api, toast, showError, confirmDialog, openModal, freshRoot, debounce, dateField, LS, fieldError } from '../ui.js';
-import { S } from '../state.js';
+import { S, anomalies, saveFilter } from '../state.js';
+import { openEntryForm } from '../forms.js';
+import { openCostLineForm } from './cost-ledger.js';
+import { openMaterialForm } from './cost-catalogs.js';
 
 const KT = window.KT;
 
@@ -203,6 +206,125 @@ function renderTrash(el) {
   });
   load();
 }
+
+/* ============================== CẦN XỬ LÝ ============================== */
+
+const ANOM_ICON = { trung: 'copy', gia: 'tag', ngay: 'calendar', vt: 'package', thieu: 'warnTri', nhap: 'draft', tien: 'coins', quy: 'money' };
+const cxl = { loai: '', showIgnored: false, more: {} };
+
+// Mở đúng chỗ để sửa bản ghi của cảnh báo
+export function openTarget(t) {
+  if (t.kind === 'entries') {
+    const e = S.all.entries.find((x) => x.id === t.id);
+    if (e) openEntryForm(e); else toast('Không còn thấy dòng này (có thể đã xóa)', 'info');
+  } else if (t.kind === 'costs') {
+    const c = S.all.costs.find((x) => x.id === t.id);
+    if (c) openCostLineForm(c); else toast('Không còn thấy dòng này (có thể đã xóa)', 'info');
+  } else if (t.kind === 'slip') {
+    location.hash = '#/cp-nhap?phieu=' + t.phieuId;
+  } else if (t.kind === 'materials') {
+    const m = S.all.materials.find((x) => KT.keyOf(x.ma) === KT.keyOf(t.ma));
+    if (m) openMaterialForm(m);
+  } else if (t.kind === 'cashCounts') {
+    location.hash = '#/kiem-soat?tab=kiem-quy';
+  }
+}
+
+// Xem các dòng nghi trùng trong sổ (lọc đúng ngày)
+function showInLedger(it) {
+  const t = it.target;
+  if (t.kind === 'entries') {
+    Object.assign(S.filters.so, { period: 'tuy-chon', from: it.ngay, to: it.ngay, duAn: '', ncc: '', loai: '', q: '', trangThai: '' });
+    saveFilter('so');
+    location.hash = '#/so-thu-chi';
+  } else {
+    const c = S.all.costs.find((x) => x.id === t.id) || {};
+    Object.assign(S.filters.cpSo, { period: 'tuy-chon', from: it.ngay, to: it.ngay, ct: '', nha: '', nhom: '', hm: '', loai: '', ncc: c.maNCC || '', vt: c.maVT || '', q: '', trangThai: '' });
+    saveFilter('cpSo');
+    location.hash = '#/cp-so';
+  }
+}
+
+function renderIssues(el) {
+  const a = anomalies();
+  const st = Object.assign({}, KT.ANOMALY_DEFAULTS, S.all.settings);
+  const nIgnored = a.items.filter((x) => x.ignored).length;
+  const list = a.items.filter((x) => (cxl.showIgnored || !x.ignored) && (!cxl.loai || x.loai === cxl.loai));
+  const byType = new Map();
+  list.forEach((x) => { if (!byType.has(x.loai)) byType.set(x.loai, []); byType.get(x.loai).push(x); });
+  const chip = (k, label, n) => '<button type="button" class="btn btn-sm ' + (cxl.loai === k ? 'btn-primary' : 'btn-secondary') + '" data-loai="' + k + '">' + esc(label) +
+    ' <span class="tabular-nums opacity-80">' + n + '</span></button>';
+  el.innerHTML =
+    '<section class="sheet"><div class="sheet-head"><div><h2 class="sheet-title">' + (a.open ? a.open + ' việc cần xử lý' : 'Không có việc gì cần xử lý') + '</h2>' +
+    '<p class="sheet-note">Phần mềm tự rà soát các dấu hiệu sai sót thường gặp. Bấm “Mở để sửa” để tới đúng dòng. Trường hợp đúng thật (ví dụ hai khoản giống nhau hợp lệ) thì bấm “Bỏ qua” — có lưu nhật ký, không hỏi lại nữa.</p></div>' +
+    '<form id="cxl-nguong" class="flex flex-wrap items-end gap-2 text-[13px]" autocomplete="off">' +
+    '<label class="field w-[150px]"><span class="label">Giá lệch quá (%)</span><input name="nguongLechGia" class="input input-sm text-right" inputmode="numeric" value="' + esc(st.nguongLechGia) + '"></label>' +
+    '<label class="field w-[150px]"><span class="label">Nháp để quá (ngày)</span><input name="soNgayNhapTon" class="input input-sm text-right" inputmode="numeric" value="' + esc(st.soNgayNhapTon) + '"></label>' +
+    '<button type="submit" class="btn btn-secondary btn-sm">' + icon('save') + 'Lưu ngưỡng</button></form></div>' +
+    '<div class="flex flex-wrap items-center gap-2 px-5 pb-4">' + chip('', 'Tất cả', cxl.showIgnored ? a.items.length : a.open) +
+    Object.keys(KT.ANOMALY_TYPES).filter((k) => a.counts[k] || (cxl.showIgnored && a.items.some((x) => x.loai === k))).map((k) => chip(k, KT.ANOMALY_TYPES[k], cxl.showIgnored ? a.items.filter((x) => x.loai === k).length : a.counts[k])).join('') +
+    '<span class="flex-1"></span>' + (nIgnored ? '<label class="check"><input type="checkbox" id="cxl-ign"' + (cxl.showIgnored ? ' checked' : '') + '>Hiện cả ' + nIgnored + ' cảnh báo đã bỏ qua</label>' : '') + '</div></section>' +
+    (list.length ? Array.from(byType.entries()).map(([k, items]) => {
+      const lim = cxl.more[k] ? items.length : 30;
+      return '<section class="sheet overflow-hidden" aria-labelledby="cxl-h-' + k + '"><div class="flex items-center gap-2 border-b border-rule px-4 py-2.5">' +
+        '<span class="text-[18px] text-caution">' + icon(ANOM_ICON[k] || 'flag') + '</span><h3 id="cxl-h-' + k + '" class="sheet-title">' + esc(KT.ANOMALY_TYPES[k]) + '</h3>' +
+        '<span class="pill">' + items.length + '</span></div><ul class="divide-y divide-rule">' +
+        items.slice(0, lim).map((it) => '<li class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5' + (it.ignored ? ' opacity-60' : '') + '" data-key="' + esc(it.key) + '">' +
+          '<div class="min-w-[260px] flex-1"><div class="font-medium text-ink">' + esc(it.tieuDe) + (it.ignored ? ' <span class="chip chip-idle">đã bỏ qua</span>' : '') + '</div>' +
+          '<div class="text-[12.5px] text-ink-2">' + esc(it.chiTiet) + '</div></div>' +
+          (it.soTien ? '<div class="text-right font-semibold tabular-nums' + (it.soTien < 0 ? ' neg' : '') + '">' + money(it.soTien) + '</div>' : '') +
+          '<div class="flex gap-1.5">' + (k === 'trung' ? '<button type="button" class="btn btn-ghost btn-sm" data-act="xem">' + icon('eye') + 'Xem trong sổ</button>' : '') +
+          '<button type="button" class="btn btn-secondary btn-sm" data-act="mo">' + icon('edit') + 'Mở để sửa</button>' +
+          (it.ignored ? '<button type="button" class="btn btn-ghost btn-sm" data-act="theo-doi">' + icon('refresh') + 'Theo dõi lại</button>'
+            : '<button type="button" class="btn btn-ghost btn-sm" data-act="bo-qua">' + icon('eyeSlash') + 'Bỏ qua</button>') + '</div></li>').join('') +
+        (items.length > lim ? '<li class="px-4 py-2"><button type="button" class="btn btn-ghost btn-sm" data-more="' + k + '">Hiện thêm ' + (items.length - lim) + ' mục</button></li>' : '') +
+        '</ul></section>';
+    }).join('') : '<section class="sheet p-10 text-center text-ink-3">' + icon('checkCircle', 'text-[28px] text-income') + '<p class="mt-2">Không có cảnh báo nào' + (cxl.loai ? ' loại này' : '') + '.</p></section>');
+
+  const find = (li) => a.items.find((x) => x.key === li.dataset.key);
+  el.addEventListener('click', async (e) => {
+    const lo = e.target.closest('[data-loai]');
+    if (lo) { cxl.loai = lo.dataset.loai; renderIssues(freshEl(el)); return; }
+    const mo = e.target.closest('[data-more]');
+    if (mo) { cxl.more[mo.dataset.more] = true; renderIssues(freshEl(el)); return; }
+    const b = e.target.closest('[data-act]');
+    const li = b && b.closest('li[data-key]');
+    const it = li && find(li);
+    if (!it) return;
+    if (b.dataset.act === 'mo') openTarget(it.target);
+    else if (b.dataset.act === 'xem') showInLedger(it);
+    else if (b.dataset.act === 'bo-qua') {
+      const m = openModal({
+        title: 'Bỏ qua cảnh báo', size: 'small',
+        body: '<p class="text-ink-2">' + esc(it.tieuDe) + '</p><p class="mt-1 text-[13px] text-ink-3">' + esc(it.chiTiet) + '</p>' +
+          '<label class="field mt-3"><span class="label">Ghi chú (không bắt buộc)</span><input class="input" id="bq-note" placeholder="VD: hai chuyến xe khác nhau, đúng"></label>',
+        footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="no">Hủy</button><button type="button" class="btn btn-primary" data-act="yes">' + icon('eyeSlash') + 'Bỏ qua cảnh báo</button>'
+      });
+      m.el.querySelector('[data-act=no]').addEventListener('click', () => m.close());
+      m.el.querySelector('[data-act=yes]').addEventListener('click', async () => {
+        try { await api('POST', '/api/warnings/ignore', { key: it.key, label: it.tieuDe, note: m.el.querySelector('#bq-note').value }); toast('Đã bỏ qua cảnh báo (có ghi nhật ký)'); m.close(); } catch (err) { showError(err); }
+      });
+    } else if (b.dataset.act === 'theo-doi') {
+      try { await api('POST', '/api/warnings/unignore', { key: it.key }); toast('Đã theo dõi lại cảnh báo'); } catch (err) { showError(err); }
+    }
+  });
+  const ign = $('#cxl-ign', el);
+  if (ign) ign.addEventListener('change', () => { cxl.showIgnored = ign.checked; renderIssues(freshEl(el)); });
+  $('#cxl-nguong', el).addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fm = e.target;
+    const data = { nguongLechGia: Number(fm.elements.nguongLechGia.value), soNgayNhapTon: Number(fm.elements.soNgayNhapTon.value) };
+    if (!Number.isInteger(data.nguongLechGia) || data.nguongLechGia < 1 || data.nguongLechGia > 1000) return fieldError(fm.elements.nguongLechGia, 'Nhập số từ 1 đến 1000');
+    if (!Number.isInteger(data.soNgayNhapTon) || data.soNgayNhapTon < 1 || data.soNgayNhapTon > 365) return fieldError(fm.elements.soNgayNhapTon, 'Nhập số từ 1 đến 365');
+    try { await api('PUT', '/api/settings', data); toast('Đã lưu ngưỡng kiểm tra'); } catch (err) { showError(err); }
+  });
+}
+
+// thay phần tử bằng bản sao rỗng (bỏ sự kiện cũ) trước khi vẽ lại một thẻ
+function freshEl(el) { const n = el.cloneNode(false); el.replaceWith(n); return n; }
+
+registerTab({ key: 'can-xu-ly', order: 10, label: 'Cần xử lý', icon: 'flag', render: renderIssues,
+  badge: () => { const n = anomalies().open; return n ? '<span class="ml-1 rounded-full bg-[#FFD27A] px-1.5 text-[11.5px] font-bold text-[#3D2600] tabular-nums">' + n + '</span>' : ''; } });
 
 /* ============================== KHÓA SỔ ============================== */
 

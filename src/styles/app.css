@@ -115,6 +115,9 @@
   .nav-item.active::after { bottom: -12px; background: radial-gradient(circle at 0 100%, transparent 11.5px, var(--color-paper) 12px); }
   .nav-item:focus-visible { outline-color: #fff; outline-offset: -3px; }
   .nav-sep { @apply mx-5 my-2.5 h-px bg-white/10 max-lg:mx-3; }
+  /* số việc cần xử lý trên menu */
+  .nav-badge { @apply ml-auto inline-grid h-5 min-w-5 place-items-center rounded-full bg-[#FFD27A] px-1.5 text-[11.5px] font-bold text-[#3D2600] tabular-nums; }
+  @media (max-width: 1023px) { .nav-badge { @apply absolute top-0.5 right-1 ml-0 h-4 min-w-4 px-1 text-[10px]; } }
   /* Màn hình thấp (laptop 1366×768): thu gọn khoảng cách để đủ 14 mục + ô tồn quỹ, không phải cuộn */
   @media (max-height: 900px) {
     .side-brand { @apply pt-4 pb-3; }

@@ -59,6 +59,15 @@ export function setDb(db) {
 
 export function onChange(fn) { S.listeners.push(fn); }
 
+// Cảnh báo "Cần xử lý": tính một lần cho mỗi phiên bản dữ liệu (dữ liệu lớn mất vài trăm ms, nên chỉ tính khi cần)
+export function anomalies() {
+  if (S._anomFor !== S.all) {
+    S._anom = KT.anomalies(S.all, { ignored: S.all.ignoredWarnings || {} });
+    S._anomFor = S.all;
+  }
+  return S._anom;
+}
+
 // Sổ chi phí gồm cả dòng Nháp (để mở / sửa phiếu nháp, liệt kê phiếu đã nhập)
 export function allCostLedger() {
   if (!S.drafts.costs.length) return S.costLedger;
