@@ -1,0 +1,7 @@
+# Dữ liệu sinh ra khi chạy phần mềm (không đưa vào git)
+data/nhat-ky.jsonl
+data/attachments/
+data/*.tmp
+data/*.hong-*
+logs/
+*.zip

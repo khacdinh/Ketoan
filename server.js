@@ -27,6 +27,8 @@ const exporter = require('./lib/exporter');
 const costImporter = require('./lib/costImporter');
 const costExporter = require('./lib/costExporter');
 const createCostApi = require('./lib/costApi');
+const createTrace = require('./lib/traceApi');
+const { dataSummary } = require('./lib/store');
 
 const APP_ID = 'so-thu-chi-ke-toan';
 const VERSION = require('./package.json').version;
@@ -72,7 +74,7 @@ function sendJson(res, status, obj) {
 }
 
 function ok(res, extra) {
-  sendJson(res, 200, Object.assign({ ok: true, db: store.db }, extra || {}));
+  sendJson(res, 200, Object.assign({ ok: true, db: store.publicDb() }, extra || {}));
 }
 
 function readBody(req, limit) {
@@ -234,9 +236,11 @@ function checkDbShape(d) {
   });
   if (d.vouchers !== undefined && (d.vouchers === null || typeof d.vouchers !== 'object' || Array.isArray(d.vouchers))) throw new HttpError(400, 'File sao lưu không hợp lệ: "vouchers"');
   if (d.settings !== undefined && (d.settings === null || typeof d.settings !== 'object' || Array.isArray(d.settings))) throw new HttpError(400, 'File sao lưu không hợp lệ: "settings"');
+  if (d.trash !== undefined && (!Array.isArray(d.trash) || d.trash.some((t) => t === null || typeof t !== 'object' || !Array.isArray(t.records)))) throw new HttpError(400, 'File sao lưu không hợp lệ: "trash"');
 }
 
-const costApi = createCostApi({ store, HttpError, str, money, readJson, ok, sendJson, findCode, byId, idList, own });
+const trace = createTrace({ store, HttpError, str, readJson, ok, sendJson, findCode });
+const costApi = createCostApi({ store, HttpError, str, money, readJson, ok, sendJson, findCode, byId, idList, own, trace });
 
 // Dựng file Excel: dữ liệu nhỏ thì làm ngay; dữ liệu lớn thì giao cho luồng riêng để máy chủ không đứng hình
 const BIG_EXPORT_ROWS = 3000;
@@ -273,26 +277,31 @@ async function handleApi(req, res, url) {
       const e = cleanEntry(await readJson(req));
       const rec = Object.assign({ id: store.newId(), seq: store.nextSeq(), createdAt: now, updatedAt: now }, e);
       db.entries.push(rec);
+      trace.log(req, 'them', 'entries', rec, null, rec);
       store.save();
       return ok(res, { id: rec.id });
     }
     if (m === 'POST' && seg[2] === 'delete') {
       const body = await readJson(req);
       const ids = idList(body.ids);
-      const before = db.entries.length;
+      const gone = db.entries.filter((e) => ids.has(e.id));
       db.entries = db.entries.filter((e) => !ids.has(e.id));
+      if (gone.length) trace.toTrash(req, 'entries', gone, gone.length === 1 ? 'Dòng sổ ' + trace.describe('entries', gone[0]) : gone.length + ' dòng sổ thu chi');
       store.save();
-      return ok(res, { deleted: before - db.entries.length });
+      return ok(res, { deleted: gone.length });
     }
     if (seg.length === 3) {
       const rec = byId(db.entries, seg[2]);
       if (m === 'PUT') {
+        const before = trace.clone(rec);
         Object.assign(rec, cleanEntry(await readJson(req)), { updatedAt: now });
+        trace.log(req, 'sua', 'entries', rec, before, rec);
         store.save();
         return ok(res, { id: rec.id });
       }
       if (m === 'DELETE') {
         db.entries = db.entries.filter((e) => e !== rec);
+        trace.toTrash(req, 'entries', [rec], 'Dòng sổ ' + trace.describe('entries', rec));
         store.save();
         return ok(res);
       }
@@ -312,12 +321,14 @@ async function handleApi(req, res, url) {
       if (findCode(list, x.ma)) throw new HttpError(400, cfg.label + ' "' + x.ma + '" đã tồn tại');
       const rec = Object.assign({ id: store.newId() }, x);
       list.push(rec);
+      trace.log(req, 'them', seg[1], rec, null, rec);
       store.save();
       return ok(res, { id: rec.id });
     }
     if (seg.length === 3) {
       const rec = byId(list, seg[2]);
       if (m === 'PUT') {
+        const before = trace.clone(rec);
         const x = cfg.clean(await readJson(req));
         const dup = findCode(list, x.ma);
         if (dup && dup !== rec) throw new HttpError(400, cfg.label + ' "' + x.ma + '" đã tồn tại');
@@ -330,6 +341,7 @@ async function handleApi(req, res, url) {
           renamed += costApi.cascadeRename(seg[1], rec.ma, x.ma, now);
         }
         Object.assign(rec, x);
+        trace.log(req, 'sua', seg[1], rec, before, rec, renamed ? { note: 'Đổi mã ' + before.ma + ' → ' + rec.ma + ', cập nhật ' + renamed + ' chỗ đang dùng' } : null);
         store.save();
         return ok(res, { id: rec.id, renamed });
       }
@@ -339,6 +351,7 @@ async function handleApi(req, res, url) {
         const used = costApi.usages(seg[1], rec.ma);
         if (used.length) throw new HttpError(400, 'Không thể xóa: ' + cfg.label + ' "' + rec.ma + '" đang được dùng trong ' + used.join(', ') + ' (chi phí công trình).');
         db[seg[1]] = list.filter((i) => i !== rec);
+        trace.toTrash(req, seg[1], [rec], (seg[1] === 'projects' ? 'Dự án ' : 'Nhà cung cấp ') + trace.describe(seg[1], rec));
         store.save();
         return ok(res);
       }
@@ -359,7 +372,9 @@ async function handleApi(req, res, url) {
       kemTheo: str(body.kemTheo, 60)
     };
     Object.keys(ov).forEach((k) => { if (!ov[k]) delete ov[k]; });
+    const before = db.vouchers[key] || null;
     if (Object.keys(ov).length) db.vouchers[key] = ov; else delete db.vouchers[key];
+    trace.log(req, 'sua', 'vouchers', key, before, db.vouchers[key] || null, { label: 'Thông tin in phiếu ' + key });
     store.save();
     return ok(res);
   }
@@ -372,10 +387,12 @@ async function handleApi(req, res, url) {
   if (p === '/api/settings' && m === 'PUT') {
     const b = await readJson(req);
     const s = db.settings;
+    const before = trace.clone(s);
     ['tenDonVi', 'diaChi', 'giamDoc', 'keToanTruong', 'thuQuy', 'nguoiLap', 'hinhThucMacDinh'].forEach((k) => {
       if (b[k] !== undefined) s[k] = str(b[k], 300);
     });
     if (b.hienKeToanTruong !== undefined) s.hienKeToanTruong = !!b.hienKeToanTruong;
+    trace.log(req, 'cai-dat', 'settings', 'settings', before, s, { label: 'Thông tin đơn vị và in phiếu' });
     store.save();
     return ok(res);
   }
@@ -406,6 +423,9 @@ async function handleApi(req, res, url) {
         map
       };
       const result = costImporter.applyCostImport(store, parsed, opts);
+      trace.log(req, 'nhap-excel', 'costs', '', null, null, { label: 'Nhập file Excel chi phí công trình (' + (opts.mode === 'replace' ? 'thay toàn bộ chi phí' : 'gộp thêm') + ')',
+        note: 'Thêm ' + JSON.stringify(result.added || {}) + (result.skipped ? ', bỏ qua ' + result.skipped + ' dòng trùng' : '') + '. Sau khi nhập: ' + dataSummary(store.db) });
+      store.flushAudit();
       return ok(res, { kind: 'chi-phi', result, warnings: result.warnings.slice(0, 300) });
     }
     if (url.searchParams.get('dryRun') === '1') {
@@ -413,6 +433,9 @@ async function handleApi(req, res, url) {
     }
     const mode = url.searchParams.get('mode') === 'merge' ? 'merge' : 'replace';
     const result = importer.applyImport(store, parsed, mode);
+    trace.log(req, 'nhap-excel', 'entries', '', null, null, { label: 'Nhập file Excel sổ thu chi (' + (mode === 'replace' ? 'thay toàn bộ' : 'gộp thêm') + ')',
+      note: 'Thêm ' + JSON.stringify(result.added || {}) + (result.skipped ? ', bỏ qua ' + result.skipped + ' dòng trùng' : '') + '. Sau khi nhập: ' + dataSummary(store.db) });
+    store.flushAudit();
     return ok(res, { result, warnings: parsed.warnings.slice(0, 200) });
   }
 
@@ -432,8 +455,9 @@ async function handleApi(req, res, url) {
     let data;
     try { data = store.readBackup(String(b.name || '')); } catch (e) { throw new HttpError(e.code === 'ENOENT' ? 404 : 400, e.code === 'ENOENT' ? 'Không tìm thấy bản sao lưu này' : 'Không đọc được bản sao lưu: ' + e.message); }
     checkDbShape(data);
-    store.replaceAll(data, 'truoc-khoi-phuc');
-    return ok(res);
+    trace.log(req, 'khoi-phuc-sao-luu', 'data', String(b.name), null, null, { label: 'Khôi phục bản sao lưu tự động ' + String(b.name), note: 'Dữ liệu sau khôi phục: ' + dataSummary(data) });
+    const bk = store.replaceAll(data, 'truoc-khoi-phuc');
+    return ok(res, { backup: bk });
   }
   if (p === '/api/restore' && m === 'POST') {
     const data = await readJson(req);
@@ -441,14 +465,17 @@ async function handleApi(req, res, url) {
       throw new HttpError(400, 'File sao lưu không hợp lệ (thiếu entries/projects/suppliers)');
     }
     checkDbShape(data);
-    store.replaceAll(data, 'truoc-khoi-phuc');
-    return ok(res);
+    trace.log(req, 'khoi-phuc-sao-luu', 'data', '', null, null, { label: 'Khôi phục từ file sao lưu tải lên', note: 'Dữ liệu sau khôi phục: ' + dataSummary(data) });
+    const bk = store.replaceAll(data, 'truoc-khoi-phuc');
+    return ok(res, { backup: bk });
   }
   if (p === '/api/reset' && m === 'POST') {
     const b = await readJson(req);
     if (b.confirm !== 'XOA') throw new HttpError(400, 'Cần xác nhận bằng chữ XOA');
     const keepCatalogs = !!b.keepCatalogs;
     const cur = store.db;
+    trace.log(req, 'xoa-toan-bo', 'entries', '', null, null, { label: 'Xóa toàn bộ sổ thu chi' + (keepCatalogs ? ' (giữ danh mục)' : ''),
+      note: 'Xóa ' + cur.entries.length + ' dòng sổ thu chi. Có bản sao lưu ngay trước khi xóa (truoc-xoa-du-lieu).' });
     // Chỉ xóa sổ thu chi; dữ liệu chi phí công trình giữ nguyên (xóa riêng ở /api/reset-costs)
     const usedByCosts = (list, field) => list.filter((x) => cur.costs.some((c) => KT.keyOf(c[field]) === KT.keyOf(x.ma)) ||
       (field === 'maCT' && (cur.houses.some((h) => KT.keyOf(h.maCT) === KT.keyOf(x.ma)))));
@@ -503,6 +530,7 @@ async function handleApi(req, res, url) {
     }
   }
 
+  if (await trace.handle(req, res, url)) return;
   if (await costApi.handle(req, res, url)) return;
 
   throw new HttpError(404, 'Không có chức năng ' + m + ' ' + p);

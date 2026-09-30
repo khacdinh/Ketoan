@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 const { ROOT, KT, startServer, makeDataDir, readJsonFile, ledgerTotals, orphanErrors, tmpDir } = require('./helpers');
+const { SCHEMA_VERSION } = require('../lib/store');
 
 const V1 = path.join(__dirname, 'fixtures', 'ketoan-v1-goc.json');
 const V2 = path.join(__dirname, 'fixtures', 'ketoan-v2-hien-tai.json');
@@ -19,7 +20,7 @@ test('B1.1 dữ liệu gốc schema 1 (66 dòng, 15 dự án, 43 NCC, tồn qu�
   const srv = await startServer({ seed: V1 });
   try {
     const db = await srv.db();
-    assert.equal(db.schema, 2);
+    assert.equal(db.schema, SCHEMA_VERSION, 'nâng lên schema hiện hành');
     // từng bảng
     assert.equal(db.entries.length, 66);
     assert.equal(db.projects.length, 15);
@@ -65,11 +66,11 @@ test('B1.1 dữ liệu gốc schema 1 (66 dòng, 15 dự án, 43 NCC, tồn qu�
     // id không trùng
     // bản sao lưu nguyên bản trước khi nâng cấp
     const bdir = path.join(srv.dataDir, 'backups');
-    const names = fs.readdirSync(bdir).filter((f) => /truoc-nang-cap-v2/.test(f));
+    const names = fs.readdirSync(bdir).filter((f) => /truoc-nang-cap-v/.test(f));
     assert.equal(names.length, 1, 'phải có đúng 1 bản sao lưu trước nâng cấp');
     assert.deepEqual(readJsonFile(path.join(bdir, names[0])), orig, 'bản sao lưu phải giống hệt bản gốc');
-    // file trên đĩa đã được ghi ở schema 2
-    assert.equal(readJsonFile(path.join(srv.dataDir, 'ketoan.json')).schema, 2);
+    // file trên đĩa đã được ghi ở schema hiện hành
+    assert.equal(readJsonFile(path.join(srv.dataDir, 'ketoan.json')).schema, SCHEMA_VERSION);
   } finally { await srv.stop(); }
 });
 
