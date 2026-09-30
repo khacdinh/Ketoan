@@ -5,7 +5,10 @@ import { S, saveFilter, ctOptions, selectOptions, costDatalists, resolveCode, re
 import { printView } from '../print.js';
 
 const KT = window.KT;
-const MAX_ROWS = 2000;
+const PAGE = 500; // số dòng vẽ mỗi lần (bảng lớn vẽ chậm); bấm "Hiện thêm" để xem tiếp, in thì hiện hết
+let shown = PAGE;
+// về lại số dòng mặc định khi chuyển màn hình (vẽ lại sau khi sửa dữ liệu thì giữ nguyên số dòng đang hiện)
+window.addEventListener('hashchange', () => { shown = PAGE; });
 
 function exportQuery(f) {
   const p = { from: f.from, to: f.to, ct: f.ct, nha: f.nha, nhom: f.nhom, hm: f.hm, loai: f.loai, ncc: f.ncc, vt: f.vt, q: f.q };
@@ -61,7 +64,7 @@ export function renderCostLedger(root) {
     '<p class="no-print border-t border-rule px-4 py-2 text-[12.5px] text-ink-3">Bấm đúp vào ô Diễn giải, Số lượng, Đơn giá, Hạng mục, Loại CP, Vật tư, Nhà cung cấp hoặc Nhà để sửa ngay trong bảng (<kbd>Enter</kbd> lưu, <kbd>Esc</kbd> bỏ). Nút bút chì để sửa đủ các cột.</p>' +
     '</section>';
 
-  const draw = () => drawRows(root, f);
+  const draw = (keep) => { if (keep !== true) shown = PAGE; drawRows(root, f); };
   const syncInputs = () => {
     $('#cl-period', root).value = f.period || 'tat-ca';
     setDateValue($('#cl-from', root), f.from || '', true);
@@ -95,7 +98,9 @@ export function renderCostLedger(root) {
       saveFilter('cpSo');
       renderCostLedger(root);
     } else if (act === 'export') download('/api/export/cost-ledger?' + exportQuery(f));
-    else if (act === 'print') printView('SỔ CHI PHÍ CÔNG TRÌNH', KT.describeRange(f.from, f.to), S.db.settings);
+    else if (act === 'print') { shown = Infinity; draw(true); printView('SỔ CHI PHÍ CÔNG TRÌNH', KT.describeRange(f.from, f.to), S.db.settings); }
+    else if (act === 'more') { shown += PAGE; draw(true); }
+    else if (act === 'all') { shown = Infinity; draw(true); }
     else if (act === 'edit' && c) openCostLineForm(c);
     else if (act === 'dup' && c) {
       try { await api('POST', '/api/costs', payloadOf(c, { nguon: 'nhan ban' })); toast('Đã nhân bản dòng (cùng phiếu)'); } catch (err) { showError(err); }
@@ -126,13 +131,20 @@ function drawRows(root, f) {
     KT.LOAI_CP.map((l) => tile(l, res.byLoai[l] || 0, 'text-ink-2')).join(sep) + '</div>';
   $('#cl-count', root).innerHTML = '<b class="font-semibold text-ink">' + res.rows.length + '</b> dòng' + (filtered ? ' khớp bộ lọc, trong tổng số ' + S.costLedger.length + ' dòng' : ' trong sổ') + '.';
   $('#cl-clear', root).hidden = !filtered;
-  const rows = res.rows.length > MAX_ROWS ? res.rows.slice(-MAX_ROWS) : res.rows;
+  const rows = res.rows.length > shown ? res.rows.slice(-shown) : res.rows;
   const body = $('#cl-body', root);
-  body.innerHTML = rows.length ? (res.rows.length > MAX_ROWS ? '<tr><td colspan="10" class="text-[12.5px] text-ink-3">Đang hiện ' + MAX_ROWS + ' dòng gần nhất. Lọc theo kỳ để xem các dòng cũ hơn.</td></tr>' : '') +
+  body.innerHTML = rows.length ? (res.rows.length > rows.length ? moreRow(rows.length, res.rows.length, 10) : '') +
     rows.map((r) => rowHtml(r, f.q)).join('')
     : '<tr><td colspan="10" class="empty">' + (S.costLedger.length ? 'Không có dòng nào khớp bộ lọc.' : 'Sổ chi phí chưa có dòng nào. Bấm “Lập phiếu nhập” hoặc nhập file Excel chi phí trong Cài đặt.') + '</td></tr>';
   $('#cl-foot', root).innerHTML = res.rows.length ? '<tr><td colspan="5" class="text-right">Cộng</td><td class="num">' + slTotalHtml(res) + '</td><td></td>' +
     '<td class="num money"><span class="dbl">' + money(res.total) + '</span></td><td colspan="2"></td></tr>' : '';
+}
+
+function moreRow(n, total, cols) {
+  return '<tr><td colspan="' + cols + '" class="text-[12.5px] text-ink-3">Đang hiện ' + n + ' dòng gần nhất trong ' + total + ' dòng. ' +
+    '<button type="button" class="btn btn-ghost btn-sm no-print" data-act="more">Hiện thêm ' + Math.min(PAGE, total - n) + ' dòng cũ hơn</button>' +
+    '<button type="button" class="btn btn-ghost btn-sm no-print" data-act="all">Hiện tất cả</button>' +
+    '<span class="no-print"> Hoặc lọc theo kỳ để thu hẹp.</span></td></tr>';
 }
 
 // Tổng số lượng: một đơn vị thì ghi kèm ĐVT; nhiều đơn vị thì ghi tổng và tách theo từng ĐVT bên dưới

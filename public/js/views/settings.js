@@ -6,7 +6,7 @@ export function renderSettings(root) {
   root = freshRoot(root);
   const s = S.db.settings;
   root.innerHTML =
-    '<div class="grid items-start gap-5 xl:grid-cols-2">' +
+    '<div class="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-2">' +
 
     /* ---- Thông tin in trên phiếu ---- */
     '<section class="sheet" aria-labelledby="h-dv"><div class="sheet-head"><div><h2 id="h-dv" class="sheet-title">Thông tin in trên phiếu và báo cáo</h2>' +

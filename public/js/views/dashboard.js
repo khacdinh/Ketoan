@@ -49,7 +49,7 @@ export function renderDashboard(root) {
     '</section>' +
 
     /* ---- Dự án + cột phụ ---- */
-    '<div class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">' +
+    '<div class="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">' +
     '<section class="sheet overflow-hidden" aria-labelledby="h-duan">' +
     '<div class="sheet-head"><div><h3 id="h-duan" class="sheet-title">Chi phí theo dự án</h3>' +
     '<p class="sheet-note">Tổng chi trong kỳ so với ngân sách. Bấm một dòng để mở sổ của dự án đó.</p></div>' +

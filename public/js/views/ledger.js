@@ -5,7 +5,10 @@ import { openEntryForm, deleteEntry } from '../forms.js';
 import { printView } from '../print.js';
 
 const KT = window.KT;
-const MAX_ROWS = 3000;
+const PAGE = 500; // số dòng vẽ mỗi lần (bảng lớn vẽ chậm); bấm "Hiện thêm" để xem tiếp, in thì hiện hết
+let shown = PAGE;
+// về lại số dòng mặc định khi chuyển màn hình (vẽ lại sau khi sửa dữ liệu thì giữ nguyên số dòng đang hiện)
+window.addEventListener('hashchange', () => { shown = PAGE; });
 
 function exportQuery(f) {
   const p = { from: f.from, to: f.to, duAn: f.duAn, ncc: f.ncc, loai: f.loai, q: f.q };
@@ -41,7 +44,7 @@ export function renderLedger(root) {
     '<tbody id="so-body"></tbody><tfoot id="so-foot"></tfoot></table></div>' +
     '</section>';
 
-  const draw = () => drawRows(root, f);
+  const draw = (keep) => { if (keep !== true) shown = PAGE; drawRows(root, f); };
   const syncInputs = () => {
     $('#so-period', root).value = f.period || 'tat-ca';
     setDateValue($('#so-from', root), f.from || '', true);
@@ -64,7 +67,9 @@ export function renderLedger(root) {
       saveFilter('so');
       renderLedger(root);
     } else if (act === 'export') download('/api/export/ledger?' + exportQuery(f));
-    else if (act === 'print') printView('SỔ THU CHI VÀ TỒN QUỸ', KT.describeRange(f.from, f.to), S.db.settings);
+    else if (act === 'print') { shown = Infinity; draw(true); printView('SỔ THU CHI VÀ TỒN QUỸ', KT.describeRange(f.from, f.to), S.db.settings); }
+    else if (act === 'more') { shown += PAGE; draw(true); }
+    else if (act === 'all') { shown = Infinity; draw(true); }
     else if (act === 'edit' && entry) openEntryForm(entry);
     else if (act === 'dup' && entry) openEntryForm(entry, { duplicate: true });
     else if (act === 'del' && entry) deleteEntry(entry);
@@ -100,14 +105,16 @@ function drawRows(root, f) {
     '. Bấm đúp một dòng để sửa.';
   $('#so-clear', root).hidden = !(filtered || f.from || f.to);
 
-  const rows = res.rows.length > MAX_ROWS ? res.rows.slice(-MAX_ROWS) : res.rows;
+  const rows = res.rows.length > shown ? res.rows.slice(-shown) : res.rows;
   const body = $('#so-body', root);
   if (!rows.length) {
     body.innerHTML = '<tr><td colspan="10" class="empty">' + (S.ledger.length
       ? 'Không có dòng nào khớp bộ lọc. Thử bỏ bớt điều kiện lọc.'
       : 'Sổ chưa có dòng nào. Bấm “Ghi thu / chi” để ghi khoản đầu tiên, hoặc nhập từ file Excel trong Cài đặt.') + '</td></tr>';
   } else {
-    body.innerHTML = (res.rows.length > MAX_ROWS ? '<tr><td colspan="10" class="text-[12.5px] text-ink-3">Đang hiện ' + MAX_ROWS + ' dòng gần nhất. Lọc theo kỳ để xem các dòng cũ hơn.</td></tr>' : '') +
+    body.innerHTML = (res.rows.length > rows.length ? '<tr><td colspan="10" class="text-[12.5px] text-ink-3">Đang hiện ' + rows.length + ' dòng gần nhất trong ' + res.rows.length + ' dòng. ' +
+      '<button type="button" class="btn btn-ghost btn-sm no-print" data-act="more">Hiện thêm ' + Math.min(PAGE, res.rows.length - rows.length) + ' dòng cũ hơn</button>' +
+      '<button type="button" class="btn btn-ghost btn-sm no-print" data-act="all">Hiện tất cả</button><span class="no-print"> Hoặc lọc theo kỳ để thu hẹp.</span></td></tr>' : '') +
       rows.map((r) => rowHtml(r, f.q)).join('');
   }
   $('#so-foot', root).innerHTML = res.rows.length

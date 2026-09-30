@@ -241,7 +241,7 @@
   /* Con số tồn quỹ lớn */
   .balance {
     @apply leading-none font-bold tabular-nums tracking-[-0.02em] text-ink;
-    font-size: clamp(40px, 4.6vw, 60px);
+    font-size: clamp(28px, 4.6vw, 60px); /* cửa sổ hẹp: số 13 chữ số vẫn nằm gọn */
     font-stretch: 118%;
   }
   .balance .unit { @apply ml-1.5 text-[0.4em] font-semibold tracking-normal text-ink-3; font-stretch: 100%; }

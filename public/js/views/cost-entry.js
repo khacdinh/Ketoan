@@ -100,7 +100,7 @@ export function renderCostEntry(root) {
 
     '<section class="sheet overflow-hidden" aria-labelledby="h-dong">' +
     '<div class="flex flex-wrap items-center gap-3 border-b border-rule px-4 py-2.5"><h2 id="h-dong" class="sheet-title">Các dòng hàng</h2>' +
-    '<span class="text-[12.5px] text-ink-3">' + icon('keyboard', 'mr-1 align-[-3px] text-[15px]') + '<kbd>Enter</kbd> sang ô kế tiếp, <kbd>↑</kbd> <kbd>↓</kbd> đổi dòng, <kbd>Ctrl</kbd> + <kbd>Enter</kbd> lưu phiếu. ' +
+    '<span class="text-[12.5px] text-ink-3">' + icon('keyboard', 'mr-1 align-[-3px] text-[15px]') + '<kbd>Enter</kbd> sang ô kế tiếp, <kbd>↑</kbd> <kbd>↓</kbd> đổi dòng (ở ô có danh sách gợi ý thì bấm kèm <kbd>Ctrl</kbd>), <kbd>Ctrl</kbd> + <kbd>Enter</kbd> lưu phiếu. ' +
     'Số lượng nhận <b class="font-medium text-ink-2">2,5</b> hoặc <b class="font-medium text-ink-2">10+5</b>; đơn giá nhận <b class="font-medium text-ink-2">50tr</b>, <b class="font-medium text-ink-2">300k</b>, <b class="font-medium text-ink-2">1.250.000</b>.</span></div>' +
     '<div class="overflow-x-auto"><table class="ledger grid-entry" id="cp-lines">' +
     '<thead><tr><th class="num w-8">#</th><th class="w-[150px]">Mã VT</th><th>Tên vật tư</th><th class="w-[64px]">ĐVT</th><th>Diễn giải / quy cách</th>' +
@@ -133,7 +133,9 @@ export function renderCostEntry(root) {
     h.hm = get('hm').value.trim();
   }
   function hintOf(name) { return get(name).closest('.field').querySelector('.hint'); }
-  function setHint(name, html, cls) { const el = hintOf(name); el.innerHTML = html; el.className = 'hint' + (cls ? ' ' + cls : ''); }
+  // Không ghi lại khi nội dung y hệt: bấm vào liên kết trong gợi ý làm ô nhập mất tiêu điểm → sự kiện change vẽ lại gợi ý
+  // ngay giữa lúc nhấn chuột, liên kết bị thay mới và cú bấm không tới được.
+  function setHint(name, html, cls) { const el = hintOf(name); if (el.dataset.src !== html) { el.innerHTML = html; el.dataset.src = html; } el.className = 'hint' + (cls ? ' ' + cls : ''); }
 
   function refreshHeaderHints() {
     // công trình
@@ -245,9 +247,11 @@ export function renderCostEntry(root) {
     const code = l.maVT.trim();
     const m = code ? materialByCode(code) : null;
     const nameTd = tr.querySelector('.vt-name');
-    if (!code) nameTd.innerHTML = l.dienGiai || isBlank(l) ? '' : '<span class="text-ink-3">(không mã vật tư)</span>';
-    else if (m) nameTd.innerHTML = '<span title="' + esc(m.ma) + '">' + esc(m.ten) + '</span>';
-    else nameTd.innerHTML = '<span class="text-alert">Chưa có mã này.</span> <a href="#" class="font-semibold text-pen underline underline-offset-2" data-act="add-vt" data-row="' + i + '">Thêm</a>';
+    // (chỉ ghi lại khi đổi, xem setHint: tránh thay liên kết "Thêm" giữa lúc đang nhấn chuột)
+    const nameHtml = !code ? (l.dienGiai || isBlank(l) ? '' : '<span class="text-ink-3">(không mã vật tư)</span>')
+      : m ? '<span title="' + esc(m.ma) + '">' + esc(m.ten) + '</span>'
+        : '<span class="text-alert">Chưa có mã này.</span> <a href="#" class="font-semibold text-pen underline underline-offset-2" data-act="add-vt" data-row="' + i + '">Thêm</a>';
+    if (nameTd.dataset.src !== nameHtml) { nameTd.innerHTML = nameHtml; nameTd.dataset.src = nameHtml; }
     tr.querySelector('.vt-dvt').textContent = m ? (m.dvt || '') : '';
     tr.querySelector('[data-col=maVT]').classList.toggle('bad', !!code && !m);
     // thành tiền

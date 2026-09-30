@@ -18,6 +18,7 @@ const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 const { URL } = require('url');
+const { Worker } = require('worker_threads');
 
 const { Store } = require('./lib/store');
 const KT = require('./public/js/shared.js');
@@ -82,8 +83,26 @@ function readBody(req, limit) {
 async function readJson(req) {
   const buf = await readBody(req, 50 * 1024 * 1024);
   if (!buf.length) return {};
-  try { return JSON.parse(buf.toString('utf8')); } catch (e) { throw new HttpError(400, 'Dữ liệu JSON không hợp lệ'); }
+  let v;
+  try { v = JSON.parse(buf.toString('utf8')); } catch (e) { throw new HttpError(400, 'Dữ liệu JSON không hợp lệ'); }
+  // mọi chức năng đều nhận một đối tượng; null, mảng, số, chuỗi... là sai kiểu
+  if (v === null || typeof v !== 'object' || Array.isArray(v)) throw new HttpError(400, 'Dữ liệu gửi lên phải là một đối tượng JSON');
+  return v;
 }
+
+// Danh sách id gửi lên: mảng số (hoặc chuỗi số)
+function idList(v) {
+  if (v === undefined || v === null) return new Set();
+  if (!Array.isArray(v) || v.length > 100000) throw new HttpError(400, 'Danh sách ids phải là một mảng số');
+  const out = new Set();
+  v.forEach((x) => {
+    if (!(typeof x === 'number' || (typeof x === 'string' && /^\d+$/.test(x))) || !Number.isInteger(Number(x))) throw new HttpError(400, 'Danh sách ids phải là một mảng số');
+    out.add(Number(x));
+  });
+  return out;
+}
+
+function own(obj, key) { return Object.prototype.hasOwnProperty.call(obj, key); }
 
 function attachment(res, buffer, filename, type) {
   const ascii = filename.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^\w.-]+/g, '_');
@@ -110,10 +129,13 @@ function rangeSuffix(f) {
 /* ---------------- kiểm tra dữ liệu ---------------- */
 
 function str(v, max) {
-  return String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, max || 500);
+  if ((v !== null && typeof v === 'object') || typeof v === 'boolean' || typeof v === 'function') throw new HttpError(400, 'Dữ liệu sai kiểu (cần chữ hoặc số)');
+  // NFC: chữ có dấu gõ kiểu tổ hợp (Mac, một số file Excel) và kiểu dựng sẵn phải là một, nếu không mã sẽ tra không ra
+  return String(v == null ? '' : v).normalize('NFC').replace(/\s+/g, ' ').trim().slice(0, max || 500);
 }
 
 function money(v, label) {
+  if ((v !== null && typeof v === 'object') || typeof v === 'boolean') throw new HttpError(400, label + ' không hợp lệ (cần số hoặc chữ như 50tr)');
   const n = typeof v === 'number' ? Math.round(v) : KT.parseAmount(v);
   if (isNaN(n)) throw new HttpError(400, label + ' không hợp lệ');
   if (n < 0) throw new HttpError(400, label + ' không được âm');
@@ -195,7 +217,34 @@ function usage(field, ma) {
   return store.db.entries.filter((e) => KT.keyOf(e[field]) === KT.keyOf(ma)).length;
 }
 
-const costApi = createCostApi({ store, HttpError, str, money, readJson, ok, sendJson, findCode, byId });
+// Bản sao lưu đưa vào phải đúng hình dạng: các danh sách là mảng đối tượng (tránh làm hỏng kho khi file lạ)
+function checkDbShape(d) {
+  ['projects', 'suppliers', 'entries', 'costGroups', 'costItems', 'materials', 'houses', 'costs'].forEach((k) => {
+    if (d[k] === undefined) return;
+    if (!Array.isArray(d[k]) || d[k].some((x) => x === null || typeof x !== 'object' || Array.isArray(x))) throw new HttpError(400, 'File sao lưu không hợp lệ: "' + k + '" phải là danh sách các bản ghi');
+  });
+  if (d.vouchers !== undefined && (d.vouchers === null || typeof d.vouchers !== 'object' || Array.isArray(d.vouchers))) throw new HttpError(400, 'File sao lưu không hợp lệ: "vouchers"');
+  if (d.settings !== undefined && (d.settings === null || typeof d.settings !== 'object' || Array.isArray(d.settings))) throw new HttpError(400, 'File sao lưu không hợp lệ: "settings"');
+}
+
+const costApi = createCostApi({ store, HttpError, str, money, readJson, ok, sendJson, findCode, byId, idList, own });
+
+// Dựng file Excel: dữ liệu nhỏ thì làm ngay; dữ liệu lớn thì giao cho luồng riêng để máy chủ không đứng hình
+const BIG_EXPORT_ROWS = 3000;
+function runExport(mod, fn, args) {
+  const m = mod === 'cost' ? costExporter : exporter;
+  if (store.db.costs.length + store.db.entries.length <= BIG_EXPORT_ROWS) return m[fn].apply(null, args);
+  return new Promise((resolve, reject) => {
+    const w = new Worker(path.join(ROOT, 'lib', 'exportWorker.js'), { workerData: { mod, fn, args } });
+    let done = false;
+    w.once('message', (r) => {
+      done = true;
+      if (r.ok) resolve(Buffer.from(r.buf)); else { const e = new Error(r.error); e.status = r.status; reject(e); }
+    });
+    w.once('error', (e) => { if (!done) { done = true; reject(e); } });
+    w.once('exit', (code) => { if (!done) { done = true; reject(new Error('Luồng tạo file Excel dừng đột ngột (mã ' + code + ')')); } });
+  });
+}
 
 /* ---------------- xử lý API ---------------- */
 
@@ -220,7 +269,7 @@ async function handleApi(req, res, url) {
     }
     if (m === 'POST' && seg[2] === 'delete') {
       const body = await readJson(req);
-      const ids = new Set((body.ids || []).map(Number));
+      const ids = idList(body.ids);
       const before = db.entries.length;
       db.entries = db.entries.filter((e) => !ids.has(e.id));
       store.save();
@@ -246,7 +295,7 @@ async function handleApi(req, res, url) {
     projects: { clean: cleanProject, field: 'maDuAn', label: 'Mã dự án' },
     suppliers: { clean: cleanSupplier, field: 'maNCC', label: 'Mã NCC' }
   };
-  if (catalogs[seg[1]]) {
+  if (own(catalogs, seg[1])) {
     const cfg = catalogs[seg[1]];
     const list = db[seg[1]];
     if (m === 'POST' && seg.length === 2) {
@@ -371,7 +420,9 @@ async function handleApi(req, res, url) {
   }
   if (p === '/api/backups/restore' && m === 'POST') {
     const b = await readJson(req);
-    const data = store.readBackup(String(b.name || ''));
+    let data;
+    try { data = store.readBackup(String(b.name || '')); } catch (e) { throw new HttpError(e.code === 'ENOENT' ? 404 : 400, e.code === 'ENOENT' ? 'Không tìm thấy bản sao lưu này' : 'Không đọc được bản sao lưu: ' + e.message); }
+    checkDbShape(data);
     store.replaceAll(data, 'truoc-khoi-phuc');
     return ok(res);
   }
@@ -380,6 +431,7 @@ async function handleApi(req, res, url) {
     if (!data || !Array.isArray(data.entries) || !Array.isArray(data.projects) || !Array.isArray(data.suppliers)) {
       throw new HttpError(400, 'File sao lưu không hợp lệ (thiếu entries/projects/suppliers)');
     }
+    checkDbShape(data);
     store.replaceAll(data, 'truoc-khoi-phuc');
     return ok(res);
   }
@@ -414,28 +466,28 @@ async function handleApi(req, res, url) {
     };
     switch (seg[2]) {
       case 'full':
-        return attachment(res, await exporter.buildFullWorkbook(db), 'SoSachKeToan_' + stampNow() + '.xlsx', XLSX_TYPE);
+        return attachment(res, await runExport('cash', 'buildFullWorkbook', [db]), 'SoSachKeToan_' + stampNow() + '.xlsx', XLSX_TYPE);
       case 'ledger':
-        return attachment(res, await exporter.buildLedgerWorkbook(db, f), 'SoThuChi' + rangeSuffix(f) + '.xlsx', XLSX_TYPE);
+        return attachment(res, await runExport('cash', 'buildLedgerWorkbook', [db, f]), 'SoThuChi' + rangeSuffix(f) + '.xlsx', XLSX_TYPE);
       case 'projects':
-        return attachment(res, await exporter.buildProjectWorkbook(db, f), 'TongHopDuAn' + rangeSuffix(f) + '.xlsx', XLSX_TYPE);
+        return attachment(res, await runExport('cash', 'buildProjectWorkbook', [db, f]), 'TongHopDuAn' + rangeSuffix(f) + '.xlsx', XLSX_TYPE);
       case 'suppliers':
-        return attachment(res, await exporter.buildSupplierWorkbook(db, f), 'TongHopNCC' + rangeSuffix(f) + '.xlsx', XLSX_TYPE);
+        return attachment(res, await runExport('cash', 'buildSupplierWorkbook', [db, f]), 'TongHopNCC' + rangeSuffix(f) + '.xlsx', XLSX_TYPE);
       case 'costs': {
         const ct = q.get('ct') || '';
-        return attachment(res, await costExporter.buildCostWorkbook(db, { ct }), 'ChiPhiCongTrinh' + (ct ? '_' + ct : '') + '_' + stampNow() + '.xlsx', XLSX_TYPE);
+        return attachment(res, await runExport('cost', 'buildCostWorkbook', [db, { ct }]), 'ChiPhiCongTrinh' + (ct ? '_' + ct : '') + '_' + stampNow() + '.xlsx', XLSX_TYPE);
       }
       case 'cost-ledger': {
         const cf = { from: f.from, to: f.to, ct: q.get('ct') || '', nha: q.get('nha') || '', nhom: q.get('nhom') || '', hm: q.get('hm') || '',
           loai: q.get('loai') || '', ncc: q.get('ncc') || '', vt: q.get('vt') || '', q: q.get('q') || '' };
-        return attachment(res, await costExporter.buildCostLedgerWorkbook(db, cf), 'SoChiPhi' + rangeSuffix(f) + '.xlsx', XLSX_TYPE);
+        return attachment(res, await runExport('cost', 'buildCostLedgerWorkbook', [db, cf]), 'SoChiPhi' + rangeSuffix(f) + '.xlsx', XLSX_TYPE);
       }
       case 'cost-debt': {
-        return attachment(res, await costExporter.buildDebtWorkbook(db, { ct: q.get('ct') || '', to: f.to }), 'CongNoNCC_' + stampNow() + '.xlsx', XLSX_TYPE);
+        return attachment(res, await runExport('cost', 'buildDebtWorkbook', [db, { ct: q.get('ct') || '', to: f.to }]), 'CongNoNCC_' + stampNow() + '.xlsx', XLSX_TYPE);
       }
       case 'voucher': {
         const so = q.get('so') || '';
-        return attachment(res, await exporter.buildVoucherWorkbook(db, so), 'Phieu_' + so.replace(/[\\/]/g, '-') + '.xlsx', XLSX_TYPE);
+        return attachment(res, await runExport('cash', 'buildVoucherWorkbook', [db, so]), 'Phieu_' + so.replace(/[\\/]/g, '-') + '.xlsx', XLSX_TYPE);
       }
       default:
         break;

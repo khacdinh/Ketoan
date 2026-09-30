@@ -146,4 +146,31 @@ function orphanErrors(db) {
   return errs;
 }
 
-module.exports = { ROOT, KT, DATA_SRC, tmpDir, makeDataDir, freePort, rawRequest, startServer, readJsonFile, ledgerTotals, orphanErrors };
+// Dữ liệu lớn giả lập: lấy danh mục của bản thật, sinh n dòng chi phí (và m dòng sổ thu chi) ngẫu nhiên nhưng lặp lại được
+function makeBigDb(n, m) {
+  const db = readJsonFile(path.join(__dirname, 'fixtures', 'ketoan-v2-hien-tai.json'));
+  let seed = 20260930;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
+  const cts = db.projects.map((p) => p.ma);
+  const hs = db.houses; const sup = db.suppliers.map((s) => s.ma); const its = db.costItems; const mats = db.materials;
+  let id = db.nextId || 100000; let seq = 0;
+  const thanh = (sl, dg) => Number((BigInt(Math.round(sl * 10000)) * BigInt(Math.round(dg * 100)) * BigInt(2) + BigInt(1000000)) / BigInt(2000000));
+  db.costs = [];
+  for (let i = 0; i < n; i++) {
+    const ct = pick(cts); const hl = hs.filter((h) => h.maCT === ct); const mt = rnd() < 0.8 ? pick(mats) : null; const it = mt && mt.maHM ? its.find((x) => x.ma === mt.maHM) || pick(its) : pick(its);
+    const sl = Math.round((rnd() * 200 + 0.25) * 4) / 4; const dg = Math.floor(rnd() * 5e6) + 1000;
+    const d = new Date(Date.UTC(2024, 0, 1) + Math.floor(rnd() * 900) * 86400000).toISOString().slice(0, 10);
+    db.costs.push({ id: id++, seq: ++seq, phieuId: 900000 + Math.floor(i / 4), ngay: d, maCT: ct, maNha: hl.length ? pick(hl).ma : '', maHM: it.ma, loaiCP: mt ? (mt.loaiCP || 'Vật tư') : pick(['Nhân công', 'Dịch vụ-Phí']),
+      maVT: mt ? mt.ma : '', dienGiai: mt ? '' : 'Khoản ' + i, soLuong: sl, donGia: dg, thanhTien: thanh(sl, dg), maNCC: pick(sup), soPhieu: rnd() < 0.3 ? 'GH' + (i % 997) : '', ghiChu: '', nguon: 'phieu nhap', createdAt: '2026-09-30T00:00:00.000Z', updatedAt: '2026-09-30T00:00:00.000Z' });
+  }
+  for (let i = 0; i < (m || 0); i++) {
+    const isThu = rnd() < 0.1;
+    db.entries.push({ id: id++, seq: db.entries.length + 1, ngay: new Date(Date.UTC(2024, 0, 1) + Math.floor(rnd() * 900) * 86400000).toISOString().slice(0, 10), soPhieu: 'PC' + String(i % 999).padStart(3, '0') + '/0' + (1 + (i % 9)), maDuAn: pick(cts), maNCC: rnd() < 0.8 ? pick(sup) : '', noiDung: 'Chi giả lập ' + i,
+      thu: isThu ? Math.floor(rnd() * 1e6) : 0, chi: isThu ? 0 : Math.floor(rnd() * 2e7), nguoiNhan: '', ghiChu: '', createdAt: '2026-09-30T00:00:00.000Z', updatedAt: '2026-09-30T00:00:00.000Z' });
+  }
+  db.nextId = id + 10;
+  return db;
+}
+
+module.exports = { makeBigDb, ROOT, KT, DATA_SRC, tmpDir, makeDataDir, freePort, rawRequest, startServer, readJsonFile, ledgerTotals, orphanErrors };

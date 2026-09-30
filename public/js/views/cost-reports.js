@@ -6,6 +6,7 @@ import { printView } from '../print.js';
 import { openEntryForm } from '../forms.js';
 
 const KT = window.KT;
+const HEAVY_ROWS = 1500;
 const pct = (x) => (x * 100).toFixed(1).replace('.', ',') + '%';
 
 function ctLabel(ct) {
@@ -65,7 +66,7 @@ export function renderCostDashboard(root) {
     tile('Đã trả nhà cung cấp', money(debt.total.daTra), 'Từ sổ thu chi, theo mã NCC' + (f.ct ? ' và công trình' : ''), '', { debt: true }) +
     tile('Còn nợ nhà cung cấp', money(debt.total.conNo), debt.total.ungDu ? 'Ứng dư ' + money(debt.total.ungDu) + ' đ' : '', debt.total.conNo ? 'text-alert' : '', { debt: true }) +
     '</div>' +
-    '<div class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">' +
+    '<div class="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">' +
     '<section class="sheet overflow-hidden" aria-labelledby="h-nhom"><div class="sheet-head"><div><h3 id="h-nhom" class="sheet-title">Chi phí theo nhóm và hạng mục</h3>' +
     '<p class="sheet-note">Bấm dòng nhóm để bung hoặc thu gọn hạng mục. Bấm hạng mục để xem chi tiết.</p></div>' +
     '<div class="no-print flex gap-1"><button type="button" class="btn btn-ghost btn-sm" data-act="expand">Bung hết</button><button type="button" class="btn btn-ghost btn-sm" data-act="collapse">Thu gọn</button></div></div>' +
@@ -252,7 +253,10 @@ export function renderCostDetail(root) {
     const byItem = new Map();
     res.rows.forEach((r) => { const k = KT.keyOf(r.maHM); if (!byItem.has(k)) byItem.set(k, []); byItem.get(k).push(r); });
     const level = Number(f.level) || 3;
-    let html = '';
+    // Nhiều dòng thì không bung sẵn từng dòng chi tiết (hàng chục nghìn dòng DOM vẽ rất chậm): bấm từng hạng mục để xem
+    const heavy = level >= 3 && res.rows.length > HEAVY_ROWS;
+    let html = heavy ? '<tr><td colspan="9" class="text-[12.5px] text-ink-3">Có ' + res.rows.length + ' dòng chi phí nên các hạng mục đang thu gọn. Bấm vào một hạng mục để xem từng dòng, hoặc ' +
+      '<button type="button" class="btn btn-ghost btn-sm no-print" data-act="open-all">mở tất cả (chậm)</button></td></tr>' : '';
     s.groups.forEach((g) => {
       if (!g.total && !g.soDong) return;
       const gOpen = level >= 2 && open['g:' + g.ma] !== false;
@@ -262,7 +266,7 @@ export function renderCostDetail(root) {
       g.items.forEach((it) => {
         const rows = byItem.get(KT.keyOf(it.ma));
         if (!rows) return;
-        const iOpen = level >= 3 && open['i:' + it.ma] !== false;
+        const iOpen = level >= 3 && (heavy ? open['i:' + it.ma] === true : open['i:' + it.ma] !== false);
         html += '<tr class="itm-sum clickable" data-toggle="i:' + esc(it.ma) + '" tabindex="0" id="hm-' + esc(it.ma) + '"><td colspan="8" class="pl-8"><span class="caret' + (iOpen ? ' open' : '') + '">' + icon('caretRight') + '</span>Cộng ' + esc(it.ten) +
           ' <span class="font-normal text-ink-3">· ' + rows.length + ' dòng</span></td><td class="num money font-semibold">' + money(it.total) + '</td></tr>';
         if (!iOpen) return;
@@ -292,6 +296,7 @@ export function renderCostDetail(root) {
   root.addEventListener('click', (e) => {
     const a = e.target.closest('[data-act]');
     if (a) {
+      if (a.dataset.act === 'open-all') { S.db.costItems.forEach((it) => { open['i:' + it.ma] = true; open['g:' + it.maNhom] = true; }); LS.set('cp.ct.open', open); draw(); }
       if (a.dataset.act === 'export') download('/api/export/costs' + (f.ct ? '?ct=' + encodeURIComponent(f.ct) : ''));
       if (a.dataset.act === 'print') printView('CHI TIẾT CHI PHÍ THEO NHÓM', ctLabel(f.ct) + '. ' + KT.describeRange(f.from, f.to), S.db.settings);
       return;
@@ -351,7 +356,7 @@ export function renderDebt(root) {
     '<div class="eq-cell"><span class="eq-label">Tổng ứng dư</span><span class="eq-value text-caution">' + money(tot.ungDu) + '</span></div></div>' +
     '<p class="text-[13px] text-ink-3">Chi phí phát sinh lấy từ sổ chi phí (khối lượng đã nhận). Đã trả lấy từ sổ thu chi: tổng chi trừ tổng thu của cùng mã NCC' + (f.ct ? ' và cùng mã dự án ' + esc(f.ct) : '') + '. Hai sổ không sửa dữ liệu của nhau. ' +
     (f.pham === 'ct' ? '“Liên quan công trình” = NCC có chi phí công trình, hoặc có khoản trả gắn với công trình đang có chi phí.' : '') + '</p>' +
-    '<div class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">' +
+    '<div class="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">' +
     '<section class="sheet overflow-hidden"><div class="overflow-x-auto"><table class="ledger">' +
     '<thead><tr><th>Nhà cung cấp</th><th>Loại</th><th class="num money">Chi phí phát sinh</th><th class="num money">Đã trả / đã ứng</th><th class="num money">Còn lại</th><th>Tình trạng</th><th class="no-print"></th></tr></thead><tbody>' +
     (rows.length ? rows.map((r) => '<tr class="clickable' + (KT.keyOf(r.ma) === KT.keyOf(sel) ? ' is-active' : '') + '" data-ma="' + esc(r.ma) + '" tabindex="0">' +
@@ -480,7 +485,7 @@ export function renderPrices(root) {
   const f = S.filters.cpGia;
   const usedNCC = new Set(S.db.costs.filter((c) => c.maVT).map((c) => KT.keyOf(c.maNCC)));
   root.innerHTML =
-    '<div class="grid items-start gap-5 lg:grid-cols-[480px_minmax(0,1fr)]">' +
+    '<div class="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[480px_minmax(0,1fr)]">' +
     '<aside class="sheet flex flex-col overflow-hidden lg:sticky lg:top-[104px] lg:max-h-[calc(100vh-128px)]">' +
     '<div class="flex flex-col gap-2 border-b border-rule p-3">' +
     '<label class="search">' + icon('search') + '<input id="gia-q" type="search" class="input" placeholder="Tìm mã, tên vật tư" value="' + esc(f.q) + '"></label>' +

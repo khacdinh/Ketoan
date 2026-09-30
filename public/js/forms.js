@@ -74,19 +74,17 @@ export function openEntryForm(entry, opts) {
     }
     f.querySelectorAll('input[name=loai]').forEach((r) => r.addEventListener('change', applyLoai));
 
+    // Chỉ ghi lại khi nội dung đổi: bấm vào liên kết trong gợi ý (Thêm ... này, Điền số này) làm ô nhập mất tiêu điểm → sự kiện change
+    // vẽ lại gợi ý ngay giữa lúc nhấn chuột, liên kết bị thay mới và cú bấm không tới được.
+    function setHint(h, html, cls) { if (h.dataset.src !== html) { h.innerHTML = html; h.dataset.src = html; } if (h.className !== cls) h.className = cls; }
     function hint(input, list, hintSel, kind) {
       const code = resolveCode(list, input.value);
       const h = $(hintSel, el);
-      if (!input.value.trim()) { h.textContent = ''; h.className = 'hint'; return; }
+      if (!input.value.trim()) { setHint(h, '', 'hint'); return; }
       const found = list.find((x) => KT.keyOf(x.ma) === KT.keyOf(code));
-      if (found && kind === 'supplier') {
-        h.innerHTML = esc(found.ten) + debtHint(found.ma);
-        h.className = 'hint good';
-      } else if (found) { h.textContent = found.ten; h.className = 'hint good'; }
-      else {
-        h.innerHTML = 'Chưa có trong danh mục. <a href="#" data-act="add-' + kind + '">Thêm ' + (kind === 'project' ? 'dự án' : 'nhà cung cấp') + ' này</a>';
-        h.className = 'hint bad';
-      }
+      if (found && kind === 'supplier') setHint(h, esc(found.ten) + debtHint(found.ma), 'hint good');
+      else if (found) setHint(h, esc(found.ten), 'hint good');
+      else setHint(h, 'Chưa có trong danh mục. <a href="#" data-act="add-' + kind + '">Thêm ' + (kind === 'project' ? 'dự án' : 'nhà cung cấp') + ' này</a>', 'hint bad');
     }
     const daHint = () => hint(get('maDuAn'), S.db.projects, '#da-hint', 'project');
     const nccHint = () => hint(get('maNCC'), S.db.suppliers, '#ncc-hint', 'supplier');

@@ -13,7 +13,7 @@ export function renderVouchers(root) {
   if (!S.selectedVoucher || !all.some((v) => v.key === S.selectedVoucher)) S.selectedVoucher = all.length ? all[0].key : null;
 
   root.innerHTML =
-    '<div class="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">' +
+    '<div class="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">' +
     '<aside class="sheet no-print flex flex-col overflow-hidden lg:sticky lg:top-[104px] lg:max-h-[calc(100vh-128px)] max-lg:max-h-[340px]">' +
     '<div class="flex flex-col gap-2.5 border-b border-rule p-3">' +
     '<label class="search">' + icon('search') + '<input id="ph-q" type="search" class="input" placeholder="Tìm số phiếu, người nhận, nội dung" value="' + esc(f.q) + '" aria-label="Tìm phiếu"></label>' +
@@ -61,7 +61,7 @@ export function renderVouchers(root) {
       '<button type="button" class="btn btn-secondary" data-act="excel">' + icon('excel') + 'Xuất Excel</button>' +
       '<button type="button" class="btn btn-primary" data-act="print">' + icon('print') + 'In phiếu 2 liên</button>' +
       '</div></div>' +
-      '<div class="grid items-start gap-4 @3xl:grid-cols-[minmax(0,1fr)_300px]">' +
+      '<div class="grid grid-cols-[minmax(0,1fr)] items-start gap-4 @3xl:grid-cols-[minmax(0,1fr)_300px]">' +
       '<div class="paper-wrap"><div class="paper" id="ph-paper">' + voucherHtml(v, s) + '</div></div>' +
       '<div class="no-print flex flex-col gap-4">' +
       '<form id="ph-form" class="sheet flex flex-col gap-3 p-4" autocomplete="off">' +

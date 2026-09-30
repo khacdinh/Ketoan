@@ -114,6 +114,7 @@
   }
 
   function parseAmount(input) {
+    if (input != null && typeof input !== 'string' && typeof input !== 'number') return NaN;
     if (typeof input === 'number') return isFinite(input) ? Math.round(input) : NaN;
     let s = String(input == null ? '' : input).trim().toLowerCase().replace(/\s+/g, '').replace(/đ$/, '');
     if (!s) return 0;
@@ -491,6 +492,7 @@
 
   // Số lượng: nhận 2,5 / 2.5 / 1.000 (nghìn) / 10+5 / 3*2,5. Trả về số (tối đa 4 chữ số lẻ) hoặc NaN.
   function parseQty(input) {
+    if (input != null && typeof input !== 'string' && typeof input !== 'number') return NaN;
     if (typeof input === 'number') return isFinite(input) ? round4(input) : NaN;
     let s = String(input == null ? '' : input).trim().replace(/\s+/g, '').replace(/^=/, '');
     if (!s) return 0;
@@ -518,16 +520,20 @@
 
   // Thành tiền = Số lượng × Đơn giá, làm tròn đến đồng (tính bằng số nguyên để không lệch)
   function costAmount(soLuong, donGia) {
-    // Toàn bộ bằng số nguyên: SL có tối đa 4 số lẻ, ĐG tối đa 2 số lẻ; làm tròn nửa lên ở bước cuối.
-    const sl = Math.round((Number(soLuong) || 0) * 10000);
-    const dg = Math.round((Number(donGia) || 0) * 100);
+    // Toàn bộ bằng số nguyên: SL có tối đa 4 số lẻ, ĐG tối đa 2 số lẻ; làm tròn nửa ra xa số 0 ở bước cuối (như ROUND của Excel).
+    const a = Math.round((Number(soLuong) || 0) * 10000);
+    const b = Math.round((Number(donGia) || 0) * 100);
+    const neg = (a < 0) !== (b < 0);
+    const sl = Math.abs(a);
+    const dg = Math.abs(b);
     const p = sl * dg;
-    if (p >= 0 && p < 4503599627370496) { // 2^52: phép cộng bên dưới vẫn chính xác
+    let r;
+    if (p < 4503599627370496) { // 2^52: phép cộng bên dưới vẫn chính xác
       const t = p * 2 + 1000000;
-      return (t - (t % 2000000)) / 2000000;
-    }
-    if (typeof BigInt === 'function') return Number((BigInt(sl) * BigInt(dg) * BigInt(2) + BigInt(1000000)) / BigInt(2000000));
-    return Math.round(p / 1000000);
+      r = (t - (t % 2000000)) / 2000000;
+    } else if (typeof BigInt === 'function') r = Number((BigInt(sl) * BigInt(dg) * BigInt(2) + BigInt(1000000)) / BigInt(2000000));
+    else r = Math.round(p / 1000000);
+    return r === 0 ? 0 : neg ? -r : r;
   }
 
   function costIndexes(db) {
