@@ -140,6 +140,7 @@ async function server(state) {
         await srv.stop();
         await page.keyboard.press('F2');
         await page.waitForSelector('#entry-form');
+        await page.waitForTimeout(200);
         await page.fill('#entry-form textarea[name=noiDung]', 'thử mất kết nối');
         await page.fill('#entry-form input[name=chi]', '1000');
         await page.keyboard.press('Control+Enter');

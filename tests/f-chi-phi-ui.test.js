@@ -468,7 +468,7 @@ test('F4 Bảng điều khiển chi phí: số tổng, theo Loại CP, đã tr�
       const groupTotals = await page.$$eval('tr[data-group] td.money .font-semibold', (els) => els.map((e) => e.textContent));
       assert.equal(groupTotals.reduce((t, s) => t + num(s), 0), S.total, 'tổng các nhóm ' + ct);
       // các tháng cộng lại = tổng
-      const months = await page.$$eval('#th-months ~ table tbody tr td:nth-child(2)', (els) => els.map((e) => e.textContent));
+      const months = await page.$$eval('#th-months ~ div table tbody tr td:nth-child(2)', (els) => els.map((e) => e.textContent));
       assert.equal(months.reduce((t, s) => t + num(s), 0), S.total, 'tổng các tháng ' + ct);
     };
     await check('');

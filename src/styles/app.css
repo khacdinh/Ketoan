@@ -168,11 +168,11 @@
   .req { @apply text-alert; }
 
   /* Nút gạt nhiều lựa chọn (Chi / Thu / ...) */
-  .seg { @apply inline-flex gap-0.5 rounded-lg bg-[#E4EAE1] p-[3px]; }
+  /* nhãn không bị ngắt giữa chữ; hết chỗ thì cả nút xuống hàng (không tràn ngang ở màn hình hẹp) */
+  .seg { @apply inline-flex max-w-full flex-wrap gap-0.5 rounded-lg bg-[#E4EAE1] p-[3px]; }
   .seg-item { @apply relative cursor-pointer; }
   .seg-item input { @apply pointer-events-none absolute opacity-0; }
   .seg-item span { @apply block rounded-md px-3.5 py-1.5 text-[13.5px] font-medium whitespace-nowrap text-ink-2 transition-colors; }
-  .seg-wrap { @apply flex-wrap; }
   .seg-item:hover span { @apply text-ink; }
   .seg-item input:checked + span { @apply bg-sheet font-semibold text-ink shadow-[0_1px_2px_rgb(23_42_78/0.12)]; }
   .seg-item input:focus-visible + span { @apply outline-2 outline-pen; }
@@ -346,7 +346,9 @@
   .toast .toast-x { @apply -my-1 -mr-2 ml-1 grid size-7 flex-none cursor-pointer place-items-center rounded text-white/80 hover:bg-white/15 hover:text-white; }
   #toast-root { @apply pointer-events-none fixed bottom-5 left-1/2 z-[90] flex w-max max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col items-center gap-2; }
   #toast-root > * { @apply pointer-events-auto; }
+  /* điện thoại, hoặc đang mở hộp thoại: thông báo lên đầu màn hình để không che nút Ghi sổ / Lưu ở chân hộp thoại */
   @media (max-width: 639px) { #toast-root { @apply top-3 bottom-auto; } }
+  body.has-modal #toast-root { @apply top-3 bottom-auto; }
 
   /* Mất kết nối với phần mềm (cửa sổ KhoiDong.bat bị tắt) */
   .offline-bar { @apply sticky top-0 z-40 flex flex-wrap items-center gap-x-3 gap-y-1 bg-alert px-8 py-2 text-[13.5px] text-white max-md:px-4; }
@@ -360,7 +362,7 @@
   /* ---------------- Phiếu: danh sách & tờ A4 xem trước ---------------- */
   .v-item { @apply block w-full cursor-pointer rounded-lg border border-transparent px-3 py-2.5 text-left transition-colors hover:bg-paper; }
   .v-item.active { @apply border-[#C5D6EF] bg-pen-soft; }
-  .v-item.active .text-ink-3 { @apply text-ink-2; }
+  .v-item.active .text-ink-3 { color: var(--color-ink-2) !important; } /* thắng lớp tiện ích text-ink-3 */
   .paper-wrap { @apply overflow-hidden rounded-[10px] bg-[#E3E8E0] p-4; }
   .paper { @apply mx-auto min-h-[297mm] w-[210mm] bg-white px-[12mm] py-[10mm] shadow-[0_2px_14px_rgb(23_42_78/0.16)]; }
 
@@ -401,7 +403,7 @@
   .tree-toggle:focus-visible { outline-offset: 1px; }
   .ledger tr.group-row > td { @apply bg-[#F2F5EF] py-1.5 text-[12.5px] font-semibold text-ink-2; }
   .ledger tbody tr.is-active > td { @apply bg-pen-soft; }
-  .ledger tbody tr.is-active .sub, .ledger tbody tr.is-active .text-ink-3 { @apply text-ink-2; }
+  .ledger tbody tr.is-active .sub, .ledger tbody tr.is-active .text-ink-3 { color: var(--color-ink-2) !important; }
   .ledger .inline-cell { @apply min-w-[90px]; }
   .cost-ledger .sub { @apply max-w-[190px]; }
   .cost-ledger .vt-code { @apply font-semibold whitespace-nowrap; }

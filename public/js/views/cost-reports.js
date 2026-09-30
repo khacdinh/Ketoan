@@ -179,9 +179,9 @@ function groupRowsHtml(s, openState) {
 
 function monthTable(byMonth) {
   if (!byMonth.length) return '';
-  return '<table class="ledger ledger-compact mt-2"><thead><tr><th>Tháng</th><th class="num money">Trong tháng</th><th class="num money">Lũy kế</th></tr></thead><tbody>' +
+  return '<div class="mt-2 overflow-x-auto"><table class="ledger ledger-compact"><thead><tr><th>Tháng</th><th class="num money">Trong tháng</th><th class="num money">Lũy kế</th></tr></thead><tbody>' +
     byMonth.map((m) => '<tr><td>' + (m.thang ? m.thang.slice(5) + '/' + m.thang.slice(0, 4) : 'Chưa có ngày') + '</td><td class="num money">' + money(m.total) + '</td><td class="num money text-ink-2">' + money(m.luyKe) + '</td></tr>').join('') +
-    '</tbody></table>';
+    '</tbody></table></div>';
 }
 
 function drawMonthChart(el, byMonth) {

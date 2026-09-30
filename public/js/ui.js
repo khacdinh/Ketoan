@@ -288,6 +288,7 @@ export function openModal(opts) {
     close() {
       const i = openModals.indexOf(handle);
       if (i >= 0) openModals.splice(i, 1);
+      document.body.classList.toggle('has-modal', openModals.length > 0);
       wrap.classList.remove('show');
       setTimeout(() => wrap.remove(), 160);
       if (opts.onClose) opts.onClose();
@@ -295,6 +296,7 @@ export function openModal(opts) {
     }
   };
   openModals.push(handle);
+  document.body.classList.add('has-modal');
   modal.querySelector('.modal-x').addEventListener('click', () => handle.close());
   wrap.addEventListener('mousedown', (e) => {
     if (e.target === wrap && opts.dismissible !== false) handle.close();
@@ -302,7 +304,10 @@ export function openModal(opts) {
   requestAnimationFrame(() => wrap.classList.add('show'));
   if (opts.onMount) opts.onMount(modal, handle);
   const first = modal.querySelector('[autofocus]') || modal.querySelector('input:not([type=hidden]):not([type=radio]):not([disabled]):not(.date-native), select, textarea, button.btn');
-  if (first) setTimeout(() => first.focus(), 30);
+  // không giật tiêu điểm nếu người dùng đã kịp bấm vào một ô khác trong hộp thoại
+  let touched = false;
+  ['pointerdown', 'keydown', 'input'].forEach((t) => modal.addEventListener(t, () => { touched = true; }, true));
+  if (first) setTimeout(() => { if (!touched) first.focus(); }, 30);
   return handle;
 }
 

@@ -18,7 +18,7 @@ export function openEntryForm(entry, opts) {
   const body =
     '<form id="entry-form" class="grid grid-cols-2 gap-x-5 gap-y-4 max-sm:grid-cols-1" novalidate autocomplete="off">' +
     datalists() +
-    '<div class="col-span-2 max-sm:col-span-1"><div class="seg seg-wrap" role="radiogroup" aria-label="Loại nghiệp vụ">' +
+    '<div class="col-span-2 max-sm:col-span-1"><div class="seg" role="radiogroup" aria-label="Loại nghiệp vụ">' +
     [['chi', 'Chi tiền'], ['thu', 'Thu tiền'], ['ca-hai', 'Thu và chi cùng lúc']].map(([v, l]) =>
       '<label class="seg-item"><input type="radio" name="loai" value="' + v + '"' + (loai === v ? ' checked' : '') + '><span>' + l + '</span></label>').join('') +
     '</div></div>' +
@@ -222,7 +222,9 @@ export function openEntryForm(entry, opts) {
     applyLoai();
     daHint();
     nccHint();
-    setTimeout(() => focusInput(isEdit ? get('noiDung') : get('ngay')), 40);
+    let touched = false;
+    ['pointerdown', 'keydown', 'input'].forEach((t) => el.addEventListener(t, () => { touched = true; }, true));
+    setTimeout(() => { if (!touched) focusInput(isEdit ? get('noiDung') : get('ngay')); }, 40);
   }
 }
 
