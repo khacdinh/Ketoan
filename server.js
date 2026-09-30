@@ -172,6 +172,8 @@ function cleanEntry(body) {
   };
   if (!KT.isISODate(e.ngay)) throw new HttpError(400, 'Ngày không hợp lệ');
   if (!e.noiDung && !e.thu && !e.chi) throw new HttpError(400, 'Cần nhập nội dung hoặc số tiền');
+  // Trạng thái: 'nhap' = Nháp (chưa ghi sổ, không tính vào tồn quỹ, báo cáo, công nợ). Đã ghi sổ thì không lưu trường này.
+  if (body.trangThai === 'nhap') e.trangThai = 'nhap';
   if (e.maDuAn) {
     const p = findCode(store.db.projects, e.maDuAn);
     if (!p) throw new HttpError(400, 'Mã dự án "' + e.maDuAn + '" chưa có trong danh mục');
@@ -277,7 +279,7 @@ async function handleApi(req, res, url) {
       const e = cleanEntry(await readJson(req));
       const rec = Object.assign({ id: store.newId(), seq: store.nextSeq(), createdAt: now, updatedAt: now }, e);
       db.entries.push(rec);
-      trace.log(req, 'them', 'entries', rec, null, rec);
+      trace.log(req, 'them', 'entries', rec, null, rec, KT.isDraft(rec) ? { note: 'Lưu nháp (chưa ghi sổ)' } : null);
       store.save();
       return ok(res, { id: rec.id });
     }
@@ -290,12 +292,27 @@ async function handleApi(req, res, url) {
       store.save();
       return ok(res, { deleted: gone.length });
     }
+    // Ghi sổ các dòng nháp: POST /api/entries/post { ids }
+    if (m === 'POST' && seg[2] === 'post' && seg.length === 3) {
+      const ids = idList((await readJson(req)).ids);
+      const list = db.entries.filter((e) => ids.has(e.id) && KT.isDraft(e));
+      list.forEach((rec) => {
+        const before = trace.clone(rec);
+        delete rec.trangThai;
+        rec.updatedAt = now;
+        trace.log(req, 'ghi-so', 'entries', rec, before, rec);
+      });
+      store.save();
+      return ok(res, { posted: list.length });
+    }
     if (seg.length === 3) {
       const rec = byId(db.entries, seg[2]);
       if (m === 'PUT') {
         const before = trace.clone(rec);
-        Object.assign(rec, cleanEntry(await readJson(req)), { updatedAt: now });
-        trace.log(req, 'sua', 'entries', rec, before, rec);
+        const e = cleanEntry(await readJson(req));
+        Object.assign(rec, e, { updatedAt: now });
+        if (!e.trangThai) delete rec.trangThai;
+        trace.log(req, KT.isDraft(before) && !KT.isDraft(rec) ? 'ghi-so' : 'sua', 'entries', rec, before, rec);
         store.save();
         return ok(res, { id: rec.id });
       }
@@ -490,6 +507,7 @@ async function handleApi(req, res, url) {
 
   /* ----- Xuất Excel ----- */
   if (seg[1] === 'export' && m === 'GET') {
+    const db = KT.postedDb(store.db); // báo cáo Excel không tính dòng Nháp
     const q = url.searchParams;
     const f = {
       from: KT.isISODate(q.get('from')) ? q.get('from') : '',

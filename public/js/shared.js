@@ -936,7 +936,32 @@
     return out;
   }
 
+  /* ---------------- Độ chính xác và truy vết (nhóm 1) ---------------- */
+
+  // Trạng thái chứng từ: 'nhap' = Nháp (chưa ghi sổ). Không có trường trangThai = Đã ghi sổ (mọi dữ liệu cũ).
+  function isDraft(x) { return !!x && x.trangThai === 'nhap'; }
+  const TRANG_THAI = { nhap: 'Nháp', so: 'Đã ghi sổ' };
+
+  // Dữ liệu dùng cho báo cáo, tồn quỹ, công nợ: bỏ các dòng Nháp.
+  // Không có dòng nháp nào thì trả lại đúng đối tượng db (số liệu và tốc độ như trước khi có tính năng này).
+  function postedDb(db) {
+    const hasDraft = (db.entries || []).some(isDraft) || (db.costs || []).some(isDraft);
+    if (!hasDraft) return db;
+    return Object.assign({}, db, {
+      entries: (db.entries || []).filter(function (e) { return !isDraft(e); }),
+      costs: (db.costs || []).filter(function (c) { return !isDraft(c); })
+    });
+  }
+
+  function draftsOf(db) {
+    return { entries: (db.entries || []).filter(isDraft), costs: (db.costs || []).filter(isDraft) };
+  }
+
   return {
+    isDraft: isDraft,
+    TRANG_THAI: TRANG_THAI,
+    postedDb: postedDb,
+    draftsOf: draftsOf,
     docSo: docSo,
     docTienBangChu: docTienBangChu,
     fmtMoney: fmtMoney,
