@@ -29,6 +29,8 @@ const costExporter = require('./lib/costExporter');
 const createCostApi = require('./lib/costApi');
 const createTrace = require('./lib/traceApi');
 const createCashCountApi = require('./lib/cashCountApi');
+const createAttachApi = require('./lib/attachApi');
+const JSZip = require('jszip');
 const { dataSummary } = require('./lib/store');
 
 const APP_ID = 'so-thu-chi-ke-toan';
@@ -82,9 +84,11 @@ function readBody(req, limit) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
+    let over = false;
     req.on('data', (c) => {
+      if (over) return; // phần còn lại: đọc bỏ đi để kịp trả lời 413 rõ ràng (không cắt ngang kết nối)
       size += c.length;
-      if (size > limit) { reject(new HttpError(413, 'Dữ liệu gửi lên quá lớn')); req.destroy(); return; }
+      if (size > limit) { over = true; chunks.length = 0; reject(new HttpError(413, 'Dữ liệu gửi lên quá lớn (tối đa ' + Math.round(limit / 1048576) + ' MB)')); return; }
       chunks.push(c);
     });
     req.on('end', () => resolve(Buffer.concat(chunks)));
@@ -233,7 +237,7 @@ function usage(field, ma) {
 
 // Bản sao lưu đưa vào phải đúng hình dạng: các danh sách là mảng đối tượng (tránh làm hỏng kho khi file lạ)
 function checkDbShape(d) {
-  ['projects', 'suppliers', 'entries', 'costGroups', 'costItems', 'materials', 'houses', 'costs', 'cashCounts'].forEach((k) => {
+  ['projects', 'suppliers', 'entries', 'costGroups', 'costItems', 'materials', 'houses', 'costs', 'cashCounts', 'attachments'].forEach((k) => {
     if (d[k] === undefined) return;
     if (!Array.isArray(d[k]) || d[k].some((x) => x === null || typeof x !== 'object' || Array.isArray(x))) throw new HttpError(400, 'File sao lưu không hợp lệ: "' + k + '" phải là danh sách các bản ghi');
   });
@@ -245,6 +249,8 @@ function checkDbShape(d) {
 const trace = createTrace({ store, HttpError, str, readJson, ok, sendJson, findCode });
 const costApi = createCostApi({ store, HttpError, str, money, readJson, ok, sendJson, findCode, byId, idList, own, trace });
 const cashCountApi = createCashCountApi({ store, HttpError, str, money, readJson, ok, byId, trace });
+const attachApi = createAttachApi({ store, HttpError, str, sendJson, ok, readBody, trace, send });
+trace.hooks.afterPurge.push((item) => attachApi.retire(item.kind === 'attachments' ? item.records : (item.attachments || [])));
 
 // Dựng file Excel: dữ liệu nhỏ thì làm ngay; dữ liệu lớn thì giao cho luồng riêng để máy chủ không đứng hình
 const BIG_EXPORT_ROWS = 3000;
@@ -476,6 +482,44 @@ async function handleApi(req, res, url) {
   if (p === '/api/backup' && m === 'GET') {
     return attachment(res, Buffer.from(JSON.stringify(store.db, null, 1), 'utf8'), 'SaoLuu_SoThuChi_' + stampNow() + '.json', 'application/json');
   }
+  // Bản sao lưu đầy đủ (.zip): dữ liệu + chứng từ đính kèm + nhật ký thay đổi
+  if (p === '/api/backup-zip' && m === 'GET') {
+    const zip = new JSZip();
+    zip.file('ketoan.json', JSON.stringify(store.db, null, 1));
+    if (fs.existsSync(store.log.file)) zip.file('nhat-ky.jsonl', fs.readFileSync(store.log.file));
+    const metas = store.db.attachments.concat(...store.db.trash.map((t) => (t.kind === 'attachments' ? t.records : t.attachments || [])));
+    let n = 0;
+    metas.forEach((a) => { const f = attachApi.fileOf(a); if (f) { zip.file(a.file, fs.readFileSync(f)); n++; } });
+    const buf = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 3 } });
+    return attachment(res, buf, 'SaoLuuDayDu_SoThuChi_' + stampNow() + '.zip', 'application/zip');
+  }
+  // Khôi phục từ bản sao lưu đầy đủ (.zip): thay dữ liệu, chép lại file chứng từ còn thiếu (không ghi đè file đang có)
+  if (p === '/api/restore-zip' && m === 'POST') {
+    const buf = await readBody(req, 1024 * 1024 * 1024);
+    let zip;
+    try { zip = await JSZip.loadAsync(buf); } catch (e) { throw new HttpError(400, 'File không phải bản sao lưu .zip của phần mềm'); }
+    const jf = zip.file('ketoan.json');
+    if (!jf) throw new HttpError(400, 'File .zip không có ketoan.json');
+    let data;
+    try { data = JSON.parse((await jf.async('string')).replace(/^\uFEFF/, '')); } catch (e) { throw new HttpError(400, 'ketoan.json trong file .zip bị hỏng'); }
+    if (!data || typeof data !== 'object' || !Array.isArray(data.entries) || !Array.isArray(data.projects) || !Array.isArray(data.suppliers)) throw new HttpError(400, 'File sao lưu không hợp lệ (thiếu entries/projects/suppliers)');
+    checkDbShape(data);
+    let copied = 0;
+    for (const name of Object.keys(zip.files)) {
+      const zf = zip.files[name];
+      if (zf.dir || !attachApi.SAFE_FILE.test(name)) continue; // chỉ nhận đúng dạng attachments/yyyy-mm/<id>-<hex>.<đuôi>
+      const dst = path.join(store.dir, name);
+      if (fs.existsSync(dst)) continue;
+      const content = await zf.async('nodebuffer');
+      if (!attachApi.sniff(content)) continue;
+      fs.mkdirSync(path.dirname(dst), { recursive: true });
+      fs.writeFileSync(dst, content, { flag: 'wx' });
+      copied++;
+    }
+    trace.log(req, 'khoi-phuc-sao-luu', 'data', '', null, null, { label: 'Khôi phục từ bản sao lưu đầy đủ (.zip)', note: 'Dữ liệu sau khôi phục: ' + dataSummary(data) + '; chép ' + copied + ' file chứng từ' });
+    const bk = store.replaceAll(data, 'truoc-khoi-phuc');
+    return ok(res, { backup: bk, copied });
+  }
   if (p === '/api/backups' && m === 'GET') {
     return sendJson(res, 200, { ok: true, backups: store.listBackups() });
   }
@@ -571,6 +615,7 @@ async function handleApi(req, res, url) {
 
   if (await trace.handle(req, res, url)) return;
   if (await cashCountApi.handle(req, res, url)) return;
+  if (await attachApi.handle(req, res, url)) return;
   if (await costApi.handle(req, res, url)) return;
 
   throw new HttpError(404, 'Không có chức năng ' + m + ' ' + p);
