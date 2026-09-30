@@ -277,6 +277,7 @@ async function handleApi(req, res, url) {
   if (seg[1] === 'entries') {
     if (m === 'POST' && seg.length === 2) {
       const e = cleanEntry(await readJson(req));
+      trace.assertOpen([e.ngay], 'thêm dòng');
       const rec = Object.assign({ id: store.newId(), seq: store.nextSeq(), createdAt: now, updatedAt: now }, e);
       db.entries.push(rec);
       trace.log(req, 'them', 'entries', rec, null, rec, KT.isDraft(rec) ? { note: 'Lưu nháp (chưa ghi sổ)' } : null);
@@ -287,6 +288,7 @@ async function handleApi(req, res, url) {
       const body = await readJson(req);
       const ids = idList(body.ids);
       const gone = db.entries.filter((e) => ids.has(e.id));
+      trace.assertOpen(gone.map((e) => e.ngay), 'xóa');
       db.entries = db.entries.filter((e) => !ids.has(e.id));
       if (gone.length) trace.toTrash(req, 'entries', gone, gone.length === 1 ? 'Dòng sổ ' + trace.describe('entries', gone[0]) : gone.length + ' dòng sổ thu chi');
       store.save();
@@ -296,6 +298,7 @@ async function handleApi(req, res, url) {
     if (m === 'POST' && seg[2] === 'post' && seg.length === 3) {
       const ids = idList((await readJson(req)).ids);
       const list = db.entries.filter((e) => ids.has(e.id) && KT.isDraft(e));
+      trace.assertOpen(list.map((e) => e.ngay), 'ghi sổ');
       list.forEach((rec) => {
         const before = trace.clone(rec);
         delete rec.trangThai;
@@ -310,6 +313,7 @@ async function handleApi(req, res, url) {
       if (m === 'PUT') {
         const before = trace.clone(rec);
         const e = cleanEntry(await readJson(req));
+        trace.assertOpen([rec.ngay, e.ngay], 'sửa');
         Object.assign(rec, e, { updatedAt: now });
         if (!e.trangThai) delete rec.trangThai;
         trace.log(req, KT.isDraft(before) && !KT.isDraft(rec) ? 'ghi-so' : 'sua', 'entries', rec, before, rec);
@@ -317,6 +321,7 @@ async function handleApi(req, res, url) {
         return ok(res, { id: rec.id });
       }
       if (m === 'DELETE') {
+        trace.assertOpen([rec.ngay], 'xóa');
         db.entries = db.entries.filter((e) => e !== rec);
         trace.toTrash(req, 'entries', [rec], 'Dòng sổ ' + trace.describe('entries', rec));
         store.save();
@@ -446,7 +451,9 @@ async function handleApi(req, res, url) {
       return ok(res, { kind: 'chi-phi', result, warnings: result.warnings.slice(0, 300) });
     }
     if (url.searchParams.get('dryRun') === '1') {
-      return sendJson(res, 200, { ok: true, preview: { stats: parsed.stats, warnings: parsed.warnings.slice(0, 200), settings: parsed.settings } });
+      const nLocked = KT.isLockedDate(store.db, '') || !store.db.locks.length ? 0 : parsed.entries.filter((e) => KT.isLockedDate(store.db, e.ngay)).length;
+      const w = (nLocked ? ['Có ' + nLocked + ' dòng thuộc tháng đã khóa sổ: sẽ được bỏ qua khi nhập.'] : []).concat(parsed.warnings);
+      return sendJson(res, 200, { ok: true, preview: { stats: parsed.stats, warnings: w.slice(0, 200), settings: parsed.settings } });
     }
     const mode = url.searchParams.get('mode') === 'merge' ? 'merge' : 'replace';
     const result = importer.applyImport(store, parsed, mode);
@@ -491,6 +498,7 @@ async function handleApi(req, res, url) {
     if (b.confirm !== 'XOA') throw new HttpError(400, 'Cần xác nhận bằng chữ XOA');
     const keepCatalogs = !!b.keepCatalogs;
     const cur = store.db;
+    trace.assertOpen(cur.entries.map((e) => e.ngay), 'xóa toàn bộ sổ');
     trace.log(req, 'xoa-toan-bo', 'entries', '', null, null, { label: 'Xóa toàn bộ sổ thu chi' + (keepCatalogs ? ' (giữ danh mục)' : ''),
       note: 'Xóa ' + cur.entries.length + ' dòng sổ thu chi. Có bản sao lưu ngay trước khi xóa (truoc-xoa-du-lieu).' });
     // Chỉ xóa sổ thu chi; dữ liệu chi phí công trình giữ nguyên (xóa riêng ở /api/reset-costs)

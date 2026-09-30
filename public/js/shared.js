@@ -953,6 +953,21 @@
     });
   }
 
+  // Khóa sổ theo tháng: db.locks = [{ thang: 'yyyy-mm', at, by }]
+  function lockedMonths(db) {
+    return new Set((db.locks || []).map(function (l) { return l.thang; }));
+  }
+  function monthOf(ngay) { return String(ngay || '').slice(0, 7); }
+  function monthLabel(thang) { return /^\d{4}-\d{2}$/.test(thang) ? thang.slice(5) + '/' + thang.slice(0, 4) : String(thang || ''); }
+  function isLockedDate(db, ngay) {
+    if (!db.locks || !db.locks.length || !ngay) return false;
+    return lockedMonths(db).has(monthOf(ngay));
+  }
+  function lockMessage(thang, verb) {
+    return 'Tháng ' + monthLabel(thang) + ' đã khóa sổ nên không ' + (verb || 'sửa') + ' được. Muốn ' + (verb || 'sửa') +
+      ': vào Kiểm soát sổ sách → Khóa sổ, bấm “Mở khóa” tháng ' + monthLabel(thang) + ' (cần ghi lý do, có lưu nhật ký).';
+  }
+
   function draftsOf(db) {
     return { entries: (db.entries || []).filter(isDraft), costs: (db.costs || []).filter(isDraft) };
   }
@@ -962,6 +977,11 @@
     TRANG_THAI: TRANG_THAI,
     postedDb: postedDb,
     draftsOf: draftsOf,
+    lockedMonths: lockedMonths,
+    monthOf: monthOf,
+    monthLabel: monthLabel,
+    isLockedDate: isLockedDate,
+    lockMessage: lockMessage,
     docSo: docSo,
     docTienBangChu: docTienBangChu,
     fmtMoney: fmtMoney,
