@@ -49,6 +49,9 @@ Nhóm menu **Chi phí công trình** (bên trái, dưới “Tổng hợp NCC”
 | **Giá vật tư** | (mới) | Lịch sử đơn giá từng vật tư theo NCC, giá thấp / cao / gần nhất, biểu đồ giá. |
 | **Danh mục chi phí** | `DM_NHOM`, `DM_HANGMUC`, `DM_VATTU`, `DM_NHA` | Nhóm chi phí, hạng mục, vật tư, nhà / khu. |
 
+Mục **Kiểm soát** (trên “Cài đặt”; con số màu vàng = số việc cần xử lý): **Cần xử lý**, **Kiểm quỹ**, **Khóa sổ**,
+**Nhật ký thay đổi**, **Thùng rác** — xem mục 16.
+
 ---
 
 ## 3. Ghi sổ nhanh
@@ -111,7 +114,9 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
 - Dữ liệu: `C:\KeToan\data\ketoan.json` (lưu ngay sau mỗi thao tác).
 - Sao lưu tự động: `C:\KeToan\data\backups\` — tự tạo định kỳ và **trước mỗi thao tác lớn** (nâng cấp phần mềm, nhập Excel,
   khôi phục, xóa). Khôi phục bằng 1 nút trong **Cài đặt & dữ liệu → Bản sao lưu tự động**.
-- Nên định kỳ bấm **Tải bản sao lưu (.json)** và cất ra USB / Google Drive.
+- Chứng từ đính kèm (ảnh, PDF): `C:\KeToan\data\attachments\`. Nhật ký thay đổi: `C:\KeToan\data\nhat-ky.jsonl`.
+- Nên định kỳ bấm **Tải bản sao lưu đầy đủ (.zip)** — gồm dữ liệu, chứng từ đính kèm và nhật ký — rồi cất ra USB / Google Drive.
+  (Nút **Tải bản sao lưu chỉ dữ liệu (.json)** cho file nhỏ, không kèm ảnh.) **Khôi phục từ file sao lưu** nhận cả `.zip` lẫn `.json`.
 
 **Chuyển sang máy khác:** chép cả thư mục `C:\KeToan` sang máy mới (đã cài Node.js) rồi bấm `KhoiDong.bat`.
 
@@ -260,4 +265,77 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
   `costExporter.js` cho chi phí công trình), `public/` (giao diện; `views/cost-*.js` cho chi phí công trình),
   `public/js/shared.js` (công thức tính dùng chung: tồn quỹ, tổng hợp, gộp phiếu, đọc số tiền bằng chữ, thành tiền,
   tổng hợp chi phí, công nợ, giá vật tư).
-- Dữ liệu `data/ketoan.json` phiên bản (schema) 2. Bản phần mềm cũ hơn không đọc được phần chi phí.
+- Dữ liệu `data/ketoan.json` phiên bản (schema) 3 (thêm thùng rác, trạng thái nháp, khóa sổ, cảnh báo đã bỏ qua, kiểm quỹ,
+  chứng từ đính kèm). Lần đầu mở bằng bản này, dữ liệu cũ được sao lưu (`backups/ketoan-…-truoc-nang-cap-v3.json`) rồi tự nâng cấp;
+  không bản ghi cũ nào bị đổi. Bản phần mềm cũ hơn không đọc được các phần mới.
+- Nhật ký thay đổi ở `data/nhat-ky.jsonl` (mỗi dòng một thao tác, chỉ ghi thêm), chứng từ ở `data/attachments/`.
+
+---
+
+## 16. Kiểm soát sổ sách — số liệu luôn đúng, mọi thay đổi đều truy vết được
+
+### 16.1 Ai đang dùng máy (ghi vào nhật ký)
+Cài đặt → **Người đang dùng máy này**: gõ tên (VD “Thúy kế toán”) rồi **Lưu tên**. Từ đó mọi thêm, sửa, xóa trên máy này
+được ghi kèm tên. Mỗi máy đặt tên riêng; không đặt thì nhật ký ghi “không rõ”.
+
+### 16.2 Nhật ký thay đổi
+Kiểm soát → **Nhật ký thay đổi**: mọi lần thêm / sửa / xóa dòng sổ, phiếu nhập, dòng chi phí, danh mục, cài đặt, nhập Excel,
+khôi phục, khóa / mở khóa sổ, kiểm quỹ, đính kèm, bỏ qua cảnh báo… kèm thời điểm, người thao tác, giá trị **trước và sau**.
+- Lọc theo ngày, loại thao tác, loại dữ liệu, số bản ghi, từ khóa (gõ không dấu cũng tìm được, gõ số tiền cũng được).
+- Bấm một dòng để xem trường nào đổi (chữ đỏ gạch = trước, chữ xanh = sau). Bấm **số bản ghi** để xem toàn bộ lịch sử của bản ghi đó.
+- Trong form sửa dòng sổ có nút **Lịch sử**; khi sửa phiếu nhập có nút **Lịch sử phiếu**.
+- Dữ liệu từ trước khi nâng cấp không có lịch sử: nhật ký bắt đầu bằng một mục “Khởi tạo từ dữ liệu cũ”.
+
+### 16.3 Xóa và Thùng rác
+Bấm Xóa ở bất cứ đâu (dòng sổ, phiếu nhập, dòng chi phí, dự án, NCC, hạng mục, vật tư, nhà, biên bản kiểm quỹ, chứng từ) đều
+**chỉ chuyển vào Thùng rác**: không còn tính vào sổ, báo cáo, tồn quỹ, công nợ, file Excel xuất ra.
+- Kiểm soát → **Thùng rác** → **Khôi phục** để đưa về nguyên như cũ (giữ đúng số thứ tự, chứng từ đính kèm đi theo).
+- Khôi phục bị từ chối nếu mã danh mục đã bị tạo lại, hoặc bản ghi dùng một danh mục đã xóa (phần mềm báo rõ cần khôi phục gì trước),
+  hoặc thuộc tháng đã khóa sổ.
+- **Xóa vĩnh viễn** (từng mục, hoặc “Xóa vĩnh viễn tất cả” phải gõ XOA) — có ghi nhật ký. File chứng từ khi xóa vĩnh viễn được chuyển
+  sang `data/attachments/_da-xoa/` chứ không mất hẳn (để các bản sao lưu cũ vẫn mở được).
+- Riêng “Xóa toàn bộ dữ liệu sổ / chi phí” ở Cài đặt vẫn là xóa hẳn (đã có bản sao lưu tự động ngay trước khi xóa) và bị chặn nếu
+  còn tháng đã khóa sổ.
+
+### 16.4 Phiếu Nháp
+Khi chưa chắc (chờ hóa đơn, chờ duyệt), bấm **Lưu nháp** thay cho Ghi sổ (form Ghi thu / chi và Phiếu nhập chi phí).
+- Dòng / phiếu **Nháp** hiện trong sổ với nhãn vàng “Nháp”, **không** tính vào tồn quỹ, tổng thu chi, báo cáo, công nợ, file Excel.
+- Khi đã có dòng nháp, sổ có thêm bộ lọc **Mọi trạng thái / Đã ghi sổ / Nháp**.
+- Ghi sổ: bấm dấu ✓ trên dòng nháp, hoặc mở ra rồi bấm **Ghi sổ**. Dữ liệu cũ đều là “Đã ghi sổ”.
+- Nháp để quá 7 ngày (chỉnh được) sẽ hiện trong “Cần xử lý”.
+
+### 16.5 Khóa sổ theo tháng
+Kiểm soát → **Khóa sổ**: bảng từng tháng (số dòng, thu, chi, chi phí, số dòng nháp). Đối chiếu xong tháng nào thì **Khóa** tháng đó
+(hoặc chọn “Khóa sổ đến hết tháng …” để khóa nhiều tháng một lần).
+- Tháng đã khóa: không thêm / sửa / xóa / khôi phục / ghi sổ nháp được dòng nào; trong sổ các dòng đó có hình ổ khóa, mở ra chỉ xem.
+  Nhập Excel sẽ **bỏ qua** các dòng thuộc tháng đã khóa (có cảnh báo); chế độ “thay toàn bộ” vẫn giữ nguyên dữ liệu các tháng đã khóa.
+- Tháng còn dòng Nháp thì không khóa được (ghi sổ hoặc xóa nháp trước).
+- Cần sửa: bấm **Mở khóa**, **bắt buộc ghi lý do** — được lưu vào nhật ký. Sửa xong nhớ khóa lại.
+
+### 16.6 Cần xử lý (kiểm tra bất thường)
+Phần mềm tự rà soát và đếm số việc (con số vàng trên menu “Kiểm soát” và ô đầu mục “Cần chú ý” ở Tổng quan):
+- **Nghi trùng**: hai dòng chi phí cùng ngày, NCC, vật tư, thành tiền; hai dòng sổ cùng ngày, NCC (hoặc nội dung), số tiền.
+- **Đơn giá lệch nhiều so với giá thường mua** cùng vật tư, cùng NCC (mặc định lệch quá 30%, chỉnh được). Mã chung “XX-…” không so.
+- **Ngày bất thường**: ở tương lai, trước năm 2000, hoặc khác xa các dòng nhập liền trước / liền sau (hay gặp khi gõ nhầm năm).
+- **Vật tư chưa xác định** (mã XX-CHUAXACDINH) hoặc vật tư đang dùng mà chưa gán hạng mục.
+- **Thiếu hạng mục** hoặc mã NCC / dự án / công trình chưa có trong danh mục.
+- **Phiếu nháp để lâu** chưa ghi sổ; **số tiền âm hoặc bằng 0**; **kiểm quỹ có chênh lệch**.
+
+Mỗi cảnh báo có nút **Mở để sửa** (mở đúng dòng / phiếu), **Xem trong sổ** (với nghi trùng) và **Bỏ qua** (khi đúng thật, có thể ghi chú;
+có lưu nhật ký, không nhắc lại; muốn xem lại tick “Hiện cả cảnh báo đã bỏ qua” rồi **Theo dõi lại**).
+
+### 16.7 Kiểm quỹ (đối chiếu tồn quỹ)
+Kiểm soát → **Kiểm quỹ**: chọn ngày, đếm tiền trong két, nhập **Số tiền thực tế** (hoặc mở “Bảng kê số tờ theo mệnh giá” để phần mềm
+tự cộng). Phần mềm hiện ngay **tồn quỹ theo sổ** (đến hết ngày đó, không tính nháp) và **chênh lệch thừa / thiếu**.
+- **Lưu biên bản kiểm quỹ** → có trong bảng “Các lần kiểm quỹ”; nút máy in để **in biên bản kiểm kê quỹ** (A4, có chỗ ký),
+  nút Excel để xuất biên bản.
+- Chênh lệch khác 0 được đưa vào “Cần xử lý” cho tới khi tìm ra nguyên nhân (sửa sổ cho khớp, hoặc Bỏ qua kèm lý do).
+- Nếu sổ bị sửa sau ngày kiểm quỹ, cột “Theo sổ hiện nay” chuyển màu để biết số theo sổ đã khác lúc kiểm.
+
+### 16.8 Đính kèm chứng từ
+Mở một dòng sổ thu chi (sửa), một dòng chi phí, hoặc một phiếu nhập đã lưu → khung **Chứng từ đính kèm** → **Đính kèm ảnh / PDF**
+(chọn được nhiều file; chụp hóa đơn bằng điện thoại rồi chép vào máy cũng được).
+- Nhận ảnh JPG, PNG, WEBP hoặc PDF, tối đa 10 MB mỗi file. Bấm tên file để xem (ảnh hiện ngay, PDF mở tab mới), nút tải về, nút xóa.
+- Dòng có chứng từ hiện **kẹp giấy kèm số lượng** trong sổ; bấm vào để xem nhanh.
+- Chứng từ nằm trong `data/attachments/`, có trong **bản sao lưu đầy đủ (.zip)**; xóa dòng thì chứng từ vào thùng rác cùng dòng đó.
+
