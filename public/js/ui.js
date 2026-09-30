@@ -155,13 +155,14 @@ export function duo(name, cls) {
 let onDb = null;
 export function onDatabase(fn) { onDb = fn; }
 
-export async function api(method, url, body, isRaw) {
+export async function api(method, url, body, isRaw, extraHeaders) {
   let res;
   try {
     const headers = body === undefined ? {} : { 'Content-Type': isRaw ? 'application/octet-stream' : 'application/json' };
     // Tên người đang dùng máy này (Cài đặt) để nhật ký thay đổi ghi được ai thao tác
     const who = LS.get('nguoiDung', '');
     if (who) headers['X-Nguoi-Dung'] = encodeURIComponent(who);
+    Object.assign(headers, extraHeaders || {});
     res = await fetch(url, {
       method,
       headers,

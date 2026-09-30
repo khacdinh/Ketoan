@@ -3,6 +3,7 @@ import { $, esc, money, fdate, icon, highlight, download, periodControls, bindPe
 import { S, saveFilter, projectOptions, supplierOptions, draftLedgerRows } from '../state.js';
 import { openEntryForm, deleteEntry } from '../forms.js';
 import { printView } from '../print.js';
+import { clipHtml, openAttachList } from '../attach.js';
 
 const KT = window.KT;
 const PAGE = 500; // số dòng vẽ mỗi lần (bảng lớn vẽ chậm); bấm "Hiện thêm" để xem tiếp, in thì hiện hết
@@ -78,6 +79,7 @@ export function renderLedger(root) {
     else if (act === 'edit' && entry) openEntryForm(entry);
     else if (act === 'dup' && entry) openEntryForm(entry, { duplicate: true });
     else if (act === 'del' && entry) deleteEntry(entry);
+    else if (act === 'clip' && entry) openAttachList('entries', entry.id, 'Chứng từ của dòng sổ');
     else if (act === 'locked' && entry) toast(KT.lockMessage(KT.monthOf(entry.ngay), 'sửa'), 'info');
     else if (act === 'post' && entry) {
       api('POST', '/api/entries/post', { ids: [entry.id] }).then(() => toast('Đã ghi sổ dòng nháp, đã tính vào tồn quỹ')).catch(showError);
@@ -153,7 +155,7 @@ function rowHtml(r, q) {
     '<td class="whitespace-nowrap">' + (r.soPhieu ? '<a href="#" class="font-semibold text-pen hover:underline" data-act="voucher" data-so="' + esc(r.soPhieu) + '" title="Xem và in phiếu">' + highlight(r.soPhieu, q) + '</a>' : '') + '</td>' +
     '<td class="whitespace-nowrap">' + projectCell(r, q) + '</td>' +
     '<td>' + supplierCell(r, q) + '</td>' +
-    '<td class="wrap-text">' + highlight(r.noiDung, q) +
+    '<td class="wrap-text">' + highlight(r.noiDung, q) + clipHtml('entries', r.id) +
     (extra.length ? '<div class="mt-0.5 flex flex-wrap gap-x-3 text-[12.5px] text-ink-3">' + extra.join('') + '</div>' : '') + '</td>' +
     '<td class="num money thu">' + (r.thu ? highlight(money(r.thu), q) : '') + '</td>' +
     '<td class="num money">' + (r.chi ? highlight(money(r.chi), q) : '') + '</td>' +

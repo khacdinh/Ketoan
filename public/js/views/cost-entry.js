@@ -5,6 +5,7 @@ import { S, costDatalists, resolveCode, resolveItem, materialByCode, itemByCode,
 import { openProjectForm, openSupplierForm } from '../forms.js';
 import { openItemForm, openMaterialForm, openHouseForm } from './cost-catalogs.js';
 import { openHistory } from './control.js';
+import { attachBlock, bindAttach } from '../attach.js';
 
 const KT = window.KT;
 const COLS = ['maVT', 'dienGiai', 'soLuong', 'donGia', 'hm', 'loaiCP'];
@@ -123,6 +124,7 @@ export function renderCostEntry(root) {
     (editingPosted || lockedSlip ? '' : '<button type="button" class="btn btn-secondary" data-act="save-draft" title="Lưu để làm tiếp; phiếu Nháp chưa tính vào chi phí, công nợ">' + icon('draft') + 'Lưu nháp</button>') +
     (lockedSlip ? '' : '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon('save') + (editingPosted ? 'Lưu thay đổi' : st.nhap ? 'Ghi sổ' : 'Ghi vào sổ chi phí') + '</button>') +
     '</div></section>' +
+    '<section class="sheet px-5 pb-4 no-print" aria-label="Chứng từ của phiếu">' + attachBlock('slips', editing ? Number(st.phieuId) : 0, { readonly: lockedSlip, newText: 'Ghi (hoặc lưu nháp) phiếu trước, rồi mở lại phiếu ở danh sách “Phiếu đã nhập” để đính kèm ảnh phiếu giao hàng, hóa đơn.' }) + '</section>' +
     recentHtml(params.phieu || '');
 
   const form = $('#cp-head', root);
@@ -553,6 +555,7 @@ export function renderCostEntry(root) {
     }
   });
   bindRecent(root);
+  bindAttach(root);
 
   refreshHeaderHints();
   refreshVtList();

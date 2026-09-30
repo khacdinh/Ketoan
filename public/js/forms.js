@@ -2,6 +2,7 @@
 import { $, esc, api, openModal, toast, showError, bindMoneyInput, money, confirmDialog, icon, dateField, focusInput, fieldError, busy } from './ui.js';
 import { S, datalists, resolveCode, projectByCode, supplierByCode } from './state.js';
 import { openHistory } from './views/control.js';
+import { attachBlock, bindAttach } from './attach.js';
 
 const KT = window.KT;
 
@@ -47,7 +48,7 @@ export function openEntryForm(entry, opts) {
     '<p class="col-span-2 text-[12.5px] leading-relaxed text-ink-3 max-sm:col-span-1">' + icon('keyboard', 'mr-1 align-[-3px] text-[15px]') +
     'Ô số tiền nhận <b class="font-medium text-ink-2">1.250.000</b>, <b class="font-medium text-ink-2">50tr</b>, <b class="font-medium text-ink-2">300k</b> hoặc phép tính <b class="font-medium text-ink-2">58000+11000</b>. ' +
     'Ghi sổ nhanh bằng <kbd>Ctrl</kbd> + <kbd>Enter</kbd>, đóng bằng <kbd>Esc</kbd>.</p>' +
-    '</form>';
+    '</form>' + attachBlock('entries', isEdit ? e.id : 0, { readonly: false, newText: 'Ghi sổ (hoặc lưu nháp) dòng này trước, rồi mở lại để đính kèm ảnh hóa đơn, chứng từ.' });
 
   const footer =
     (isEdit ? (lockedRec ? '' : '<button type="button" class="btn btn-danger-ghost" data-act="delete">' + icon('trash') + 'Xóa dòng</button>') +
@@ -64,7 +65,7 @@ export function openEntryForm(entry, opts) {
     body,
     footer,
     dismissible: false,
-    onMount(el) { bindEntryForm(el); }
+    onMount(el) { bindEntryForm(el); bindAttach(el); }
   });
 
   function bindEntryForm(el) {

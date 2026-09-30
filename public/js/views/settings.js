@@ -39,9 +39,10 @@ export function renderSettings(root) {
     '<div class="flex flex-col gap-2 px-5 pb-5">' +
     act('export-full', 'excel', 'Xuất toàn bộ sổ sách ra Excel', 'Đủ các sheet như file gốc: Tổng quan có biểu đồ, Sổ thu chi, Phiếu chi chọn số phiếu để in, các danh mục, Tổng hợp NCC. Giữ nguyên công thức.') +
     act('export-costs', 'crane', 'Xuất chi phí công trình ra Excel', 'Cấu trúc như file ChiPhi_CongTrinh: TONGHOP có biểu đồ, NHATKYCHUNG, CHI_TIET_THEO_NHOM, CONGNO_NCC, SO_QUY, giá vật tư, các danh mục. Giữ công thức SUMIFS, INDEX/MATCH.') +
-    act('backup', 'database', 'Tải bản sao lưu (.json)', 'Một file chứa toàn bộ dữ liệu. Nên cất ra USB hoặc Google Drive định kỳ.') +
-    act('restore', 'history', 'Khôi phục từ file sao lưu', 'Thay toàn bộ dữ liệu hiện tại bằng dữ liệu trong file .json đã tải trước đó.') +
-    '<input type="file" id="restore-file" accept=".json" class="sr-only" tabindex="-1" aria-label="Chọn file sao lưu .json để khôi phục">' +
+    act('backup-zip', 'database', 'Tải bản sao lưu đầy đủ (.zip)', 'Toàn bộ dữ liệu, chứng từ đính kèm (ảnh, PDF) và nhật ký thay đổi trong một file. Nên cất ra USB hoặc Google Drive định kỳ.') +
+    act('backup', 'database', 'Tải bản sao lưu chỉ dữ liệu (.json)', 'File nhỏ, không kèm ảnh chứng từ.') +
+    act('restore', 'history', 'Khôi phục từ file sao lưu', 'Thay toàn bộ dữ liệu hiện tại bằng dữ liệu trong file .zip hoặc .json đã tải trước đó. Chứng từ trong file .zip được chép lại.') +
+    '<input type="file" id="restore-file" accept=".json,.zip" class="sr-only" tabindex="-1" aria-label="Chọn file sao lưu .zip hoặc .json để khôi phục">' +
     '</div></section>' +
 
     /* ---- Sao lưu tự động ---- */
@@ -100,6 +101,15 @@ export function renderSettings(root) {
     const file = restoreInput.files[0];
     restoreInput.value = '';
     if (!file) return;
+    if (/\.zip$/i.test(file.name)) {
+      if (!(await confirmDialog({
+        title: 'Khôi phục từ bản sao lưu đầy đủ',
+        html: 'Khôi phục từ <b class="text-ink">' + esc(file.name) + '</b>?<p class="mt-2">Toàn bộ dữ liệu hiện tại sẽ được thay bằng dữ liệu trong file; ảnh chứng từ còn thiếu được chép lại. Phần mềm tự sao lưu dữ liệu hiện tại trước khi thay. Nhật ký thay đổi hiện có được giữ nguyên.</p>',
+        okText: 'Khôi phục', danger: true
+      }))) return;
+      try { const r = await api('POST', '/api/restore-zip', await file.arrayBuffer(), true); toast('Đã khôi phục dữ liệu' + (r.copied ? ', chép lại ' + r.copied + ' file chứng từ' : '')); } catch (err) { showError(err); }
+      return;
+    }
     let data;
     try { data = JSON.parse(await file.text()); } catch (e) { return toast('File này không phải bản sao lưu của phần mềm', 'error'); }
     const n = (data.entries || []).length;
@@ -120,6 +130,7 @@ export function renderSettings(root) {
     else if (k === 'export-costs') download('/api/export/costs');
     else if (k === 'reset-costs') openResetCosts();
     else if (k === 'backup') { location.href = '/api/backup'; }
+    else if (k === 'backup-zip') { location.href = '/api/backup-zip'; toast('Đang đóng gói bản sao lưu đầy đủ, file sẽ nằm trong thư mục Downloads', 'info'); }
     else if (k === 'restore') restoreInput.click();
     else if (k === 'backup-now') {
       try { await api('POST', '/api/backups/now'); toast('Đã tạo bản sao lưu'); loadBackups(root); } catch (err) { showError(err); }

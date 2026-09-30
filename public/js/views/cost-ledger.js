@@ -3,6 +3,7 @@ import { $, esc, money, fdate, icon, highlight, download, periodControls, bindPe
   api, toast, showError, confirmDialog, openModal, dateField, focusInput, fieldError } from '../ui.js';
 import { S, saveFilter, ctOptions, selectOptions, costDatalists, resolveCode, resolveItem, materialByCode, itemByCode, houseByCode, projectByCode, supplierByCode, groupName, allCostLedger } from '../state.js';
 import { printView } from '../print.js';
+import { attachBlock, bindAttach, clipHtml, openAttachList } from '../attach.js';
 
 const KT = window.KT;
 const PAGE = 500; // số dòng vẽ mỗi lần (bảng lớn vẽ chậm); bấm "Hiện thêm" để xem tiếp, in thì hiện hết
@@ -111,6 +112,8 @@ export function renderCostLedger(root) {
     } else if (act === 'del' && c) {
       if (!(await confirmDialog({ trash: true, title: 'Xóa dòng chi phí', html: 'Xóa dòng ngày <b class="text-ink">' + fdate(c.ngay) + '</b>, ' + esc(c.maVT || c.dienGiai) + ', thành tiền <b class="text-ink">' + money(c.thanhTien) + ' đ</b>?', okText: 'Xóa dòng', danger: true }))) return;
       try { await api('DELETE', '/api/costs/' + c.id); toast('Đã xóa dòng chi phí, chuyển vào Thùng rác'); } catch (err) { showError(err); }
+    } else if (act === 'clip' && c) {
+      openAttachList(a.dataset.owner, Number(a.dataset.oid), 'Chứng từ của ' + (a.dataset.owner === 'slips' ? 'phiếu nhập' : 'dòng chi phí'));
     } else if (act === 'locked' && c) {
       toast(KT.lockMessage(KT.monthOf(c.ngay), 'sửa'), 'info');
     } else if (act === 'post' && c) {
@@ -183,7 +186,7 @@ function rowHtml(r, q) {
     '<td class="min-w-[150px]" data-edit="maHM">' + (r.hmHopLe ? highlight(r.tenHM, q) : '<span class="code bad">' + esc(r.maHM || '(trống)') + '</span>') +
     '<div class="sub"><span class="loai-tag" data-edit="loaiCP" title="Bấm đúp để đổi loại chi phí">' + highlight(r.loaiCP, q) + '</span> · ' + highlight(r.tenNhom, q) + '</div></td>' +
     '<td data-edit="maVT">' + (r.maVT ? bad(r.vtHopLe, '<span class="vt-code">' + highlight(r.maVT, q) + '</span>') + '<div class="sub">' + highlight(r.tenVT, q) + '</div>' : '') + '</td>' +
-    '<td class="min-w-[140px] max-w-[240px]" data-edit="dienGiai">' + highlight(r.dienGiai, q) + (r.ghiChu ? '<div class="text-[12.5px] text-ink-3">Ghi chú: ' + highlight(r.ghiChu, q) + '</div>' : '') + '</td>' +
+    '<td class="min-w-[140px] max-w-[240px]" data-edit="dienGiai">' + highlight(r.dienGiai, q) + clipHtml('costs', r.id) + clipHtml('slips', r.phieuId) + (r.ghiChu ? '<div class="text-[12.5px] text-ink-3">Ghi chú: ' + highlight(r.ghiChu, q) + '</div>' : '') + '</td>' +
     '<td class="num" data-edit="soLuong">' + KT.fmtQty(r.soLuong) + (r.dvt ? ' <span class="text-[12px] text-ink-3">' + esc(r.dvt) + '</span>' : '') + '</td>' +
     '<td class="num money" data-edit="donGia">' + highlight(money(r.donGia), q) + '</td>' +
     '<td class="num money font-semibold">' + highlight(money(r.thanhTien), q) + '</td>' +
@@ -274,7 +277,7 @@ export function openCostLineForm(c) {
     '<div class="field"><span class="label">Thành tiền</span><div class="flex h-9 items-center justify-end rounded-md bg-paper px-3 text-[16px] font-semibold tabular-nums" id="cl-tt"></div></div>' +
     '<label class="field col-span-3 max-md:col-span-2 max-sm:col-span-1"><span class="label">Ghi chú</span><input name="ghiChu" class="input" value="' + esc(c.ghiChu || '') + '"></label>' +
     '<p class="col-span-3 text-[12.5px] text-ink-3 max-md:col-span-2 max-sm:col-span-1">Đổi ngày, công trình, nhà, nhà cung cấp hoặc số phiếu của riêng dòng này thì dòng được tách thành phiếu riêng.</p>' +
-    '</form>';
+    '</form>' + attachBlock('costs', c.id, { readonly: KT.isLockedDate(S.all, c.ngay) });
   openModal({
     title: 'Sửa dòng chi phí',
     size: 'wide',
@@ -282,6 +285,7 @@ export function openCostLineForm(c) {
     body,
     footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="cancel">Hủy</button><button type="button" class="btn btn-primary" data-act="save">Lưu thay đổi</button>',
     onMount(el, h) {
+      bindAttach(el);
       const fm = $('#cl-form', el);
       const g = (n) => fm.elements[n];
       const tt = () => {
