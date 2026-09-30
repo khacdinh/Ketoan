@@ -7,7 +7,8 @@ import { openEntryForm } from '../forms.js';
 
 const KT = window.KT;
 const HEAVY_ROWS = 1500;
-const pct = (x) => (x * 100).toFixed(1).replace('.', ',') + '%';
+// tỷ lệ rất nhỏ nhưng khác 0 thì ghi "< 0,1%" (tránh hiện 0,0% cho khoản có phát sinh)
+const pct = (x) => (x > 0 && x < 0.0005 ? '< 0,1%' : (x * 100).toFixed(1).replace('.', ',') + '%');
 
 function ctLabel(ct) {
   const p = ct ? projectByCode(ct) : null;
@@ -68,7 +69,7 @@ export function renderCostDashboard(root) {
     '</div>' +
     '<div class="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">' +
     '<section class="sheet overflow-hidden" aria-labelledby="h-nhom"><div class="sheet-head"><div><h3 id="h-nhom" class="sheet-title">Chi phí theo nhóm và hạng mục</h3>' +
-    '<p class="sheet-note">Bấm dòng nhóm để bung hoặc thu gọn hạng mục. Bấm hạng mục để xem chi tiết.</p></div>' +
+    '<p class="sheet-note screen-hint">Bấm dòng nhóm để bung hoặc thu gọn hạng mục. Bấm hạng mục để xem chi tiết.</p></div>' +
     '<div class="no-print flex gap-1"><button type="button" class="btn btn-ghost btn-sm" data-act="expand">Bung hết</button><button type="button" class="btn btn-ghost btn-sm" data-act="collapse">Thu gọn</button></div></div>' +
     '<div class="overflow-x-auto"><table class="ledger tree"><thead><tr><th>Nhóm lớn / hạng mục</th><th class="num money w-[36%]">Tổng chi</th><th class="num">Tỷ trọng</th><th class="num">Số dòng</th></tr></thead><tbody>' +
     groupRowsHtml(s, openState) + '</tbody>' +
@@ -345,7 +346,7 @@ export function renderDebt(root) {
     '<button type="button" class="btn btn-ghost" data-act="print">' + icon('print') + 'In</button>' +
     '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất Excel</button></div>' +
     '<section class="sheet overflow-hidden" aria-labelledby="h-theo-ct"><div class="sheet-head pb-1"><div><h3 id="h-theo-ct" class="sheet-title">Tổng hợp nợ và đã thanh toán theo công trình</h3>' +
-    '<p class="sheet-note">Bấm một công trình để xem công nợ từng nhà cung cấp của công trình đó' + (f.to ? ', tính đến ngày ' + fdate(f.to) : '') + '.' +
+    '<p class="sheet-note screen-hint">Bấm một công trình để xem công nợ từng nhà cung cấp của công trình đó' + (f.to ? ', tính đến ngày ' + fdate(f.to) : '') + '.' +
     (f.ct ? ' <a href="#" class="font-semibold text-pen underline underline-offset-2" data-act="all-ct">Xem tất cả công trình</a>' : '') + '</p></div>' +
     '<label class="check no-print"><input type="checkbox" id="cn-allct"' + (f.allCT ? ' checked' : '') + '>Hiện cả dự án chưa nhập chi phí</label></div>' +
     projectDebtHtml(theoCT, f.ct) + '</section>' +

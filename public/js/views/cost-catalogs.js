@@ -1,5 +1,5 @@
 /* Danh mục chi phí công trình: nhóm CP, hạng mục, vật tư, nhà / khu (DM_NHOM, DM_HANGMUC, DM_VATTU, DM_NHA). */
-import { $, esc, money, icon, api, toast, showError, confirmDialog, openModal, freshRoot, debounce, highlight, download } from '../ui.js';
+import { $, esc, money, icon, api, toast, showError, confirmDialog, openModal, freshRoot, debounce, highlight, download, fieldError, busy } from '../ui.js';
 import { S, saveFilter, groupName, itemByCode, costProjects, selectOptions } from '../state.js';
 
 const KT = window.KT;
@@ -46,17 +46,17 @@ function catalogForm(o) {
         if (o.transform) o.transform(data);
         for (const fd of o.fields) {
           if (fd.required && !data[fd.name]) {
-            toast('Nhập ' + fd.label.toLowerCase(), 'error');
-            f.elements[fd.name].focus();
+            fieldError(f.elements[fd.name], (fd.type === 'select' ? 'Chọn ' : 'Nhập ') + fd.label.toLowerCase());
             return;
           }
         }
+        const done = busy(el.querySelector('[data-act=save]'), 'Đang lưu…');
         try {
           const r = isEdit ? await api('PUT', o.endpoint + '/' + v.id, data) : await api('POST', o.endpoint, data);
           toast((isEdit ? 'Đã lưu ' : 'Đã thêm ') + data.ma + (r.renamed ? ', cập nhật mã trên ' + r.renamed + ' chỗ đang dùng' : ''));
           h.close();
           if (o.onSaved) o.onSaved(Object.assign({}, data, { ma: r.ma || data.ma }));
-        } catch (err) { showError(err); }
+        } catch (err) { done(); showError(err); }
       };
       el.addEventListener('click', (ev) => {
         const a = ev.target.closest('[data-act]');

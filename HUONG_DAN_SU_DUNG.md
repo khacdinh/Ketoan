@@ -60,7 +60,9 @@ Nhóm menu **Chi phí công trình** (bên trái, dưới “Tổng hợp NCC”
 - **Mã dự án / Mã NCC**: gõ mã **hoặc gõ tên** rồi chọn trong danh sách gợi ý. Nếu chưa có, bấm “thêm mới” ngay trong form.
 - Khi chọn nhà cung cấp có chi phí công trình, dưới ô hiện luôn **công nợ còn lại** (theo dự án đang chọn) và nút **Điền số này**.
 - **Số tiền** gõ được: `1.250.000`, `1250000`, `50tr`, `1,5tr`, `300k`, hoặc phép tính `58000+11000` (giống cách ghi công thức trong Excel cũ). Cách ghi dính như `2tr5` hoặc `1tr250k` bị từ chối (phần mềm không đoán ý) — hãy viết `2,5tr` hoặc `1tr+250k`. Bên dưới hiện luôn số tiền bằng chữ để đối chiếu.
-- **Ctrl + Enter** để lưu. Nút **Lưu & nhập tiếp** giữ lại ngày, số phiếu, dự án, NCC để nhập dòng kế tiếp của cùng phiếu.
+- Bấm **Ghi sổ** (hoặc **Ctrl + Enter**) để ghi vào sổ; **Esc** để đóng. Nút **Ghi sổ và ghi tiếp** giữ lại ngày, số phiếu, dự án, NCC để ghi dòng kế tiếp của cùng phiếu.
+- Nếu còn thiếu hoặc sai (chưa có nội dung, số tiền không hợp lệ, mã chưa có trong danh mục...), lời nhắc **hiện ngay dưới ô bị sai** và con trỏ nhảy vào ô đó; sửa xong lời nhắc tự mất.
+- Dòng vừa ghi hoặc vừa sửa được **tô vàng** trong sổ vài giây để dễ kiểm tra lại.
 - Bấm đúp vào một dòng trong sổ để sửa.
 
 ---
@@ -121,7 +123,7 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
 |---|---|
 | Bấm `KhoiDong.bat` báo chưa cài Node.js | Cài Node.js bản LTS tại https://nodejs.org rồi chạy lại. |
 | `KhoiDong.bat` báo Node.js quá cũ | Cần Node.js 18 trở lên. Cài bản LTS mới tại https://nodejs.org (cài đè lên bản cũ) rồi chạy lại. |
-| Trình duyệt báo “Không kết nối được” | Cửa sổ đen đã bị đóng → bấm lại `KhoiDong.bat`. |
+| Trình duyệt báo “Không kết nối được”, hoặc đầu trang hiện dải đỏ **“Mất kết nối với phần mềm”** | Cửa sổ đen đã bị đóng → bấm lại `KhoiDong.bat`, rồi bấm **Thử lại** trên dải đỏ. Nội dung đang gõ trong hộp thoại vẫn còn, bấm Ghi sổ lại là được. |
 | Nhập nhầm / xóa nhầm | Vào **Cài đặt & dữ liệu → Bản sao lưu tự động**, khôi phục bản trước thời điểm nhầm. |
 | Mở phần mềm báo “file dữ liệu bị hỏng” | Phần mềm tự lấy lại bản sao lưu gần nhất còn đọc được và giữ file hỏng với tên `ketoan.json.hong-…` trong thư mục `data`. Nếu báo không có bản sao lưu nào đọc được: đừng xóa gì, chép cả thư mục `data` cho người hỗ trợ. |
 | Cổng 3939 bị phần mềm khác dùng | Phần mềm tự chuyển sang cổng kế tiếp (3940, 3941…) và mở đúng địa chỉ. |
@@ -158,11 +160,14 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
   - Mã chưa có trong danh mục: ô báo đỏ kèm nút **Thêm** để thêm nhanh ngay trong phiếu.
 - **Phím tắt**: **Enter** sang ô kế tiếp (Mã VT → Diễn giải → Số lượng → Đơn giá → dòng sau), **↑ ↓** đổi dòng,
   **Ctrl + Delete** xóa dòng, **Ctrl + Enter** lưu phiếu. Gõ vào dòng cuối là tự thêm dòng mới.
-- **Lưu**: giống macro `GhiPhieuNhap` — các dòng được ghi vào Sổ chi phí, phần hàng và số phiếu được xóa trắng,
+- **Ghi vào sổ chi phí**: giống macro `GhiPhieuNhap` — các dòng được ghi vào Sổ chi phí, phần hàng và số phiếu được xóa trắng,
   đầu phiếu giữ lại để nhập chuyến tiếp theo. Phiếu đang nhập dở được giữ lại nếu lỡ chuyển sang màn hình khác.
 - **Phiếu đã nhập** (cuối trang): tìm, **sửa**, **nhân bản**, **xóa** cả phiếu.
 - Phần mềm **không cho lưu** khi: thiếu ngày / công trình / NCC / hạng mục, mã không có trong danh mục,
-  số lượng ≤ 0, đơn giá âm, nhà không thuộc công trình đã chọn.
+  số lượng ≤ 0, đơn giá âm, nhà không thuộc công trình đã chọn. Lỗi ở đầu phiếu hiện ngay dưới ô; lỗi ở dòng hàng tô đỏ ô đó và báo “Dòng n: …”.
+- **Cảnh báo giá lệch**: nếu đơn giá gõ vào cao hơn 1,5 lần hoặc thấp hơn 2/3 giá lần mua gần nhất của vật tư đó, ô đơn giá
+  chuyển màu vàng kèm dòng “Cao hơn …% giá lần trước” (rê chuột để xem giá và ngày lần trước). Đây chỉ là nhắc kiểm tra
+  (hay gặp khi gõ thừa/thiếu số 0), vẫn lưu được bình thường.
 
 ---
 
@@ -194,7 +199,7 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
     đổi ở ô chọn phạm vi để xem mọi NCC.
   - Bấm một NCC để xem các phiếu chi phí và các lần trả tiền; nút **Trả tiền / Ghi phiếu chi** mở sẵn form ghi chi
     trong Sổ thu chi với đúng NCC, dự án và số còn nợ.
-- **Giá vật tư**: danh sách vật tư đã mua (số lần, giá gần nhất, mức dao động); chọn một vật tư để xem lịch sử đơn giá
+- **Giá vật tư**: danh sách vật tư đã mua (số lần, giá gần nhất, cột **Chênh giá** = giá cao nhất so với giá thấp nhất, rê chuột để xem hai mức giá); chọn một vật tư để xem lịch sử đơn giá
   từng lần mua theo NCC, chênh lệch so với lần trước, biểu đồ giá.
 
 ---

@@ -110,11 +110,21 @@ async function server(state) {
           if (state === 'mau') {
             await page.evaluate(() => { location.hash = '#/phieu'; });
             await page.waitForTimeout(400);
-            await page.emulateMedia({ media: 'print' });
+            // bấm In trước (nút In ẩn khi ở chế độ in), rồi mới xuất PDF theo khổ giấy CSS (@page)
             await page.locator('#view [data-act=print]').first().click().catch(() => {});
             await page.waitForTimeout(200);
-            if (sz === '1366x768') await page.pdf({ path: path.join(dir, 'in-phieu.pdf'), format: 'A4' }).catch(() => {});
-            await page.emulateMedia({ media: 'screen' });
+            if (sz === '1366x768') {
+              await page.pdf({ path: path.join(dir, 'in-phieu.pdf'), preferCSSPageSize: true, printBackground: true }).catch(() => {});
+              await page.evaluate(() => document.body.classList.remove('printing-doc', 'printing-view'));
+              for (const [r, file] of [['so-thu-chi', 'in-so-thu-chi.pdf'], ['cp-so', 'in-so-chi-phi.pdf'], ['cp-cong-no', 'in-cong-no.pdf']]) {
+                await page.evaluate((x) => { location.hash = '#/' + x; }, r);
+                await page.waitForTimeout(400);
+                await page.locator('#view [data-act=print]').first().click().catch(() => {});
+                await page.waitForTimeout(250);
+                await page.pdf({ path: path.join(dir, file), preferCSSPageSize: true, printBackground: true }).catch(() => {});
+                await page.evaluate(() => document.body.classList.remove('printing-doc', 'printing-view'));
+              }
+            }
             await page.evaluate(() => document.body.classList.remove('printing-doc', 'printing-view'));
           }
         }

@@ -43,7 +43,7 @@ export function renderDashboard(root) {
     equationHtml({ dau: L.tonDauKy, thu: L.tongThu, chi: L.tongChi, cuoi: L.tonCuoiKy, dauLabel: f.from ? 'Tồn quỹ ngày ' + fdate(f.from) : 'Tồn quỹ đầu sổ' }) +
     '<div class="sheet px-5 pt-4 pb-3">' +
     '<div class="flex flex-wrap items-baseline justify-between gap-2"><h3 class="sheet-title">Nhịp tồn quỹ theo ngày</h3>' +
-    '<p class="text-[12.5px] text-ink-3">' + esc(KT.describeRange(f.from, f.to)) + '. Rê chuột lên đường để xem từng ngày.</p></div>' +
+    '<p class="text-[12.5px] text-ink-3">' + esc(KT.describeRange(f.from, f.to)) + '<span class="screen-hint">. Rê chuột lên đường để xem từng ngày</span>.</p></div>' +
     '<div class="flow mt-3" id="flow"></div>' +
     '</div>' +
     '</section>' +

@@ -461,8 +461,13 @@
 .print-only { display: none; }
 #print-root { display: none; }
 
-@page { size: A4 landscape; margin: 8mm; }
-@page voucher { size: A4 portrait; margin: 10mm; }
+@page {
+  size: A4 landscape;
+  margin: 8mm 8mm 11mm;
+  /* số trang ở chân trang báo cáo (Chrome/Edge 131+; trình duyệt cũ bỏ qua) */
+  @bottom-right { content: "Trang " counter(page) " / " counter(pages); font: 8pt "Segoe UI", Arial, sans-serif; color: #444; }
+}
+@page voucher { size: A4 portrait; margin: 10mm; @bottom-right { content: none; } }
 
 @media print {
   html, body { background: #fff !important; }
@@ -488,6 +493,9 @@
   #print-head .ph-org { text-align: left; font-size: 10pt; margin-bottom: 6px; }
   #print-head h1 { margin: 4px 0; font-size: 15pt; font-weight: 700; }
   #print-head .ph-sub { font-style: italic; font-size: 10pt; }
+  #print-head .ph-date { text-align: right; font-size: 8.5pt; color: #444; margin-top: -14px; }
+  /* lời hướng dẫn thao tác trên màn hình (Bấm..., Rê chuột...) không in ra giấy */
+  .screen-hint { display: none !important; }
 
   body.printing-doc > *:not(#print-root) { display: none !important; }
   body.printing-doc #print-root { display: block; }

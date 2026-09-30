@@ -322,8 +322,9 @@ export function confirmDialog(o) {
       title: o.title || 'Xác nhận',
       size: 'small',
       body: '<div class="leading-relaxed text-ink-2">' + (o.html || esc(o.message || '')) + '</div>',
-      footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="no">' + esc(o.cancelText || 'Hủy') + '</button>' +
-        '<button type="button" class="btn ' + (o.danger ? 'btn-danger' : 'btn-primary') + '" data-act="yes" autofocus>' + esc(o.okText || 'Đồng ý') + '</button>',
+      // thao tác xóa/thay dữ liệu: con trỏ đặt sẵn ở nút Hủy để lỡ tay bấm Enter không mất dữ liệu
+      footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="no"' + (o.danger ? ' autofocus' : '') + '>' + esc(o.cancelText || 'Hủy') + '</button>' +
+        '<button type="button" class="btn ' + (o.danger ? 'btn-danger' : 'btn-primary') + '" data-act="yes"' + (o.danger ? '' : ' autofocus') + '>' + (o.danger && /^Xóa/.test(o.okText || '') ? icon('trash') : '') + esc(o.okText || 'Đồng ý') + '</button>',
       onClose() { if (!done) resolve(false); }
     });
     m.el.querySelector('[data-act=no]').addEventListener('click', () => m.close());

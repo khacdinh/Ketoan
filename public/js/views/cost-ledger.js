@@ -1,6 +1,6 @@
 /* Sổ chi phí công trình (tương đương sheet NHATKYCHUNG): lọc, tìm, sửa trực tiếp, tổng cuối bảng. */
 import { $, esc, money, fdate, icon, highlight, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, debounce, setDateValue,
-  api, toast, showError, confirmDialog, openModal, dateField, focusInput } from '../ui.js';
+  api, toast, showError, confirmDialog, openModal, dateField, focusInput, fieldError } from '../ui.js';
 import { S, saveFilter, ctOptions, selectOptions, costDatalists, resolveCode, resolveItem, materialByCode, itemByCode, houseByCode, projectByCode, supplierByCode, groupName } from '../state.js';
 import { printView } from '../print.js';
 
@@ -286,7 +286,7 @@ export function openCostLineForm(c) {
         if (isNaN(data.donGia) || data.donGia < 0) return bad('donGia', 'Đơn giá không hợp lệ');
         try { await api('PUT', '/api/costs/' + c.id, data); toast('Đã lưu dòng chi phí'); h.close(); } catch (err) { showError(err); }
       };
-      function bad(n, msg) { toast(msg, 'error'); const x = focusInput(g(n)); if (x) x.classList.add('invalid'); }
+      function bad(n, msg) { toast(msg, 'error'); fieldError(g(n), msg); }
       el.addEventListener('click', (e) => {
         const a = e.target.closest('[data-act]');
         if (!a) return;
