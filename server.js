@@ -414,6 +414,13 @@ async function handleApi(req, res, url) {
       if (b[k] !== undefined) s[k] = str(b[k], 300);
     });
     if (b.hienKeToanTruong !== undefined) s.hienKeToanTruong = !!b.hienKeToanTruong;
+    // ngưỡng kiểm tra bất thường (màn hình Cần xử lý)
+    [['nguongLechGia', 1, 1000], ['soNgayNhapTon', 1, 365]].forEach(([k, lo, hi]) => {
+      if (b[k] === undefined) return;
+      const n = Number(b[k]);
+      if (!Number.isInteger(n) || n < lo || n > hi) throw new HttpError(400, 'Ngưỡng không hợp lệ (' + lo + '–' + hi + ')');
+      s[k] = n;
+    });
     trace.log(req, 'cai-dat', 'settings', 'settings', before, s, { label: 'Thông tin đơn vị và in phiếu' });
     store.save();
     return ok(res);

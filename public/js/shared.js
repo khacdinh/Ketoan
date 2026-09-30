@@ -968,6 +968,234 @@
       ': vào Kiểm soát sổ sách → Khóa sổ, bấm “Mở khóa” tháng ' + monthLabel(thang) + ' (cần ghi lý do, có lưu nhật ký).';
   }
 
+  /* ---------------- Kiểm tra bất thường ("Cần xử lý") ---------------- */
+
+  const ANOMALY_TYPES = {
+    trung: 'Nghi trùng',
+    gia: 'Đơn giá lệch nhiều so với giá thường mua',
+    ngay: 'Ngày bất thường',
+    vt: 'Vật tư chưa xác định / chưa phân loại',
+    thieu: 'Thiếu hạng mục hoặc mã chưa có trong danh mục',
+    nhap: 'Phiếu nháp để lâu chưa ghi sổ',
+    tien: 'Số tiền âm hoặc bằng 0',
+    quy: 'Kiểm quỹ có chênh lệch'
+  };
+  const ANOMALY_DEFAULTS = { nguongLechGia: 30, soNgayNhapTon: 7, soNgayTuongLai: 7, soNgayLechNhap: 180 };
+
+  function addDays(iso, n) {
+    const d = new Date(iso + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  }
+
+  // Phát hiện bất thường trên toàn bộ dữ liệu (kể cả dòng nháp). opts: { today, ignored: { key: {...} } } + ngưỡng trong db.settings.
+  // Trả về { items: [{ key, loai, tieuDe, chiTiet, ngay, soTien, target: { kind, id, phieuId, ma } , ignored }], counts, open }
+  function anomalies(db, opts) {
+    opts = opts || {};
+    const st = Object.assign({}, ANOMALY_DEFAULTS, db.settings || {});
+    const nguong = Math.max(1, Number(st.nguongLechGia) || ANOMALY_DEFAULTS.nguongLechGia) / 100;
+    const today = opts.today || todayISO();
+    const ignored = opts.ignored || db.ignoredWarnings || {};
+    const items = [];
+    const x = costIndexes(db);
+    const push = function (it) { it.ignored = !!ignored[it.key]; items.push(it); };
+    const ent = db.entries || [];
+    const costs = db.costs || [];
+    const moneyTxt = function (n) { return fmtMoney(n) + ' đ'; };
+    const median = function (arr) { const a = arr.slice().sort(function (p, q) { return p - q; }); const m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; };
+    const nccName = function (ma) { const s = x.s.get(keyOf(ma)); return s ? s.ten : ma; };
+
+    // (a) nghi trùng: cùng ngày + NCC + vật tư (hoặc diễn giải) + thành tiền; sổ thu chi: cùng ngày + NCC (hoặc nội dung) + số tiền
+    const groups = new Map();
+    costs.forEach(function (c) {
+      const k = 'c|' + c.ngay + '|' + keyOf(c.maNCC) + '|' + (keyOf(c.maVT) || normalizeText(c.dienGiai).trim()) + '|' + c.thanhTien;
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(c);
+    });
+    ent.forEach(function (e) {
+      if (!(e.thu > 0 || e.chi > 0)) return;
+      const k = 'e|' + e.ngay + '|' + (keyOf(e.maNCC) || normalizeText(e.noiDung).trim()) + '|' + (e.thu || 0) + '|' + (e.chi || 0);
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(e);
+    });
+    groups.forEach(function (list, k) {
+      if (list.length < 2) return;
+      const isCost = k.charAt(0) === 'c';
+      const ids = list.map(function (r) { return r.id; }).sort(function (a, b) { return a - b; });
+      const r0 = list[0];
+      push({
+        key: 'trung:' + (isCost ? 'c' : 'e') + ':' + ids.join(','), loai: 'trung', ngay: r0.ngay, soTien: isCost ? r0.thanhTien : (r0.chi || r0.thu),
+        tieuDe: list.length + (isCost ? ' dòng chi phí' : ' dòng sổ thu chi') + ' giống nhau ngày ' + fmtDate(r0.ngay),
+        chiTiet: (isCost ? (r0.maVT || r0.dienGiai) + ' · ' + nccName(r0.maNCC) + ' · ' + moneyTxt(r0.thanhTien) + ' mỗi dòng'
+          : (r0.noiDung || '') + (r0.maNCC ? ' · ' + nccName(r0.maNCC) : '') + ' · ' + moneyTxt(r0.chi || r0.thu) + ' mỗi dòng') +
+          (isCost && new Set(list.map(function (c) { return c.phieuId; })).size > 1 ? ' · ở ' + new Set(list.map(function (c) { return c.phieuId; })).size + ' phiếu khác nhau' : ''),
+        target: { kind: isCost ? 'costs' : 'entries', id: ids[ids.length - 1], ids: ids, phieuId: r0.phieuId }
+      });
+    });
+
+    // (b) đơn giá lệch nhiều so với lần mua trước cùng vật tư + NCC (bỏ các mã chung "XX-..." như XX-KHAC)
+    const byVtNcc = new Map();
+    costs.forEach(function (c) {
+      if (!c.maVT || /^xx-/i.test(String(c.maVT).trim()) || !(c.donGia > 0)) return;
+      const k = keyOf(c.maVT) + '|' + keyOf(c.maNCC);
+      if (!byVtNcc.has(k)) byVtNcc.set(k, []);
+      byVtNcc.get(k).push(c);
+    });
+    // So với giá "thường gặp": từ 3 lần mua trở lên lấy trung vị các lần mua khác (không bị kéo lệch bởi chính dòng sai);
+    // chỉ có 2 lần thì so lần sau với lần trước.
+    byVtNcc.forEach(function (list) {
+      list.sort(compareEntries);
+      const prices = list.map(function (c) { return c.donGia; });
+      for (let i = 0; i < list.length; i++) {
+        const c = list[i];
+        let ref;
+        let refTxt;
+        if (list.length >= 3) {
+          ref = median(prices.slice(0, i).concat(prices.slice(i + 1)));
+          refTxt = 'Giá thường gặp (trung vị ' + (list.length - 1) + ' lần mua khác): ' + fmtMoney(Math.round(ref));
+        } else if (i > 0) {
+          ref = list[i - 1].donGia;
+          refTxt = 'Lần mua trước ' + fmtDate(list[i - 1].ngay) + ': ' + fmtMoney(ref);
+        } else continue;
+        if (!(ref > 0)) continue;
+        const r = c.donGia / ref;
+        if (Math.abs(r - 1) <= nguong + 1e-9) continue;
+        const pct = Math.round((r - 1) * 100);
+        push({
+          key: 'gia:' + c.id + ':' + c.donGia, loai: 'gia', ngay: c.ngay, soTien: c.thanhTien,
+          tieuDe: c.maVT + ' ngày ' + fmtDate(c.ngay) + ' giá ' + fmtMoney(c.donGia) + ' — ' + (pct > 0 ? 'cao hơn ' : 'thấp hơn ') + Math.abs(pct).toLocaleString('vi-VN') + '%',
+          chiTiet: refTxt + ' · ' + nccName(c.maNCC) + ' · ngưỡng ' + Math.round(nguong * 100) + '%',
+          target: { kind: 'costs', id: c.id, phieuId: c.phieuId }
+        });
+      }
+    });
+
+    // (c) ngày bất thường: ở tương lai, trước năm 2000, hoặc khác xa các dòng được nhập liền trước / liền sau
+    //     (theo thứ tự nhập: gõ nhầm năm 2062, 2025 giữa các dòng 2026 sẽ lộ ra; dữ liệu cũ nhập từ Excel theo thứ tự ngày thì không bị báo)
+    const future = addDays(today, Number(st.soNgayTuongLai) || ANOMALY_DEFAULTS.soNgayTuongLai);
+    const lech = (Number(st.soNgayLechNhap) || ANOMALY_DEFAULTS.soNgayLechNhap) * 86400000;
+    const neighborMedian = function (list, groupOf) {
+      const bySeq = list.filter(function (r) { return isISODate(r.ngay); }).slice().sort(function (a, b) { return (a.seq || 0) - (b.seq || 0); });
+      const out = new Map();
+      bySeq.forEach(function (r, i) {
+        const g = groupOf(r);
+        const ds = [];
+        for (let j = i - 1; j >= 0 && ds.length < 3; j--) if (!g || groupOf(bySeq[j]) !== g) ds.push(Date.parse(bySeq[j].ngay));
+        const n0 = ds.length;
+        for (let j = i + 1; j < bySeq.length && ds.length < n0 + 3; j++) if (!g || groupOf(bySeq[j]) !== g) ds.push(Date.parse(bySeq[j].ngay));
+        if (ds.length >= 3) out.set(r, median(ds));
+      });
+      return out;
+    };
+    const medE = neighborMedian(ent, function (e) { return e.soPhieu ? 'p' + voucherKey(e.soPhieu) : ''; });
+    const medC = neighborMedian(costs, function (c) { return 's' + c.phieuId; });
+    function checkDate(r, kind) {
+      if (!r.ngay) return;
+      let why = '';
+      if (r.ngay > future) why = 'Ngày ' + fmtDate(r.ngay) + ' ở tương lai';
+      else if (r.ngay < '2000-01-01') why = 'Ngày ' + fmtDate(r.ngay) + ' quá xa (trước năm 2000)';
+      else {
+        const md = (kind === 'costs' ? medC : medE).get(r);
+        if (md != null && Math.abs(Date.parse(r.ngay) - md) > lech) {
+          why = 'Ngày ' + fmtDate(r.ngay) + ' khác xa các dòng nhập liền trước và liền sau (khoảng ' + fmtDate(new Date(md).toISOString().slice(0, 10)) + ') — có gõ nhầm năm/tháng?';
+        }
+      }
+      if (!why) return;
+      push({ key: 'ngay:' + kind + ':' + r.id + ':' + r.ngay, loai: 'ngay', ngay: r.ngay, soTien: kind === 'costs' ? r.thanhTien : (r.chi || r.thu),
+        tieuDe: why, chiTiet: kind === 'costs' ? (r.maVT || r.dienGiai) + ' · ' + moneyTxt(r.thanhTien) : (r.noiDung || '') + ' · ' + moneyTxt(r.chi || r.thu),
+        target: { kind: kind, id: r.id, phieuId: r.phieuId } });
+    }
+    ent.forEach(function (e) { checkDate(e, 'entries'); });
+    costs.forEach(function (c) { checkDate(c, 'costs'); });
+
+    // (d) vật tư chưa xác định (mã XX-CHUAXACDINH...) và vật tư chưa phân loại (chưa gán hạng mục)
+    costs.forEach(function (c) {
+      if (!/chuaxacdinh|chua-xac-dinh/.test(normalizeText(c.maVT).replace(/[\s_]/g, ''))) return;
+      push({ key: 'vt:c:' + c.id + ':' + keyOf(c.maVT), loai: 'vt', ngay: c.ngay, soTien: c.thanhTien, tieuDe: 'Dòng chi phí dùng mã ' + c.maVT,
+        chiTiet: (c.dienGiai || '') + ' · ' + nccName(c.maNCC) + ' · ' + moneyTxt(c.thanhTien) + ' — chọn đúng mã vật tư', target: { kind: 'costs', id: c.id, phieuId: c.phieuId } });
+    });
+    const usedVT = new Set(costs.map(function (c) { return keyOf(c.maVT); }));
+    (db.materials || []).forEach(function (m) {
+      if (m.maHM && x.i.get(keyOf(m.maHM))) return;
+      if (!usedVT.has(keyOf(m.ma))) return; // chỉ nhắc vật tư đang được dùng
+      push({ key: 'vt:m:' + keyOf(m.ma), loai: 'vt', ngay: '', soTien: 0, tieuDe: 'Vật tư ' + m.ma + ' chưa phân loại (chưa gán hạng mục)',
+        chiTiet: (m.ten || '') + (m.maHM ? ' · hạng mục "' + m.maHM + '" không có trong danh mục' : ''), target: { kind: 'materials', ma: m.ma, id: m.id } });
+    });
+
+    // (e) chi phí chưa gán hạng mục; mã NCC / công trình chưa có trong danh mục
+    costs.forEach(function (c) {
+      const miss = [];
+      if (!c.maHM) miss.push('chưa gán hạng mục');
+      else if (!x.i.get(keyOf(c.maHM))) miss.push('hạng mục "' + c.maHM + '" không có trong danh mục');
+      if (!c.maNCC) miss.push('chưa có nhà cung cấp');
+      else if (!x.s.get(keyOf(c.maNCC))) miss.push('NCC "' + c.maNCC + '" chưa có trong danh mục');
+      if (c.maCT && !x.p.get(keyOf(c.maCT))) miss.push('công trình "' + c.maCT + '" chưa có trong danh mục');
+      if (!miss.length) return;
+      push({ key: 'thieu:c:' + c.id + ':' + [c.maHM, c.maNCC, c.maCT].map(keyOf).join('|'), loai: 'thieu', ngay: c.ngay, soTien: c.thanhTien,
+        tieuDe: 'Dòng chi phí ' + miss.join(', '), chiTiet: (c.maVT || c.dienGiai || '') + ' · ' + moneyTxt(c.thanhTien), target: { kind: 'costs', id: c.id, phieuId: c.phieuId } });
+    });
+    ent.forEach(function (e) {
+      const miss = [];
+      if (e.maNCC && !x.s.get(keyOf(e.maNCC))) miss.push('NCC "' + e.maNCC + '" chưa có trong danh mục');
+      if (e.maDuAn && !x.p.get(keyOf(e.maDuAn))) miss.push('dự án "' + e.maDuAn + '" chưa có trong danh mục');
+      if (!miss.length) return;
+      push({ key: 'thieu:e:' + e.id + ':' + keyOf(e.maNCC) + '|' + keyOf(e.maDuAn), loai: 'thieu', ngay: e.ngay, soTien: e.chi || e.thu,
+        tieuDe: 'Dòng sổ thu chi: ' + miss.join(', '), chiTiet: (e.noiDung || '') + ' · ' + moneyTxt(e.chi || e.thu), target: { kind: 'entries', id: e.id } });
+    });
+
+    // (f) phiếu nháp để lâu
+    const han = addDays(today, -(Number(st.soNgayNhapTon) || ANOMALY_DEFAULTS.soNgayNhapTon));
+    ent.forEach(function (e) {
+      if (!isDraft(e) || !(String(e.createdAt || '').slice(0, 10) < han)) return;
+      push({ key: 'nhap:e:' + e.id, loai: 'nhap', ngay: e.ngay, soTien: e.chi || e.thu, tieuDe: 'Dòng nháp từ ' + fmtDate(String(e.createdAt).slice(0, 10)) + ' chưa ghi sổ',
+        chiTiet: (e.noiDung || '') + ' · ' + moneyTxt(e.chi || e.thu), target: { kind: 'entries', id: e.id } });
+    });
+    const draftSlips = new Map();
+    costs.forEach(function (c) { if (isDraft(c) && String(c.createdAt || '').slice(0, 10) < han && !draftSlips.has(c.phieuId)) draftSlips.set(c.phieuId, c); });
+    draftSlips.forEach(function (c, pid) {
+      const lines = costs.filter(function (y) { return y.phieuId === pid; });
+      push({ key: 'nhap:s:' + pid, loai: 'nhap', ngay: c.ngay, soTien: lines.reduce(function (t, y) { return t + (y.thanhTien || 0); }, 0),
+        tieuDe: 'Phiếu nhập nháp từ ' + fmtDate(String(c.createdAt).slice(0, 10)) + ' chưa ghi sổ', chiTiet: lines.length + ' dòng · ' + nccName(c.maNCC), target: { kind: 'slip', phieuId: pid, id: c.id } });
+    });
+
+    // (g) thu / chi âm hoặc bằng 0
+    ent.forEach(function (e) {
+      const bad = (e.thu || 0) < 0 || (e.chi || 0) < 0 ? 'Số tiền âm' : !(e.thu > 0) && !(e.chi > 0) ? 'Không có số tiền (thu và chi đều bằng 0)' : '';
+      if (!bad) return;
+      push({ key: 'tien:e:' + e.id + ':' + (e.thu || 0) + ':' + (e.chi || 0), loai: 'tien', ngay: e.ngay, soTien: e.chi || e.thu, tieuDe: 'Dòng sổ thu chi: ' + bad,
+        chiTiet: (e.noiDung || '') + ' · ngày ' + fmtDate(e.ngay), target: { kind: 'entries', id: e.id } });
+    });
+    costs.forEach(function (c) {
+      if ((c.thanhTien || 0) > 0 && (c.soLuong || 0) > 0) return;
+      push({ key: 'tien:c:' + c.id + ':' + c.thanhTien, loai: 'tien', ngay: c.ngay, soTien: c.thanhTien,
+        tieuDe: 'Dòng chi phí ' + ((c.thanhTien || 0) < 0 ? 'có thành tiền âm' : 'có thành tiền bằng 0'), chiTiet: (c.maVT || c.dienGiai || '') + ' · ' + fmtQty(c.soLuong) + ' × ' + fmtMoney(c.donGia),
+        target: { kind: 'costs', id: c.id, phieuId: c.phieuId } });
+    });
+
+    // (h) kiểm quỹ có chênh lệch (tồn quỹ theo sổ tính lại theo dữ liệu hiện tại)
+    (db.cashCounts || []).forEach(function (k) {
+      const so = cashBalanceAt(db, k.ngay);
+      const cl = (Number(k.thucTe) || 0) - so;
+      if (!cl) return;
+      push({ key: 'quy:' + k.id + ':' + cl, loai: 'quy', ngay: k.ngay, soTien: cl,
+        tieuDe: 'Kiểm quỹ ngày ' + fmtDate(k.ngay) + ' ' + (cl > 0 ? 'thừa ' : 'thiếu ') + fmtMoney(Math.abs(cl)) + ' đ',
+        chiTiet: 'Thực tế ' + moneyTxt(k.thucTe) + ', theo sổ ' + moneyTxt(so), target: { kind: 'cashCounts', id: k.id } });
+    });
+
+    const counts = {};
+    let open = 0;
+    Object.keys(ANOMALY_TYPES).forEach(function (t) { counts[t] = 0; });
+    items.forEach(function (it) { if (!it.ignored) { counts[it.loai]++; open++; } });
+    return { items: items, counts: counts, open: open };
+  }
+
+  // Tồn quỹ theo sổ (chỉ dòng đã ghi sổ) tính đến hết ngày
+  function cashBalanceAt(db, ngay) {
+    let t = 0;
+    (db.entries || []).forEach(function (e) { if (!isDraft(e) && e.ngay <= ngay) t += (e.thu || 0) - (e.chi || 0); });
+    return t;
+  }
+
   function draftsOf(db) {
     return { entries: (db.entries || []).filter(isDraft), costs: (db.costs || []).filter(isDraft) };
   }
@@ -982,6 +1210,10 @@
     monthLabel: monthLabel,
     isLockedDate: isLockedDate,
     lockMessage: lockMessage,
+    ANOMALY_TYPES: ANOMALY_TYPES,
+    ANOMALY_DEFAULTS: ANOMALY_DEFAULTS,
+    anomalies: anomalies,
+    cashBalanceAt: cashBalanceAt,
     docSo: docSo,
     docTienBangChu: docTienBangChu,
     fmtMoney: fmtMoney,
