@@ -28,6 +28,7 @@ const costImporter = require('./lib/costImporter');
 const costExporter = require('./lib/costExporter');
 const createCostApi = require('./lib/costApi');
 const createTrace = require('./lib/traceApi');
+const createCashCountApi = require('./lib/cashCountApi');
 const { dataSummary } = require('./lib/store');
 
 const APP_ID = 'so-thu-chi-ke-toan';
@@ -232,7 +233,7 @@ function usage(field, ma) {
 
 // Bản sao lưu đưa vào phải đúng hình dạng: các danh sách là mảng đối tượng (tránh làm hỏng kho khi file lạ)
 function checkDbShape(d) {
-  ['projects', 'suppliers', 'entries', 'costGroups', 'costItems', 'materials', 'houses', 'costs'].forEach((k) => {
+  ['projects', 'suppliers', 'entries', 'costGroups', 'costItems', 'materials', 'houses', 'costs', 'cashCounts'].forEach((k) => {
     if (d[k] === undefined) return;
     if (!Array.isArray(d[k]) || d[k].some((x) => x === null || typeof x !== 'object' || Array.isArray(x))) throw new HttpError(400, 'File sao lưu không hợp lệ: "' + k + '" phải là danh sách các bản ghi');
   });
@@ -243,6 +244,7 @@ function checkDbShape(d) {
 
 const trace = createTrace({ store, HttpError, str, readJson, ok, sendJson, findCode });
 const costApi = createCostApi({ store, HttpError, str, money, readJson, ok, sendJson, findCode, byId, idList, own, trace });
+const cashCountApi = createCashCountApi({ store, HttpError, str, money, readJson, ok, byId, trace });
 
 // Dựng file Excel: dữ liệu nhỏ thì làm ngay; dữ liệu lớn thì giao cho luồng riêng để máy chủ không đứng hình
 const BIG_EXPORT_ROWS = 3000;
@@ -554,6 +556,10 @@ async function handleApi(req, res, url) {
       case 'cost-debt': {
         return attachment(res, await runExport('cost', 'buildDebtWorkbook', [db, { ct: q.get('ct') || '', to: f.to }]), 'CongNoNCC_' + stampNow() + '.xlsx', XLSX_TYPE);
       }
+      case 'cash-count': {
+        const buf = await cashCountApi.buildWorkbook(store.db, q.get('id'));
+        return attachment(res, buf, 'BienBanKiemQuy_' + stampNow() + '.xlsx', XLSX_TYPE);
+      }
       case 'voucher': {
         const so = q.get('so') || '';
         return attachment(res, await runExport('cash', 'buildVoucherWorkbook', [db, so]), 'Phieu_' + so.replace(/[\\/]/g, '-') + '.xlsx', XLSX_TYPE);
@@ -564,6 +570,7 @@ async function handleApi(req, res, url) {
   }
 
   if (await trace.handle(req, res, url)) return;
+  if (await cashCountApi.handle(req, res, url)) return;
   if (await costApi.handle(req, res, url)) return;
 
   throw new HttpError(404, 'Không có chức năng ' + m + ' ' + p);
