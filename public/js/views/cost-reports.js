@@ -36,10 +36,13 @@ export function renderCostDashboard(root) {
   const nVT = new Set(KT.filterCosts(S.costLedger, f).rows.map((r) => KT.keyOf(r.maVT)).filter(Boolean)).size;
   const openState = LS.get('cp.th.open', {});
 
-  const tile = (label, value, sub, cls) => '<div class="stat"><div class="stat-label">' + esc(label) + '</div><div class="stat-value ' + (cls || '') + '">' + value + '</div>' +
+  // link: { loai } → mở sổ chi phí đã lọc; { debt: true } → mở công nợ NCC (cùng công trình, cùng kỳ)
+  const tile = (label, value, sub, cls, link) => '<div class="stat' + (link ? ' stat-link' : '') + '"' +
+    (link ? ' data-tile="' + esc(link.loai ? 'loai' : 'debt') + '"' + (link.loai ? ' data-loai="' + esc(link.loai) + '"' : '') + ' role="link" tabindex="0" aria-label="' + esc('Xem chi tiết ' + label) + '"' : '') + '>' +
+    '<div class="stat-label">' + esc(label) + '</div><div class="stat-value ' + (cls || '') + '">' + value + '</div>' +
     (sub ? '<div class="stat-sub">' + sub + '</div>' : '') + '</div>';
   const loaiTiles = KT.LOAI_CP.map((l) => tile(l, money(s.byLoai[l] || 0), s.total ? pct((s.byLoai[l] || 0) / s.total) + ' tổng chi phí' +
-    '<div class="mbar mt-1.5" aria-hidden="true"><span class="mbar-fill" style="width:' + (s.total ? ((s.byLoai[l] || 0) / s.total * 100).toFixed(2) : 0) + '%"></span></div>' : '')).join('');
+    '<div class="mbar mt-1.5" aria-hidden="true"><span class="mbar-fill" style="width:' + (s.total ? ((s.byLoai[l] || 0) / s.total * 100).toFixed(2) : 0) + '%"></span></div>' : '', '', { loai: l })).join('');
 
   root.innerHTML =
     '<div class="print-only" id="print-head"></div>' +
@@ -59,8 +62,8 @@ export function renderCostDashboard(root) {
     (chk.ok ? '<span class="text-income">' + icon('checkCircle', 'align-[-2px]') + ' Danh mục khớp</span>' : '<a href="#/cp-danh-muc" class="font-semibold text-caution underline underline-offset-2">' + icon('warnTri', 'align-[-2px]') + ' ' + esc(checkText(chk)) + '</a>') + '</p></div>' +
     '</section>' +
     '<div class="stats">' + loaiTiles +
-    tile('Đã trả nhà cung cấp', money(debt.total.daTra), 'Từ sổ thu chi, theo mã NCC' + (f.ct ? ' và công trình' : '')) +
-    tile('Còn nợ nhà cung cấp', money(debt.total.conNo), debt.total.ungDu ? 'Ứng dư ' + money(debt.total.ungDu) + ' đ' : '', debt.total.conNo ? 'text-alert' : '') +
+    tile('Đã trả nhà cung cấp', money(debt.total.daTra), 'Từ sổ thu chi, theo mã NCC' + (f.ct ? ' và công trình' : ''), '', { debt: true }) +
+    tile('Còn nợ nhà cung cấp', money(debt.total.conNo), debt.total.ungDu ? 'Ứng dư ' + money(debt.total.ungDu) + ' đ' : '', debt.total.conNo ? 'text-alert' : '', { debt: true }) +
     '</div>' +
     '<div class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">' +
     '<section class="sheet overflow-hidden" aria-labelledby="h-nhom"><div class="sheet-head"><div><h3 id="h-nhom" class="sheet-title">Chi phí theo nhóm và hạng mục</h3>' +
@@ -100,6 +103,16 @@ export function renderCostDashboard(root) {
       }
       return;
     }
+    const t = e.target.closest('[data-tile]');
+    if (t) {
+      if (t.dataset.tile === 'loai') goLedger({ ct: f.ct, nha: f.nha, loai: t.dataset.loai, period: f.period, from: f.from, to: f.to });
+      else {
+        Object.assign(S.filters.cpCn, { ct: f.ct, to: f.to, pham: 'ct' });
+        saveFilter('cpCn');
+        location.hash = '#/cp-cong-no';
+      }
+      return;
+    }
     const g = e.target.closest('tr[data-group]');
     if (g) {
       const st = LS.get('cp.th.open', {});
@@ -120,7 +133,7 @@ export function renderCostDashboard(root) {
   });
   root.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;
-    const tr = e.target.closest('tr[data-group], tr[data-item], tr[data-ct]');
+    const tr = e.target.closest('tr[data-group], tr[data-item], tr[data-ct], [data-tile]');
     if (tr) tr.click();
   });
 }

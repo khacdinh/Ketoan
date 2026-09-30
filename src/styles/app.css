@@ -314,6 +314,7 @@
   /* Ô số liệu tổng hợp */
   .stats { @apply grid gap-3; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
   .stat { @apply rounded-[10px] border border-rule bg-sheet px-4 py-3; }
+  .stat-link { @apply cursor-pointer transition-colors hover:border-pen hover:bg-pen-soft focus-visible:border-pen focus-visible:bg-pen-soft; outline: none; }
   .stat-label { @apply text-[12.5px] font-medium text-ink-3; }
   .stat-value { @apply mt-0.5 text-[19px] font-semibold tabular-nums text-ink; font-stretch: 106%; }
   .stat-sub { @apply mt-0.5 text-[12px] leading-snug text-ink-3; }
