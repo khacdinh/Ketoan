@@ -4,6 +4,7 @@ import { S, anomalies, saveFilter } from '../state.js';
 import { openEntryForm } from '../forms.js';
 import { openCostLineForm } from './cost-ledger.js';
 import { openMaterialForm } from './cost-catalogs.js';
+import { renderCashCount } from './cash-count.js';
 
 const KT = window.KT;
 
@@ -402,6 +403,7 @@ function renderLocks(el) {
   });
 }
 
+registerTab({ key: 'kiem-quy', order: 20, label: 'Kiểm quỹ', icon: 'money', render: renderCashCount });
 registerTab({ key: 'khoa-so', order: 30, label: 'Khóa sổ', icon: 'lock', render: renderLocks });
 registerTab({ key: 'nhat-ky', order: 40, label: 'Nhật ký thay đổi', icon: 'history', render: renderAudit });
 registerTab({ key: 'thung-rac', order: 50, label: 'Thùng rác', icon: 'trash', render: renderTrash });
