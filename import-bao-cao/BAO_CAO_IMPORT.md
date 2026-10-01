@@ -198,7 +198,10 @@ DM_VATTU không có cột Loại CP. DM_NCC.Loại ghi tự do (Chủ thầu, K�
   nhập lại cho kết quả như lần đầu. Bài I7: dòng đã sửa trong phần mềm thì báo để kiểm tra tay.
 - **File đầu vào lỗi** (bài I4): file hỏng, thiếu sheet, Excel đang mở file (`~$…`), Windows khóa file (EBUSY) → từ chối, báo tiếng Việt,
   không ghi gì. Phần mềm đang chạy → `--apply` từ chối (bài I5).
-- **Bài test tự động mới** `tests/i-import-excel.test.js` (I1–I7) dùng dữ liệu tổng hợp nhỏ; xem kết quả `npm test` ở tóm tắt cuối.
+- **Bài test tự động mới** `tests/i-import-excel.test.js` (I1–I7) dùng dữ liệu tổng hợp nhỏ: **7/7 đạt**.
+- **`npm test` toàn bộ** (sau khi nhập, chức năng cũ): 162 ca, **159 đạt**, 2 bỏ qua (A3 cần mạng; S3.6 cần thư mục mã bản JSON gốc),
+  1 lỗi là **S1.7**. S1.7 là bài kiểm thử chuyển SQLite của nhánh trước, phụ thuộc thời điểm: hai lần chuyển đổi trong cùng một giây tạo
+  bản sao lưu trùng tên. Đã sửa bài kiểm thử (kiểm tra nội dung bản sao lưu thay vì đếm file) và chạy lại đạt. Không liên quan công cụ nhập.
 
 ## 7. Giả định
 1. Mỗi file = một công trình theo DM_CONGTRINH của chính file (mọi file chỉ có 1 dòng).
