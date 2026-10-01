@@ -38,14 +38,14 @@ function toolbar(o) {
 
 export function renderProjects(root) {
   root = freshRoot(root);
-  const state = { q: LS.get('q.projects', '') };
+  const state = { q: LS.get('q.projects', ''), merged: LS.get('merged.projects', false) };
   root.innerHTML =
     '<div class="print-only" id="print-head"></div>' +
-    toolbar({ id: 'pj-q', placeholder: 'Tìm mã hoặc tên dự án', q: state.q, addLabel: 'Thêm dự án' }) +
+    toolbar({ id: 'pj-q', placeholder: 'Tìm mã hoặc tên dự án', q: state.q, addLabel: 'Thêm dự án', extra: mergeToolbarHtml('da', state.merged) }) +
     '<section class="sheet overflow-hidden">' +
     '<p class="no-print border-b border-rule px-4 py-2.5 text-[13px] text-ink-2" id="pj-count"></p>' +
     '<div class="overflow-x-auto"><table class="ledger">' +
-    '<thead><tr><th>Mã dự án</th><th>Tên dự án</th><th class="num money">Ngân sách dự kiến</th><th class="num money">Đã chi</th><th class="num money">Còn lại</th><th>Ngân sách</th><th>Trạng thái · khởi công</th><th class="num">Số dòng</th><th>Ghi chú</th><th class="no-print"><span class="sr-only">Thao tác</span></th></tr></thead>' +
+    '<thead><tr>' + pickHead + '<th>Mã dự án</th><th>Tên dự án</th><th class="num money">Ngân sách dự kiến</th><th class="num money">Đã chi</th><th class="num money">Còn lại</th><th>Ngân sách</th><th>Trạng thái · khởi công</th><th class="num">Số dòng</th><th>Ghi chú</th><th class="no-print"><span class="sr-only">Thao tác</span></th></tr></thead>' +
     '<tbody id="pj-body"></tbody><tfoot id="pj-foot"></tfoot></table></div></section>';
 
   const draw = () => {
@@ -54,9 +54,9 @@ export function renderProjects(root) {
     const q = KT.normalizeText(state.q).trim();
     const list = S.db.projects.filter((p) => !q || KT.normalizeText(p.ma + ' ' + p.ten + ' ' + (p.ghiChu || '')).includes(q));
     $('#pj-count', root).innerHTML = '<b class="font-semibold text-ink">' + list.length + '</b> trên ' + S.db.projects.length + ' dự án. Bấm đúp một dòng để sửa.';
-    $('#pj-body', root).innerHTML = list.length ? list.map((p) => {
+    $('#pj-body', root).innerHTML = (list.length ? list.map((p) => {
       const r = byMa.get(KT.keyOf(p.ma)) || { chi: 0, soDong: 0, chenhLech: p.nganSach || 0, status: 'idle', tiLe: 0 };
-      return '<tr data-id="' + p.id + '">' +
+      return '<tr data-id="' + p.id + '">' + pickCell(p.ma) +
         '<td class="code">' + highlight(p.ma, state.q) + '</td><td class="min-w-[220px]">' + highlight(p.ten, state.q) + '</td>' +
         '<td class="num money">' + (p.nganSach ? money(p.nganSach) : '') + '</td>' +
         '<td class="num money font-semibold">' + money(r.chi) + '</td>' +
@@ -66,12 +66,16 @@ export function renderProjects(root) {
         '<td class="num">' + r.soDong + '</td>' +
         '<td class="text-[12.5px] text-ink-2">' + highlight(p.ghiChu || '', state.q) + '</td>' +
         rowActions(p.ma) + '</tr>';
-    }).join('') : '<tr><td colspan="10" class="empty">Không có dự án nào khớp. Thử từ khóa khác hoặc thêm dự án mới.</td></tr>';
-    $('#pj-foot', root).innerHTML = '<tr><td colspan="2">Tổng cộng</td><td class="num money">' + money(ps.total.nganSach) + '</td>' +
+    }).join('') : '<tr><td colspan="11" class="empty">Không có dự án nào khớp. Thử từ khóa khác hoặc thêm dự án mới.</td></tr>') +
+      // dự án đã gộp (ẩn mặc định): chỉ để tra cứu; muốn dùng lại thì hoàn tác ở màn Gộp mã
+      (state.merged ? mergedRecords('da').filter((p) => !q || KT.normalizeText([p.ma, p.ten, p.gopVao].join(' ')).includes(q)).map((p) =>
+        '<tr class="text-ink-3"><td class="no-print"></td><td class="code">' + esc(p.ma) + '</td><td>' + esc(p.ten) + '</td><td colspan="7">' + mergedChip(p) + '</td><td class="no-print"></td></tr>').join('') : '');
+    $('#pj-foot', root).innerHTML = '<tr><td class="no-print"></td><td colspan="2">Tổng cộng</td><td class="num money">' + money(ps.total.nganSach) + '</td>' +
       '<td class="num money"><span class="dbl">' + money(ps.total.chi) + '</span></td><td class="money"></td><td colspan="2"></td><td class="num">' + ps.total.soDong + '</td><td colspan="2"></td></tr>';
   };
 
   $('#pj-q', root).addEventListener('input', debounce((e) => { state.q = e.target.value; LS.set('q.projects', state.q); draw(); }, 120));
+  bindMergeUI(root, 'da', (v) => { state.merged = v; LS.set('merged.projects', v); draw(); });
   root.addEventListener('click', async (e) => {
     const a = e.target.closest('[data-act]');
     if (!a) return;

@@ -184,3 +184,67 @@ test('MU3 gộp hạng mục từ Danh mục chi phí (tích 2 dòng → Gộp m
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });
+
+function seedDA() {
+  const db = seed();
+  let id = db.nextId;
+  db.projects[0].nganSach = 300000000;
+  db.projects.push({ id: id++, ma: 'CT1B', ten: 'Công trình 1 (mã cũ)', nganSach: 100000000, trangThai: 'Đang thực hiện', ghiChu: '', ngayKhoiCong: '2026-01-05' });
+  db.houses.push({ id: id++, ma: 'C1', ten: 'Dùng chung', maCT: 'CT1', dienTich: '', chuNha: '', chung: true, ghiChu: '' },
+    { id: id++, ma: 'C1B', ten: 'Dùng chung', maCT: 'CT1B', dienTich: '', chuNha: '', chung: true, ghiChu: '' },
+    { id: id++, ma: 'L9', ten: 'Lô 9', maCT: 'CT1B', dienTich: 90, chuNha: '', chung: false, ghiChu: '' });
+  for (let i = 0; i < 3; i++) {
+    db.costs.push({ id: id++, seq: db.costs.length + 1, phieuId: 0, ngay: '2026-08-2' + i, maCT: 'CT1B', maNha: i ? 'L9' : 'C1B', maHM: 'HM01', loaiCP: 'Vật tư', maVT: '', dienGiai: 'ct1b ' + i,
+      soLuong: 1, donGia: 2000000, thanhTien: 2000000, maNCC: 'NCC_Khac', soPhieu: '', ghiChu: '', nguon: 'mau' });
+  }
+  db.entries.push({ id: id++, seq: db.entries.length + 1, ngay: '2026-08-25', soPhieu: '', maDuAn: 'CT1B', maNCC: 'NCC_Khac', noiDung: 'trả ct1b', thu: 0, chi: 1500000, nguoiNhan: '', ghiChu: '' });
+  db.nextId = id + 5;
+  return db;
+}
+
+test('MU4 gộp dự án ở màn Dự án: tích 2 dự án → Gộp mã → bắt chọn ngân sách (chọn Cộng) → nhà dùng chung gộp vào nhà dùng chung của đích → kết quả; dự án đích có đủ chi phí, nhà; Hoàn tác', { skip: SKIP, timeout: 180000 }, async () => {
+  const srv = await startServer({ seed: seedDA() });
+  const { browser, page, errors } = await openPage(srv, '#/du-an');
+  try {
+    const start = readStored(srv.dataDir);
+    await page.waitForSelector('[data-pick="CT1"]');
+    await page.check('[data-pick="CT1"]');
+    await page.check('[data-pick="CT1B"]');
+    await page.click('[data-act=merge]');
+    await page.waitForSelector('#mg-table');
+    const pv = await page.$eval('#mg-preview', (e) => e.innerText);
+    assert.match(pv, /ngân sách/);
+    assert.equal(await page.$eval('.modal [data-act=merge]', (b) => b.disabled), true, 'chưa chọn ngân sách thì chưa gộp được');
+    await page.selectOption('[data-giu=nganSach]', 'cong');
+    await page.waitForFunction(() => document.querySelector('[data-giu=nganSach]') && document.querySelector('[data-giu=nganSach]').value === 'cong');
+    // nhà dùng chung C1B → C1
+    await page.selectOption('[data-nha="C1B"]', 'C1');
+    await page.waitForFunction(() => document.querySelector('[data-nha="C1B"]') && document.querySelector('[data-nha="C1B"]').value === 'C1');
+    await page.click('.modal [data-act=merge]:not([disabled])');
+    await page.click('.modal [data-act=yes]');
+    await page.waitForFunction(() => /Đã gộp mã/.test(document.querySelector('#modal-root').innerText), null, { timeout: 5000 });
+    await page.click('#modal-root [data-act=ok]');
+    let db = readStored(srv.dataDir);
+    const ct1 = db.projects.find((p) => p.ma === 'CT1');
+    assert.deepEqual([ct1.nganSach, ct1.ngayKhoiCong], [400000000, '2026-01-05']);
+    assert.equal(db.projects.find((p) => p.ma === 'CT1B').gopVao, 'CT1');
+    assert.equal(db.houses.find((x) => x.ma === 'L9').maCT, 'CT1');
+    assert.equal(db.houses.find((x) => x.ma === 'C1B').gopVao, 'C1');
+    assert.equal(db.costs.filter((c) => c.maCT === 'CT1' && c.maNha === 'C1').length, 1);
+    assert.equal(db.entries.filter((e) => e.maDuAn === 'CT1B').length, 0);
+    // màn Dự án ẩn mã đã gộp
+    await page.waitForFunction(() => !document.querySelector('[data-pick="CT1B"]'));
+    await page.check('[data-merged-toggle]');
+    await page.waitForFunction(() => /Đã gộp vào CT1/.test(document.querySelector('#pj-body').innerText));
+    // hoàn tác ở màn Gộp mã
+    await page.evaluate(() => { location.hash = '#/gop-ma'; });
+    await page.waitForSelector('#gm-log tr[data-id] [data-act=undo]');
+    await page.click('#gm-log [data-act=undo]');
+    await page.click('.modal [data-act=yes]');
+    await page.waitForFunction(() => /Đã hoàn tác/.test(document.querySelector('#gm-log').innerText), null, { timeout: 5000 });
+    db = readStored(srv.dataDir);
+    const strip = (d) => { const x = JSON.parse(JSON.stringify(d)); ['mergeLog', 'aliases', 'updatedAt', 'nextId'].forEach((k) => delete x[k]); return x; };
+    assert.deepEqual(strip(db), strip(start), 'hoàn tác: dữ liệu như ban đầu');
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); await srv.stop(); }
+});

@@ -658,3 +658,100 @@ test('M11 tách mã hạng mục (HM37 mang hai nghĩa): bắt buộc có điề
     assert.deepEqual(readStored(srv.dataDir).costs, start.costs);
   } finally { await srv.stop(); }
 });
+
+/* ============================== Dự án / công trình (mục 5) ============================== */
+
+test('M12 gộp dự án / công trình: nhà của nguồn chuyển sang đích (nhà dùng chung gộp vào nhà dùng chung của đích theo lựa chọn); sổ thu chi, chi phí, khoản trả ngoài quỹ, thùng rác đổi mã; ngân sách cả hai bên phải chọn (giữ / cộng); ngày khởi công sớm nhất; cảnh báo địa chỉ, thời gian không giao; khóa sổ chặn; báo cáo dự án / công nợ đúng; hoàn tác', async () => {
+  const srv = await startServer({ seed: mau({ seed: 53 }) });
+  try {
+    const start = readStored(srv.dataDir);
+    const SRC = 'NHAMsHANH';
+    const DST = 'NHACOHANH';
+    // 1. xem trước
+    let r = await preview(srv, { loai: 'da', nguon: [SRC], dich: DST });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    let pv = r.json.preview;
+    const cnt = (list, field) => start[list].filter((x) => x[field] === SRC).length + start.trash.filter((t) => t.kind === list).reduce((n, t) => n + t.records.filter((x) => x[field] === SRC).length, 0);
+    assert.equal(pv.nguon[0].counts.entries, cnt('entries', 'maDuAn'));
+    assert.equal(pv.nguon[0].counts.costs, cnt('costs', 'maCT'));
+    assert.equal(pv.nguon[0].counts.houses, 2);
+    assert.equal(pv.nguon[0].counts.extPayments, 1);
+    assert.deepEqual(pv.nha.map((x) => [x.ma, x.goiY, x.vao]).sort(), [['CHUNG2', 'CHUNG1', ''], ['NĐC910', '', '']], 'nhà dùng chung gợi ý gộp vào nhà dùng chung của đích');
+    assert.equal(pv.thuocTinh.find((a) => a.f === 'ngayKhoiCong').chon, SRC, 'mặc định ngày khởi công sớm nhất');
+    assert.deepEqual(pv.chan, [], 'nguồn không có ngân sách: không phải chọn');
+    // 2. khóa sổ một tháng có dòng của nguồn → 423, không đổi gì
+    const e0 = start.entries.find((e) => e.maDuAn === SRC);
+    await srv.ok('POST', '/api/locks', { months: [e0.ngay.slice(0, 7)] });
+    r = await merge(srv, { loai: 'da', nguon: [SRC], dich: DST });
+    assert.equal(r.status, 423); assert.ok(r.json.khoa && r.json.khoa.length || /khóa sổ/.test(r.json.error));
+    await srv.ok('POST', '/api/locks/unlock', { thang: e0.ngay.slice(0, 7), lyDo: 'kiểm thử gộp dự án' });
+    // 3. gộp, CHUNG2 → CHUNG1
+    const before = readStored(srv.dataDir);
+    const b0 = soLieu(before);
+    const ps0 = KT.projectSummary(before, {});
+    const pd0 = KT.projectDebtSummary(before, {});
+    const sd0 = KT.supplierDebt(before, {});
+    r = await merge(srv, { loai: 'da', nguon: [SRC], dich: DST, nhaMap: { CHUNG2: 'CHUNG1' } });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    const db = readStored(srv.dataDir);
+    const a0 = soLieu(db);
+    checkInvariant(b0, a0, [['ct', exactKey], ['duAnThu', exactKey], ['duAnChi', exactKey], ['duAnNgoai', exactKey]], [SRC], DST);
+    // chi phí theo công trình + nhà: NĐC910 chuyển nguyên sang đích; CHUNG2 cộng vào CHUNG1
+    assert.equal(a0.nha[DST + '|NĐC910'], b0.nha[SRC + '|NĐC910']);
+    assert.equal(a0.nha[DST + '|CHUNG1'] || 0, (b0.nha[DST + '|CHUNG1'] || 0) + (b0.nha[SRC + '|CHUNG2'] || 0));
+    assert.equal(a0.nha[DST + '|'] || 0, (b0.nha[DST + '|'] || 0) + (b0.nha[SRC + '|'] || 0), 'dòng không ghi nhà');
+    Object.keys(a0.nha).forEach((k) => assert.ok(!k.startsWith(SRC + '|') || !a0.nha[k], 'không còn chi phí ở ' + k));
+    noOrphans(db, 'da', [SRC], DST);
+    noOrphans(db, 'nha', ['CHUNG2'], 'CHUNG1');
+    assert.equal(db.houses.find((x) => x.ma === 'NĐC910').maCT, DST);
+    assert.equal(db.houses.find((x) => x.ma === 'CHUNG2').gopVao, 'CHUNG1');
+    const d = db.projects.find((p) => p.ma === DST);
+    assert.deepEqual([d.nganSach, d.ngayKhoiCong, d.diaChi], [500000000, '2026-02-15', 'Hòa Xuân, Đà Nẵng']);
+    assert.equal(db.projects.find((p) => p.ma === SRC).gopVao, DST);
+    // báo cáo: tổng toàn cục không đổi; dự án đích = cộng dồn
+    const ps1 = KT.projectSummary(db, {});
+    assert.equal(ps1.total.chi, ps0.total.chi); assert.equal(ps1.total.thu, ps0.total.thu);
+    const row = (ps, ma) => ps.rows.find((x) => x.ma === ma) || { chi: 0, thu: 0, soDong: 0 };
+    assert.equal(row(ps1, DST).chi, row(ps0, DST).chi + row(ps0, SRC).chi);
+    assert.equal(row(ps1, DST).soDong, row(ps0, DST).soDong + row(ps0, SRC).soDong);
+    const pd1 = KT.projectDebtSummary(db, {});
+    ['phatSinh', 'daTra'].forEach((k) => assert.equal(pd1.total[k], pd0.total[k], 'công nợ theo công trình: tổng ' + k));
+    const prow = (pd, ma) => pd.rows.find((x) => x.ma === ma);
+    assert.equal(prow(pd1, DST).phatSinh, prow(pd0, DST).phatSinh + prow(pd0, SRC).phatSinh);
+    assert.equal(prow(pd1, DST).daTra, prow(pd0, DST).daTra + prow(pd0, SRC).daTra);
+    assert.ok(!prow(pd1, SRC));
+    const sd1 = KT.supplierDebt(db, {});
+    ['phatSinh', 'daTra', 'conLai'].forEach((k) => assert.equal(sd1.totalAll[k], sd0.totalAll[k], 'công nợ NCC: tổng ' + k));
+    // nhập tay mã dự án cũ → mã đích
+    r = await srv.ok('POST', '/api/entries', { ngay: '2026-09-22', maDuAn: 'nhamshanh', chi: 1000, noiDung: 'mã dự án cũ' });
+    const ne = r.db.entries.find((e) => e.noiDung === 'mã dự án cũ');
+    assert.equal(ne.maDuAn, DST);
+    await srv.ok('DELETE', '/api/entries/' + ne.id);
+    // 4. hoàn tác → như ban đầu
+    const g = (await srv.ok('GET', '/api/merge/log')).items[0];
+    assert.ok(g.coTheHoanTac, g.lyDo);
+    r = await srv.call('POST', '/api/merge/' + g.id + '/undo');
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    const end = readStored(srv.dataDir);
+    sameData(Object.assign({}, start, { trash: end.trash, locks: end.locks }), end, 'hoàn tác gộp dự án:');
+    // 5. hai bên đều có ngân sách (CT3 200tr, NHACOHANH 500tr): phải chọn; khác địa chỉ: cảnh báo
+    r = await preview(srv, { loai: 'da', nguon: ['CT3'], dich: DST });
+    pv = r.json.preview;
+    assert.ok(pv.chan.some((c) => c.ma === 'ngan-sach'));
+    assert.ok(pv.canhBao.some((x) => /khác địa chỉ/.test(x)));
+    r = await merge(srv, { loai: 'da', nguon: ['CT3'], dich: DST });
+    assert.equal(r.status, 400); assert.match(r.json.error, /ngân sách/);
+    r = await merge(srv, { loai: 'da', nguon: ['CT3'], dich: DST, giuLai: { nganSach: 'cong' } });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.equal(readStored(srv.dataDir).projects.find((p) => p.ma === DST).nganSach, 700000000, 'cộng ngân sách');
+    await srv.ok('POST', '/api/merge/' + r.json.merge.id + '/undo');
+    r = await merge(srv, { loai: 'da', nguon: ['CT3'], dich: DST, giuLai: { nganSach: 'CT3' } });
+    assert.equal(readStored(srv.dataDir).projects.find((p) => p.ma === DST).nganSach, 200000000, 'giữ ngân sách của nguồn');
+    await srv.ok('POST', '/api/merge/' + r.json.merge.id + '/undo');
+    // 6. thời gian phát sinh không giao nhau: cảnh báo
+    await srv.ok('POST', '/api/projects', { ma: 'CT_CU', ten: 'Công trình cũ', nganSach: 0, trangThai: 'Hoàn thành' });
+    await srv.ok('POST', '/api/entries', { ngay: '2025-03-10', maDuAn: 'CT_CU', chi: 5000, noiDung: 'năm ngoái' });
+    r = await preview(srv, { loai: 'da', nguon: ['CT_CU'], dich: DST });
+    assert.ok(r.json.preview.canhBao.some((x) => /không giao/.test(x)), JSON.stringify(r.json.preview.canhBao));
+  } finally { await srv.stop(); }
+});
