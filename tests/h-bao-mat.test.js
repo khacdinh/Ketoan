@@ -106,7 +106,8 @@ test('H4.2 đường dẫn API lạ / tên đối tượng hệ thống (constru
     await srv.call('PUT', '/api/vouchers/constructor', { nguoiNhan: 'x' });
     const r = await srv.ok('POST', '/api/entries', { ngay: '2026-09-01', noiDung: 'sau proto', chi: 1 });
     const e = r.db.entries.find((x) => x.id === r.id);
-    assert.deepEqual(Object.keys(e).sort(), ['chi', 'createdAt', 'ghiChu', 'id', 'maDuAn', 'maNCC', 'ngay', 'nguoiNhan', 'noiDung', 'seq', 'soPhieu', 'thu', 'updatedAt']);
+    assert.equal(e.nguoiTao, 'Người dùng máy này', 'trường người tạo (lược đồ 6) — không phải trường lạ');
+    assert.deepEqual(Object.keys(e).sort(), ['chi', 'createdAt', 'ghiChu', 'id', 'maDuAn', 'maNCC', 'ngay', 'nguoiNhan', 'nguoiTao', 'noiDung', 'seq', 'soPhieu', 'thu', 'updatedAt']);
     assert.equal(({}).polluted, undefined);
   } finally { await srv.stop(); }
 });
