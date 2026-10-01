@@ -116,7 +116,12 @@ const ICONS = {
   paperclip: 'ph-paperclip',
   money: 'ph-money',
   eye: 'ph-eye',
-  eyeSlash: 'ph-eye-slash'
+  eyeSlash: 'ph-eye-slash',
+  merge: 'ph-arrows-merge',
+  undo: 'ph-arrow-counter-clockwise',
+  swap: 'ph-arrows-left-right',
+  split: 'ph-git-fork',
+  dupes: 'ph-intersect'
 };
 const DUO = {
   dashboard: 'ph-chart-line-up',
@@ -141,7 +146,12 @@ const DUO = {
   stack: 'ph-stack',
   squares: 'ph-squares-four',
   package: 'ph-package',
-  shield: 'ph-shield-check'
+  shield: 'ph-shield-check',
+  merge: 'ph-arrows-merge',
+  undo: 'ph-arrow-counter-clockwise',
+  swap: 'ph-arrows-left-right',
+  split: 'ph-git-fork',
+  dupes: 'ph-intersect'
 };
 
 export function icon(name, cls) {
@@ -175,7 +185,7 @@ export async function api(method, url, body, isRaw, extraHeaders) {
   setOffline(false);
   let data;
   try { data = await res.json(); } catch (e) { throw new Error('Máy chủ trả về dữ liệu không hợp lệ (mã ' + res.status + ')'); }
-  if (!res.ok || data.ok === false) throw new Error(data.error || 'Lỗi ' + res.status);
+  if (!res.ok || data.ok === false) throw Object.assign(new Error(data.error || 'Lỗi ' + res.status), { status: res.status, data });
   if (data.db && onDb) onDb(data.db);
   return data;
 }

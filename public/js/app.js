@@ -12,6 +12,7 @@ import { renderCostLedger } from './views/cost-ledger.js';
 import { renderCostDashboard, renderCostDetail, renderDebt, renderPrices } from './views/cost-reports.js';
 import { renderCostCatalogs } from './views/cost-catalogs.js';
 import { renderControl } from './views/control.js';
+import { renderMerge } from './merge.js';
 
 const KT = window.KT;
 
@@ -32,7 +33,8 @@ const ROUTES = {
   'cp-gia': { title: 'Giá vật tư', sub: 'Lịch sử đơn giá theo vật tư và nhà cung cấp', icon: 'tag', render: renderPrices },
   'cp-danh-muc': { title: 'Danh mục chi phí', sub: 'Nhóm chi phí, hạng mục, vật tư, nhà và khu', icon: 'squares', render: renderCostCatalogs },
   // Kiểm soát sổ sách (nhóm độ chính xác và truy vết)
-  'kiem-soat': { title: 'Kiểm soát sổ sách', sub: 'Nhật ký thay đổi, thùng rác và các việc cần xử lý để số liệu luôn đúng', icon: 'shield', render: renderControl }
+  'kiem-soat': { title: 'Kiểm soát sổ sách', sub: 'Nhật ký thay đổi, thùng rác và các việc cần xử lý để số liệu luôn đúng', icon: 'shield', render: renderControl },
+  'gop-ma': { title: 'Gộp mã', sub: 'Đưa các mã trùng (NCC, vật tư, hạng mục, nhà, dự án) về một mã — có xem trước và hoàn tác', icon: 'merge', render: renderMerge }
 };
 const NAV_LABEL = {
   'tong-quan': 'Tổng quan',
@@ -49,10 +51,11 @@ const NAV_LABEL = {
   'cp-cong-no': 'Công nợ NCC',
   'cp-gia': 'Giá vật tư',
   'cp-danh-muc': 'Danh mục chi phí',
-  'kiem-soat': 'Kiểm soát'
+  'kiem-soat': 'Kiểm soát',
+  'gop-ma': 'Gộp mã'
 };
 const NAV = [['tong-quan', 'so-thu-chi', 'phieu'], ['du-an', 'ncc', 'tong-hop-ncc'],
-  ['cp-tong-hop', 'cp-nhap', 'cp-so', 'cp-chi-tiet', 'cp-cong-no', 'cp-gia', 'cp-danh-muc'], ['kiem-soat', 'cai-dat']];
+  ['cp-tong-hop', 'cp-nhap', 'cp-so', 'cp-chi-tiet', 'cp-cong-no', 'cp-gia', 'cp-danh-muc'], ['kiem-soat', 'gop-ma', 'cai-dat']];
 const NAV_HEAD = { 2: 'Chi phí công trình' };
 
 function current() {

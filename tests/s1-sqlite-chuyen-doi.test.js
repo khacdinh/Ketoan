@@ -46,7 +46,7 @@ test('S1.1 dữ liệu thật (schema 2): chuyển thành công, mọi con số 
     assert.ok(!/LỆCH/.test(rep), 'không chỉ tiêu nào lệch');
     // đúng dữ liệu trên đĩa, schema 4
     const disk = readStored(dir);
-    assert.equal(disk.schema, 4);
+    assert.equal(disk.schema, SCHEMA_VERSION);
     assert.equal(disk.entries.length, 66);
     assert.equal(disk.costs.length, 104);
     // nhật ký

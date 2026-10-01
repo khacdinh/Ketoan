@@ -5,6 +5,7 @@ import { openProjectForm, openSupplierForm } from '../forms.js';
 import { statusChip } from './dashboard.js';
 import { printView } from '../print.js';
 import { comboHtml, bindCombo } from '../combo.js';
+import { mergeToolbarHtml, bindMergeUI, pickHead, pickCell, mergedRecords, mergedChip } from '../merge.js';
 
 const KT = window.KT;
 
@@ -104,7 +105,7 @@ export function renderProjects(root) {
 
 export function renderSuppliers(root) {
   root = freshRoot(root);
-  const state = { q: LS.get('q.suppliers', ''), loai: LS.get('loai.suppliers', '') };
+  const state = { q: LS.get('q.suppliers', ''), loai: LS.get('loai.suppliers', ''), merged: LS.get('merged.suppliers', false) };
   const types = Array.from(new Set(S.db.suppliers.map((s) => s.loai).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'vi'));
   if (state.loai && !types.includes(state.loai)) state.loai = '';
   root.innerHTML =
@@ -112,12 +113,12 @@ export function renderSuppliers(root) {
     toolbar({
       id: 'ncc-q', placeholder: 'Tìm mã, tên, số điện thoại', q: state.q, addLabel: 'Thêm nhà cung cấp',
       extra: '<label class="sr-only" for="ncc-loai">Loại đối tượng</label><select id="ncc-loai" class="input w-auto max-w-[220px]"><option value="">Mọi loại đối tượng</option>' +
-        types.map((t) => '<option' + (t === state.loai ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select>'
+        types.map((t) => '<option' + (t === state.loai ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select>' + mergeToolbarHtml('ncc', state.merged)
     }) +
     '<section class="sheet overflow-hidden">' +
     '<p class="no-print border-b border-rule px-4 py-2.5 text-[13px] text-ink-2" id="ncc-count"></p>' +
     '<div class="overflow-x-auto"><table class="ledger">' +
-    '<thead><tr><th>Mã</th><th>Tên nhà cung cấp, đối tượng</th><th>Loại đối tượng</th><th>Điện thoại</th><th>Địa chỉ</th><th class="num money">Đã thanh toán</th><th class="num">Số dòng</th><th>Ghi chú</th><th class="no-print"><span class="sr-only">Thao tác</span></th></tr></thead>' +
+    '<thead><tr>' + pickHead + '<th>Mã</th><th>Tên nhà cung cấp, đối tượng</th><th>Loại đối tượng</th><th>Điện thoại</th><th>Địa chỉ</th><th class="num money">Đã thanh toán</th><th class="num">Số dòng</th><th>Ghi chú</th><th class="no-print"><span class="sr-only">Thao tác</span></th></tr></thead>' +
     '<tbody id="ncc-body"></tbody></table></div></section>';
 
   const draw = () => {
@@ -127,20 +128,24 @@ export function renderSuppliers(root) {
     const list = S.db.suppliers.filter((s) => (!state.loai || s.loai === state.loai) &&
       (!q || KT.normalizeText([s.ma, s.ten, s.loai, s.sdt, s.diaChi, s.ghiChu].join(' ')).includes(q)));
     $('#ncc-count', root).innerHTML = '<b class="font-semibold text-ink">' + list.length + '</b> trên ' + S.db.suppliers.length + ' đối tượng. Bấm đúp một dòng để sửa.';
-    $('#ncc-body', root).innerHTML = list.length ? list.map((s) => {
+    $('#ncc-body', root).innerHTML = (list.length ? list.map((s) => {
       const r = byMa.get(KT.keyOf(s.ma)) || { chi: 0, soDong: 0 };
-      return '<tr data-id="' + s.id + '">' +
+      return '<tr data-id="' + s.id + '">' + pickCell(s.ma) +
         '<td class="code">' + highlight(s.ma, state.q) + '</td><td class="min-w-[180px]">' + highlight(s.ten, state.q) + '</td>' +
         '<td class="text-ink-2">' + highlight(s.loai || '', state.q) + '</td>' +
         '<td class="whitespace-nowrap">' + highlight(s.sdt || '', state.q) + '</td><td class="text-[12.5px] text-ink-2">' + highlight(s.diaChi || '', state.q) + '</td>' +
         '<td class="num money ' + (r.chi ? 'font-semibold' : 'text-ink-3') + '">' + money(r.chi) + '</td><td class="num">' + r.soDong + '</td>' +
         '<td class="text-[12.5px] text-ink-2">' + highlight(s.ghiChu || '', state.q) + '</td>' +
         rowActions(s.ma) + '</tr>';
-    }).join('') : '<tr><td colspan="9" class="empty">Không có nhà cung cấp nào khớp. Thử từ khóa khác hoặc thêm mới.</td></tr>';
+    }).join('') : '<tr><td colspan="10" class="empty">Không có nhà cung cấp nào khớp. Thử từ khóa khác hoặc thêm mới.</td></tr>') +
+      // mã đã gộp (ẩn mặc định): chỉ để tra cứu, không sửa / xóa; muốn dùng lại thì hoàn tác ở màn Gộp mã
+      (state.merged ? mergedRecords('ncc').filter((s) => !q || KT.normalizeText([s.ma, s.ten, s.gopVao].join(' ')).includes(q)).map((s) =>
+        '<tr class="text-ink-3"><td class="no-print"></td><td class="code">' + esc(s.ma) + '</td><td>' + esc(s.ten) + '</td><td>' + esc(s.loai || '') + '</td><td colspan="5">' + mergedChip(s) + '</td><td class="no-print"></td></tr>').join('') : '');
   };
 
   $('#ncc-q', root).addEventListener('input', debounce((e) => { state.q = e.target.value; LS.set('q.suppliers', state.q); draw(); }, 120));
   $('#ncc-loai', root).addEventListener('change', (e) => { state.loai = e.target.value; LS.set('loai.suppliers', state.loai); draw(); });
+  bindMergeUI(root, 'ncc', (v) => { state.merged = v; LS.set('merged.suppliers', v); draw(); });
   root.addEventListener('click', async (e) => {
     const a = e.target.closest('[data-act]');
     if (!a) return;

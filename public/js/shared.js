@@ -177,10 +177,64 @@
   function keyOf(code) { return String(code || '').trim().toLowerCase(); }
 
   // Excel VLOOKUP/SUMIF không phân biệt hoa thường nên ở đây cũng vậy.
+  // Mã → bản ghi danh mục (bỏ qua mã đã gộp vào mã khác: mọi chỗ dùng đã chuyển sang mã đích)
   function indexBy(list) {
     const m = new Map();
-    (list || []).forEach(function (x) { if (x.ma && !m.has(keyOf(x.ma))) m.set(keyOf(x.ma), x); });
+    (list || []).forEach(function (x) { if (x.ma && !x.gopVao && !m.has(keyOf(x.ma))) m.set(keyOf(x.ma), x); });
     return m;
+  }
+
+  /* ---------------- Gộp mã: danh mục đang dùng, bí danh ---------------- */
+
+  // Loại mã gộp được → tên danh sách danh mục
+  const MERGE_LISTS = { ncc: 'suppliers', vt: 'materials', hm: 'costItems', nha: 'houses', da: 'projects' };
+  function isMerged(x) { return !!(x && x.gopVao); }
+
+  // Dữ liệu với danh mục chỉ còn mã đang dùng (ẩn mã "Đã gộp vào …" khỏi ô chọn, danh sách, báo cáo, file xuất).
+  // Không có mã nào đã gộp → trả lại đúng đối tượng cũ.
+  function activeDb(db) {
+    if (!db) return db;
+    let out = db;
+    Object.keys(MERGE_LISTS).forEach(function (l) {
+      const k = MERGE_LISTS[l];
+      const list = db[k];
+      if (Array.isArray(list) && list.some(isMerged)) {
+        if (out === db) out = Object.assign({}, db);
+        out[k] = list.filter(function (x) { return !isMerged(x); });
+      }
+    });
+    return out;
+  }
+
+  // { loai: Map(khóa mã cũ → mã đích) } từ bảng bí danh
+  function aliasIndex(db) {
+    const idx = {};
+    (db.aliases || []).forEach(function (a) {
+      if (!a || !a.loai) return;
+      (idx[a.loai] || (idx[a.loai] = new Map())).set(keyOf(a.ma), String(a.dich));
+    });
+    return idx;
+  }
+
+  // Mã gõ vào / trong file Excel → mã đang dùng: trùng đúng một mã đang dùng thì giữ; là mã cũ đã gộp thì đi theo chuỗi bí danh
+  // (A→B rồi B→C ⇒ A về C), so khớp không phân biệt hoa thường. Không có bí danh → trả lại nguyên văn (bước sau tra như thường).
+  function resolveAlias(db, loai, code, idx) {
+    let cur = String(code == null ? '' : code).normalize('NFC').trim();
+    if (!cur) return cur;
+    const list = db[MERGE_LISTS[loai]] || [];
+    const exact = function (c) { return list.some(function (x) { return !x.gopVao && x.ma === c; }); };
+    if (exact(cur)) return cur;
+    const m = (idx || aliasIndex(db))[loai];
+    if (!m) return cur;
+    const seen = {};
+    for (let i = 0; i < 50; i++) {
+      const next = m.get(keyOf(cur));
+      if (next === undefined || seen[next]) return cur;
+      seen[next] = true;
+      cur = next;
+      if (exact(cur)) return cur;
+    }
+    return cur;
   }
 
   function projectName(db, ma) {
@@ -624,9 +678,9 @@
 
   // Tìm hạng mục theo mã HOẶC theo tên (file Excel lưu tên hạng mục)
   function findCostItem(db, text) {
-    const t = String(text || '').trim();
+    const t = resolveAlias(db, 'hm', String(text || '').trim()); // mã hạng mục cũ đã gộp → mã đích
     if (!t) return null;
-    const list = db.costItems || [];
+    const list = (db.costItems || []).filter(function (x) { return !x.gopVao; });
     const k = keyOf(t);
     const byCode = list.find(function (x) { return keyOf(x.ma) === k; });
     if (byCode) return byCode;
@@ -1338,6 +1392,11 @@
     parseQty: parseQty,
     fmtQty: fmtQty,
     costAmount: costAmount,
+    MERGE_LISTS: MERGE_LISTS,
+    isMerged: isMerged,
+    activeDb: activeDb,
+    aliasIndex: aliasIndex,
+    resolveAlias: resolveAlias,
     costFromInput: costFromInput,
     syncCostInputs: syncCostInputs,
     findCostItem: findCostItem,

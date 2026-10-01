@@ -45,6 +45,12 @@
 .ph.ph-arrow-up-right:before {
   content: "\e092";
 }
+.ph.ph-arrows-left-right:before {
+  content: "\e0a0";
+}
+.ph.ph-arrows-merge:before {
+  content: "\ed3e";
+}
 .ph.ph-book-open-text:before {
   content: "\e8f2";
 }
@@ -129,6 +135,9 @@
 .ph.ph-gear-six:before {
   content: "\e272";
 }
+.ph.ph-git-fork:before {
+  content: "\e27e";
+}
 .ph.ph-hand-coins:before {
   content: "\ea8c";
 }
@@ -140,6 +149,9 @@
 }
 .ph.ph-info:before {
   content: "\e2ce";
+}
+.ph.ph-intersect:before {
+  content: "\e2d2";
 }
 .ph.ph-keyboard:before {
   content: "\e2d8";
@@ -297,6 +309,22 @@
 }
 .ph-duotone.ph-arrow-up-right:after {
   content: "\e093";
+  margin-left: -1em;
+}
+.ph-duotone.ph-arrows-left-right:before {
+  content: "\e0a0";
+  opacity: 0.2;
+}
+.ph-duotone.ph-arrows-left-right:after {
+  content: "\e0a1";
+  margin-left: -1em;
+}
+.ph-duotone.ph-arrows-merge:before {
+  content: "\ed3e";
+  opacity: 0.2;
+}
+.ph-duotone.ph-arrows-merge:after {
+  content: "\ed3f";
   margin-left: -1em;
 }
 .ph-duotone.ph-book-open-text:before {
@@ -523,6 +551,14 @@
   content: "\e273";
   margin-left: -1em;
 }
+.ph-duotone.ph-git-fork:before {
+  content: "\e27e";
+  opacity: 0.2;
+}
+.ph-duotone.ph-git-fork:after {
+  content: "\e27f";
+  margin-left: -1em;
+}
 .ph-duotone.ph-hand-coins:before {
   content: "\ea8c";
   opacity: 0.2;
@@ -553,6 +589,14 @@
 }
 .ph-duotone.ph-info:after {
   content: "\e2cf";
+  margin-left: -1em;
+}
+.ph-duotone.ph-intersect:before {
+  content: "\e2d2";
+  opacity: 0.2;
+}
+.ph-duotone.ph-intersect:after {
+  content: "\e2d3";
   margin-left: -1em;
 }
 .ph-duotone.ph-keyboard:before {
