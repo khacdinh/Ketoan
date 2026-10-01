@@ -6,7 +6,6 @@ const KT = window.KT;
 function part(v, s, lien) {
   const thu = v.loai === 'thu';
   const signs = [['Giám đốc', s.giamDoc]];
-  if (s.hienKeToanTruong) signs.push(['Kế toán trưởng', s.keToanTruong]);
   signs.push([thu ? 'Người nộp tiền' : 'Người nhận tiền', '']);
   signs.push(['Thủ quỹ', s.thuQuy]);
   return '<div class="vc">' +

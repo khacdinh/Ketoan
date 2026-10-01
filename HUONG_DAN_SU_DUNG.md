@@ -82,7 +82,7 @@ Mục **Kiểm soát** (trên “Cài đặt”; con số màu vàng = số vi�
    (để trống = tự lấy từ sổ và danh mục). Bấm **Lưu thông tin phiếu** để ghi nhớ.
 3. Bấm **In phiếu (2 liên)** — in ra 1 tờ A4 dọc gồm Liên 1 (lưu) và Liên 2 (giao khách) có đường cắt.
 
-Tên Giám đốc, Thủ quỹ… in dưới chữ ký được đặt trong **Cài đặt & dữ liệu**. Có thể bật thêm ô ký “Kế toán trưởng”.
+Tên Giám đốc, Thủ quỹ… in dưới chữ ký được đặt trong **Cài đặt & dữ liệu**. Phiếu thu/chi chỉ có chỗ ký Giám đốc, người nộp/nhận tiền và Thủ quỹ (không có Kế toán trưởng).
 
 ---
 

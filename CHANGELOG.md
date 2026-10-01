@@ -1,5 +1,11 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Bỏ Kế toán trưởng trên phiếu thu/chi (01/10/2026)
+
+- Phiếu thu, phiếu chi (in từ phần mềm, file Excel một phiếu và sheet `Phieu_Chi` trong file xuất) chỉ còn ba chỗ ký: Giám đốc,
+  người nộp/nhận tiền, Thủ quỹ. Bỏ ô chọn “In thêm chỗ ký của kế toán trưởng” trong Cài đặt (giá trị cũ vẫn lưu nhưng không còn tác dụng).
+- Tên Kế toán trưởng vẫn được nhập trong Cài đặt và vẫn in trên sổ quỹ, báo cáo chi phí và biên bản kiểm quỹ.
+
 ## Nhập Excel công trình (01/10/2026, nhánh `feature/import-excel-cong-trinh`)
 
 ### Thêm

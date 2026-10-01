@@ -15,12 +15,11 @@ export function renderSettings(root) {
     f('tenDonVi', 'Tên đơn vị', s.tenDonVi, 'col-span-2 max-sm:col-span-1') +
     f('diaChi', 'Địa chỉ', s.diaChi, 'col-span-2 max-sm:col-span-1') +
     f('giamDoc', 'Giám đốc', s.giamDoc) +
-    f('keToanTruong', 'Kế toán trưởng', s.keToanTruong) +
+    f('keToanTruong', 'Kế toán trưởng (in trên sổ, biên bản)', s.keToanTruong) +
     f('thuQuy', 'Thủ quỹ', s.thuQuy) +
     f('nguoiLap', 'Người lập biểu (in trên sổ)', s.nguoiLap) +
     '<label class="field"><span class="label">Hình thức thanh toán thường dùng</span><select name="hinhThucMacDinh" class="input">' +
     ['Tiền mặt', 'Chuyển khoản'].map((h) => '<option' + (h === s.hinhThucMacDinh ? ' selected' : '') + '>' + h + '</option>').join('') + '</select></label>' +
-    '<label class="check self-end pb-2"><input type="checkbox" name="hienKeToanTruong"' + (s.hienKeToanTruong ? ' checked' : '') + '>In thêm chỗ ký của kế toán trưởng</label>' +
     '<div class="col-span-2 flex justify-end max-sm:col-span-1"><button type="submit" class="btn btn-primary">' + icon('save') + 'Lưu thông tin</button></div>' +
     '</form></section>' +
 
@@ -72,7 +71,6 @@ export function renderSettings(root) {
     const fm = e.target;
     const data = {};
     ['tenDonVi', 'diaChi', 'giamDoc', 'keToanTruong', 'thuQuy', 'nguoiLap', 'hinhThucMacDinh'].forEach((k) => { data[k] = fm.elements[k].value.trim(); });
-    data.hienKeToanTruong = fm.elements.hienKeToanTruong.checked;
     try { await api('PUT', '/api/settings', data); toast('Đã lưu thông tin in trên phiếu'); } catch (err) { showError(err); }
   });
 
