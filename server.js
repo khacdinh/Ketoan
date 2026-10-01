@@ -39,6 +39,7 @@ const createCashCountApi = require('./lib/cashCountApi');
 const createAttachApi = require('./lib/attachApi');
 const createMergeApi = require('./lib/mergeApi');
 const aliasImport = require('./lib/aliasImport');
+const createExtPayApi = require('./lib/extPayApi');
 const JSZip = require('jszip');
 const { dataSummary } = require('./lib/store');
 const { looksLikeSqlite } = require('./lib/db');
@@ -272,7 +273,7 @@ function usage(field, ma) {
 
 // Bản sao lưu đưa vào phải đúng hình dạng: các danh sách là mảng đối tượng (tránh làm hỏng kho khi file lạ)
 function checkDbShape(d) {
-  ['projects', 'suppliers', 'entries', 'costGroups', 'costItems', 'materials', 'houses', 'costs', 'cashCounts', 'attachments'].forEach((k) => {
+  ['projects', 'suppliers', 'entries', 'costGroups', 'costItems', 'materials', 'houses', 'costs', 'cashCounts', 'attachments', 'extPayments'].forEach((k) => {
     if (d[k] === undefined) return;
     if (!Array.isArray(d[k]) || d[k].some((x) => x === null || typeof x !== 'object' || Array.isArray(x))) throw new HttpError(400, 'File sao lưu không hợp lệ: "' + k + '" phải là danh sách các bản ghi');
   });
@@ -285,6 +286,7 @@ const trace = createTrace({ store, HttpError, str, readJson, ok, sendJson, findC
 const costApi = createCostApi({ store, HttpError, str, money, readJson, ok, sendJson, findCode, byId, idList, own, trace, assertNotMerged, assertActive,
   renameTargets: (loai, a, b) => mergeApi.renameTargets(loai, a, b) });
 const mergeApi = createMergeApi({ store, HttpError, str, readJson, ok, sendJson, trace });
+const extPayApi = createExtPayApi({ store, HttpError, str, money, readJson, ok, findCode, byId, trace });
 const cashCountApi = createCashCountApi({ store, HttpError, str, money, readJson, ok, byId, trace });
 const attachApi = createAttachApi({ store, HttpError, str, sendJson, ok, readBody, trace, send });
 trace.hooks.afterPurge.push((item) => attachApi.retire(item.kind === 'attachments' ? item.records : (item.attachments || [])));
@@ -689,6 +691,7 @@ async function handleApi(req, res, url) {
   if (await cashCountApi.handle(req, res, url)) return;
   if (await attachApi.handle(req, res, url)) return;
   if (await mergeApi.handle(req, res, url)) return;
+  if (await extPayApi.handle(req, res, url)) return;
   if (await costApi.handle(req, res, url)) return;
 
   throw new HttpError(404, 'Không có chức năng ' + m + ' ' + p);

@@ -50,7 +50,7 @@ Nhóm menu **Chi phí công trình** (bên trái, dưới “Tổng hợp NCC”
 | **Phiếu nhập chi phí** | `PHIEU_NHAP` + macro `GhiPhieuNhap` | Khai báo đầu phiếu một lần, nhập nhiều dòng Mã VT × Số lượng × Đơn giá (hoặc chỉ Thành tiền cho khoản khoán), lưu một lần. Sửa / nhân bản / xóa phiếu. Phím **F3**. |
 | **Sổ chi phí** | `NHATKYCHUNG` | Toàn bộ dòng chi phí; lọc theo kỳ, công trình, nhà, nhóm, hạng mục, loại CP, NCC, vật tư; tìm kiếm; sửa trực tiếp trong bảng; tổng cuối bảng. |
 | **Chi tiết theo nhóm** | `CHI_TIET_THEO_NHOM` | Nhóm → Hạng mục → từng dòng, 3 mức hiển thị như nút 1 / 2 / 3 của Excel, có cộng hạng mục và tổng nhóm. |
-| **Công nợ NCC** | `CONGNO_NCC` | Bảng tổng hợp **theo công trình** (chi phí, đã thanh toán, % đã thanh toán, còn nợ, ứng dư), rồi công nợ từng NCC: Chi phí phát sinh − Đã trả (lấy từ Sổ thu chi) = Còn nợ / Ứng dư / Đã tất toán. |
+| **Công nợ NCC** | `CONGNO_NCC` | Bảng tổng hợp **theo công trình** (chi phí, đã thanh toán, % đã thanh toán, còn nợ, ứng dư), rồi công nợ từng NCC: Chi phí phát sinh − Đã trả (Sổ thu chi + khoản trả từ nguồn khác, ngoài quỹ) = Còn nợ / Ứng dư / Đã tất toán. |
 | **Giá vật tư** | (mới) | Lịch sử đơn giá từng vật tư theo NCC, giá thấp / cao / gần nhất, biểu đồ giá. |
 | **Danh mục chi phí** | `DM_NHOM`, `DM_HANGMUC`, `DM_VATTU`, `DM_NHA` | Nhóm chi phí, hạng mục, vật tư, nhà / khu. |
 
@@ -236,7 +236,7 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
   chưa nhập chi phí” để xem thêm số đã trả NCC của các dự án khác. Nếu có khoản trả cho NCC công trình mà chưa ghi mã
   dự án, phần mềm nhắc ngay dưới bảng.
 - **Công nợ NCC** = Chi phí phát sinh (Sổ chi phí) − Đã trả (Sổ thu chi: tổng **chi** trừ tổng **thu** của cùng
-  Mã NCC). Chọn công trình thì chỉ tính các dòng cùng Mã dự án. Hai sổ **không sửa dữ liệu của nhau**.
+  Mã NCC; cộng các khoản **trả từ nguồn khác, ngoài quỹ** — xem dưới). Chọn công trình thì chỉ tính các dòng cùng Mã dự án. Hai sổ **không sửa dữ liệu của nhau**.
   - Còn nợ: phát sinh > đã trả. Ứng dư: đã trả nhiều hơn khối lượng đã ghi (thường do chưa nhập khối lượng nghiệm thu).
   - Mặc định chỉ hiện **NCC liên quan công trình** (có chi phí, hoặc có khoản trả gắn với công trình đang có chi phí);
     đổi ở ô chọn phạm vi để xem mọi NCC.
@@ -247,6 +247,18 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
     Bỏ lọc: xóa trắng ô rồi Enter (hoặc bấm dấu × trong ô), hoặc bấm “Xem tất cả nhà cung cấp”.
   - Bấm một NCC để xem các phiếu chi phí và các lần trả tiền; nút **Trả tiền / Ghi phiếu chi** mở sẵn form ghi chi
     trong Sổ thu chi với đúng NCC, dự án và số còn nợ.
+  - **Trả từ nguồn khác (ngoài quỹ)** — khi NCC đã được trả bằng tiền KHÔNG thuộc quỹ tiền mặt do thủ quỹ quản lý
+    (công ty chuyển khoản, chủ nhà / chủ đầu tư trả thẳng cho thợ, giám đốc trả…), nên không thể ghi phiếu chi vào Sổ thu chi:
+    bấm nút **Nguồn khác** ở dòng NCC (hoặc **Trả từ nguồn khác** trong khung chi tiết). Form điền sẵn NCC, công trình đang lọc
+    và số còn nợ; ghi **Ngày trả**, **Số tiền**, **Nguồn tiền** (chọn gợi ý hoặc gõ) và **Ghi chú** (vd số UNC, ai chuyển, đợt
+    mấy). Khoản này:
+    - được cộng vào cột **Đã trả / đã ứng** (dưới số có dòng nhỏ “ngoài quỹ …”), nên công nợ giảm đúng; ghi công trình thì
+      công nợ theo công trình cũng giảm đúng chỗ (không ghi công trình thì phần mềm nhắc “trả chưa gán công trình”);
+    - **không** vào Sổ thu chi, **không** làm đổi Tồn quỹ, không có phiếu chi để in;
+    - hiện ở khung chi tiết NCC, mục “Đã trả từ nguồn khác, ngoài quỹ”, có nút sửa / xóa (xóa thì vào Thùng rác, khôi phục được);
+    - tôn trọng **khóa sổ** tháng, được ghi vào **Nhật ký thay đổi**; đổi mã / gộp mã NCC, dự án thì khoản trả đi theo;
+    - có trong file Excel: sheet **TRA_NGOAI_QUY** của file Chi phí công trình (CONGNO_NCC, CONGNO_CONGTRINH cộng sheet này bằng
+      công thức) và sheet **Tra_Ngoai_Quy** của file Công nợ; nhập lại file chi phí thì khoản trả được nhập theo, khoản trùng bỏ qua.
 - **Giá vật tư**: danh sách vật tư đã mua (số lần, giá gần nhất, cột **Chênh giá** = giá cao nhất so với giá thấp nhất, rê chuột để xem hai mức giá); chọn một vật tư để xem lịch sử đơn giá
   từng lần mua theo NCC, chênh lệch so với lần trước, biểu đồ giá.
 

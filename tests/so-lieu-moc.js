@@ -29,7 +29,23 @@ function summarize(db) {
     phieuNhap: KT.costSlips(db, costLedger).map((s) => ({ key: s.key, ngay: s.ngay, maCT: s.maCT, maNCC: s.maNCC, total: s.total, soDong: s.lines.length }))
   };
   // qua JSON để Map/Set/undefined so sánh được như nhau
-  return JSON.parse(JSON.stringify(out));
+  const o = JSON.parse(JSON.stringify(out));
+  if (!(db.extPayments || []).length) boTruongNgoaiQuy(o.congNoNCC);
+  return o;
+}
+
+// Trường thêm sau mốc (trả NCC từ nguồn khác, ngoài quỹ): dữ liệu không có khoản ngoài quỹ thì phải là 0 và "đã trả quỹ" = "đã trả";
+// kiểm tra đúng như vậy rồi bỏ ra để so với mốc chụp trước khi có tính năng.
+function boTruongNgoaiQuy(d) {
+  d.rows.forEach((r) => {
+    if (r.daTraNgoai !== 0 || r.soDongNgoai !== 0 || r.daTraQuy !== r.daTra) throw new Error('Công nợ ' + r.ma + ': trường ngoài quỹ sai khi không có khoản ngoài quỹ');
+    delete r.daTraNgoai; delete r.daTraQuy; delete r.soDongNgoai;
+  });
+  ['total', 'totalAll'].forEach((k) => {
+    if (!d[k]) return;
+    if (d[k].daTraNgoai !== 0) throw new Error('Công nợ ' + k + ': daTraNgoai phải là 0');
+    delete d[k].daTraNgoai;
+  });
 }
 
 const FILE = path.join(__dirname, 'fixtures', 'moc-so-lieu-nhom1.json');

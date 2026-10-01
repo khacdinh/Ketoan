@@ -843,7 +843,7 @@
     function get(ma) {
       const k = keyOf(ma);
       let a = acc.get(k);
-      if (!a) { a = { ma: String(ma).trim(), phatSinh: 0, daTra: 0, soDongCP: 0, soDongTT: 0, soDongTTCT: 0, last: '' }; acc.set(k, a); }
+      if (!a) { a = { ma: String(ma).trim(), phatSinh: 0, daTra: 0, daTraNgoai: 0, soDongCP: 0, soDongTT: 0, soDongNgoai: 0, soDongTTCT: 0, last: '' }; acc.set(k, a); }
       return a;
     }
     (db.costs || []).forEach(function (c) {
@@ -867,14 +867,29 @@
       if (ctCoChiPhi.has(keyOf(e.maDuAn))) a.soDongTTCT++;
       if (e.ngay > a.last) a.last = e.ngay;
     });
+    // Trả NCC từ nguồn tiền khác (ngoài quỹ tiền mặt): tính vào "đã trả" như phiếu chi, nhưng không có trong sổ thu chi / tồn quỹ
+    (db.extPayments || []).forEach(function (p) {
+      if (!p.maNCC) return;
+      if (only && !only.has(keyOf(p.maNCC))) return;
+      if (f.ct && keyOf(p.maDuAn) !== keyOf(f.ct)) return;
+      if (f.to && p.ngay > f.to) return;
+      const a = get(p.maNCC);
+      a.daTra += p.soTien || 0;
+      a.daTraNgoai += p.soTien || 0;
+      a.soDongTT++;
+      a.soDongNgoai++;
+      if (ctCoChiPhi.has(keyOf(p.maDuAn))) a.soDongTTCT++;
+      if (p.ngay > a.last) a.last = p.ngay;
+    });
     const rows = [];
     const seen = new Set();
     function push(ma, s, a) {
-      a = a || { phatSinh: 0, daTra: 0, soDongCP: 0, soDongTT: 0, soDongTTCT: 0, last: '' };
+      a = a || { phatSinh: 0, daTra: 0, daTraNgoai: 0, soDongCP: 0, soDongTT: 0, soDongNgoai: 0, soDongTTCT: 0, last: '' };
       const conLai = a.phatSinh - a.daTra;
       rows.push({
         id: s ? s.id : undefined, ma: ma, ten: s ? s.ten : '(Chưa có trong danh mục)', loai: s ? (s.loai || '') : '',
-        phatSinh: a.phatSinh, daTra: a.daTra, conLai: conLai, soDongCP: a.soDongCP, soDongTT: a.soDongTT, last: a.last,
+        phatSinh: a.phatSinh, daTra: a.daTra, daTraNgoai: a.daTraNgoai, daTraQuy: a.daTra - a.daTraNgoai, conLai: conLai, soDongCP: a.soDongCP, soDongTT: a.soDongTT,
+        soDongNgoai: a.soDongNgoai, last: a.last,
         // có chi phí công trình, hoặc có khoản trả/ứng gắn với công trình đang có chi phí (vd. ứng trước cho thầu)
         lienQuan: a.soDongCP > 0 || a.soDongTTCT > 0,
         status: conLai > 0 ? 'no' : conLai < 0 ? 'du' : 'ok', inCatalog: !!s
@@ -891,10 +906,10 @@
     const list = only ? rows.filter(function (r) { return only.has(keyOf(r.ma)); }) : rows;
     const sumRows = function (list) {
       return list.reduce(function (t, r) {
-        t.phatSinh += r.phatSinh; t.daTra += r.daTra; t.conLai += r.conLai;
+        t.phatSinh += r.phatSinh; t.daTra += r.daTra; t.daTraNgoai += r.daTraNgoai; t.conLai += r.conLai;
         if (r.conLai > 0) t.conNo += r.conLai; else t.ungDu -= r.conLai;
         return t;
-      }, { phatSinh: 0, daTra: 0, conLai: 0, conNo: 0, ungDu: 0 });
+      }, { phatSinh: 0, daTra: 0, daTraNgoai: 0, conLai: 0, conNo: 0, ungDu: 0 });
     };
     // total: chỉ các NCC liên quan công trình (dùng cho báo cáo); totalAll: mọi mã NCC
     return { rows: list, total: sumRows(only ? list : list.filter(function (r) { return r.lienQuan; })), totalAll: sumRows(list), sumRows: sumRows };
@@ -917,6 +932,7 @@
     (db.costs || []).forEach(function (c) { if (c.maCT && (!f.to || c.ngay <= f.to)) coChiPhi.add(keyOf(c.maCT)); });
     const coThuChi = new Set();
     (db.entries || []).forEach(function (e) { if (e.maDuAn && (!f.to || e.ngay <= f.to)) coThuChi.add(keyOf(e.maDuAn)); });
+    (db.extPayments || []).forEach(function (e) { if (e.maDuAn && (!f.to || e.ngay <= f.to)) coThuChi.add(keyOf(e.maDuAn)); });
     const list = [];
     const seen = new Set();
     (db.projects || []).forEach(function (p) { if (!seen.has(keyOf(p.ma))) { seen.add(keyOf(p.ma)); list.push({ ma: p.ma, ten: p.ten, trangThai: p.trangThai || '', inCatalog: true }); } });
@@ -962,6 +978,9 @@
     let soChuaGan = 0;
     (db.entries || []).forEach(function (e) {
       if (!e.maDuAn && e.maNCC && nccCP.has(keyOf(e.maNCC)) && (!f.to || e.ngay <= f.to) && (!onlyNcc || onlyNcc.has(keyOf(e.maNCC)))) { chuaGan += (e.chi || 0) - (e.thu || 0); soChuaGan++; }
+    });
+    (db.extPayments || []).forEach(function (p) {
+      if (!p.maDuAn && p.maNCC && nccCP.has(keyOf(p.maNCC)) && (!f.to || p.ngay <= f.to) && (!onlyNcc || onlyNcc.has(keyOf(p.maNCC)))) { chuaGan += p.soTien || 0; soChuaGan++; }
     });
     return { rows: rows, total: total, traChuaGanCT: { soTien: chuaGan, soDong: soChuaGan } };
   }

@@ -81,6 +81,12 @@ function mau(opts) {
     db.entries.push({ id: id++, seq: i + 1, ngay: '2026-0' + (1 + Math.floor(rnd() * 8)) + '-15', soPhieu: '', maDuAn: pick(cts.concat(['', 'NCT'])), maNCC: pick(nccs.concat([''])),
       noiDung: 'thu chi ' + i, thu: thu ? Math.floor(rnd() * 5e6) : 0, chi: thu ? 0 : Math.floor(rnd() * 3e7), nguoiNhan: '', ghiChu: '', createdAt: '2026-09-01T00:00:00Z', updatedAt: '2026-09-01T00:00:00Z' });
   }
+  // trả NCC từ nguồn khác (ngoài quỹ): cũng tham chiếu mã NCC / dự án
+  db.extPayments = [
+    { id: id++, ngay: '2026-04-10', maNCC: 'NCC_THienHAi', maDuAn: 'NHAMsHANH', soTien: 15000000, nguon: 'Chuyển khoản công ty', ghiChu: 'UNC 01', createdAt: '2026-09-01T00:00:00Z', updatedAt: '2026-09-01T00:00:00Z', by: '' },
+    { id: id++, ngay: '2026-05-11', maNCC: 'NCC_Khoi2', maDuAn: '', soTien: 7000000, nguon: 'Chủ nhà trả trực tiếp', ghiChu: '', createdAt: '2026-09-01T00:00:00Z', updatedAt: '2026-09-01T00:00:00Z', by: '' },
+    { id: id++, ngay: '2026-06-12', maNCC: 'NCC_HoaLan', maDuAn: 'CT3', soTien: 2500000, nguon: 'Giám đốc trả', ghiChu: 'đợt 1', createdAt: '2026-09-01T00:00:00Z', updatedAt: '2026-09-01T00:00:00Z', by: '' }
+  ];
   // thùng rác: bản ghi đã xóa mềm cũng dùng các mã sẽ bị gộp
   db.trash.push({ id: id++, at: '2026-09-02T00:00:00Z', by: '', kind: 'entries', label: 'dòng sổ đã xóa', records: [
     { id: id++, seq: 9001, ngay: '2026-05-05', soPhieu: '', maDuAn: 'NHAMsHANH', maNCC: 'NCC_THienHAi', noiDung: 'đã xóa', thu: 0, chi: 1234567, nguoiNhan: '', ghiChu: '' }] });
@@ -93,7 +99,7 @@ function mau(opts) {
 /* ---------------- số liệu độc lập (không dùng hàm tổng hợp của shared.js) ---------------- */
 function soLieu(db) {
   const posted = { costs: db.costs.filter((c) => !KT.isDraft(c)), entries: db.entries.filter((e) => !KT.isDraft(e)) };
-  const o = { tongChiPhi: 0, thu: 0, chi: 0, hm: {}, nha: {}, loai: {}, ct: {}, vt: {}, vtSL: {}, nccCP: {}, nccTra: {}, duAnThu: {}, duAnChi: {} };
+  const o = { tongChiPhi: 0, thu: 0, chi: 0, traNgoai: 0, hm: {}, nha: {}, loai: {}, ct: {}, vt: {}, vtSL: {}, nccCP: {}, nccTra: {}, nccNgoai: {}, duAnThu: {}, duAnChi: {}, duAnNgoai: {} };
   const add = (m, k, v) => { m[k] = (m[k] || 0) + v; };
   posted.costs.forEach((c) => {
     o.tongChiPhi += c.thanhTien;
@@ -106,14 +112,19 @@ function soLieu(db) {
     if (e.maNCC) add(o.nccTra, e.maNCC, (e.chi || 0) - (e.thu || 0));
     if (e.maDuAn) { add(o.duAnThu, e.maDuAn, e.thu || 0); add(o.duAnChi, e.maDuAn, e.chi || 0); }
   });
+  (db.extPayments || []).forEach((p) => {
+    o.traNgoai += p.soTien;
+    add(o.nccNgoai, p.maNCC, p.soTien);
+    if (p.maDuAn) add(o.duAnNgoai, p.maDuAn, p.soTien);
+  });
   o.tonQuy = o.thu - o.chi;
   return o;
 }
 const sumKeys = (m, ks) => ks.reduce((t, k) => t + (m[k] || 0), 0);
 // Kiểm tra bất biến: toàn cục không đổi; ở chiều theo mã (dim), mã đích sau = đích trước + các nguồn trước; nguồn sau = 0; mã khác không đổi
 function checkInvariant(before, after, dims, nguon, dich) {
-  ['tongChiPhi', 'thu', 'chi', 'tonQuy'].forEach((k) => assert.equal(after[k], before[k], 'tổng toàn cục ' + k + ' không đổi'));
-  ['hm', 'nha', 'loai', 'ct', 'vt', 'nccCP', 'nccTra', 'duAnThu', 'duAnChi'].forEach((d) => {
+  ['tongChiPhi', 'thu', 'chi', 'tonQuy', 'traNgoai'].forEach((k) => assert.equal(after[k], before[k], 'tổng toàn cục ' + k + ' không đổi'));
+  ['hm', 'nha', 'loai', 'ct', 'vt', 'nccCP', 'nccTra', 'nccNgoai', 'duAnThu', 'duAnChi', 'duAnNgoai'].forEach((d) => {
     const total = (m) => Object.values(m).reduce((t, v) => t + v, 0);
     assert.equal(total(after[d]), total(before[d]), 'tổng theo ' + d + ' không đổi');
   });
@@ -132,7 +143,8 @@ function checkInvariant(before, after, dims, nguon, dich) {
 const exactKey = (k, code) => k === code;
 
 // Quét toàn bộ lược đồ: không còn tham chiếu tới mã nguồn (trừ bảng bí danh, lịch sử gộp và chính bản ghi danh mục "Đã gộp")
-const REFS = { ncc: [['entries', 'maNCC'], ['costs', 'maNCC']], vt: [['costs', 'maVT']], hm: [['costs', 'maHM'], ['materials', 'maHM']], nha: [['costs', 'maNha']], da: [['entries', 'maDuAn'], ['costs', 'maCT'], ['houses', 'maCT']] };
+const REFS = { ncc: [['entries', 'maNCC'], ['costs', 'maNCC'], ['extPayments', 'maNCC']], vt: [['costs', 'maVT']], hm: [['costs', 'maHM'], ['materials', 'maHM']], nha: [['costs', 'maNha']],
+  da: [['entries', 'maDuAn'], ['costs', 'maCT'], ['houses', 'maCT'], ['extPayments', 'maDuAn']] };
 function noOrphans(db, loai, nguon, dich) {
   nguon.forEach((src) => {
     const same = key(src) === key(dich);
@@ -186,7 +198,9 @@ test('M1 gộp NCC: xem trước đúng số bản ghi / tiền; gộp nhiều n
     assert.match(r.json.backup, /truoc-gop-ma/);
     const after = readStored(srv.dataDir);
     const a0 = soLieu(after);
-    checkInvariant(b0, a0, [['nccCP', exactKey], ['nccTra', exactKey]], nguon, 'NCC_ThienHai');
+    checkInvariant(b0, a0, [['nccCP', exactKey], ['nccTra', exactKey], ['nccNgoai', exactKey]], nguon, 'NCC_ThienHai');
+    assert.equal(after.extPayments.filter((p) => p.maNCC === 'NCC_ThienHai').length, 2, 'khoản trả ngoài quỹ của 2 mã nguồn chuyển sang đích');
+    assert.equal(pv.nguon[0].tien.traNgoai, 15000000);
     // công nợ: đích sau = đích trước + nguồn
     const debt1 = KT.supplierDebt(after, {});
     const dOf = (D, ma) => D.rows.find((x) => x.ma === ma) || { phatSinh: 0, daTra: 0, conLai: 0 };

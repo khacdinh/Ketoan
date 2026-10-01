@@ -20,7 +20,7 @@ const countsText = (c, trash) => {
   const parts = Object.keys(c || {}).map((k) => c[k] + ' ' + (COUNT_LABEL[k] || k));
   return (parts.join(', ') || 'không có bản ghi nào') + (trash ? ' (trong đó ' + trash + ' trong thùng rác)' : '');
 };
-const tienText = (t) => [t.chiPhi ? 'chi phí ' + money(t.chiPhi) : '', t.chi ? 'chi ' + money(t.chi) : '', t.thu ? 'thu ' + money(t.thu) : ''].filter(Boolean).join(' · ') || '—';
+const tienText = (t) => [t.chiPhi ? 'chi phí ' + money(t.chiPhi) : '', t.chi ? 'chi ' + money(t.chi) : '', t.thu ? 'thu ' + money(t.thu) : '', t.traNgoai ? 'trả ngoài quỹ ' + money(t.traNgoai) : ''].filter(Boolean).join(' · ') || '—';
 const valText = (f, v) => (v === '' || v == null ? '(trống)' : typeof v === 'boolean' ? (v ? 'Có' : 'Không') : f === 'nganSach' ? money(v) : f === 'ngayKhoiCong' ? fdate(v) : String(v));
 
 function activeList(loai) { return (S.db[LOAI[loai].list] || []).map((x) => ({ ma: x.ma, ten: x.ten || '', sub: LOAI[loai].sub(x) || '' })); }

@@ -1,5 +1,19 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Trả nhà cung cấp từ nguồn khác, ngoài quỹ (01/10/2026)
+
+- Công nợ NCC: nút **Nguồn khác** (dòng NCC) / **Trả từ nguồn khác** (khung chi tiết) ghi khoản đã trả NCC bằng tiền không thuộc
+  quỹ tiền mặt (chuyển khoản công ty, chủ nhà trả thẳng, giám đốc trả…) kèm ngày, số tiền, nguồn tiền, công trình, ghi chú. Khoản này
+  cộng vào **Đã trả** của công nợ (theo NCC và theo công trình, “tính đến ngày”, gợi ý công nợ ở form phiếu chi) nhưng không vào Sổ thu chi,
+  không đổi tồn quỹ. Cột Đã trả có dòng phụ “ngoài quỹ …”; khung chi tiết liệt kê, sửa, xóa (vào Thùng rác, khôi phục được).
+- Bảng mới `extPayments` (lược đồ 5, tự tạo khi mở dữ liệu cũ); API `POST/PUT/DELETE /api/ext-payments`; kiểm tra dữ liệu vào, khóa sổ
+  tháng (423), nhật ký thay đổi; đổi mã / xóa NCC, dự án tính cả khoản trả này; gộp mã NCC / dự án chuyển cả khoản trả (xem trước hiện
+  “trả ngoài quỹ”), hoàn tác trả lại.
+- Excel: sheet `TRA_NGOAI_QUY` trong file chi phí (CONGNO_NCC và CONGNO_CONGTRINH cộng bằng SUMIFS), sheet `Tra_Ngoai_Quy` trong file
+  công nợ; nhập file chi phí đọc lại sheet này (bỏ khoản trùng kiểu đa tập, đổi mã cũ theo bí danh, bỏ tháng đã khóa).
+- Kiểm thử X1–X5 (`tests/x-tra-ngoai-quy.test.js`); dữ liệu mẫu gộp mã có khoản trả ngoài quỹ (M1 kiểm bất biến cả phần này);
+  `tests/so-lieu-moc.js` kiểm các trường mới bằng 0 khi không có khoản ngoài quỹ rồi so với mốc cũ.
+
 ## Ô lọc gõ tìm thay cho danh sách chọn (01/10/2026)
 
 - Mọi ô lọc / ô chọn dự án, công trình, nhà, nhà cung cấp, nhóm CP, hạng mục, vật tư đổi từ danh sách thả xuống sang ô gõ tìm có gợi ý

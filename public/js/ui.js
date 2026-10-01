@@ -115,6 +115,7 @@ const ICONS = {
   flag: 'ph-flag',
   paperclip: 'ph-paperclip',
   money: 'ph-money',
+  bank: 'ph-bank',
   eye: 'ph-eye',
   eyeSlash: 'ph-eye-slash',
   merge: 'ph-arrows-merge',

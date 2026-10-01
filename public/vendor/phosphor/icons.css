@@ -51,6 +51,9 @@
 .ph.ph-arrows-merge:before {
   content: "\ed3e";
 }
+.ph.ph-bank:before {
+  content: "\e0b4";
+}
 .ph.ph-book-open-text:before {
   content: "\e8f2";
 }
@@ -325,6 +328,14 @@
 }
 .ph-duotone.ph-arrows-merge:after {
   content: "\ed3f";
+  margin-left: -1em;
+}
+.ph-duotone.ph-bank:before {
+  content: "\e0b4";
+  opacity: 0.2;
+}
+.ph-duotone.ph-bank:after {
+  content: "\e0b5";
   margin-left: -1em;
 }
 .ph-duotone.ph-book-open-text:before {
