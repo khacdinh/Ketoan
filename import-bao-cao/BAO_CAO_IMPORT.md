@@ -71,7 +71,7 @@ ngày lệch ≤ 3 ngày, cùng NCC hoặc số phiếu hoặc dự án. Có tr�
 đã có (`#id`) ở phụ lục.
 
 16 khoản còn lại (Σ **1.394.463.000**) được nhập **dạng Nháp**:
-- 1.230.569.000 của 111 và 82.894.000 của NDC_7lo: các khoản tháng 8 ghi "c Dung chi", trả trước khi bàn giao quỹ, không đi qua quỹ của
+- 1.230.569.000 của 111 và 83.394.000 của NDC_7lo: các khoản tháng 8 ghi "c Dung chi", trả trước khi bàn giao quỹ, không đi qua quỹ của
   kế toán;
 - 80.000.000 "Vương thợ nề" của NDC_7lo: nghi đã có (xem 3.4);
 - 500.000 "Nghi đóng dấu" của Cô Hạnh: không tìm thấy trong sổ.
