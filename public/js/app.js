@@ -13,6 +13,7 @@ import { renderCostDashboard, renderCostDetail, renderDebt, renderPrices } from 
 import { renderCostCatalogs } from './views/cost-catalogs.js';
 import { renderControl } from './views/control.js';
 import { renderMerge } from './merge.js';
+import { A, napTrangThai, dangNhap, doiMatKhauBatBuoc } from './auth.js';
 
 const KT = window.KT;
 
@@ -186,6 +187,10 @@ async function boot() {
   onChange(render);
   renderShell();
   try {
+    // Đăng nhập đang bật: đăng nhập (và đổi mật khẩu nếu bị bắt buộc) TRƯỚC khi tải dữ liệu. Đang tắt: như trước, không thêm bước nào.
+    await napTrangThai();
+    if (A.bat && !A.nguoiDung) await dangNhap({});
+    if (A.bat && A.nguoiDung && A.nguoiDung.phaiDoiMatKhau) await doiMatKhauBatBuoc();
     await api('GET', '/api/db');
   } catch (e) {
     $('#view').innerHTML = '<div class="sheet p-6"><p class="font-semibold text-alert">Không tải được dữ liệu</p><p class="mt-1 text-ink-2">' + esc(e.message) + '</p></div>';
