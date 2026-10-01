@@ -189,7 +189,7 @@ function rowHtml(r, q) {
     '<td class="min-w-[140px] max-w-[240px]" data-edit="dienGiai">' + highlight(r.dienGiai, q) + clipHtml('costs', r.id) + clipHtml('slips', r.phieuId) + (r.ghiChu ? '<div class="text-[12.5px] text-ink-3">Ghi chú: ' + highlight(r.ghiChu, q) + '</div>' : '') + '</td>' +
     '<td class="num" data-edit="soLuong">' + KT.fmtQty(r.soLuong) + (r.dvt ? ' <span class="text-[12px] text-ink-3">' + esc(r.dvt) + '</span>' : '') + '</td>' +
     '<td class="num money" data-edit="donGia">' + highlight(money(r.donGia), q) + '</td>' +
-    '<td class="num money font-semibold">' + highlight(money(r.thanhTien), q) + '</td>' +
+    '<td class="num money font-semibold" data-edit="thanhTien">' + highlight(money(r.thanhTien), q) + '</td>' +
     '<td data-edit="maNCC"><span class="block max-w-[140px] truncate" title="' + esc(r.maNCC) + '">' + bad(r.nccHopLe, highlight(r.tenNCC || r.maNCC, q)) + '</span>' +
     (r.soPhieu ? '<div class="sub">Phiếu ' + highlight(r.soPhieu, q) + '</div>' : '') + '</td>' +
     '<td class="actions no-print">' +
@@ -219,8 +219,8 @@ function inlineEdit(td) {
     const lists = { maHM: 'dl-hm', maVT: 'dl-vt', maNCC: 'dl-suppliers', maNha: 'dl-nha' };
     if (lists[field]) input.setAttribute('list', lists[field]);
     const it = itemByCode(c.maHM);
-    input.value = field === 'soLuong' ? KT.fmtQty(c.soLuong) : field === 'donGia' ? money(c.donGia) : field === 'maHM' ? (it ? it.ten : c.maHM) : (c[field] || '');
-    if (field === 'soLuong' || field === 'donGia') input.className = 'text-right';
+    input.value = field === 'soLuong' ? KT.fmtQty(c.soLuong) : field === 'donGia' || field === 'thanhTien' ? money(c[field]) : field === 'maHM' ? (it ? it.ten : c.maHM) : (c[field] || '');
+    if (field === 'soLuong' || field === 'donGia' || field === 'thanhTien') input.className = 'text-right';
   }
   input.classList.add('input', 'input-sm', 'inline-cell');
   td.innerHTML = '';
@@ -242,6 +242,14 @@ function inlineEdit(td) {
     else if (field === 'maNha') { const code = v ? resolveCode(S.db.houses, v) : ''; if (code && !houseByCode(code)) return fail('Nhà "' + v + '" chưa có trong danh mục'); patch.maNha = code; }
     else if (field === 'soLuong') { const n = KT.parseQty(v); if (isNaN(n) || n <= 0) return fail('Số lượng không hợp lệ'); patch.soLuong = n; }
     else if (field === 'donGia') { const n = KT.parseAmount(v); if (isNaN(n) || n < 0) return fail('Đơn giá không hợp lệ'); patch.donGia = n; }
+    else if (field === 'thanhTien') {
+      // Sửa Thành tiền: giữ Số lượng, máy chủ tính lại Đơn giá (dòng theo khoản SL 1 thì ĐG = Thành tiền)
+      const n = KT.parseAmount(v);
+      if (isNaN(n) || n <= 0) return fail('Thành tiền không hợp lệ');
+      const r = KT.costFromInput(c.soLuong, null, n);
+      if (r.loi) return fail(r.loi + ' (bấm nút Sửa dòng để đổi cả số lượng)');
+      patch.donGia = ''; patch.thanhTien = n;
+    }
     else patch[field] = v;
     done = true;
     try {
@@ -273,8 +281,9 @@ export function openCostLineForm(c) {
     fld('maVT', 'Mã vật tư', c.maVT, 'dl-vt') +
     '<label class="field"><span class="label">Loại CP</span><select name="loaiCP" class="input">' + KT.LOAI_CP.map((l) => '<option' + (l === c.loaiCP ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select></label>' +
     fld('dienGiai', 'Diễn giải / quy cách', c.dienGiai) +
-    fld('soLuong', 'Số lượng *', KT.fmtQty(c.soLuong), '', 'text-right') + fld('donGia', 'Đơn giá *', money(c.donGia), '', 'text-right') +
-    '<div class="field"><span class="label">Thành tiền</span><div class="flex h-9 items-center justify-end rounded-md bg-paper px-3 text-[16px] font-semibold tabular-nums" id="cl-tt"></div></div>' +
+    fld('soLuong', 'Số lượng', KT.fmtQty(c.soLuong), '', 'text-right') + fld('donGia', 'Đơn giá', money(c.donGia), '', 'text-right') +
+    fld('thanhTien', 'Thành tiền *', money(c.thanhTien), '', 'text-right font-semibold') +
+    '<p class="col-span-3 -mt-2 text-[12.5px] text-ink-3 max-md:col-span-2 max-sm:col-span-1">Nhập Số lượng và Đơn giá (Thành tiền tự tính), hoặc chỉ nhập Thành tiền cho khoản khoán (để trống Số lượng, Đơn giá).</p>' +
     '<label class="field col-span-3 max-md:col-span-2 max-sm:col-span-1"><span class="label">Ghi chú</span><input name="ghiChu" class="input" value="' + esc(c.ghiChu || '') + '"></label>' +
     '<p class="col-span-3 text-[12.5px] text-ink-3 max-md:col-span-2 max-sm:col-span-1">Đổi ngày, công trình, nhà, nhà cung cấp hoặc số phiếu của riêng dòng này thì dòng được tách thành phiếu riêng.</p>' +
     '</form>' + attachBlock('costs', c.id, { readonly: KT.isLockedDate(S.all, c.ngay) });
@@ -288,25 +297,37 @@ export function openCostLineForm(c) {
       bindAttach(el);
       const fm = $('#cl-form', el);
       const g = (n) => fm.elements[n];
-      const tt = () => {
-        const sl = KT.parseQty(g('soLuong').value);
-        const dg = KT.parseAmount(g('donGia').value);
-        $('#cl-tt', el).textContent = isNaN(sl) || isNaN(dg) ? '—' : money(KT.costAmount(sl, dg));
-      };
-      fm.addEventListener('input', tt);
-      tt();
+      // Tự điền ô còn lại như ở phiếu nhập; ĐG có số lẻ (từ Excel) thì Thành tiền là gốc
+      const so = { soLuong: g('soLuong').value, donGia: g('donGia').value, thanhTien: g('thanhTien').value,
+        ttTuDong: Number.isInteger(Number(c.donGia)), dgTuDong: !Number.isInteger(Number(c.donGia)) };
+      fm.addEventListener('input', (e) => {
+        const n = e.target.name;
+        if (!['soLuong', 'donGia', 'thanhTien'].includes(n)) return;
+        so[n] = e.target.value;
+        KT.syncCostInputs(so, n);
+        ['donGia', 'thanhTien'].forEach((k) => { if (k !== n && g(k).value !== (so[k] || '')) g(k).value = so[k] || ''; });
+        g('donGia').placeholder = so.dgTuDong && so.soLuong.trim() && so.thanhTien.trim() ? 'tự tính' : '';
+      });
       const save = async () => {
         const data = {
           phieuId: c.phieuId, ngay: g('ngay').value, maCT: resolveCode(S.db.projects, g('maCT').value), maNha: g('maNha').value.trim() ? resolveCode(S.db.houses, g('maNha').value) : '',
           maNCC: resolveCode(S.db.suppliers, g('maNCC').value), soPhieu: g('soPhieu').value.trim(), maHM: resolveItem(g('maHM').value) || g('maHM').value.trim(),
           maVT: g('maVT').value.trim(), loaiCP: g('loaiCP').value, dienGiai: g('dienGiai').value.trim(),
-          soLuong: KT.parseQty(g('soLuong').value), donGia: KT.parseAmount(g('donGia').value), ghiChu: g('ghiChu').value.trim()
+          ghiChu: g('ghiChu').value.trim()
         };
+        const val = (n, parse) => { const t = g(n).value.trim(); return t ? parse(t) : null; };
+        const sl = val('soLuong', KT.parseQty);
+        const dg = so.dgTuDong ? null : val('donGia', KT.parseAmount);
+        const tt = val('thanhTien', KT.parseAmount);
         if (!KT.isISODate(data.ngay)) return bad('ngay', 'Ngày không hợp lệ');
         if (!projectByCode(data.maCT)) return bad('maCT', 'Công trình chưa có trong danh mục');
         if (!supplierByCode(data.maNCC)) return bad('maNCC', 'Nhà cung cấp chưa có trong danh mục');
-        if (isNaN(data.soLuong) || data.soLuong <= 0) return bad('soLuong', 'Số lượng không hợp lệ');
-        if (isNaN(data.donGia) || data.donGia < 0) return bad('donGia', 'Đơn giá không hợp lệ');
+        if (sl !== null && isNaN(sl)) return bad('soLuong', 'Số lượng không hợp lệ');
+        if (dg !== null && (isNaN(dg) || dg < 0)) return bad('donGia', 'Đơn giá không hợp lệ');
+        if (tt !== null && isNaN(tt)) return bad('thanhTien', 'Thành tiền không hợp lệ');
+        const r = KT.costFromInput(sl, dg, tt, true);
+        if (r.loi) return bad(r.cot, r.loi.charAt(0).toUpperCase() + r.loi.slice(1));
+        Object.assign(data, { soLuong: sl === null ? '' : sl, donGia: dg === null ? '' : dg, thanhTien: tt === null ? '' : tt });
         try { await api('PUT', '/api/costs/' + c.id, data); toast('Đã lưu dòng chi phí'); h.close(); } catch (err) { showError(err); }
       };
       function bad(n, msg) { toast(msg, 'error'); fieldError(g(n), msg); }

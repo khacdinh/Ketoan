@@ -1,5 +1,15 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Nhập Thành tiền không cần Số lượng, Đơn giá (01/10/2026)
+
+- Phiếu nhập chi phí: ô **Thành tiền** nhập được. Chỉ gõ Thành tiền (để trống SL, ĐG) → dòng khoán, lưu SL 1 × ĐG = Thành tiền
+  (giống cách công cụ nhập Excel xử lý dòng chỉ có Thành tiền), nên công thức SL × ĐG = Thành tiền vẫn đúng ở mọi dòng, báo cáo và
+  Excel không đổi. Gõ SL + Thành tiền → Đơn giá tự tính (máy chủ tính tới 0,01 sao cho nhân lại đúng Thành tiền, không chia đều thì báo lỗi).
+  Ô người dùng tự gõ không bị ghi đè khi sửa ô khác.
+- Sổ chi phí: bấm đúp ô Thành tiền để sửa (giữ SL, tính lại ĐG); form sửa dòng có ô Thành tiền, SL và ĐG không còn bắt buộc.
+- API `/api/cost-slips`, `/api/costs`: nhận thêm `thanhTien`; khi có đủ `soLuong` và `donGia` thì vẫn tự tính và bỏ qua `thanhTien` gửi kèm
+  (tương thích bản cũ). Hàm dùng chung `KT.costFromInput`, `KT.syncCostInputs`. Kiểm thử D3.4, F1c.
+
 ## Bỏ Kế toán trưởng trên phiếu thu/chi (01/10/2026)
 
 - Phiếu thu, phiếu chi (in từ phần mềm, file Excel một phiếu và sheet `Phieu_Chi` trong file xuất) chỉ còn ba chỗ ký: Giám đốc,

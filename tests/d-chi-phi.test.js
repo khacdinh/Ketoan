@@ -291,6 +291,58 @@ test('D3.3 bấm lưu hai lần liên tiếp (gọi đồng thời) không làm 
 
 /* ---------------- D4 sửa / xóa / nhân bản ---------------- */
 
+test('D3.4 nhập Thành tiền không cần SL, ĐG (khoản khoán): lưu SL 1 × ĐG = Thành tiền; SL + Thành tiền tính ĐG; ba ô lệch nhau bị từ chối; sửa dòng theo Thành tiền', async () => {
+  const srv = await startServer({});
+  try {
+    const c = await setup(srv);
+    const post = (lines) => srv.call('POST', '/api/cost-slips', slip({ lines: lines.map((l) => Object.assign({ maHM: c.HM_NC, dienGiai: 'Nhân công đợt 1' }, l)) }));
+    const last = (r) => r.json.db.costs[r.json.db.costs.length - 1];
+    // chỉ Thành tiền (số hoặc chuỗi như ô nhập), SL / ĐG trống hoặc không gửi
+    for (const l of [{ thanhTien: 12500000 }, { soLuong: '', donGia: '', thanhTien: '12.500.000' }, { soLuong: null, donGia: null, thanhTien: '12,5tr' }]) {
+      const r = await post([l]);
+      assert.equal(r.status, 200, JSON.stringify(l) + ' ' + JSON.stringify(r.json));
+      assert.equal(r.json.total, 12500000);
+      const x = last(r);
+      assert.deepEqual([x.soLuong, x.donGia, x.thanhTien], [1, 12500000, 12500000], JSON.stringify(l));
+    }
+    // SL + Thành tiền: ĐG = Thành tiền / SL tới 0,01, SL × ĐG ra đúng Thành tiền
+    let r = await post([{ soLuong: 4, thanhTien: 1000000 }]);
+    assert.deepEqual([last(r).soLuong, last(r).donGia, last(r).thanhTien], [4, 250000, 1000000]);
+    r = await post([{ soLuong: 3, donGia: '', thanhTien: 160000 }]);
+    assert.deepEqual([last(r).donGia, last(r).thanhTien], [53333.33, 160000]);
+    assert.equal(KT.costAmount(last(r).soLuong, last(r).donGia), 160000);
+    // đủ SL và ĐG: Thành tiền luôn = SL × ĐG, số gửi kèm bị bỏ qua (tương thích với bản ghi cũ gửi lại nguyên dòng)
+    r = await post([{ soLuong: 2, donGia: 50000, thanhTien: 100001 }]);
+    assert.equal(r.status, 200); assert.equal(last(r).thanhTien, 100000);
+    // giao diện kiểm tra khớp khi người dùng gõ cả ba ô
+    assert.match(KT.costFromInput(2, 50000, 100001, true).loi, /khác Số lượng × Đơn giá/);
+    const errs = [
+      [{ thanhTien: 0 }, /Thành tiền phải lớn hơn 0/], [{ thanhTien: -5 }, /âm/],
+      [{ thanhTien: 'abc' }, /Thành tiền không hợp lệ/], [{ donGia: 5000, thanhTien: 10000 }, /thiếu Số lượng/], [{ soLuong: 1000, thanhTien: 1 }, /không chia đều/],
+      [{ soLuong: '', donGia: '', thanhTien: '' }, /chưa có dòng hàng|cần Số lượng và Đơn giá, hoặc Thành tiền/], [{ soLuong: 0, thanhTien: 1000 }, /Số lượng phải lớn hơn 0/]
+    ];
+    for (const [l, re] of errs) { const x = await post([l]); assert.equal(x.status, 400, JSON.stringify(l)); assert.match(x.json.error, re, JSON.stringify(l)); }
+    // tổng phiếu trộn dòng SL × ĐG và dòng khoán
+    r = await post([{ soLuong: 10, donGia: 95000 }, { thanhTien: 3000000 }]);
+    assert.equal(r.json.total, 950000 + 3000000);
+    // sửa một dòng: đổi Thành tiền, giữ SL (máy chủ tính lại ĐG); dòng khoán SL 1 thì ĐG = Thành tiền
+    const row = r.json.db.costs.find((x) => x.thanhTien === 950000);
+    const put = (rec, patch) => srv.call('PUT', '/api/costs/' + rec.id, Object.assign({ ngay: rec.ngay, maCT: rec.maCT, maNha: rec.maNha, maNCC: rec.maNCC, maHM: rec.maHM, dienGiai: rec.dienGiai, soLuong: rec.soLuong, donGia: rec.donGia }, patch));
+    let u = await put(row, { donGia: '', thanhTien: 1000000 });
+    assert.equal(u.status, 200, JSON.stringify(u.json));
+    let y = u.json.db.costs.find((x) => x.id === row.id);
+    assert.deepEqual([y.soLuong, y.donGia, y.thanhTien], [10, 100000, 1000000]);
+    const khoan = u.json.db.costs.find((x) => x.thanhTien === 3000000);
+    u = await put(khoan, { donGia: '', thanhTien: 3200000 });
+    y = u.json.db.costs.find((x) => x.id === khoan.id);
+    assert.deepEqual([y.soLuong, y.donGia, y.thanhTien], [1, 3200000, 3200000]);
+    // báo cáo tính đúng theo dòng khoán (SL × ĐG = Thành tiền ở mọi dòng)
+    const db = await srv.db();
+    assert.ok(db.costs.every((x) => KT.costAmount(x.soLuong, x.donGia) === x.thanhTien));
+    assert.equal(KT.costSummary(db).total, raw(db).total);
+  } finally { await srv.stop(); }
+});
+
 test('D4.1 sửa / xóa / nhân bản phiếu và dòng: báo cáo và công nợ khớp bản tính độc lập sau MỖI thao tác (250 thao tác ngẫu nhiên)', { timeout: 300000 }, async () => {
   const srv = await startServer({});
   try {

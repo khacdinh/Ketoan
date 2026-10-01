@@ -536,6 +536,81 @@
     return r === 0 ? 0 : neg ? -r : r;
   }
 
+  /* Số lượng / Đơn giá / Thành tiền của một dòng chi phí từ các ô đã nhập (null hoặc '' = để trống; số đã đọc, không âm).
+   * - Đủ SL và ĐG: Thành tiền = SL × ĐG. Thành tiền gửi kèm: bỏ qua (như trước nay, máy chủ luôn tự tính), trừ khi kiemKhop = true
+   *   (giao diện: người dùng gõ cả ba ô mà lệch nhau thì báo lỗi).
+   * - SL + Thành tiền: ĐG = Thành tiền / SL (làm tròn 0,01), chỉ nhận khi SL × ĐG ra đúng Thành tiền.
+   * - Chỉ có Thành tiền: nhập theo khoản, lưu SL 1 × ĐG = Thành tiền (như công cụ nhập Excel), để SL × ĐG = Thành tiền luôn đúng.
+   * Trả về { soLuong, donGia, thanhTien } hoặc { loi, cot } (cot = ô cần sửa). */
+  function costFromInput(soLuong, donGia, thanhTien, kiemKhop) {
+    function has(v) { return v !== null && v !== undefined && v !== ''; }
+    const hS = has(soLuong);
+    const hD = has(donGia);
+    const hT = has(thanhTien);
+    if (hS && !(Number(soLuong) > 0)) return { loi: 'Số lượng phải lớn hơn 0', cot: 'soLuong' };
+    if (hS && hD) {
+      const tt = costAmount(soLuong, donGia);
+      if (kiemKhop && hT && Math.round(Number(thanhTien)) !== tt) {
+        return { loi: 'Thành tiền ' + fmtMoney(Math.round(Number(thanhTien))) + ' khác Số lượng × Đơn giá = ' + fmtMoney(tt) + '. Sửa lại hoặc xóa trống một ô', cot: 'thanhTien' };
+      }
+      return { soLuong: Number(soLuong), donGia: Number(donGia), thanhTien: tt };
+    }
+    if (!hT) {
+      if (hS) return { loi: 'thiếu Đơn giá (hoặc nhập Thành tiền)', cot: 'donGia' };
+      if (hD) return { loi: 'thiếu Số lượng (hoặc nhập Thành tiền)', cot: 'soLuong' };
+      return { loi: 'cần Số lượng và Đơn giá, hoặc Thành tiền', cot: 'soLuong' };
+    }
+    const t = Math.round(Number(thanhTien));
+    if (!(t > 0)) return { loi: 'Thành tiền phải lớn hơn 0', cot: 'thanhTien' };
+    if (hS) {
+      const sl = Number(soLuong);
+      const dg = Math.round((t / sl) * 100) / 100;
+      if (costAmount(sl, dg) !== t) {
+        return { loi: 'Thành tiền ' + fmtMoney(t) + ' không chia đều cho số lượng ' + fmtQty(sl) + '. Nhập Đơn giá, hoặc xóa trống Số lượng để nhập theo khoản', cot: 'thanhTien' };
+      }
+      return { soLuong: sl, donGia: dg, thanhTien: t };
+    }
+    if (hD) return { loi: 'thiếu Số lượng (hoặc xóa trống Đơn giá để nhập theo khoản)', cot: 'soLuong' };
+    return { soLuong: 1, donGia: t, thanhTien: t };
+  }
+
+  /* Giao diện: tự điền ô còn lại khi gõ SL / ĐG / Thành tiền (giá trị dạng chuỗi trong l). changed = ô vừa sửa.
+   * l.ttTuDong = Thành tiền là kết quả SL × ĐG; l.dgTuDong = Đơn giá được tính từ Thành tiền người dùng gõ (khi lưu gửi ĐG trống,
+   * máy chủ tự tính lại từ SL + Thành tiền).
+   * Ô người dùng tự gõ không bao giờ bị ghi đè. Trả về tên ô vừa được điền lại (hoặc null). */
+  function syncCostInputs(l, changed) {
+    function has(v) { return String(v == null ? '' : v).trim() !== ''; }
+    const sl = parseQty(l.soLuong);
+    const dg = parseAmount(l.donGia);
+    const tt = parseAmount(l.thanhTien);
+    const okSL = has(l.soLuong) && !isNaN(sl) && sl > 0;
+    const okDG = has(l.donGia) && !isNaN(dg) && dg >= 0;
+    const okTT = has(l.thanhTien) && !isNaN(tt) && tt > 0;
+    // ô Đơn giá chỉ hiện số chẵn đồng (ô tiền không nhận số lẻ); chia không chẵn thì để trống, khi lưu máy chủ tính ĐG tới 0,01
+    function deriveDG() {
+      const d = Math.round(tt / sl);
+      l.donGia = costAmount(sl, d) === tt ? fmtMoney(d) : '';
+      l.dgTuDong = true;
+      return 'donGia';
+    }
+    function clearDG() {
+      if (!has(l.donGia)) return null;
+      l.donGia = '';
+      return 'donGia';
+    }
+    if (changed === 'thanhTien') {
+      l.ttTuDong = false;
+      if (okSL && okTT) return deriveDG();
+      return l.dgTuDong ? clearDG() : null;
+    }
+    if (changed === 'donGia') l.dgTuDong = false;
+    if (l.dgTuDong) return okSL && okTT ? deriveDG() : clearDG();
+    if (okSL && okDG) { l.thanhTien = fmtMoney(costAmount(sl, dg)); l.ttTuDong = true; return 'thanhTien'; }
+    if (changed === 'soLuong' && okSL && !has(l.donGia) && okTT && !l.ttTuDong) return deriveDG();
+    if (l.ttTuDong && has(l.thanhTien)) { l.thanhTien = ''; l.ttTuDong = false; return 'thanhTien'; }
+    return null;
+  }
+
   function costIndexes(db) {
     return {
       p: indexBy(db.projects),
@@ -1248,6 +1323,8 @@
     parseQty: parseQty,
     fmtQty: fmtQty,
     costAmount: costAmount,
+    costFromInput: costFromInput,
+    syncCostInputs: syncCostInputs,
     findCostItem: findCostItem,
     defaultLoaiCP: defaultLoaiCP,
     buildCostLedger: buildCostLedger,

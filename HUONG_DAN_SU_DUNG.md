@@ -47,7 +47,7 @@ Nhóm menu **Chi phí công trình** (bên trái, dưới “Tổng hợp NCC”
 | Màn hình | Sheet Excel tương ứng | Làm được gì |
 |---|---|---|
 | **Tổng hợp chi phí** | `TONGHOP` | Tổng chi phí; theo loại Vật tư / Nhân công / Dịch vụ-Phí; đã trả, còn nợ NCC; bảng Nhóm → Hạng mục bung / thu gọn; chi phí theo tháng và lũy kế. Lọc theo công trình, nhà, kỳ. |
-| **Phiếu nhập chi phí** | `PHIEU_NHAP` + macro `GhiPhieuNhap` | Khai báo đầu phiếu một lần, nhập nhiều dòng Mã VT × Số lượng × Đơn giá, lưu một lần. Sửa / nhân bản / xóa phiếu. Phím **F3**. |
+| **Phiếu nhập chi phí** | `PHIEU_NHAP` + macro `GhiPhieuNhap` | Khai báo đầu phiếu một lần, nhập nhiều dòng Mã VT × Số lượng × Đơn giá (hoặc chỉ Thành tiền cho khoản khoán), lưu một lần. Sửa / nhân bản / xóa phiếu. Phím **F3**. |
 | **Sổ chi phí** | `NHATKYCHUNG` | Toàn bộ dòng chi phí; lọc theo kỳ, công trình, nhà, nhóm, hạng mục, loại CP, NCC, vật tư; tìm kiếm; sửa trực tiếp trong bảng; tổng cuối bảng. |
 | **Chi tiết theo nhóm** | `CHI_TIET_THEO_NHOM` | Nhóm → Hạng mục → từng dòng, 3 mức hiển thị như nút 1 / 2 / 3 của Excel, có cộng hạng mục và tổng nhóm. |
 | **Công nợ NCC** | `CONGNO_NCC` | Bảng tổng hợp **theo công trình** (chi phí, đã thanh toán, % đã thanh toán, còn nợ, ứng dư), rồi công nợ từng NCC: Chi phí phát sinh − Đã trả (lấy từ Sổ thu chi) = Còn nợ / Ứng dư / Đã tất toán. |
@@ -183,16 +183,24 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
     (chữ xanh nghiêng; nếu NCC này chưa bán thì lấy giá gần nhất của NCC khác). Gõ đè để đổi.
   - Số lượng nhận `2,5` / `2.5` / `1.000` / `10+5` / `3*2,5`. Đơn giá nhận `1.250.000`, `50tr`, `1,5tr`, `300k`, `58000+11000`.
   - Khoản không có mã vật tư (nhân công, phí, thuế): bỏ trống Mã VT, ghi **Diễn giải**.
+  - **Chỉ biết tổng tiền (khoán)**: để trống Số lượng và Đơn giá, gõ thẳng vào ô **Thành tiền** (nhận `12tr`, `12.500.000`…).
+    Dòng được lưu là Số lượng 1 × Đơn giá = Thành tiền, nên mọi báo cáo và file Excel vẫn khớp. Nên dùng cho dòng không có
+    mã vật tư; dòng có mã vật tư mà nhập khoán thì đơn giá đó sẽ được tính vào lịch sử giá của vật tư.
+  - **Biết số lượng và tổng tiền**: gõ Số lượng và Thành tiền, Đơn giá tự tính (= Thành tiền ÷ Số lượng). Chia không chẵn
+    đồng thì ô Đơn giá để trống (chữ “tự tính”), khi lưu phần mềm tính đơn giá tới 2 số lẻ sao cho Số lượng × Đơn giá đúng
+    bằng Thành tiền.
   - **Hạng mục riêng**: ghi nếu dòng đó khác hạng mục đầu phiếu. **Loại CP** để “Tự động” (theo loại mặc định của vật tư;
     hạng mục tên “Nhân công…” → Nhân công; có mã VT → Vật tư; không có mã VT → Dịch vụ-Phí) hoặc chọn tay.
   - Mã chưa có trong danh mục: ô báo đỏ kèm nút **Thêm** để thêm nhanh ngay trong phiếu.
-- **Phím tắt**: **Enter** sang ô kế tiếp (Mã VT → Diễn giải → Số lượng → Đơn giá → dòng sau), **↑ ↓** đổi dòng,
+- **Phím tắt**: **Enter** sang ô kế tiếp (Mã VT → Diễn giải → Số lượng → Đơn giá → dòng sau; Đơn giá để trống thì
+  sang ô Thành tiền rồi mới sang dòng sau), **↑ ↓** đổi dòng,
   **Ctrl + Delete** xóa dòng, **Ctrl + Enter** lưu phiếu. Gõ vào dòng cuối là tự thêm dòng mới.
 - **Ghi vào sổ chi phí**: giống macro `GhiPhieuNhap` — các dòng được ghi vào Sổ chi phí, phần hàng và số phiếu được xóa trắng,
   đầu phiếu giữ lại để nhập chuyến tiếp theo. Phiếu đang nhập dở được giữ lại nếu lỡ chuyển sang màn hình khác.
 - **Phiếu đã nhập** (cuối trang): tìm, **sửa**, **nhân bản**, **xóa** cả phiếu.
 - Phần mềm **không cho lưu** khi: thiếu ngày / công trình / NCC / hạng mục, mã không có trong danh mục,
-  số lượng ≤ 0, đơn giá âm, nhà không thuộc công trình đã chọn. Lỗi ở đầu phiếu hiện ngay dưới ô; lỗi ở dòng hàng tô đỏ ô đó và báo “Dòng n: …”.
+  số lượng ≤ 0, đơn giá âm, không có cả (Số lượng và Đơn giá) lẫn Thành tiền, có Đơn giá và Thành tiền mà thiếu Số lượng,
+  nhà không thuộc công trình đã chọn. Lỗi ở đầu phiếu hiện ngay dưới ô; lỗi ở dòng hàng tô đỏ ô đó và báo “Dòng n: …”.
 - **Cảnh báo giá lệch**: nếu đơn giá gõ vào cao hơn 1,5 lần hoặc thấp hơn 2/3 giá lần mua gần nhất của vật tư đó, ô đơn giá
   chuyển màu vàng kèm dòng “Cao hơn …% giá lần trước” (rê chuột để xem giá và ngày lần trước). Đây chỉ là nhắc kiểm tra
   (hay gặp khi gõ thừa/thiếu số 0), vẫn lưu được bình thường.
@@ -203,8 +211,8 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
 
 - **Sổ chi phí**: lọc theo kỳ, công trình, nhà, nhóm, hạng mục, loại CP, NCC, vật tư, tìm chữ hoặc số tiền.
   Đầu bảng có tổng và tổng theo từng loại CP.
-  - **Bấm đúp** vào ô Diễn giải, Số lượng, Đơn giá, Hạng mục, Loại CP (nhãn nhỏ dưới hạng mục), Vật tư, NCC, Nhà
-    để **sửa ngay trong bảng** (Enter lưu, Esc bỏ). Nút bút chì mở form sửa đủ các cột; nút nhân bản, xóa ở cuối dòng;
+  - **Bấm đúp** vào ô Diễn giải, Số lượng, Đơn giá, Thành tiền, Hạng mục, Loại CP (nhãn nhỏ dưới hạng mục), Vật tư, NCC, Nhà
+    để **sửa ngay trong bảng** (Enter lưu, Esc bỏ). Sửa Thành tiền thì giữ Số lượng, Đơn giá được tính lại. Nút bút chì mở form sửa đủ các cột; nút nhân bản, xóa ở cuối dòng;
     nút phiếu mở cả phiếu nhập chứa dòng đó.
   - Đổi ngày / công trình / nhà / NCC / số phiếu của riêng một dòng thì dòng đó tự tách thành phiếu riêng.
 - **Chi tiết theo nhóm**: chọn mức **1** (chỉ tổng nhóm), **2** (thêm cộng hạng mục), **3** (toàn bộ chi tiết);
