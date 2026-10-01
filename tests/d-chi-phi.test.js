@@ -525,6 +525,60 @@ test('D6.2 công nợ NCC và công nợ theo công trình: tổng các cấp kh
 
 /* ---------------- D7 liên thông ---------------- */
 
+test('D6.3 lọc công nợ theo mã NCC: chỉ một NCC (không phân biệt hoa thường), số khớp bản không lọc; theo công trình chỉ còn công trình NCC đó có phát sinh; xuất Excel theo NCC', async () => {
+  const rnd = prng(7);
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
+  const db = { projects: [{ id: 1, ma: 'P1', ten: 'P1' }, { id: 2, ma: 'P2', ten: 'P2' }, { id: 3, ma: 'P3', ten: 'P3' }], suppliers: ['S1', 'S2', 'S3', 'S4'].map((m, i) => ({ id: 10 + i, ma: m, ten: 'NCC ' + m })), costs: [], entries: [], costItems: [], costGroups: [], materials: [], houses: [] };
+  for (let i = 0; i < 200; i++) db.costs.push({ id: 100 + i, ngay: '2026-0' + (1 + Math.floor(rnd() * 9)) + '-10', maCT: pick(['P1', 'P2', 'P3']), maNCC: pick(['S1', 'S2', 's3']), thanhTien: Math.floor(rnd() * 1e7), soLuong: 1, donGia: 0, loaiCP: 'Vật tư', maHM: '', maNha: '', maVT: '' });
+  // S2 không có chi phí ở P3; S4 chỉ có khoản trả, không chi phí
+  db.costs = db.costs.filter((c) => !(c.maNCC === 'S2' && c.maCT === 'P3'));
+  for (let i = 0; i < 150; i++) { const isThu = rnd() < 0.15; db.entries.push({ id: 1000 + i, ngay: '2026-0' + (1 + Math.floor(rnd() * 9)) + '-15', maDuAn: pick(['P1', 'P2', '']), maNCC: pick(['S1', 'S2', 'S3', 'S4', '']), thu: isThu ? Math.floor(rnd() * 1e6) : 0, chi: isThu ? 0 : Math.floor(rnd() * 1.5e7), noiDung: 'x' }); }
+  for (const f of [{}, { ct: 'P1' }, { to: '2026-05-31' }, { ct: 'P2', to: '2026-06-30' }]) {
+    const all = KT.supplierDebt(db, f);
+    for (const ma of ['S1', 's2', 'S3', 'S4']) {
+      const D = KT.supplierDebt(db, Object.assign({ ncc: ma }, f));
+      const name = ma + ' ' + JSON.stringify(f);
+      assert.equal(D.rows.length, 1, name);
+      const goc = all.rows.find((r) => key(r.ma) === key(ma));
+      assert.deepEqual(D.rows[0], goc, name);
+      assert.deepEqual([D.total.phatSinh, D.total.daTra, D.total.conLai], [goc.phatSinh, goc.daTra, goc.conLai], 'tổng = dòng NCC ' + name);
+      assert.deepEqual(D.totalAll, D.total, name);
+    }
+    assert.equal(KT.supplierDebt(db, Object.assign({ ncc: 'KHONG_CO' }, f)).rows.length, 0);
+  }
+  // theo công trình của một NCC: mỗi công trình = dòng NCC đó khi lọc công trình; bỏ công trình NCC không có phát sinh
+  for (const ma of ['S1', 'S2', 'S4']) {
+    const sum = KT.projectDebtSummary(db, { ncc: ma });
+    for (const r of sum.rows) {
+      const d = KT.supplierDebt(db, { ct: r.ma, ncc: ma }).rows[0];
+      assert.equal(r.phatSinh, d.phatSinh, ma + ' ' + r.ma); assert.equal(r.daTra, d.daTra, ma + ' ' + r.ma);
+      assert.equal(r.conNo, Math.max(d.conLai, 0)); assert.equal(r.ungDu, Math.max(-d.conLai, 0)); assert.equal(r.chiKhac, 0);
+      assert.ok(d.soDongCP || d.soDongTT, 'chỉ công trình NCC có phát sinh / thanh toán');
+    }
+    const ps = db.costs.filter((c) => key(c.maNCC) === key(ma)).reduce((t, c) => t + c.thanhTien, 0);
+    assert.equal(sum.total.phatSinh, ps, 'tổng chi phí của ' + ma);
+  }
+  assert.ok(!KT.projectDebtSummary(db, { ncc: 'S2' }).rows.some((r) => r.ma === 'P3'), 'S2 không có gì ở P3');
+  assert.equal(KT.projectDebtSummary(db, { ncc: 'S4' }).total.phatSinh, 0);
+  // xuất Excel qua API: chỉ dòng của NCC đã lọc
+  const srv = await startServer({});
+  try {
+    const c = await setup(srv);
+    await srv.ok('POST', '/api/cost-slips', slip({ lines: [{ maHM: c.HM_VL, dienGiai: 'a', soLuong: 1, donGia: 7000000 }] }));
+    await srv.ok('POST', '/api/cost-slips', slip({ header: { maNCC: 'S2' }, lines: [{ maHM: c.HM_VL, dienGiai: 'b', soLuong: 1, donGia: 3000000 }] }));
+    const r = await srv.call('GET', '/api/export/cost-debt?ncc=s2');
+    assert.equal(r.status, 200);
+    const wb = await X.loadWb(r.body);
+    const ws = wb.getWorksheet('Cong_No_NCC');
+    const ma = [];
+    ws.eachRow((row, i) => { if (i >= 9 && typeof X.cellVal(row.getCell(1)) === 'number') ma.push(X.cellVal(row.getCell(2))); });
+    assert.deepEqual(ma, ['S2']);
+    const texts = [];
+    ws.eachRow((row) => row.eachCell((cell) => { const v = X.cellVal(cell); if (typeof v === 'string') texts.push(v); }));
+    assert.ok(texts.some((t) => /Nhà cung cấp: s2 Nhà cung cấp S2/.test(t)), 'tiêu đề ghi NCC đang lọc');
+  } finally { await srv.stop(); }
+});
+
 test('D7.1 liên thông: trả NCC ở sổ thu chi làm công nợ giảm đúng số tiền; thu lại làm tăng; không có mã NCC thì không ảnh hưởng; tồn quỹ cũ không bị đổi bởi chi phí', async () => {
   const srv = await startServer({});
   try {

@@ -823,6 +823,8 @@
       push(s.ma, s, acc.get(k));
     });
     acc.forEach(function (a, k) { if (!seen.has(k)) push(a.ma, null, a); });
+    // f.ncc: chỉ một nhà cung cấp (theo mã); khi đó tổng tính cả khi NCC chưa "liên quan công trình"
+    const list = f.ncc ? rows.filter(function (r) { return keyOf(r.ma) === keyOf(f.ncc); }) : rows;
     const sumRows = function (list) {
       return list.reduce(function (t, r) {
         t.phatSinh += r.phatSinh; t.daTra += r.daTra; t.conLai += r.conLai;
@@ -831,7 +833,7 @@
       }, { phatSinh: 0, daTra: 0, conLai: 0, conNo: 0, ungDu: 0 });
     };
     // total: chỉ các NCC liên quan công trình (dùng cho báo cáo); totalAll: mọi mã NCC
-    return { rows: rows, total: sumRows(rows.filter(function (r) { return r.lienQuan; })), totalAll: sumRows(rows), sumRows: sumRows };
+    return { rows: list, total: sumRows(f.ncc ? list : list.filter(function (r) { return r.lienQuan; })), totalAll: sumRows(list), sumRows: sumRows };
   }
 
   function debtOf(db, maNCC, ct) {
@@ -842,7 +844,8 @@
 
   // Tổng hợp theo công trình: chi phí phát sinh, đã trả NCC, còn nợ / ứng dư (cộng theo từng NCC của công trình),
   // chi khác không ghi NCC. Đã trả = sổ thu chi (chi − thu) có Mã dự án = công trình và có Mã NCC.
-  // f: { to, all } — all = hiện cả dự án chưa có dòng chi phí nào.
+  // f: { to, all, ncc } — all = hiện cả dự án chưa có dòng chi phí nào; ncc = chỉ tính một nhà cung cấp (bỏ công trình NCC đó
+  // không có phát sinh / thanh toán; cột Chi khác không áp dụng).
   function projectDebtSummary(db, f) {
     f = f || {};
     const coChiPhi = new Set();
@@ -861,12 +864,13 @@
       const k = keyOf(p.ma);
       const coCP = coChiPhi.has(k);
       if (!coCP && !(f.all && coThuChi.has(k))) return;
-      const d = supplierDebt(db, { ct: p.ma, to: f.to });
+      const d = supplierDebt(db, { ct: p.ma, to: f.to, ncc: f.ncc });
+      if (f.ncc && !d.rows.some(function (r) { return r.soDongCP || r.soDongTT; })) return;
       const t = d.totalAll;
       let chiKhac = 0;
       let thuCT = 0;
       (db.entries || []).forEach(function (e) {
-        if (keyOf(e.maDuAn) !== k || (f.to && e.ngay > f.to)) return;
+        if (f.ncc || keyOf(e.maDuAn) !== k || (f.to && e.ngay > f.to)) return;
         if (!e.maNCC) chiKhac += (e.chi || 0) - (e.thu || 0);
         thuCT += e.thu || 0;
       });
@@ -892,7 +896,7 @@
     let chuaGan = 0;
     let soChuaGan = 0;
     (db.entries || []).forEach(function (e) {
-      if (!e.maDuAn && e.maNCC && nccCP.has(keyOf(e.maNCC)) && (!f.to || e.ngay <= f.to)) { chuaGan += (e.chi || 0) - (e.thu || 0); soChuaGan++; }
+      if (!e.maDuAn && e.maNCC && nccCP.has(keyOf(e.maNCC)) && (!f.to || e.ngay <= f.to) && (!f.ncc || keyOf(e.maNCC) === keyOf(f.ncc))) { chuaGan += (e.chi || 0) - (e.thu || 0); soChuaGan++; }
     });
     return { rows: rows, total: total, traChuaGanCT: { soTien: chuaGan, soDong: soChuaGan } };
   }

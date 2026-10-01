@@ -696,6 +696,37 @@ test('F6 Công nợ NCC: bảng, tổng, chi tiết từng NCC; Trả tiền →
   } finally { await browser.close(); await srv.stop(); }
 });
 
+
+test('F6c Công nợ NCC: lọc theo mã NCC — chỉ còn NCC đó, chi tiết mở sẵn, bảng theo công trình của NCC đó, nhớ bộ lọc; bỏ lọc trở về như cũ', { skip: SKIP, timeout: 180000 }, async () => {
+  const srv = await startServer({ seed: V2 });
+  const db = readJsonFile(V2);
+  const { browser, page, errors } = await openPage(srv, '#/cp-cong-no');
+  try {
+    await page.waitForSelector('tr[data-ma]');
+    const nAll = await page.locator('tr[data-ma]').count();
+    const r = KT.supplierDebt(db, {}).rows.filter((x) => x.lienQuan && x.inCatalog).sort((a, b) => b.phatSinh - a.phatSinh)[0];
+    assert.ok(r, 'dữ liệu mẫu có NCC công trình');
+    await page.selectOption('#cn-ncc', r.ma);
+    await page.waitForFunction((n) => document.querySelectorAll('tr[data-ma]').length === 1, null, { timeout: 5000 });
+    assert.equal(await page.getAttribute('tr[data-ma]', 'data-ma'), r.ma);
+    assert.match(await page.$eval('#cn-detail', (e) => e.innerText), new RegExp(r.ten.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'chi tiết NCC mở sẵn');
+    assert.ok(await page.$eval('#cn-pham', (e) => e.disabled), 'phạm vi không áp dụng khi lọc một NCC');
+    assert.equal(num(await page.$eval('#cn-ncc', () => document.querySelector('tr[data-ma] td:nth-child(3)').textContent)), r.phatSinh);
+    const sum = KT.projectDebtSummary(db, { ncc: r.ma });
+    assert.equal(await page.locator('tr[data-ct]').count(), sum.rows.length, 'bảng theo công trình chỉ còn công trình của NCC');
+    assert.match(await page.$eval('#h-theo-ct', (e) => e.textContent), new RegExp('NCC ' + r.ma));
+    // nhớ bộ lọc khi tải lại
+    await page.reload();
+    await page.waitForSelector('tr[data-ma]');
+    assert.equal(await page.inputValue('#cn-ncc'), r.ma);
+    assert.equal(await page.locator('tr[data-ma]').count(), 1);
+    // bỏ lọc bằng liên kết
+    await page.click('[data-act=all-ncc]');
+    await page.waitForFunction((n) => document.querySelectorAll('tr[data-ma]').length === n, nAll, { timeout: 5000 });
+    assert.equal(await page.inputValue('#cn-ncc'), '');
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); await srv.stop(); }
+});
 test('F7 Giá vật tư và Danh mục chi phí: chọn vật tư, lịch sử đơn giá; 4 tab danh mục, tìm kiếm, thêm/sửa/xóa, đổi tên lan sang sổ', { skip: SKIP, timeout: 300000 }, async () => {
   const srv = await startServer({ seed: V2 });
   const db = readJsonFile(V2);

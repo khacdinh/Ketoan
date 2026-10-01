@@ -233,6 +233,10 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
   - Còn nợ: phát sinh > đã trả. Ứng dư: đã trả nhiều hơn khối lượng đã ghi (thường do chưa nhập khối lượng nghiệm thu).
   - Mặc định chỉ hiện **NCC liên quan công trình** (có chi phí, hoặc có khoản trả gắn với công trình đang có chi phí);
     đổi ở ô chọn phạm vi để xem mọi NCC.
+  - **Lọc theo mã NCC**: chọn một nhà cung cấp ở ô “Tất cả nhà cung cấp” (NCC có chi phí công trình nằm trên đầu). Bảng chỉ
+    còn NCC đó, phần chi tiết mở sẵn, bảng **theo công trình** chỉ còn các công trình NCC đó có chi phí hoặc thanh toán (xem
+    nhanh nợ NCC này ở từng công trình). Kết hợp được với ô Công trình và Đến ngày; In và Xuất Excel theo đúng bộ lọc.
+    Bỏ lọc: chọn lại “Tất cả nhà cung cấp” hoặc bấm “Xem tất cả nhà cung cấp”.
   - Bấm một NCC để xem các phiếu chi phí và các lần trả tiền; nút **Trả tiền / Ghi phiếu chi** mở sẵn form ghi chi
     trong Sổ thu chi với đúng NCC, dự án và số còn nợ.
 - **Giá vật tư**: danh sách vật tư đã mua (số lần, giá gần nhất, cột **Chênh giá** = giá cao nhất so với giá thấp nhất, rê chuột để xem hai mức giá); chọn một vật tư để xem lịch sử đơn giá
