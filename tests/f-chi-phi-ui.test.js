@@ -62,25 +62,27 @@ test('F1 phiếu nhập chi phí: nhập toàn bộ bằng bàn phím (Enter san
     await type(page, '1.250.000'); await page.keyboard.press('Enter');
     a = await active(page);
     assert.deepEqual([a.col, a.row], ['maVT', '1'], 'Enter ở ô đơn giá sang dòng kế tiếp');
-    assert.equal(await page.$eval('tr[data-row="0"] .tt', (e) => e.textContent.trim()), '3.125.000');
+    assert.equal(await page.inputValue('tr[data-row="0"] [data-col=thanhTien]'), '3.125.000');
     // dòng 2
     await type(page, 'CAT'); await page.keyboard.press('Enter');
     await type(page, 'cát vàng'); await page.keyboard.press('Enter');
     await type(page, '0,125'); await page.keyboard.press('Enter');
     await type(page, '8000'); await page.keyboard.press('Enter');
-    assert.equal(await page.$eval('tr[data-row="1"] .tt', (e) => e.textContent.trim()), '1.000');
+    assert.equal(await page.inputValue('tr[data-row="1"] [data-col=thanhTien]'), '1.000');
     // dòng 3: không mã VT, nhân công, SL là phép tính, đơn giá kiểu 300k
     await page.keyboard.press('Enter'); // bỏ qua mã VT
     await type(page, 'Công thợ hồ'); await page.keyboard.press('Enter');
     await type(page, '10+5'); await page.keyboard.press('Enter');
     await type(page, '300k');
-    // đổi hạng mục riêng của dòng 3 bằng bàn phím: Tab sang ô hạng mục riêng
+    // đổi hạng mục riêng của dòng 3 bằng bàn phím: Tab qua ô Thành tiền (đã tự tính) sang ô hạng mục riêng
+    await page.keyboard.press('Tab');
+    assert.equal((await active(page)).col, 'thanhTien');
     await page.keyboard.press('Tab');
     assert.equal((await active(page)).col, 'hm');
     await type(page, 'Nhân công thợ nề'); await page.keyboard.press('Tab');
     assert.equal((await active(page)).col, 'loaiCP');
     // kiểm tra tổng trước khi lưu
-    assert.equal(await page.$eval('tr[data-row="2"] .tt', (e) => e.textContent.trim()), '4.500.000');
+    assert.equal(await page.inputValue('tr[data-row="2"] [data-col=thanhTien]'), '4.500.000');
     assert.equal(await page.$eval('#cp-total', (e) => e.textContent.trim()), '7.626.000');
     assert.match(await page.$eval('#cp-total-label', (e) => e.textContent), /3 dòng/);
     assert.match(await page.$eval('#cp-words', (e) => e.textContent), /Bảy triệu sáu trăm hai mươi sáu nghìn đồng/);
@@ -207,7 +209,7 @@ test('F1b phiếu nhập: kiểm tra dữ liệu bằng bàn phím (báo lỗi, 
     await page.waitForFunction(() => /Dòng 1: Số lượng phải lớn hơn 0/.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
     await page.keyboard.press('Control+A'); await type(page, '2'); await page.keyboard.press('Enter'); await page.keyboard.press('Control+A'); await page.keyboard.press('Delete');
     await page.keyboard.press('Control+Enter');
-    await page.waitForFunction(() => /thiếu hoặc sai Đơn giá/.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
+    await page.waitForFunction(() => /thiếu Đơn giá/.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
     a = await active(page); assert.deepEqual([a.col, a.row], ['donGia', '0']);
     assert.equal((await srv.db()).costs.length, 0, 'không có dòng nào được lưu khi còn lỗi');
     // bản nháp: rời màn hình rồi quay lại vẫn còn
@@ -228,6 +230,78 @@ test('F1b phiếu nhập: kiểm tra dữ liệu bằng bàn phím (báo lỗi, 
     await page.waitForTimeout(300);
     assert.equal(await page.inputValue('tr[data-row="0"] [data-col=maVT]'), '', 'sau khi lưu không còn nháp cũ');
     assert.deepEqual(errors.filter((e) => !/status of 400/.test(e)), []);
+  } finally { await browser.close(); await srv.stop(); }
+});
+
+test('F1c phiếu nhập: dòng chỉ có Thành tiền (khoán, không SL / ĐG); SL + Thành tiền tự tính Đơn giá; sửa Thành tiền trong sổ và trong form sửa dòng', { skip: SKIP, timeout: 180000 }, async () => {
+  const srv = await startServer({});
+  const hm = await seed(srv);
+  const { browser, page, errors } = await openPage(srv, '#/cp-nhap');
+  try {
+    await page.waitForSelector('#cp-head');
+    await page.waitForTimeout(150);
+    await page.fill('#cp-head input[name=maCT]', 'CT1');
+    await page.fill('#cp-head input[name=maNCC]', 'S1');
+    await page.fill('#cp-head input[name=hm]', 'Nhân công thợ nề');
+    await page.dispatchEvent('#cp-head input[name=hm]', 'change');
+    // dòng 1: khoán — Enter qua Số lượng, Đơn giá để trống, gõ Thành tiền
+    await page.focus('#cp-body [data-row="0"][data-col=dienGiai]');
+    await type(page, 'Khoán nhân công đợt 1'); await page.keyboard.press('Enter');
+    assert.equal((await active(page)).col, 'soLuong'); await page.keyboard.press('Enter');
+    assert.equal((await active(page)).col, 'donGia'); await page.keyboard.press('Enter');
+    let a = await active(page);
+    assert.deepEqual([a.col, a.row], ['thanhTien', '0'], 'Đơn giá trống: Enter sang ô Thành tiền');
+    await type(page, '12tr'); await page.keyboard.press('Enter');
+    a = await active(page);
+    assert.deepEqual([a.col, a.row], ['maVT', '1'], 'Enter ở Thành tiền sang dòng sau');
+    assert.equal(await page.inputValue('tr[data-row="0"] [data-col=thanhTien]'), '12.000.000');
+    assert.equal(await page.$eval('#cp-total', (e) => e.textContent.trim()), '12.000.000');
+    // dòng 2: Số lượng + Thành tiền → Đơn giá tự tính
+    await page.keyboard.press('Enter');
+    await type(page, 'Công phụ'); await page.keyboard.press('Enter');
+    await type(page, '4'); await page.keyboard.press('Enter'); await page.keyboard.press('Enter');
+    assert.equal((await active(page)).col, 'thanhTien');
+    await type(page, '1.000.000');
+    assert.equal(await page.inputValue('tr[data-row="1"] [data-col=donGia]'), '250.000');
+    // đổi Số lượng: Đơn giá tính lại, Thành tiền đã gõ giữ nguyên
+    await page.focus('#cp-body [data-row="1"][data-col=soLuong]');
+    await page.keyboard.press('Control+A'); await type(page, '5');
+    assert.equal(await page.inputValue('tr[data-row="1"] [data-col=donGia]'), '200.000');
+    assert.equal(await page.inputValue('tr[data-row="1"] [data-col=thanhTien]'), '1.000.000');
+    // dòng 3: SL × ĐG như cũ, Thành tiền tự tính; không chia chẵn → Đơn giá để máy chủ tính tới 0,01
+    await page.focus('#cp-body [data-row="2"][data-col=dienGiai]');
+    await type(page, 'Công lẻ'); await page.keyboard.press('Enter');
+    await type(page, '3'); await page.keyboard.press('Enter'); await page.keyboard.press('Enter');
+    await type(page, '160.000');
+    assert.equal(await page.inputValue('tr[data-row="2"] [data-col=donGia]'), '');
+    assert.equal(await page.$eval('#cp-total', (e) => e.textContent.trim()), '13.160.000');
+    await page.keyboard.press('Control+Enter');
+    await page.waitForFunction(() => /Đã ghi 3 dòng/.test(document.querySelector('#toast-root').textContent), null, { timeout: 5000 });
+    const got = (await srv.db()).costs.map((c) => [c.dienGiai, c.soLuong, c.donGia, c.thanhTien]);
+    assert.deepEqual(got, [['Khoán nhân công đợt 1', 1, 12000000, 12000000], ['Công phụ', 5, 200000, 1000000], ['Công lẻ', 3, 53333.33, 160000]]);
+    // sổ chi phí: bấm đúp ô Thành tiền của dòng khoán
+    await page.evaluate(() => { location.hash = '#/cp-so'; });
+    await page.waitForSelector('#cl-body tr[data-id]');
+    const rowOf = (text) => page.locator('#cl-body tr[data-id]', { hasText: text });
+    await rowOf('Khoán nhân công').locator('[data-edit=thanhTien]').dblclick();
+    await page.waitForSelector('#cl-body input.inline-cell');
+    await page.keyboard.press('Control+A'); await type(page, '12,5tr'); await page.keyboard.press('Enter');
+    await page.waitForFunction(() => /Đã lưu/.test(document.querySelector('#toast-root').textContent), null, { timeout: 5000 });
+    await settle(page);
+    let k = (await srv.db()).costs.find((c) => c.dienGiai === 'Khoán nhân công đợt 1');
+    assert.deepEqual([k.soLuong, k.donGia, k.thanhTien], [1, 12500000, 12500000]);
+    // form sửa dòng: xóa Số lượng, Đơn giá, chỉ nhập Thành tiền → dòng thành khoán
+    await rowOf('Công phụ').locator('[data-act=edit]').click();
+    await page.waitForSelector('#cl-form'); await page.waitForTimeout(200);
+    await page.fill('#cl-form input[name=soLuong]', '');
+    await page.fill('#cl-form input[name=donGia]', '');
+    await page.fill('#cl-form input[name=thanhTien]', '1.100.000');
+    await page.click('[data-act=save]');
+    await page.waitForSelector('#cl-form', { state: 'detached' });
+    await settle(page);
+    k = (await srv.db()).costs.find((c) => c.dienGiai === 'Công phụ');
+    assert.deepEqual([k.soLuong, k.donGia, k.thanhTien], [1, 1100000, 1100000]);
+    assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });
 
@@ -425,7 +499,7 @@ test('F3b sổ chi phí: sửa trực tiếp trong bảng (bấm đúp), sửa �
     await page.waitForSelector('#cl-form'); await page.waitForTimeout(200);
     await page.fill('#cl-form input[name=soLuong]', '0');
     await page.click('[data-act=save]');
-    await page.waitForFunction(() => /Số lượng không hợp lệ/.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
+    await page.waitForFunction(() => /Số lượng phải lớn hơn 0/.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
     await page.fill('#cl-form input[name=soLuong]', '1'); await page.fill('#cl-form input[name=maCT]', 'KHONG_CO');
     await page.click('[data-act=save]');
     await page.waitForFunction(() => /Công trình chưa có trong danh mục/.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
