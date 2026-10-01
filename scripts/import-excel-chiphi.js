@@ -137,20 +137,20 @@ function writeReports(o, ctx) {
   w();
   w('## 1. Theo từng file');
   w();
-  w('| File | Công trình → dự án | Dòng chi phí đọc | Nhập mới | Đã có sẵn | Đã nhập lần trước | Bỏ qua | Σ sẽ nhập | Σ đã có sẵn | Σ kỳ vọng (độc lập) | Khớp |');
+  w('| File | Công trình → dự án | Dòng chi phí đọc | Nhập mới | Đã có sẵn | Đã nhập lần trước | Bỏ qua | Σ sẽ nhập | Σ đã có sẵn / đã nhập trước | Σ kỳ vọng (độc lập) | Khớp |');
   w('|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|');
   plan.files.forEach((f) => {
     const e = expected[f.file] || {};
     const got = f.nkcTong + f.nkcDaCoTong;
-    w('| ' + cell(f.file) + ' | ' + f.ct + ' → ' + f.duAn + ' | ' + f.nkcRows + ' | ' + f.nkcAdded + ' | ' + f.nkcDaCo + ' | ' + f.nkcDaNhap + ' | ' + f.nkcBoQua + ' | ' + fm(f.nkcTong) + ' | ' + fm(f.nkcDaCoTong) + ' | ' + fm(e.nkcTong) + ' | ' + (f.nkcDaNhap ? 'xem lần trước' : got === e.nkcTong ? 'khớp' : '**LỆCH**') + ' |');
+    w('| ' + cell(f.file) + ' | ' + f.ct + ' → ' + f.duAn + ' | ' + f.nkcRows + ' | ' + f.nkcAdded + ' | ' + f.nkcDaCo + ' | ' + f.nkcDaNhap + ' | ' + f.nkcBoQua + ' | ' + fm(f.nkcTong) + ' | ' + fm(f.nkcDaCoTong + f.nkcDaNhapTong) + ' | ' + fm(e.nkcTong) + ' | ' + (got + f.nkcDaNhapTong === e.nkcTong ? 'khớp' : '**LỆCH**') + ' |');
   });
   w();
   w('| File | Dòng sổ quỹ có tiền | Đã có trong sổ thu chi | Nhập (' + (plan.soQuy === 'nhap' ? 'Nháp' : plan.soQuy) + ') | Bỏ qua | Σ đã có | Σ nhập (chi / thu) | Σ kỳ vọng | Khớp | Tồn quỹ đầu kỳ trong file |');
   w('|---|---:|---:|---:|---:|---:|---:|---:|---|---:|');
   plan.files.forEach((f) => {
     const e = expected[f.file] || {};
-    const got = f.sqDaCoTong + f.sqTongChi + f.sqTongThu;
-    w('| ' + cell(f.file) + ' | ' + (e.sqRows || 0) + ' | ' + f.sqDaCo + ' | ' + f.sqAdded + ' | ' + f.sqBoQua + ' | ' + fm(f.sqDaCoTong) + ' | ' + fm(f.sqTongChi) + ' / ' + fm(f.sqTongThu) + ' | ' + fm(e.sqTong) + ' | ' + (plan.soQuy === 'bo-qua' || f.sqDaNhap ? '—' : got === e.sqTong ? 'khớp' : '**LỆCH**') + ' | ' + fm(f.tonDauKy) + ' (không ghi đè tồn quỹ của phần mềm) |');
+    const got = f.sqDaCoTong + f.sqTongChi + f.sqTongThu + f.sqDaNhapTong;
+    w('| ' + cell(f.file) + ' | ' + (e.sqRows || 0) + ' | ' + f.sqDaCo + ' | ' + f.sqAdded + ' | ' + f.sqBoQua + ' | ' + fm(f.sqDaCoTong) + ' | ' + fm(f.sqTongChi) + ' / ' + fm(f.sqTongThu) + ' | ' + fm(e.sqTong) + ' | ' + (plan.soQuy === 'bo-qua' ? '—' : got === e.sqTong ? 'khớp' : '**LỆCH**') + ' | ' + fm(f.tonDauKy) + ' (không ghi đè tồn quỹ của phần mềm) |');
   });
   w();
   w('Đếm theo loại xử lý (dòng chi phí): ' + plan.files.map((f) => f.file.replace(/\.xlsm$/i, '') + ': khoán ' + f.khoan + ', Loại CP suy ra ' + f.loaiSuyRa + ', Mã CT sửa ' + f.ctSua + ', Mã nhà sửa ' + f.nhaSua + ', ngày sửa ' + f.ngaySua + ', ngày nghi ngờ ' + f.ngayNghi + ', Thành tiền lệch ' + f.lechTT).join(' · '));
@@ -284,7 +284,6 @@ async function main(argv, io) {
   io = io || { log: (s) => console.log(s), err: (s) => console.error(s) };
   const o = parseArgs(argv);
   if (o.help) { io.log(fs.readFileSync(__filename, 'utf8').split('\n').slice(2, 19).map((l) => l.replace(/^ \*\s?/, '')).join('\n')); return { code: 0 }; }
-  const lan = o.mode === 'rollback' ? o.lan : 'IMP-' + stamp();
   if (o.mode === 'rollback') return rollback(o, io);
   if (o.mode === 'apply' && o.checkServer) {
     const ports = await appRunning();
@@ -293,6 +292,10 @@ async function main(argv, io) {
   const r = await readAll(o, io.log);
   const fatal = r.errors.filter((e) => e.code !== 'KHOA' || !/^~\$/.test(e.file));
   const { db: before, from } = loadReadOnly(o.data);
+  // mã lần nhập: theo giờ chạy, luôn khác các lần đã có
+  const taken = new Set((before.importBatches || []).map((b) => b.ma));
+  let lan = 'IMP-' + stamp();
+  for (let i = 2; taken.has(lan); i++) lan = 'IMP-' + stamp() + '-' + i;
   const plan = imp.buildPlan(r.parsed, before, { lan, soQuy: o.soQuy, by: o.nguoi });
   const { db: after } = imp.applyPlan(before, plan);
   const check = imp.verify(before, after, plan, r.expected);
@@ -315,6 +318,8 @@ async function main(argv, io) {
     const { db: next } = imp.applyPlan(cur, plan2);
     const pre = imp.verify(cur, next, plan2, r.expected);
     if (!pre.ok) throw new imp.ImportError('KHONG_KHOP', 'Không nhập vì kiểm tra không đạt: ' + pre.errs.join('; '));
+    const nAdd = Object.keys(plan2.add).reduce((t, k) => t + plan2.add[k].length, 0);
+    if (!nAdd) { io.log('Không có gì mới để nhập (mọi dòng đã được nhập ở lần trước hoặc đã có sẵn). Dữ liệu giữ nguyên.'); return { code: 0, plan: plan2, nothing: true }; }
     store.audit({ by: o.nguoi || '', action: 'nhap-excel', kind: 'costs', recId: lan, label: 'Nhập Excel công trình bằng công cụ dòng lệnh (lần ' + lan + ')',
       note: 'Thêm ' + plan2.add.costs.length + ' dòng chi phí (Σ ' + fm(plan2.add.costs.reduce((t, x) => t + x.rec.thanhTien, 0)) + ' đ), ' + plan2.add.entries.length + ' dòng sổ thu chi' + (o.soQuy === 'nhap' ? ' (Nháp)' : '') +
         ', ' + plan2.add.projects.length + ' công trình, ' + plan2.add.suppliers.length + ' NCC, ' + plan2.add.materials.length + ' vật tư. Từ: ' + plan2.files.map((f) => f.file).join(', ') });
