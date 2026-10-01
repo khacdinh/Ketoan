@@ -297,3 +297,21 @@ test('I6 hạng mục trùng mã khác nghĩa (HM37), NCC khác hoa/thường gi
   assert.ok(!p.issues.some((i) => i.loai === 'ma-ct-sai' && i.file === 'A.xlsx'), '"nđc9" và "NĐC9" (NFD) là cùng mã');
   assert.ok(r.report && /ứng đợt 1 = 305\.600\.000/.test(fs.readFileSync(r.report, 'utf8')), 'ô ghi chú ngoài bảng được nêu trong báo cáo');
 });
+
+test('I7 rollback sau khi người dùng đã sửa phiếu nhập trong phần mềm: phần còn nguyên được gỡ, phần đã sửa được báo để kiểm tra tay', async () => {
+  const { input, data } = await setup();
+  const r1 = await run(['--apply', '--input', input, '--data', data, '--report', tmpDir()]);
+  const srv = await startServer({ data });
+  try {
+    const db = await srv.db();
+    const c = db.costs.find((x) => x.importRef && x.importRef.lan === r1.lan && x.maVT === 'ST-D10' && x.soLuong === 10);
+    const slip = db.costs.filter((x) => x.phieuId === c.phieuId);
+    await srv.ok('PUT', '/api/cost-slips/' + c.phieuId, { header: { ngay: c.ngay, maCT: c.maCT, maNha: c.maNha, maNCC: c.maNCC, soPhieu: c.soPhieu, maHM: c.maHM },
+      lines: slip.map((x) => ({ maVT: x.maVT, dienGiai: x.dienGiai, soLuong: x.soLuong, donGia: x.donGia, maHM: x.maHM, loaiCP: x.loaiCP })) });
+  } finally { await srv.stop(); }
+  const rb = await run(['--rollback', r1.lan, '--data', data]);
+  assert.ok(rb.kept.some((k) => /không còn nguyên/.test(k)), rb.kept.join('; '));
+  const after = readStored(data);
+  assert.ok(!after.costs.some((x) => x.importRef && x.importRef.lan === r1.lan), 'các dòng còn nguyên của lần nhập đã được gỡ');
+  assert.ok(after.costs.some((x) => x.maCT === 'CTA'), 'phiếu đã sửa vẫn còn (công trình CTA giữ lại vì đang được dùng)');
+});
