@@ -1,5 +1,12 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Công nợ NCC: lọc theo mã NCC (01/10/2026)
+
+- Màn Công nợ NCC có ô chọn nhà cung cấp: chỉ hiện NCC đó (bỏ qua ô phạm vi), chi tiết mở sẵn, bảng theo công trình chỉ còn các
+  công trình NCC đó có phát sinh / thanh toán (cột Chi khác không áp dụng). Bộ lọc được nhớ; In và Xuất Excel theo bộ lọc
+  (`/api/export/cost-debt?ncc=`).
+- `KT.supplierDebt` và `KT.projectDebtSummary` nhận thêm `ncc`. Kiểm thử D6.3, F6c.
+
 ## Nhập Thành tiền không cần Số lượng, Đơn giá (01/10/2026)
 
 - Phiếu nhập chi phí: ô **Thành tiền** nhập được. Chỉ gõ Thành tiền (để trống SL, ĐG) → dòng khoán, lưu SL 1 × ĐG = Thành tiền

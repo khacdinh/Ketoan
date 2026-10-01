@@ -109,7 +109,7 @@ export function renderCostDashboard(root) {
     if (t) {
       if (t.dataset.tile === 'loai') goLedger({ ct: f.ct, nha: f.nha, loai: t.dataset.loai, period: f.period, from: f.from, to: f.to });
       else {
-        Object.assign(S.filters.cpCn, { ct: f.ct, to: f.to, pham: 'ct' });
+        Object.assign(S.filters.cpCn, { ct: f.ct, ncc: '', to: f.to, pham: 'ct' });
         saveFilter('cpCn');
         location.hash = '#/cp-cong-no';
       }
@@ -323,41 +323,46 @@ export function renderCostDetail(root) {
 export function renderDebt(root) {
   root = freshRoot(root);
   const f = S.filters.cpCn;
-  const d = KT.supplierDebt(S.db, { ct: f.ct, to: f.to });
+  const d = KT.supplierDebt(S.db, { ct: f.ct, to: f.to, ncc: f.ncc });
   if (!f.pham) f.pham = 'ct';
-  let rows = f.pham === 'ct' ? d.rows.filter((r) => r.lienQuan) : f.pham === 'active' ? d.rows.filter((r) => r.soDongCP || r.soDongTT) : d.rows.slice();
+  // lọc theo một NCC: luôn hiện NCC đó, không xét phạm vi
+  let rows = f.ncc ? d.rows.slice() : f.pham === 'ct' ? d.rows.filter((r) => r.lienQuan) : f.pham === 'active' ? d.rows.filter((r) => r.soDongCP || r.soDongTT) : d.rows.slice();
   const tot = d.sumRows(rows);
   if (f.sort === 'conLai') rows.sort((a, b) => b.conLai - a.conLai);
   else if (f.sort === 'phatSinh') rows.sort((a, b) => b.phatSinh - a.phatSinh);
   else if (f.sort === 'name') rows.sort((a, b) => a.ten.localeCompare(b.ten, 'vi'));
-  const sel = LS.get('cp.cn.sel', '');
-  const theoCT = KT.projectDebtSummary(S.db, { to: f.to, all: !!f.allCT });
+  const sel = f.ncc || LS.get('cp.cn.sel', '');
+  const theoCT = KT.projectDebtSummary(S.db, { to: f.to, all: !!f.allCT, ncc: f.ncc });
+  const ncc = f.ncc ? supplierByCode(f.ncc) : null;
+  const nccLabel = f.ncc ? 'NCC ' + f.ncc + (ncc ? ' ' + ncc.ten : '') : '';
 
   root.innerHTML =
     '<div class="print-only" id="print-head"></div>' +
     '<div class="no-print flex flex-wrap items-center gap-2">' +
     '<select id="cn-ct" class="input w-auto max-w-[300px]" aria-label="Công trình">' + ctOptions(f.ct) + '</select>' +
+    '<select id="cn-ncc" class="input w-auto max-w-[300px]" aria-label="Nhà cung cấp">' + nccOptions(f.ncc) + '</select>' +
     '<span class="flex items-center gap-2 text-[13.5px] text-ink-2"><span aria-hidden="true">Đến ngày</span>' + dateField({ id: 'cn-to', value: f.to || '', label: 'Tính công nợ đến ngày' }) + '</span>' +
-    '<select id="cn-pham" class="input w-auto" aria-label="Phạm vi nhà cung cấp">' + [['ct', 'NCC liên quan công trình'], ['active', 'Mọi NCC có phát sinh'], ['all', 'Tất cả NCC trong danh mục']].map(([v, l]) =>
+    '<select id="cn-pham" class="input w-auto" aria-label="Phạm vi nhà cung cấp"' + (f.ncc ? ' disabled title="Đang lọc một nhà cung cấp"' : '') + '>' + [['ct', 'NCC liên quan công trình'], ['active', 'Mọi NCC có phát sinh'], ['all', 'Tất cả NCC trong danh mục']].map(([v, l]) =>
       '<option value="' + v + '"' + (f.pham === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
     '<span class="flex-1"></span>' +
     '<select id="cn-sort" class="input w-auto" aria-label="Sắp xếp">' + [['conLai', 'Còn nợ nhiều trước'], ['phatSinh', 'Chi phí lớn trước'], ['name', 'Theo tên A đến Z'], ['catalog', 'Theo danh mục']].map(([v, l]) =>
       '<option value="' + v + '"' + (f.sort === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
     '<button type="button" class="btn btn-ghost" data-act="print">' + icon('print') + 'In</button>' +
     '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất Excel</button></div>' +
-    '<section class="sheet overflow-hidden" aria-labelledby="h-theo-ct"><div class="sheet-head pb-1"><div><h3 id="h-theo-ct" class="sheet-title">Tổng hợp nợ và đã thanh toán theo công trình</h3>' +
+    '<section class="sheet overflow-hidden" aria-labelledby="h-theo-ct"><div class="sheet-head pb-1"><div><h3 id="h-theo-ct" class="sheet-title">Tổng hợp nợ và đã thanh toán theo công trình' + (f.ncc ? ' · ' + esc(nccLabel) : '') + '</h3>' +
     '<p class="sheet-note screen-hint">Bấm một công trình để xem công nợ từng nhà cung cấp của công trình đó' + (f.to ? ', tính đến ngày ' + fdate(f.to) : '') + '.' +
-    (f.ct ? ' <a href="#" class="font-semibold text-pen underline underline-offset-2" data-act="all-ct">Xem tất cả công trình</a>' : '') + '</p></div>' +
+    (f.ct ? ' <a href="#" class="font-semibold text-pen underline underline-offset-2" data-act="all-ct">Xem tất cả công trình</a>' : '') +
+    (f.ncc ? ' <a href="#" class="font-semibold text-pen underline underline-offset-2" data-act="all-ncc">Xem tất cả nhà cung cấp</a>' : '') + '</p></div>' +
     '<label class="check no-print"><input type="checkbox" id="cn-allct"' + (f.allCT ? ' checked' : '') + '>Hiện cả dự án chưa nhập chi phí</label></div>' +
     projectDebtHtml(theoCT, f.ct) + '</section>' +
-    '<h3 class="mt-1 text-[15px] font-semibold">Công nợ theo nhà cung cấp · ' + esc(ctLabel(f.ct)) + '</h3>' +
+    '<h3 class="mt-1 text-[15px] font-semibold">Công nợ theo nhà cung cấp · ' + esc(ctLabel(f.ct)) + (f.ncc ? ' · ' + esc(nccLabel) : '') + '</h3>' +
     '<div class="equation"><div class="eq-cell"><span class="eq-label">Chi phí phát sinh</span><span class="eq-value">' + money(tot.phatSinh) + '</span></div><span class="eq-op">−</span>' +
     '<div class="eq-cell"><span class="eq-label">Đã trả, đã ứng</span><span class="eq-value">' + money(tot.daTra) + '</span></div><span class="eq-op">=</span>' +
     '<div class="eq-cell"><span class="eq-label">Chênh lệch</span><span class="eq-value' + (tot.conLai > 0 ? ' neg' : '') + '">' + money(tot.conLai) + '</span></div><span class="eq-sep"></span>' +
     '<div class="eq-cell"><span class="eq-label">Tổng còn nợ</span><span class="eq-value text-alert">' + money(tot.conNo) + '</span></div>' +
     '<div class="eq-cell"><span class="eq-label">Tổng ứng dư</span><span class="eq-value text-caution">' + money(tot.ungDu) + '</span></div></div>' +
     '<p class="text-[13px] text-ink-3">Chi phí phát sinh lấy từ sổ chi phí (khối lượng đã nhận). Đã trả lấy từ sổ thu chi: tổng chi trừ tổng thu của cùng mã NCC' + (f.ct ? ' và cùng mã dự án ' + esc(f.ct) : '') + '. Hai sổ không sửa dữ liệu của nhau. ' +
-    (f.pham === 'ct' ? '“Liên quan công trình” = NCC có chi phí công trình, hoặc có khoản trả gắn với công trình đang có chi phí.' : '') + '</p>' +
+    (f.pham === 'ct' && !f.ncc ? '“Liên quan công trình” = NCC có chi phí công trình, hoặc có khoản trả gắn với công trình đang có chi phí.' : '') + '</p>' +
     '<div class="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">' +
     '<section class="sheet overflow-hidden"><div class="overflow-x-auto"><table class="ledger">' +
     '<thead><tr><th>Nhà cung cấp</th><th>Loại</th><th class="num money">Chi phí phát sinh</th><th class="num money">Đã trả / đã ứng</th><th class="num money">Còn lại</th><th>Tình trạng</th><th class="no-print"></th></tr></thead><tbody>' +
@@ -393,6 +398,12 @@ export function renderDebt(root) {
   };
 
   $('#cn-ct', root).addEventListener('change', (e) => { f.ct = e.target.value; saveFilter('cpCn'); renderDebt(root); });
+  $('#cn-ncc', root).addEventListener('change', (e) => {
+    f.ncc = e.target.value;
+    if (f.ncc) LS.set('cp.cn.sel', f.ncc);
+    saveFilter('cpCn');
+    renderDebt(root);
+  });
   $('#cn-to', root).addEventListener('change', (e) => { f.to = e.target.value; saveFilter('cpCn'); renderDebt(root); });
   $('#cn-pham', root).addEventListener('change', (e) => { f.pham = e.target.value; saveFilter('cpCn'); renderDebt(root); });
   $('#cn-sort', root).addEventListener('change', (e) => { f.sort = e.target.value; saveFilter('cpCn'); renderDebt(root); });
@@ -409,8 +420,9 @@ export function renderDebt(root) {
       const row = a.closest('tr[data-ma]');
       const ma = row ? row.dataset.ma : ($('#cn-detail', root).dataset.ma || '');
       if (act === 'all-ct') { e.preventDefault(); f.ct = ''; saveFilter('cpCn'); renderDebt(root); return; }
-      if (act === 'export') download('/api/export/cost-debt?' + [f.ct ? 'ct=' + encodeURIComponent(f.ct) : '', f.to ? 'to=' + f.to : ''].filter(Boolean).join('&'));
-      else if (act === 'print') printView('CÔNG NỢ NHÀ CUNG CẤP', ctLabel(f.ct) + (f.to ? '. Đến ngày ' + fdate(f.to) : ''), S.db.settings);
+      if (act === 'all-ncc') { e.preventDefault(); f.ncc = ''; saveFilter('cpCn'); renderDebt(root); return; }
+      if (act === 'export') download('/api/export/cost-debt?' + [f.ct ? 'ct=' + encodeURIComponent(f.ct) : '', f.ncc ? 'ncc=' + encodeURIComponent(f.ncc) : '', f.to ? 'to=' + f.to : ''].filter(Boolean).join('&'));
+      else if (act === 'print') printView('CÔNG NỢ NHÀ CUNG CẤP', ctLabel(f.ct) + (f.ncc ? '. ' + nccLabel : '') + (f.to ? '. Đến ngày ' + fdate(f.to) : ''), S.db.settings);
       else if (act === 'pay') pay(ma);
       else if (act === 'to-ledger') goLedger({ ncc: ma, ct: f.ct });
       else if (act === 'to-cash') {
@@ -439,6 +451,14 @@ export function renderDebt(root) {
     if (tr && e.key === 'Enter') tr.click();
   });
   drawDetail(sel);
+}
+
+// Ô lọc nhà cung cấp: NCC có phát sinh chi phí lên đầu, sau đó các NCC còn lại trong danh mục; mã đang lọc mà không có trong danh mục vẫn giữ
+function nccOptions(selected) {
+  const used = new Set(S.db.costs.map((c) => KT.keyOf(c.maNCC)));
+  const list = S.db.suppliers.filter((x) => used.has(KT.keyOf(x.ma))).concat(S.db.suppliers.filter((x) => !used.has(KT.keyOf(x.ma))));
+  if (selected && !supplierByCode(selected)) list.unshift({ ma: selected, ten: '(Chưa có trong danh mục)' });
+  return selectOptions(list, selected, { allLabel: 'Tất cả nhà cung cấp' });
 }
 
 /* ---------------- Tổng hợp nợ / đã thanh toán theo công trình ---------------- */
