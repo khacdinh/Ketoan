@@ -1,6 +1,6 @@
 /* Gộp mã: hộp thoại chọn mã nguồn / mã đích → XEM TRƯỚC (số bản ghi, tiền, thuộc tính nguồn / đích, cảnh báo) → xác nhận → kết quả
  * kèm nút Hoàn tác; màn hình "Gộp mã" (#/gop-ma): lịch sử gộp + hoàn tác, gợi ý mã trùng, tách mã hạng mục. */
-import { $, esc, money, fdate, icon, api, toast, showError, confirmDialog, openModal, freshRoot, busy } from './ui.js';
+import { $, esc, money, fdate, icon, api, toast, showError, confirmDialog, openModal, freshRoot, busy, dateField } from './ui.js';
 import { S } from './state.js';
 import { comboHtml, bindCombo } from './combo.js';
 
@@ -13,7 +13,7 @@ export const LOAI = {
   nha: { list: 'houses', ten: 'nhà / khu', Ten: 'Nhà / khu', sub: (x) => x.maCT },
   da: { list: 'projects', ten: 'dự án / công trình', Ten: 'Dự án / công trình', sub: () => '' }
 };
-const COUNT_LABEL = { entries: 'dòng sổ thu chi', costs: 'dòng chi phí', materials: 'vật tư dùng làm hạng mục hay dùng', houses: 'nhà / khu' };
+const COUNT_LABEL = { entries: 'dòng sổ thu chi', costs: 'dòng chi phí', materials: 'vật tư dùng làm hạng mục hay dùng', houses: 'nhà / khu', extPayments: 'khoản trả NCC ngoài quỹ' };
 const XAC_NHAN = { dvt: 'Tôi xác nhận: ĐVT khác nhau, số lượng giữ nguyên', khoan: 'Tôi xác nhận gộp mã khoản / chung với vật tư thường', ten: 'Tôi xác nhận hai hạng mục CÙNG NGHĨA' };
 
 const countsText = (c, trash) => {
@@ -264,56 +264,118 @@ async function drawSuggest(box, root) {
 }
 
 /* ---- Tách mã hạng mục (mục 4) ---- */
+let lastSplit = null; // kết quả lần tách vừa xong (màn hình vẽ lại sau khi dữ liệu đổi)
 function drawSplit(box) {
-  const items = S.db.costItems.map((x) => ({ ma: x.ma, ten: x.ten }));
-  const st = { maHM: '', dich: '', ct: '', nha: '', ncc: '', vt: '', from: '', to: '' };
+  const items = S.db.costItems.map((x) => ({ ma: x.ma, ten: x.ten, sub: x.maNhom || '' }));
+  const st = { maHM: '', dich: '', ct: '', nha: '', ncc: '', vt: '', moi: false };
   const cb = {
-    tu: { id: 'sp-tu', list: items, value: '', noun: 'hạng mục', placeholder: 'Hạng mục đang dùng sai', label: 'Hạng mục cần tách', cls: 'w-full' },
-    sang: { id: 'sp-sang', list: items, value: '', noun: 'hạng mục', placeholder: 'Hạng mục đúng', label: 'Đổi sang hạng mục', cls: 'w-full' },
+    tu: { id: 'sp-tu', list: items, value: '', noun: 'hạng mục', placeholder: 'Hạng mục đang mang hai nghĩa', label: 'Hạng mục cần tách', cls: 'w-full' },
+    sang: { id: 'sp-sang', list: items, value: '', noun: 'hạng mục', placeholder: 'Hạng mục đúng cho nhóm dòng này', label: 'Đổi sang hạng mục', cls: 'w-full' },
     ct: { id: 'sp-ct', list: S.db.projects.map((x) => ({ ma: x.ma, ten: x.ten })), value: '', noun: 'công trình', placeholder: 'Mọi công trình', label: 'Lọc công trình', cls: 'w-full' },
     nha: { id: 'sp-nha', list: S.db.houses.map((x) => ({ ma: x.ma, ten: x.ten, sub: x.maCT })), value: '', noun: 'nhà', placeholder: 'Mọi nhà', label: 'Lọc nhà', cls: 'w-full' },
-    ncc: { id: 'sp-ncc', list: S.db.suppliers.map((x) => ({ ma: x.ma, ten: x.ten })), value: '', noun: 'nhà cung cấp', placeholder: 'Mọi NCC', label: 'Lọc nhà cung cấp', cls: 'w-full' }
+    ncc: { id: 'sp-ncc', list: S.db.suppliers.map((x) => ({ ma: x.ma, ten: x.ten })), value: '', noun: 'nhà cung cấp', placeholder: 'Mọi NCC', label: 'Lọc nhà cung cấp', cls: 'w-full' },
+    vt: { id: 'sp-vt', list: S.db.materials.map((x) => ({ ma: x.ma, ten: x.ten, sub: x.dvt })), value: '', noun: 'vật tư', placeholder: 'Mọi vật tư', label: 'Lọc vật tư', cls: 'w-full' },
+    nhom: { id: 'sp-nhom', list: S.db.costGroups.map((x) => ({ ma: x.ma, ten: x.ten })), value: '', noun: 'nhóm chi phí', placeholder: 'Nhóm của hạng mục mới', label: 'Nhóm chi phí của hạng mục mới', cls: 'w-full' }
   };
+  const done = lastSplit;
+  lastSplit = null;
   box.innerHTML =
-    '<section class="sheet p-5"><p class="text-[13px] text-ink-2">Dùng khi MỘT mã hạng mục đang mang HAI nghĩa (vd. HM37 vừa là “Bảo hành” vừa là “Chi phí quản lý”): lọc đúng nhóm dòng của nghĩa sai rồi đổi sang hạng mục đúng. Nhóm CP của dòng tự lấy lại theo hạng mục mới. Có xem trước và hoàn tác.</p>' +
+    (done ? '<div class="sheet mb-4 flex flex-wrap items-center gap-3 p-4" id="sp-done"><span class="text-income">' + icon('checkCircle') + '</span><span class="min-w-0 flex-1">' + esc(done.nhan) + '. Tổng tiền không đổi.</span>' +
+      '<button type="button" class="btn btn-ghost btn-sm" data-act="sp-undo">' + icon('undo') + 'Hoàn tác</button></div>' : '') +
+    '<section class="sheet p-5"><p class="text-[13px] leading-relaxed text-ink-2">Dùng khi MỘT mã hạng mục đang mang HAI nghĩa (vd. HM37 vừa là “Bảo hành” vừa là “Chi phí quản lý”): lọc nhóm dòng của nghĩa sai, ' +
+    'xem trước và bỏ tích những dòng không đổi, rồi chuyển sang hạng mục đúng (có sẵn, hoặc tạo mới ngay tại đây). Nhóm chi phí của dòng tự theo hạng mục mới; tổng tiền không đổi; hoàn tác được.</p>' +
     '<div class="mt-3 grid grid-cols-2 gap-x-5 gap-y-3 max-sm:grid-cols-1">' +
     '<div class="field"><span class="label">Hạng mục cần tách <b class="req">*</b></span>' + comboHtml(cb.tu) + '</div>' +
-    '<div class="field"><span class="label">Đổi sang hạng mục <b class="req">*</b></span>' + comboHtml(cb.sang) + '</div>' +
+    '<div class="field"><span class="label">Đổi sang hạng mục <b class="req">*</b></span><div id="sp-sang-co">' + comboHtml(cb.sang) + '</div>' +
+    '<div id="sp-moi-box" class="grid grid-cols-2 gap-2" hidden><input class="input" id="sp-moi-ma" placeholder="Mã mới, vd HM37B" aria-label="Mã hạng mục mới" maxlength="60">' +
+    '<input class="input" id="sp-moi-ten" placeholder="Tên, vd Chi phí quản lý" aria-label="Tên hạng mục mới" maxlength="200"><div class="col-span-2">' + comboHtml(cb.nhom) + '</div></div>' +
+    '<label class="check mt-1"><input type="checkbox" id="sp-moi">Tạo hạng mục mới</label></div>' +
     '<div class="field"><span class="label">Công trình</span>' + comboHtml(cb.ct) + '</div>' +
     '<div class="field"><span class="label">Nhà / khu</span>' + comboHtml(cb.nha) + '</div>' +
     '<div class="field"><span class="label">Nhà cung cấp</span>' + comboHtml(cb.ncc) + '</div>' +
-    '<div class="grid grid-cols-2 gap-3"><label class="field"><span class="label">Từ ngày (yyyy-mm-dd)</span><input class="input" id="sp-from" placeholder="2026-01-01"></label>' +
-    '<label class="field"><span class="label">Đến ngày</span><input class="input" id="sp-to" placeholder="2026-12-31"></label></div></div>' +
+    '<div class="field"><span class="label">Vật tư</span>' + comboHtml(cb.vt) + '</div>' +
+    '<label class="field"><span class="label">Từ ngày</span>' + dateField({ id: 'sp-from', label: 'Từ ngày' }) + '</label>' +
+    '<label class="field"><span class="label">Đến ngày</span>' + dateField({ id: 'sp-to', label: 'Đến ngày' }) + '</label></div>' +
     '<div class="mt-4 flex flex-wrap gap-2"><button type="button" class="btn btn-secondary" data-act="sp-preview">' + icon('eye') + 'Xem trước</button>' +
     '<button type="button" class="btn btn-primary" data-act="sp-apply" disabled>' + icon('split') + 'Đổi sang hạng mục mới</button></div>' +
     '<div id="sp-result" class="mt-3"></div></section>';
   let pv = null;
   const res = $('#sp-result', box);
   const apply = box.querySelector('[data-act=sp-apply]');
-  Object.keys(cb).forEach((k) => bindCombo($('#' + cb[k].id, box), cb[k], (v) => { st[{ tu: 'maHM', sang: 'dich' }[k] || k] = v; pv = null; apply.disabled = true; res.innerHTML = ''; }));
-  const body = () => ({ maHM: st.maHM, dich: st.dich, loc: { ct: st.ct, nha: st.nha, ncc: st.ncc, from: $('#sp-from', box).value.trim(), to: $('#sp-to', box).value.trim() }, phienBan: pv ? pv.phienBan : undefined });
+  const reset = () => { pv = null; apply.disabled = true; res.innerHTML = ''; };
+  Object.keys(cb).forEach((k) => bindCombo($('#' + cb[k].id, box), cb[k], (v) => { st[{ tu: 'maHM', sang: 'dich' }[k] || k] = v; reset(); }));
+  ['#sp-from', '#sp-to', '#sp-moi-ma', '#sp-moi-ten'].forEach((sel) => $(sel, box).addEventListener('change', reset));
+  $('#sp-moi', box).addEventListener('change', (e) => {
+    st.moi = e.target.checked;
+    $('#sp-moi-box', box).hidden = !st.moi;
+    $('#sp-sang-co', box).hidden = st.moi;
+    reset();
+    if (st.moi) $('#sp-moi-ma', box).focus();
+  });
+  // dòng đang tích (khi xem trước có danh sách dòng)
+  const checkedIds = () => Array.from(res.querySelectorAll('input[data-sp-id]:checked')).map((x) => Number(x.dataset.spId));
+  const body = (withIds) => {
+    const b = { maHM: st.maHM, loc: { ct: st.ct, nha: st.nha, ncc: st.ncc, vt: st.vt, from: $('#sp-from', box).value, to: $('#sp-to', box).value }, phienBan: pv ? pv.phienBan : undefined };
+    if (st.moi) b.taoMoi = { ma: $('#sp-moi-ma', box).value.trim(), ten: $('#sp-moi-ten', box).value.trim(), maNhom: st.nhom };
+    else b.dich = st.dich;
+    if (withIds && pv && pv.dong) b.loc.ids = checkedIds();
+    return b;
+  };
+  const sumSel = () => {
+    if (!pv || !pv.dong) return;
+    const ids = new Set(checkedIds());
+    const rows = pv.dong.filter((r) => ids.has(r.id));
+    const tong = rows.reduce((t, r) => t + (r.nhap ? 0 : r.thanhTien), 0);
+    const khoa = rows.filter((r) => r.khoa).length;
+    $('#sp-sel', res).innerHTML = 'Đang chọn <b>' + rows.length + '/' + pv.dong.length + ' dòng</b>, tổng ' + money(tong) + ' đ' + (khoa ? ' · <span class="text-alert">' + khoa + ' dòng thuộc tháng đã khóa sổ</span>' : '');
+    apply.disabled = !rows.length || khoa > 0;
+    const all = res.querySelector('#sp-all');
+    if (all) { all.checked = rows.length === pv.dong.length; all.indeterminate = rows.length > 0 && rows.length < pv.dong.length; }
+  };
+  const drawPreview = () => {
+    const nhom = (m) => { const g = S.db.costGroups.find((x) => KT.keyOf(x.ma) === KT.keyOf(m)); return g ? g.ten : m || '(trống)'; };
+    res.innerHTML = '<p class="text-[14px]">Có <b>' + pv.soDong + ' dòng chi phí</b> (tổng ' + money(pv.tong) + ' đ) của <span class="code">' + esc(pv.tu.ma) + '</span> ' + esc(pv.tu.ten) +
+      ' khớp điều kiện lọc. Sẽ chuyển sang <span class="code">' + esc(pv.sang.ma) + '</span> ' + esc(pv.sang.ten) + (pv.sang.moi ? ' <span class="pill">tạo mới</span>' : '') + '.</p>' +
+      (KT.keyOf(pv.tu.maNhom) !== KT.keyOf(pv.sang.maNhom) ? '<p class="mt-1 text-[13px] text-caution">' + icon('info') + ' Các dòng này chuyển từ nhóm “' + esc(nhom(pv.tu.maNhom)) + '” sang nhóm “' + esc(nhom(pv.sang.maNhom)) + '” trong báo cáo.</p>' : '') +
+      (pv.dong ? '<div class="mt-2 flex items-center gap-3 text-[13px]"><label class="check"><input type="checkbox" id="sp-all" checked>Chọn tất cả</label><span id="sp-sel"></span></div>' +
+        '<div class="mt-2 max-h-[360px] overflow-auto rounded-md border border-rule"><table class="ledger" id="sp-rows"><thead><tr><th class="w-8"><span class="sr-only">Chọn</span></th><th>Ngày</th><th>Công trình / nhà</th><th>Diễn giải</th><th>NCC</th><th class="num money">Thành tiền</th></tr></thead><tbody>' +
+        pv.dong.map((r) => '<tr' + (r.khoa ? ' class="text-ink-3"' : '') + '><td><input type="checkbox" data-sp-id="' + r.id + '" checked aria-label="Chọn dòng ' + esc(fdate(r.ngay) + ' ' + r.dienGiai) + '"></td>' +
+          '<td class="whitespace-nowrap">' + esc(fdate(r.ngay)) + (r.khoa ? ' ' + icon('lock') : '') + '</td><td>' + esc(r.maCT) + (r.maNha ? '<div class="sub">' + esc(r.maNha) + '</div>' : '') + '</td>' +
+          '<td>' + esc(r.dienGiai) + (r.maVT ? '<div class="sub">' + esc(r.maVT) + '</div>' : '') + (r.nhap ? ' <span class="pill">Nháp</span>' : '') + '</td><td>' + esc(r.maNCC) + '</td>' +
+          '<td class="num money">' + money(r.thanhTien) + '</td></tr>').join('') + '</tbody></table></div>'
+        : (pv.soKhoa ? '<p class="form-error mt-2">' + icon('lock') + '<span>' + pv.soKhoa + ' dòng thuộc tháng đã khóa sổ — mở khóa trước.</span></p>' : '') +
+          '<p class="mt-2 text-[13px] text-ink-2">Quá nhiều dòng để chọn từng dòng: sẽ đổi cả ' + pv.soDong + ' dòng theo bộ lọc. Thu hẹp bộ lọc nếu cần chọn lẻ.</p>');
+    if (pv.dong) sumSel(); else apply.disabled = !pv.soDong || pv.soKhoa > 0;
+  };
+  res.addEventListener('change', (e) => {
+    if (e.target.id === 'sp-all') res.querySelectorAll('input[data-sp-id]').forEach((x) => { x.checked = e.target.checked; });
+    sumSel();
+  });
   box.onclick = async (e) => {
     const a = e.target.closest('[data-act]');
     if (!a) return;
+    if (a.dataset.act === 'sp-undo' && done) { await undoMerge(done); return; }
     if (a.dataset.act === 'sp-preview') {
       try {
-        pv = (await api('POST', '/api/merge/split/preview', body())).preview;
-        res.innerHTML = '<p class="text-[14px]">Sẽ đổi <b>' + pv.soDong + ' dòng chi phí</b> (tổng ' + money(pv.tong) + ' đ) từ <span class="code">' + esc(pv.tu.ma) + '</span> ' + esc(pv.tu.ten) +
-          ' sang <span class="code">' + esc(pv.sang.ma) + '</span> ' + esc(pv.sang.ten) + '.</p>' +
-          (pv.soKhoa ? '<p class="form-error mt-2">' + icon('lock') + '<span>' + pv.soKhoa + ' dòng thuộc tháng đã khóa sổ — mở khóa trước.</span></p>' : '') +
-          '<ul class="mt-2 max-h-48 list-disc overflow-auto pl-5 text-[13px] text-ink-2">' + pv.mau.map((x) => '<li>' + esc(x.label) + '</li>').join('') + (pv.soDong > pv.mau.length ? '<li>…</li>' : '') + '</ul>';
-        apply.disabled = !pv.soDong || pv.soKhoa > 0;
+        pv = (await api('POST', '/api/merge/split/preview', body(false))).preview;
+        drawPreview();
       } catch (err) { res.innerHTML = '<p class="form-error">' + icon('warn') + '<span>' + esc(err.message) + '</span></p>'; apply.disabled = true; }
     }
     if (a.dataset.act === 'sp-apply' && pv) {
-      const ok = await confirmDialog({ title: 'Tách mã hạng mục', html: '<p>Đổi ' + pv.soDong + ' dòng chi phí từ ' + esc(pv.tu.ma) + ' sang ' + esc(pv.sang.ma) + '? Tổng tiền không đổi; hoàn tác được ở Lịch sử gộp mã.</p>', okText: 'Đổi hạng mục' });
+      const b = body(true);
+      const n = b.loc.ids ? b.loc.ids.length : pv.soDong;
+      const ok = await confirmDialog({ title: 'Tách mã hạng mục', html: '<p>Đổi ' + n + ' dòng chi phí từ ' + esc(pv.tu.ma) + ' sang ' + esc(pv.sang.ma) + (pv.sang.moi ? ' (tạo mới hạng mục ' + esc(pv.sang.ten) + ')' : '') +
+        '? Tổng tiền không đổi; hoàn tác được ở Lịch sử gộp mã.</p>', okText: 'Đổi hạng mục' });
       if (!ok) return;
+      const stop = busy(apply, 'Đang đổi…');
       try {
-        const r = await api('POST', '/api/merge/split', body());
+        const r = await api('POST', '/api/merge/split', b);
+        lastSplit = r.merge;
         toast('Đã đổi ' + r.merge.soBanGhi + ' dòng sang hạng mục ' + pv.sang.ma);
-        pv = null; apply.disabled = true;
-        res.innerHTML = '<p class="text-income">' + icon('checkCircle') + ' ' + esc(r.merge.nhan) + '. Xem / hoàn tác ở tab Lịch sử gộp mã.</p>';
-      } catch (err) { showError(err); }
+        // màn hình đã vẽ lại khi nhận dữ liệu mới: vẽ lại khung tách để hiện kết quả + nút Hoàn tác
+        const cur = document.getElementById('gm-body');
+        if (cur && tab === 'tach') drawSplit(cur);
+      } catch (err) { stop(); showError(err); }
     }
   };
 }

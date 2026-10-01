@@ -475,3 +475,186 @@ test('M8 gộp vật tư: khác ĐVT bị chặn (chỉ gộp khi xác nhận, g
     sameData(Object.assign({}, start, { trash: end.trash }), end, 'hoàn tác gộp vật tư:');
   } finally { await srv.stop(); }
 });
+
+/* ============================== Hạng mục, nhà / khu, tách mã hạng mục (mục 4) ============================== */
+
+// Tổng chi phí theo nhóm CP tính độc lập: dòng → hạng mục (theo mã, không phân biệt hoa thường) → nhóm
+function theoNhom(db) {
+  const hm = new Map(db.costItems.map((i) => [key(i.ma), i.maNhom]));
+  const o = {};
+  db.costs.filter((c) => !KT.isDraft(c)).forEach((c) => { const g = hm.get(key(c.maHM)) || '(trống)'; o[g] = (o[g] || 0) + c.thanhTien; });
+  return o;
+}
+
+test('M9 gộp hạng mục: cùng nghĩa (khác cách viết) gộp thẳng, đổi cả vật tư "hạng mục hay dùng"; khác tên bị chặn tới khi xác nhận CÙNG NGHĨA; khác nhóm thì cảnh báo và tổng theo nhóm chuyển đúng; tổng chi phí không đổi; mã cũ khi nhập phiếu tự về mã đích; hoàn tác', async () => {
+  const srv = await startServer({ seed: mau({ seed: 41 }) });
+  try {
+    const start = readStored(srv.dataDir);
+    // 1. HM02 "Vật tư  vlxd" → HM01 "Vật tư VLXD": cùng nghĩa, không bị chặn
+    let r = await preview(srv, { loai: 'hm', nguon: ['HM02'], dich: 'HM01' });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    let pv = r.json.preview;
+    assert.deepEqual(pv.chan, []);
+    assert.equal(pv.nguon[0].counts.costs, start.costs.filter((c) => c.maHM === 'HM02').length);
+    assert.equal(pv.nguon[0].counts.materials, 1, 'vật tư CAT có hạng mục hay dùng HM02');
+    const b0 = soLieu(start);
+    const g0 = theoNhom(start);
+    r = await merge(srv, { loai: 'hm', nguon: ['HM02'], dich: 'HM01', phienBan: pv.phienBan });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    let db = readStored(srv.dataDir);
+    checkInvariant(b0, soLieu(db), [['hm', exactKey]], ['HM02'], 'HM01');
+    assert.deepEqual(theoNhom(db), g0, 'cùng nhóm G1: tổng theo nhóm không đổi');
+    assert.equal(db.materials.find((m) => m.ma === 'CAT').maHM, 'HM01');
+    noOrphans(db, 'hm', ['HM02'], 'HM01');
+    assert.equal(KT.costSummary(db, {}, KT.buildCostLedger(db)).total, b0.tongChiPhi);
+    // nhập phiếu bằng mã cũ → mã đích
+    r = await srv.ok('POST', '/api/cost-slips', { header: { ngay: '2026-09-21', maCT: 'CT3', maNCC: 'NCC_HoaLan', maHM: 'hm02' }, lines: [{ dienGiai: 'mã cũ', soLuong: 1, donGia: 1000 }] });
+    const added = r.db.costs.find((c) => c.dienGiai === 'mã cũ');
+    assert.equal(added.maHM, 'HM01');
+    await srv.ok('POST', '/api/costs/delete', { ids: [added.id] });
+    // 2. HM37 "Bảo hành" → HM38 "Chi phí quản lý": khác tên → chặn, gợi ý dùng Tách mã
+    r = await preview(srv, { loai: 'hm', nguon: ['HM37'], dich: 'HM38' });
+    assert.ok(r.json.preview.chan.some((c) => c.can === 'ten' && /Tách mã hạng mục/.test(c.text)));
+    r = await merge(srv, { loai: 'hm', nguon: ['HM37'], dich: 'HM38' });
+    assert.equal(r.status, 400); assert.match(r.json.error, /CÙNG NGHĨA/);
+    assert.equal(readStored(srv.dataDir).costs.filter((c) => c.maHM === 'HM37').length, start.costs.filter((c) => c.maHM === 'HM37').length, 'chưa đổi gì');
+    // 3. HM40 (nhóm G2) → HM01 (nhóm G1), có xác nhận: cảnh báo khác nhóm; tiền của HM40 chuyển từ G2 sang G1, tổng không đổi
+    r = await preview(srv, { loai: 'hm', nguon: ['HM40'], dich: 'HM01', xacNhan: { ten: true } });
+    assert.ok(r.json.preview.canhBao.some((x) => /Khác nhóm chi phí/.test(x)));
+    const b1 = soLieu(readStored(srv.dataDir));
+    const g1 = theoNhom(readStored(srv.dataDir));
+    const tienHM40 = b1.hm.HM40 || 0;
+    assert.ok(tienHM40 > 0);
+    r = await merge(srv, { loai: 'hm', nguon: ['HM40'], dich: 'HM01', xacNhan: { ten: true } });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.ok(r.json.merge.xacNhan.some((x) => /khác tên/.test(x)), 'lịch sử ghi lại xác nhận');
+    db = readStored(srv.dataDir);
+    checkInvariant(b1, soLieu(db), [['hm', exactKey]], ['HM40'], 'HM01');
+    const g2 = theoNhom(db);
+    assert.equal(g2.G1, g1.G1 + tienHM40); assert.equal(g2.G2, g1.G2 - tienHM40);
+    assert.equal(db.costItems.find((i) => i.ma === 'HM01').maNhom, 'G1', 'mặc định giữ nhóm của đích');
+    // 4. hoàn tác ngược thứ tự → như ban đầu
+    const log = (await srv.ok('GET', '/api/merge/log')).items;
+    for (const g of log) { const u = await srv.call('POST', '/api/merge/' + g.id + '/undo'); assert.equal(u.status, 200, JSON.stringify(u.json)); }
+    const end = readStored(srv.dataDir);
+    sameData(Object.assign({}, start, { trash: end.trash }), end, 'hoàn tác gộp hạng mục:');
+  } finally { await srv.stop(); }
+});
+
+test('M10 gộp nhà / khu: chỉ trong cùng một công trình (khác công trình bị chặn cứng, kể cả nhà dùng chung); bất biến tiền theo công trình + nhà; nhà chưa dùng gộp được; hoàn tác', async () => {
+  const srv = await startServer({ seed: mau({ seed: 43 }) });
+  try {
+    const start = readStored(srv.dataDir);
+    // 1. CHUNG2 (NHAMsHANH) → CHUNG1 (NHACOHANH): khác công trình
+    let r = await preview(srv, { loai: 'nha', nguon: ['CHUNG2'], dich: 'CHUNG1' });
+    assert.equal(r.status, 200);
+    assert.ok(r.json.preview.chan.some((c) => c.ma === 'khac-cong-trinh' && !c.can), 'chặn cứng, không có ô xác nhận');
+    r = await merge(srv, { loai: 'nha', nguon: ['CHUNG2'], dich: 'CHUNG1', xacNhan: { ten: true, dvt: true, khoan: true } });
+    assert.equal(r.status, 400); assert.match(r.json.error, /cùng một công trình/);
+    sameData(start, readStored(srv.dataDir), 'bị chặn thì không đổi gì:');
+    // 2. NĐC34 → NĐC7lo (cùng NHACOHANH)
+    const b0 = soLieu(start);
+    const nCT = (k, code) => k === 'NHACOHANH|' + code;
+    r = await preview(srv, { loai: 'nha', nguon: ['NĐC34'], dich: 'NĐC7lo' });
+    assert.deepEqual(r.json.preview.chan, []);
+    assert.equal(r.json.preview.nguon[0].counts.costs, start.costs.filter((c) => c.maNha === 'NĐC34').length);
+    r = await merge(srv, { loai: 'nha', nguon: ['NĐC34'], dich: 'NĐC7lo' });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    let db = readStored(srv.dataDir);
+    checkInvariant(b0, soLieu(db), [['nha', nCT]], ['NĐC34'], 'NĐC7lo');
+    noOrphans(db, 'nha', ['NĐC34'], 'NĐC7lo');
+    assert.equal(db.houses.find((x) => x.ma === 'NĐC34').gopVao, 'NĐC7lo');
+    const d = db.houses.find((x) => x.ma === 'NĐC7lo');
+    assert.equal(d.dienTich, 120, 'giữ diện tích của đích');
+    // 3. nhà chưa dùng (N1, N2) → NAM cùng công trình NCT: gộp được, 0 dòng
+    r = await merge(srv, { loai: 'nha', nguon: ['N1', 'N2'], dich: 'NAM' });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.equal(r.json.merge.soBanGhi, 0);
+    db = readStored(srv.dataDir);
+    assert.deepEqual(db.houses.filter((x) => x.gopVao === 'NAM').map((x) => x.ma).sort(), ['N1', 'N2']);
+    // danh mục / báo cáo không còn nhà đã gộp
+    assert.ok(!KT.activeDb(await srv.db()).houses.some((x) => ['NĐC34', 'N1', 'N2'].includes(x.ma)));
+    // 4. hoàn tác
+    const log = (await srv.ok('GET', '/api/merge/log')).items;
+    for (const g of log) { const u = await srv.call('POST', '/api/merge/' + g.id + '/undo'); assert.equal(u.status, 200, JSON.stringify(u.json)); }
+    sameData(start, readStored(srv.dataDir), 'hoàn tác gộp nhà:');
+  } finally { await srv.stop(); }
+});
+
+test('M11 tách mã hạng mục (HM37 mang hai nghĩa): bắt buộc có điều kiện lọc; xem trước liệt kê dòng; tạo hạng mục mới trong cùng lần tách; chỉ đổi đúng các dòng đã tích; tổng không đổi, tiền chuyển đúng sang mã mới; khóa sổ, sai mã, dữ liệu đổi giữa chừng bị chặn; hoàn tác gỡ cả hạng mục vừa tạo', async () => {
+  const srv = await startServer({ seed: mau({ seed: 47 }) });
+  try {
+    const start = readStored(srv.dataDir);
+    const moi = { ma: 'HM37B', ten: 'Chi phí quản lý dự án', maNhom: 'G2' };
+    // 1. không lọc gì → từ chối (tránh đổi nhầm cả hạng mục)
+    let r = await srv.call('POST', '/api/merge/split/preview', { maHM: 'HM37', taoMoi: moi, loc: {} });
+    assert.equal(r.status, 400); assert.match(r.json.error, /ít nhất một điều kiện lọc/);
+    // 2. sai thông tin hạng mục mới
+    r = await srv.call('POST', '/api/merge/split/preview', { maHM: 'HM37', taoMoi: { ma: 'HM38', ten: 'x', maNhom: 'G2' }, loc: { ct: 'NHAMsHANH' } });
+    assert.equal(r.status, 400); assert.match(r.json.error, /đã tồn tại/);
+    r = await srv.call('POST', '/api/merge/split/preview', { maHM: 'HM37', taoMoi: { ma: 'HM99', ten: 'Bảo hành', maNhom: 'G2' }, loc: { ct: 'NHAMsHANH' } });
+    assert.equal(r.status, 400); assert.match(r.json.error, /đã có/);
+    r = await srv.call('POST', '/api/merge/split/preview', { maHM: 'HM37', dich: 'KHONG_CO', loc: { ct: 'NHAMsHANH' } });
+    assert.equal(r.status, 400); assert.match(r.json.error, /chưa có trong danh mục/);
+    // 3. xem trước: các dòng HM37 của NHAMsHANH, chưa tạo gì
+    r = await srv.call('POST', '/api/merge/split/preview', { maHM: 'HM37', taoMoi: moi, loc: { ct: 'NHAMsHANH' } });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    const pv = r.json.preview;
+    const rows = start.costs.filter((c) => c.maHM === 'HM37' && c.maCT === 'NHAMsHANH');
+    assert.ok(rows.length >= 4, 'dữ liệu mẫu đủ dòng');
+    assert.equal(pv.soDong, rows.length);
+    assert.equal(pv.dong.length, rows.length);
+    assert.equal(pv.tong, rows.reduce((t, c) => t + c.thanhTien, 0));
+    assert.ok(pv.sang.moi);
+    assert.ok(!readStored(srv.dataDir).costItems.some((i) => i.ma === 'HM37B'), 'xem trước không tạo hạng mục');
+    // 4. dữ liệu đổi giữa xem trước và tách → 409
+    await srv.ok('POST', '/api/suppliers', { ma: 'NCC_MOI_TAM', ten: 'tạm' });
+    r = await srv.call('POST', '/api/merge/split', { maHM: 'HM37', taoMoi: moi, loc: { ct: 'NHAMsHANH', ids: pv.dong.map((x) => x.id) }, phienBan: pv.phienBan });
+    assert.equal(r.status, 409);
+    // 5. khóa sổ tháng của một dòng đã chọn → 423, không đổi gì
+    const chon = pv.dong.slice(0, Math.ceil(pv.dong.length / 2));
+    const thangKhoa = chon[0].ngay.slice(0, 7);
+    await srv.ok('POST', '/api/locks', { months: [thangKhoa] });
+    r = await srv.call('POST', '/api/merge/split', { maHM: 'HM37', taoMoi: moi, loc: { ct: 'NHAMsHANH', ids: chon.map((x) => x.id) } });
+    assert.equal(r.status, 423);
+    assert.ok(!readStored(srv.dataDir).costItems.some((i) => i.ma === 'HM37B'));
+    await srv.ok('POST', '/api/locks/unlock', { thang: thangKhoa, lyDo: 'kiểm thử tách mã' });
+    // 6. tách đúng các dòng đã tích, tạo HM37B
+    const b0 = soLieu(readStored(srv.dataDir));
+    const g0 = theoNhom(readStored(srv.dataDir));
+    r = await srv.call('POST', '/api/merge/split', { maHM: 'HM37', taoMoi: moi, loc: { ct: 'NHAMsHANH', ids: chon.map((x) => x.id) } });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.equal(r.json.merge.soBanGhi, chon.length);
+    let db = readStored(srv.dataDir);
+    const hm37b = db.costItems.find((i) => i.ma === 'HM37B');
+    assert.deepEqual([hm37b.ten, hm37b.maNhom], [moi.ten, 'G2']);
+    const ids = new Set(chon.map((x) => x.id));
+    db.costs.forEach((c) => assert.equal(c.maHM === 'HM37B', ids.has(c.id), 'dòng ' + c.id + (ids.has(c.id) ? ' phải' : ' không được') + ' đổi'));
+    const b1 = soLieu(db);
+    const tienChon = chon.reduce((t, x) => t + x.thanhTien, 0);
+    assert.equal(b1.tongChiPhi, b0.tongChiPhi);
+    assert.equal(b1.hm.HM37B, tienChon);
+    assert.equal(b1.hm.HM37, b0.hm.HM37 - tienChon);
+    assert.deepEqual(theoNhom(db), g0, 'HM37B cùng nhóm G2 nên tổng theo nhóm không đổi');
+    // báo cáo: hạng mục mới có trong tổng hợp chi phí
+    const sum = KT.costSummary(db, {}, KT.buildCostLedger(db));
+    assert.equal(sum.total, b0.tongChiPhi);
+    // 7. hoàn tác: các dòng về HM37, HM37B gỡ khỏi danh mục (vào thùng rác)
+    const g = (await srv.ok('GET', '/api/merge/log')).items.find((x) => x.loai === 'tach-hm');
+    assert.ok(g.coTheHoanTac, g.lyDo);
+    r = await srv.call('POST', '/api/merge/' + g.id + '/undo');
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    db = readStored(srv.dataDir);
+    assert.ok(!db.costItems.some((i) => i.ma === 'HM37B'));
+    assert.ok(db.trash.some((t) => t.kind === 'costItems' && t.records.some((x) => x.ma === 'HM37B')));
+    const end = readStored(srv.dataDir);
+    sameData(Object.assign({}, start, { trash: end.trash, suppliers: end.suppliers, locks: end.locks }), end, 'hoàn tác tách mã:');
+    // 8. tách sang hạng mục có sẵn theo khoảng ngày rồi hoàn tác
+    r = await srv.call('POST', '/api/merge/split', { maHM: 'HM37', dich: 'HM38', loc: { from: '2026-03-01', to: '2026-04-30' } });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.equal(r.json.merge.soBanGhi, start.costs.filter((c) => c.maHM === 'HM37' && c.ngay >= '2026-03-01' && c.ngay <= '2026-04-30').length);
+    r = await srv.call('POST', '/api/merge/' + r.json.merge.id + '/undo');
+    assert.equal(r.status, 200);
+    assert.deepEqual(readStored(srv.dataDir).costs, start.costs);
+  } finally { await srv.stop(); }
+});

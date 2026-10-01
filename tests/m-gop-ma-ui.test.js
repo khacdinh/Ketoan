@@ -4,7 +4,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { KT, startServer, readStored } = require('./helpers');
-const { SKIP, openPage, settle } = require('./ui-helpers');
+const { SKIP, openPage, settle, pick } = require('./ui-helpers');
 
 function seed() {
   let id = 1;
@@ -114,6 +114,73 @@ test('MU2 gộp mã hoàn toàn bằng bàn phím: màn Gộp mã → nút NCC �
     await page.waitForFunction(() => /Đã gộp mã/.test(document.querySelector('#modal-root').innerText), null, { timeout: 5000 });
     const db = readStored(srv.dataDir);
     assert.equal(db.suppliers.find((s) => s.ma === 'NCC_THienHAi').gopVao, 'NCC_ThienHai');
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); await srv.stop(); }
+});
+
+function seedHM() {
+  const db = seed();
+  let id = db.nextId;
+  db.costGroups.push({ id: id++, ma: 'G2', ten: 'Chi phí chung', ghiChu: '' });
+  db.costItems.push({ id: id++, ma: 'HM02', ten: 'Vật tư  vlxd', maNhom: 'G1', ghiChu: '' }, { id: id++, ma: 'HM37', ten: 'Bảo hành', maNhom: 'G2', ghiChu: '' });
+  for (let i = 0; i < 5; i++) {
+    db.costs.push({ id: id++, seq: db.costs.length + 1, phieuId: 0, ngay: '2026-08-0' + (i + 1), maCT: 'CT1', maNha: '', maHM: i < 2 ? 'HM02' : 'HM37', loaiCP: 'Dịch vụ-Phí', maVT: '', dienGiai: 'hm ' + i,
+      soLuong: 1, donGia: 1000000 * (i + 1), thanhTien: 1000000 * (i + 1), maNCC: 'NCC_Khac', soPhieu: '', ghiChu: '', nguon: 'mau' });
+  }
+  db.nextId = id + 5;
+  return db;
+}
+
+test('MU3 gộp hạng mục từ Danh mục chi phí (tích 2 dòng → Gộp mã → xác nhận → kết quả) và tách mã hạng mục ở màn Gộp mã: tạo hạng mục mới, bỏ tích một dòng ở xem trước, đổi đúng các dòng còn tích, Hoàn tác ngay tại chỗ', { skip: SKIP, timeout: 180000 }, async () => {
+  const srv = await startServer({ seed: seedHM() });
+  const { browser, page, errors } = await openPage(srv, '#/cp-danh-muc');
+  try {
+    const start = readStored(srv.dataDir);
+    // gộp HM02 → HM01 ở tab Hạng mục
+    await page.waitForSelector('[data-pick="HM01"]');
+    await page.check('[data-pick="HM01"]');
+    await page.check('[data-pick="HM02"]');
+    await page.click('[data-act=merge]');
+    await page.waitForSelector('#mg-table');
+    assert.match(await page.$eval('#mg-table', (e) => e.innerText), /2 dòng chi phí/);
+    await page.click('.modal [data-act=merge]:not([disabled])');
+    await page.click('.modal [data-act=yes]');
+    await page.waitForFunction(() => /Đã gộp mã/.test(document.querySelector('#modal-root').innerText), null, { timeout: 5000 });
+    await page.click('#modal-root [data-act=ok]');
+    let db = readStored(srv.dataDir);
+    assert.equal(db.costItems.find((i) => i.ma === 'HM02').gopVao, 'HM01');
+    assert.equal(db.costs.filter((c) => c.maHM === 'HM01').length, start.costs.filter((c) => c.maHM === 'HM01' || c.maHM === 'HM02').length);
+    // tách: 3 dòng HM37 của CT1 → hạng mục mới HM37B, bỏ tích dòng ngày 05/08
+    await page.evaluate(() => { location.hash = '#/gop-ma'; });
+    await page.waitForSelector('label.seg-item:has(input[name=gm-tab][value=tach])');
+    await page.click('label.seg-item:has(input[name=gm-tab][value=tach])');
+    await page.waitForSelector('#sp-tu');
+    await pick(page, '#sp-tu', 'HM37');
+    await page.check('#sp-moi');
+    await page.fill('#sp-moi-ma', 'HM37B');
+    await page.fill('#sp-moi-ten', 'Chi phí quản lý');
+    await pick(page, '#sp-nhom', 'G2');
+    await pick(page, '#sp-ct', 'CT1');
+    await page.click('[data-act=sp-preview]');
+    await page.waitForSelector('#sp-rows input[data-sp-id]');
+    assert.equal(await page.locator('#sp-rows input[data-sp-id]').count(), 3);
+    const bo = start.costs.find((c) => c.ngay === '2026-08-05');
+    await page.uncheck('#sp-rows input[data-sp-id="' + bo.id + '"]');
+    assert.match(await page.$eval('#sp-sel', (e) => e.innerText), /2\/3 dòng/);
+    await page.click('[data-act=sp-apply]:not([disabled])');
+    await page.click('.modal [data-act=yes]');
+    await page.waitForSelector('#sp-done');
+    db = readStored(srv.dataDir);
+    assert.ok(db.costItems.some((i) => i.ma === 'HM37B' && i.maNhom === 'G2'));
+    assert.deepEqual(db.costs.filter((c) => c.maHM === 'HM37B').map((c) => c.ngay).sort(), ['2026-08-03', '2026-08-04']);
+    assert.equal(db.costs.find((c) => c.id === bo.id).maHM, 'HM37', 'dòng bỏ tích giữ nguyên');
+    // hoàn tác ngay tại chỗ
+    await page.click('#sp-done [data-act=sp-undo]');
+    await page.click('.modal [data-act=yes]');
+    await page.waitForFunction(() => !document.querySelector('#sp-done'));
+    db = readStored(srv.dataDir);
+    assert.ok(!db.costItems.some((i) => i.ma === 'HM37B'));
+    assert.equal(db.costs.filter((c) => c.maHM === 'HM37').length, 3);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });

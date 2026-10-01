@@ -285,7 +285,7 @@ function checkDbShape(d) {
 const trace = createTrace({ store, HttpError, str, readJson, ok, sendJson, findCode });
 const costApi = createCostApi({ store, HttpError, str, money, readJson, ok, sendJson, findCode, byId, idList, own, trace, assertNotMerged, assertActive,
   renameTargets: (loai, a, b) => mergeApi.renameTargets(loai, a, b) });
-const mergeApi = createMergeApi({ store, HttpError, str, readJson, ok, sendJson, trace });
+const mergeApi = createMergeApi({ store, HttpError, str, readJson, ok, sendJson, trace, makeItem: (b) => costApi.makeItem(b) });
 const extPayApi = createExtPayApi({ store, HttpError, str, money, readJson, ok, findCode, byId, trace });
 const cashCountApi = createCashCountApi({ store, HttpError, str, money, readJson, ok, byId, trace });
 const attachApi = createAttachApi({ store, HttpError, str, sendJson, ok, readBody, trace, send });
