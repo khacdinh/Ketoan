@@ -248,3 +248,27 @@ test('MU4 gộp dự án ở màn Dự án: tích 2 dự án → Gộp mã → b
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });
+
+test('MU5 tab Gợi ý mã trùng: hiện nhóm nghi trùng kèm số chỗ dùng; Bỏ qua → ẩn và nhớ; Hiện lại; Gộp… mở hộp thoại với mã dùng nhiều nhất làm đích', { skip: SKIP, timeout: 180000 }, async () => {
+  const srv = await startServer({ seed: seedHM() });
+  const { browser, page, errors } = await openPage(srv, '#/gop-ma');
+  try {
+    await page.click('label.seg-item:has(input[name=gm-tab][value=goi-y])');
+    await page.waitForSelector('#gm-suggest tbody tr[data-i]');
+    const txt = await page.$eval('#gm-suggest', (e) => e.innerText);
+    assert.match(txt, /NCC_ThienHai/); assert.match(txt, /NCC_THienHAi/); assert.match(txt, /HM02/);
+    const rowNcc = '#gm-suggest tr[data-i]:has-text("NCC_THienHAi")';
+    await page.click(rowNcc + ' [data-act=bo-qua]');
+    await page.waitForFunction(() => document.querySelector('#gm-suggest') && !/NCC_THienHAi/.test(document.querySelector('#gm-suggest').innerText));
+    assert.ok(Object.keys(readStored(srv.dataDir).ignoredDupes).some((k) => /^ncc:ma:/.test(k)), 'bỏ qua được lưu');
+    await page.click('[data-act=hien-bo-qua]');
+    await page.waitForFunction(() => document.querySelector('#gm-suggest') && /NCC_THienHAi/.test(document.querySelector('#gm-suggest').innerText));
+    // Gộp… nhóm hạng mục: đích mặc định là mã dùng nhiều nhất (HM01)
+    await page.click('#gm-suggest tr[data-i]:has-text("HM02") [data-act=gop]');
+    await page.waitForSelector('#mg-table');
+    assert.equal(await page.$eval('#mg-dich', (x) => x.value), 'HM01');
+    assert.ok(await page.$('#mg-chips .filter-chip[data-ma="HM02"]'));
+    await page.click('.modal [data-act=cancel]');
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); await srv.stop(); }
+});

@@ -755,3 +755,116 @@ test('M12 gộp dự án / công trình: nhà của nguồn chuyển sang đích
     assert.ok(r.json.preview.canhBao.some((x) => /không giao/.test(x)), JSON.stringify(r.json.preview.canhBao));
   } finally { await srv.stop(); }
 });
+
+/* ============================== Gợi ý mã trùng (mục 6) ============================== */
+
+test('M13 gợi ý mã trùng: mã khác hoa / thường, trùng tên (bỏ dấu, dấu câu; vật tư cùng ĐVT; nhà cùng công trình), tên gần giống; nhà không dùng; không bao giờ tự gộp; Bỏ qua được nhớ, Hiện lại; gộp xong thì hết gợi ý; khóa lạ bị từ chối', async () => {
+  const srv = await startServer({ seed: mau({ seed: 59 }) });
+  try {
+    const start = readStored(srv.dataDir);
+    let r = await srv.ok('GET', '/api/merge/suggest');
+    const find = (loai, codes) => r.nhom.find((g) => g.loai === loai && g.ma.map((x) => x.ma).sort().join('|') === codes.slice().sort().join('|'));
+    const ncc = find('ncc', ['NCC_ThienHai', 'NCC_THienHAi']);
+    assert.ok(ncc && ncc.kieu === 'ma', 'NCC chỉ khác hoa / thường');
+    assert.equal(ncc.ma.find((x) => x.ma === 'NCC_ThienHai').dung, start.costs.filter((c) => c.maNCC === 'NCC_ThienHai').length + start.entries.filter((e) => e.maNCC === 'NCC_ThienHai').length,
+      'số chỗ dùng đếm đúng từng cách viết');
+    assert.equal(find('hm', ['HM01', 'HM02']).kieu, 'ten', 'hạng mục trùng tên (khoảng trắng, hoa / thường)');
+    assert.equal(find('vt', ['BT-BOMDUN', 'BT-BOMDUN2']).kieu, 'ten', 'vật tư trùng tên bỏ dấu câu, cùng ĐVT');
+    assert.ok(!find('vt', ['VL-XERAC6', 'VL-XERAC6B']), 'cùng tên nhưng khác ĐVT: không gợi ý trùng tên');
+    assert.ok(!find('nha', ['CHUNG1', 'CHUNG2']), 'nhà cùng tên ở hai công trình khác nhau: không gợi ý');
+    const gan = find('ncc', ['NCC_Khoi', 'NCC_Khoi2']);
+    assert.ok(gan && gan.kieu === 'gan' && /Anh Khôi/.test(gan.ly), 'tên gần giống "Anh Khôi" / "Đội anh Khôi"');
+    assert.ok(!r.nhom.some((g) => g.loai === 'ncc' && g.kieu === 'gan' && g.ma.some((x) => x.ma === 'NCC_ThienHai') && g.ma.some((x) => x.ma === 'NCC_THienHAi')), 'không nhắc lại cặp đã báo');
+    assert.deepEqual(r.nhaKhongDung.map((x) => x.ma).sort(), ['N1', 'N2', 'N3', 'N4', 'N5', 'NAM'].concat(start.houses.filter((h) => !start.costs.some((c) => c.maNha === h.ma) && !/^N\d|^NAM$/.test(h.ma)).map((h) => h.ma)).sort());
+    sameData(start, readStored(srv.dataDir), 'xem gợi ý không đổi gì:');
+    // bỏ qua → nhớ (cả sau khi khởi động lại); hiện lại
+    await srv.ok('POST', '/api/merge/suggest/ignore', { khoa: gan.khoa, label: 'kiểm thử' });
+    await srv.stop();
+    const srv2 = await startServer({ data: srv.dataDir });
+    try {
+      r = await srv2.ok('GET', '/api/merge/suggest');
+      assert.equal(find('ncc', ['NCC_Khoi', 'NCC_Khoi2']).boQua, true);
+      await srv2.ok('DELETE', '/api/merge/suggest/ignore', { khoa: gan.khoa });
+      r = await srv2.ok('GET', '/api/merge/suggest');
+      assert.equal(find('ncc', ['NCC_Khoi', 'NCC_Khoi2']).boQua, false);
+      for (const bad of ['', 'xx:ma:a', 'ncc:la:a', 'ncc', { a: 1 }]) {
+        const x = await srv2.call('POST', '/api/merge/suggest/ignore', { khoa: bad });
+        assert.equal(x.status, 400, JSON.stringify(bad));
+      }
+      // gộp nhóm gợi ý → nhóm đó biến mất
+      const m = await srv2.call('POST', '/api/merge', { loai: 'hm', nguon: ['HM02'], dich: 'HM01' });
+      assert.equal(m.status, 200);
+      r = await srv2.ok('GET', '/api/merge/suggest');
+      assert.ok(!find('hm', ['HM01', 'HM02']));
+      // hiệu năng: gợi ý trên dữ liệu lớn
+    } finally { await srv2.stop(); }
+    const big = await startServer({ seed: mau({ seed: 61, costs: 20000, entries: 3000 }) });
+    try {
+      const t0 = Date.now();
+      await big.ok('GET', '/api/merge/suggest');
+      const ms = Date.now() - t0;
+      console.log('# Gợi ý mã trùng với 20.000 dòng chi phí: ' + ms + ' ms');
+      assert.ok(ms < 2000, 'gợi ý < 2 giây (' + ms + ' ms)');
+    } finally { await big.stop(); }
+  } finally { await srv.stop(); }
+});
+
+/* ============================== Bền vững (mất điện giữa lúc gộp) ============================== */
+
+test('M14 tắt ngang (kill -9) khi đang gộp mã ở nhiều thời điểm: mở lại thì dữ liệu hoặc nguyên như trước, hoặc đã gộp trọn vẹn (bất biến tiền, không mồ côi, có lịch sử để hoàn tác) — không bao giờ gộp dở', { timeout: 400000 }, async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const { tmpDir } = require('./helpers');
+  // tạo sẵn một thư mục dữ liệu lớn rồi chép ra cho từng lần thử
+  const goc = await startServer({ seed: mau({ seed: 67, costs: 20000, entries: 3000 }) });
+  await goc.stop();
+  const start = readStored(goc.dataDir);
+  const b0 = soLieu(start);
+  const nguon = ['NCC_THienHAi', 'NCC_Khoi2'];
+  const ketQua = { truoc: 0, sau: 0 };
+  const chep = () => {
+    const dir = tmpDir('kill-gop');
+    fs.readdirSync(goc.dataDir).filter((f) => /^ketoan\.db/.test(f)).forEach((f) => fs.copyFileSync(path.join(goc.dataDir, f), path.join(dir, f)));
+    return dir;
+  };
+  // đo thời gian một lần gộp trọn vẹn để rải các điểm tắt suốt khoảng đó (và sau đó)
+  const s0 = await startServer({ data: chep() });
+  const t0 = Date.now();
+  assert.equal((await merge(s0, { loai: 'ncc', nguon, dich: 'NCC_ThienHai' })).status, 200);
+  const T = Date.now() - t0;
+  await s0.stop();
+  const diem = [0, 0.1, 0.25, 0.4, 0.55, 0.7, 0.85, 1, 1.5, 3].map((k) => Math.round(k * T));
+  for (const ms of diem) {
+    const dir = chep();
+    const srv = await startServer({ data: dir });
+    const req = merge(srv, { loai: 'ncc', nguon, dich: 'NCC_ThienHai' }).catch(() => null);
+    await new Promise((r) => setTimeout(r, ms));
+    srv.child.kill('SIGKILL');
+    await req;
+    await srv.stop();
+    const db = readStored(dir);
+    const gop = db.suppliers.find((s) => s.ma === 'NCC_THienHAi').gopVao === 'NCC_ThienHai';
+    if (!gop) {
+      ketQua.truoc++;
+      sameData(start, db, 'tắt sau ' + ms + ' ms, chưa gộp: phải nguyên như trước:');
+    } else {
+      ketQua.sau++;
+      assert.equal(db.mergeLog.length, 1, 'đã gộp thì có lịch sử');
+      assert.equal(db.suppliers.find((s) => s.ma === 'NCC_Khoi2').gopVao, 'NCC_ThienHai');
+      checkInvariant(b0, soLieu(db), [['nccCP', exactKey], ['nccTra', exactKey], ['nccNgoai', exactKey]], nguon, 'NCC_ThienHai');
+      noOrphans(db, 'ncc', nguon, 'NCC_ThienHai');
+      // mở lại được và hoàn tác được
+      const s2 = await startServer({ data: dir });
+      try {
+        const g = (await s2.ok('GET', '/api/merge/log')).items[0];
+        const u = await s2.call('POST', '/api/merge/' + g.id + '/undo');
+        assert.equal(u.status, 200, JSON.stringify(u.json));
+      } finally { await s2.stop(); }
+      const back = readStored(dir);
+      sameData(Object.assign({}, start, { trash: back.trash }), back, 'tắt sau ' + ms + ' ms rồi hoàn tác:');
+    }
+  }
+  console.log('# Tắt ngang khi gộp (một lần gộp mất ' + T + ' ms; tắt sau ' + diem.join(', ') + ' ms): ' + ketQua.truoc + ' lần dữ liệu nguyên như trước, ' + ketQua.sau + ' lần đã gộp trọn vẹn');
+  assert.equal(ketQua.truoc + ketQua.sau, diem.length);
+  assert.ok(ketQua.sau >= 1, 'có ít nhất một lần tắt sau khi đã gộp xong (kiểm được nhánh "đã gộp")');
+});
