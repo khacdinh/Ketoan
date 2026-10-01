@@ -34,4 +34,11 @@ function num(s) {
   return t === '' || t === '-' ? NaN : Number(t);
 }
 
-module.exports = { chromium, SKIP, openPage, settle, num };
+// Ô lọc gõ tìm (combo.js): gõ mã hoặc tên rồi Enter, chờ vẽ lại
+async function pick(page, sel, text) {
+  await page.fill(sel, text);
+  await page.press(sel, 'Enter');
+  await settle(page);
+}
+
+module.exports = { chromium, SKIP, openPage, settle, num, pick };

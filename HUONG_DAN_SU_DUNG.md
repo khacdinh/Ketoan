@@ -73,6 +73,13 @@ Mục **Kiểm soát** (trên “Cài đặt”; con số màu vàng = số vi�
 - Dòng vừa ghi hoặc vừa sửa được **tô vàng** trong sổ vài giây để dễ kiểm tra lại.
 - Bấm đúp vào một dòng trong sổ để sửa.
 
+**Ô lọc gõ tìm.** Ở mọi màn hình, ô lọc / ô chọn **dự án, công trình, nhà, nhà cung cấp, nhóm chi phí, hạng mục, vật tư** đều là ô
+gõ tìm (không còn danh sách thả xuống), dùng giống ô Mã NCC ở trên: gõ vài chữ của mã hoặc tên, danh sách gợi ý hiện ra, **chọn
+một gợi ý là lọc ngay**; hoặc gõ đủ mã (chữ hoa hay thường đều được) / đúng tên rồi **Enter**. Gõ không khớp mục nào thì phần mềm
+báo và giữ bộ lọc cũ. Xóa trắng ô rồi Enter (hoặc bấm dấu × trong ô) để bỏ lọc. Gõ “(Chưa gán dự án)”, “(Chưa gán NCC)”,
+“(Không gán nhà)” (có sẵn trong gợi ý) để lọc các dòng chưa ghi mã. Ô nhóm chi phí và hạng mục hiện **tên**, các ô khác hiện **mã**
+(rê chuột lên ô để xem tên). Các ô chọn có ít lựa chọn cố định (kỳ, loại CP, sắp xếp, trạng thái…) vẫn là danh sách chọn.
+
 ---
 
 ## 4. In phiếu thu / chi

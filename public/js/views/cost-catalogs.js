@@ -1,12 +1,14 @@
 /* Danh mục chi phí công trình: nhóm CP, hạng mục, vật tư, nhà / khu (DM_NHOM, DM_HANGMUC, DM_VATTU, DM_NHA). */
 import { $, esc, money, icon, api, toast, showError, confirmDialog, openModal, freshRoot, debounce, highlight, download, fieldError, busy } from '../ui.js';
 import { S, saveFilter, groupName, itemByCode, costProjects, selectOptions } from '../state.js';
+import { comboHtml, comboResolve } from '../combo.js';
 
 const KT = window.KT;
 
 /* ============================== BIỂU MẪU DÙNG CHUNG ============================== */
 
-// fields: [{ name, label, type: 'text'|'select'|'check'|'textarea'|'qty', options, required, hint, list, placeholder, wide }]
+// fields: [{ name, label, type: 'text'|'select'|'combo'|'check'|'textarea'|'qty', options, combo: { list, show, noun }, required, hint, list, placeholder, wide }]
+// combo = ô gõ tìm có gợi ý (combo.js): gõ mã hoặc tên, khi lưu đổi về mã
 function catalogForm(o) {
   const isEdit = !!(o.values && o.values.id);
   const v = o.values || {};
@@ -18,7 +20,9 @@ function catalogForm(o) {
       return '<label class="check ' + (f.wide ? 'col-span-2 max-sm:col-span-1' : 'self-end pb-2') + '"><input type="checkbox" name="' + f.name + '"' + (val ? ' checked' : '') + '>' + esc(f.label) + '</label>';
     }
     let input;
-    if (f.type === 'select') {
+    if (f.type === 'combo') {
+      input = comboHtml(Object.assign({ name: f.name, value: val, type: 'text', placeholder: f.placeholder }, f.combo));
+    } else if (f.type === 'select') {
       input = '<select name="' + f.name + '" class="input">' + f.options.map(([ov, ol]) => '<option value="' + esc(ov) + '"' + (KT.keyOf(ov) === KT.keyOf(val) ? ' selected' : '') + '>' + esc(ol) + '</option>').join('') + '</select>';
     } else if (f.type === 'textarea') {
       input = '<textarea name="' + f.name + '" class="input" rows="2">' + esc(val) + '</textarea>';
@@ -43,10 +47,16 @@ function catalogForm(o) {
           const inp = f.elements[fd.name];
           data[fd.name] = fd.type === 'check' ? inp.checked : inp.value.trim();
         });
+        for (const fd of o.fields) {
+          if (fd.type !== 'combo' || !data[fd.name]) continue;
+          const r = comboResolve(fd.combo, data[fd.name]);
+          if (!r.ok) { fieldError(f.elements[fd.name], fd.label + ' “' + data[fd.name] + '” chưa có trong danh mục. Gõ mã hoặc tên rồi chọn trong gợi ý'); return; }
+          data[fd.name] = r.value;
+        }
         if (o.transform) o.transform(data);
         for (const fd of o.fields) {
           if (fd.required && !data[fd.name]) {
-            fieldError(f.elements[fd.name], (fd.type === 'select' ? 'Chọn ' : 'Nhập ') + fd.label.toLowerCase());
+            fieldError(f.elements[fd.name], (fd.type === 'select' || fd.type === 'combo' ? 'Chọn ' : 'Nhập ') + fd.label.toLowerCase());
             return;
           }
         }
@@ -69,10 +79,6 @@ function catalogForm(o) {
       });
     }
   });
-}
-
-function groupOptions() {
-  return [['', 'Chọn nhóm chi phí']].concat(S.db.costGroups.map((g) => [g.ma, g.ten]));
 }
 
 function nextItemCode() {
@@ -106,7 +112,7 @@ export function openItemForm(it, onSaved) {
     onSaved,
     fields: [
       { name: 'ma', label: 'Mã hạng mục', required: true, hint: used ? 'Đang dùng trong ' + used + ' dòng chi phí' : '' },
-      { name: 'maNhom', label: 'Thuộc nhóm', type: 'select', options: groupOptions(), required: true, hint: 'Đổi nhóm: mọi báo cáo tự xếp lại' },
+      { name: 'maNhom', label: 'Thuộc nhóm', type: 'combo', combo: { list: S.db.costGroups, show: 'ten', noun: 'nhóm chi phí' }, placeholder: 'Gõ tên nhóm', required: true, hint: 'Đổi nhóm: mọi báo cáo tự xếp lại' },
       { name: 'ten', label: 'Tên hạng mục', required: true, wide: true, hint: isEdit ? 'Đổi tên: sổ chi phí và báo cáo tự đổi theo' : '' },
       { name: 'ghiChu', label: 'Ghi chú', wide: true }
     ]
@@ -146,7 +152,7 @@ export function openHouseForm(h, onSaved) {
     onSaved,
     fields: [
       { name: 'ma', label: 'Mã nhà', required: true, placeholder: 'VD: N1', hint: used ? 'Đổi mã sẽ cập nhật ' + used + ' dòng chi phí' : '' },
-      { name: 'maCT', label: 'Thuộc công trình', type: 'select', required: true, options: [['', 'Chọn công trình']].concat(costProjects().map((p) => [p.ma, p.ma + ' — ' + p.ten])) },
+      { name: 'maCT', label: 'Thuộc công trình', type: 'combo', required: true, combo: { list: costProjects(), noun: 'công trình' }, placeholder: 'Gõ mã hoặc tên công trình' },
       { name: 'ten', label: 'Tên nhà / khu', required: true, wide: true },
       { name: 'dienTich', label: 'Diện tích sàn (m2)', type: 'qty' },
       { name: 'chuNha', label: 'Chủ nhà' },

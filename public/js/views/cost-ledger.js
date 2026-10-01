@@ -1,8 +1,9 @@
 /* Sổ chi phí công trình (tương đương sheet NHATKYCHUNG): lọc, tìm, sửa trực tiếp, tổng cuối bảng. */
 import { $, esc, money, fdate, icon, highlight, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, debounce, setDateValue,
   api, toast, showError, confirmDialog, openModal, dateField, focusInput, fieldError } from '../ui.js';
-import { S, saveFilter, ctOptions, selectOptions, costDatalists, resolveCode, resolveItem, materialByCode, itemByCode, houseByCode, projectByCode, supplierByCode, groupName, allCostLedger } from '../state.js';
+import { S, saveFilter, costProjects, costDatalists, resolveCode, resolveItem, materialByCode, itemByCode, houseByCode, projectByCode, supplierByCode, groupName, allCostLedger } from '../state.js';
 import { printView } from '../print.js';
+import { comboHtml, bindCombo } from '../combo.js';
 import { attachBlock, bindAttach, clipHtml, openAttachList } from '../attach.js';
 
 const KT = window.KT;
@@ -32,21 +33,27 @@ export function renderCostLedger(root) {
   const items = S.db.costItems.filter((i) => !f.nhom || KT.keyOf(i.maNhom) === KT.keyOf(f.nhom));
   const usedVT = new Set(S.db.costs.map((c) => KT.keyOf(c.maVT)));
   const usedNCC = new Set(S.db.costs.map((c) => KT.keyOf(c.maNCC)));
+  // ô gõ tìm thay cho danh sách chọn (xem combo.js)
+  const W = 'w-[200px] max-sm:w-full';
+  const cb = {
+    ct: { id: 'cl-ct', list: costProjects(), value: f.ct, noun: 'công trình', placeholder: 'Công trình: gõ mã, tên', label: 'Lọc theo công trình', cls: W },
+    nha: { id: 'cl-nha', list: houses, value: f.nha, none: '(Không gán nhà)', noun: 'nhà', placeholder: 'Nhà: gõ mã, tên', label: 'Lọc theo nhà', cls: 'w-[160px] max-sm:w-full' },
+    nhom: { id: 'cl-nhom', list: S.db.costGroups, value: f.nhom, show: 'ten', noun: 'nhóm chi phí', placeholder: 'Nhóm CP: gõ tên', label: 'Lọc theo nhóm chi phí', cls: W },
+    hm: { id: 'cl-hm', list: items, value: f.hm, show: 'ten', noun: 'hạng mục', placeholder: 'Hạng mục: gõ tên', label: 'Lọc theo hạng mục', cls: 'w-[220px] max-sm:w-full' },
+    ncc: { id: 'cl-ncc', list: S.db.suppliers.filter((s) => usedNCC.has(KT.keyOf(s.ma)) || KT.keyOf(s.ma) === KT.keyOf(f.ncc)), value: f.ncc, noun: 'nhà cung cấp', placeholder: 'NCC: gõ mã, tên', label: 'Lọc theo nhà cung cấp', cls: W },
+    vt: { id: 'cl-vt', list: S.db.materials.filter((m) => usedVT.has(KT.keyOf(m.ma)) || KT.keyOf(m.ma) === KT.keyOf(f.vt)), value: f.vt, noun: 'vật tư', placeholder: 'Vật tư: gõ mã, tên', label: 'Lọc theo vật tư', cls: W }
+  };
 
   root.innerHTML =
     '<div class="print-only" id="print-head"></div>' +
     '<div id="cl-dl">' + costDatalists(f.ct) + '</div>' +
     '<div class="no-print flex flex-wrap items-center gap-2">' +
     periodControls(f, 'cl') +
-    '<select id="cl-ct" class="input w-auto max-w-[230px]" aria-label="Công trình">' + ctOptions(f.ct) + '</select>' +
-    '<select id="cl-nha" class="input w-auto max-w-[170px]" aria-label="Nhà">' + selectOptions(houses, f.nha, { allLabel: 'Mọi nhà', withNone: true, noneLabel: '(Không gán nhà)', label: (h) => h.ma + ' — ' + h.ten }) + '</select>' +
+    comboHtml(cb.ct) + comboHtml(cb.nha) +
     '<select id="cl-loai" class="input w-auto" aria-label="Loại chi phí"><option value="">Mọi loại CP</option>' + KT.LOAI_CP.map((l) => '<option' + (f.loai === l ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select>' +
     '</div>' +
     '<div class="no-print flex flex-wrap items-center gap-2">' +
-    '<select id="cl-nhom" class="input w-auto max-w-[220px]" aria-label="Nhóm chi phí">' + selectOptions(S.db.costGroups, f.nhom, { allLabel: 'Mọi nhóm CP', label: (g) => g.ten }) + '</select>' +
-    '<select id="cl-hm" class="input w-auto max-w-[240px]" aria-label="Hạng mục">' + selectOptions(items, f.hm, { allLabel: 'Mọi hạng mục', label: (i) => i.ten }) + '</select>' +
-    '<select id="cl-ncc" class="input w-auto max-w-[220px]" aria-label="Nhà cung cấp">' + selectOptions(S.db.suppliers.filter((s) => usedNCC.has(KT.keyOf(s.ma)) || KT.keyOf(s.ma) === KT.keyOf(f.ncc)), f.ncc, { allLabel: 'Mọi nhà cung cấp', label: (s) => s.ten + ' (' + s.ma + ')' }) + '</select>' +
-    '<select id="cl-vt" class="input w-auto max-w-[240px]" aria-label="Vật tư">' + selectOptions(S.db.materials.filter((m) => usedVT.has(KT.keyOf(m.ma)) || KT.keyOf(m.ma) === KT.keyOf(f.vt)), f.vt, { allLabel: 'Mọi vật tư', label: (m) => m.ma + ' — ' + m.ten }) + '</select>' +
+    comboHtml(cb.nhom) + comboHtml(cb.hm) + comboHtml(cb.ncc) + comboHtml(cb.vt) +
     (S.drafts.costs.length || f.trangThai ? '<div class="seg seg-sm" role="radiogroup" aria-label="Trạng thái">' +
       [['', 'Mọi trạng thái'], ['so', 'Đã ghi sổ'], ['nhap', 'Nháp (' + S.drafts.costs.length + ')']].map(([v, l]) => '<label class="seg-item"><input type="radio" name="cl-tt" value="' + v + '"' + ((f.trangThai || '') === v ? ' checked' : '') + '><span>' + l + '</span></label>').join('') +
       '</div>' : '') +
@@ -75,20 +82,20 @@ export function renderCostLedger(root) {
     setDateValue($('#cl-to', root), f.to || '', true);
   };
   bindPeriodControls(root, f, 'cl', () => { saveFilter('cpSo'); syncInputs(); draw(); });
-  const onSel = (id, key, redraw) => $(id, root).addEventListener('change', (e) => {
-    f[key] = e.target.value;
+  const pick = (key, redraw) => (v) => {
+    f[key] = v;
     if (key === 'ct') f.nha = '';
     if (key === 'nhom') f.hm = '';
     saveFilter('cpSo');
     if (redraw) renderCostLedger(root); else draw();
-  });
-  onSel('#cl-ct', 'ct', true);
-  onSel('#cl-nha', 'nha');
-  onSel('#cl-loai', 'loai');
-  onSel('#cl-nhom', 'nhom', true);
-  onSel('#cl-hm', 'hm');
-  onSel('#cl-ncc', 'ncc');
-  onSel('#cl-vt', 'vt');
+  };
+  $('#cl-loai', root).addEventListener('change', (e) => pick('loai')(e.target.value));
+  bindCombo($('#cl-ct', root), cb.ct, pick('ct', true));
+  bindCombo($('#cl-nha', root), cb.nha, pick('nha'));
+  bindCombo($('#cl-nhom', root), cb.nhom, pick('nhom', true));
+  bindCombo($('#cl-hm', root), cb.hm, pick('hm'));
+  bindCombo($('#cl-ncc', root), cb.ncc, pick('ncc'));
+  bindCombo($('#cl-vt', root), cb.vt, pick('vt'));
   root.querySelectorAll('input[name=cl-tt]').forEach((r) => r.addEventListener('change', () => { f.trangThai = r.value; saveFilter('cpSo'); draw(); }));
   $('#cl-q', root).addEventListener('input', debounce((e) => { f.q = e.target.value; saveFilter('cpSo'); draw(); }, 150));
 

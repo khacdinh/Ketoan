@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
 const { KT, startServer, readJsonFile, orphanErrors } = require('./helpers');
-const { SKIP, openPage, settle, num } = require('./ui-helpers');
+const { SKIP, openPage, settle, num, pick } = require('./ui-helpers');
 
 const V2 = path.join(__dirname, 'fixtures', 'ketoan-v2-hien-tai.json');
 const key = (s) => String(s || '').trim().toLowerCase();
@@ -178,7 +178,8 @@ test('F1b phiếu nhập: kiểm tra dữ liệu bằng bàn phím (báo lỗi, 
     await page.click('#cp-head [data-act=add-hm]');
     await page.waitForSelector('#modal-root form', { timeout: 5000 }).catch(async () => { await page.screenshot({ path: '/tmp/f1b-fail.png' }); throw new Error('không mở được hộp thêm hạng mục; toast: ' + (await toast(page)) + ' lỗi trang: ' + JSON.stringify(errors)); });
     await page.waitForTimeout(150);
-    await page.selectOption('#modal-root select[name=maNhom]', { index: 2 });
+    // ô Thuộc nhóm là ô gõ tìm: chọn nhóm thứ hai trong gợi ý
+    await page.fill('#modal-root input[name=maNhom]', await page.$eval('#modal-root input[name=maNhom]', (e) => e.list.options[1].value));
     await page.keyboard.press('Enter');
     await page.waitForSelector('#modal-root form', { state: 'detached' });
     await page.waitForTimeout(300);
@@ -405,9 +406,9 @@ test('F3 sổ chi phí: lọc theo kỳ, công trình, nhà, nhóm, hạng mục
     const expectFor = (f) => { const r = KT.filterCosts(led, f); return { n: r.rows.length, total: r.total }; };
     const steps = [
       ['kỳ 6/2026', async () => { await page.selectOption('#cl-period', 'tuy-chon'); await dateBox(page, 'cl-from').fill('1/6/2026'); await dateBox(page, 'cl-from').press('Tab'); await dateBox(page, 'cl-to').fill('30/6/2026'); await dateBox(page, 'cl-to').press('Tab'); }, { from: '2026-06-01', to: '2026-06-30' }],
-      ['+ công trình', async () => { await page.selectOption('#cl-ct', db.costs[0].maCT); }, { from: '2026-06-01', to: '2026-06-30', ct: db.costs[0].maCT }],
+      ['+ công trình', async () => { await pick(page, '#cl-ct', db.costs[0].maCT); }, { from: '2026-06-01', to: '2026-06-30', ct: db.costs[0].maCT }],
       ['+ loại Vật tư', async () => { await page.selectOption('#cl-loai', 'Vật tư'); }, { from: '2026-06-01', to: '2026-06-30', ct: db.costs[0].maCT, loai: 'Vật tư' }],
-      ['+ NCC', async () => { await page.selectOption('#cl-ncc', 'NCC_VuongThinh'); }, { from: '2026-06-01', to: '2026-06-30', ct: db.costs[0].maCT, loai: 'Vật tư', ncc: 'NCC_VuongThinh' }],
+      ['+ NCC', async () => { await pick(page, '#cl-ncc', 'NCC_VuongThinh'); }, { from: '2026-06-01', to: '2026-06-30', ct: db.costs[0].maCT, loai: 'Vật tư', ncc: 'NCC_VuongThinh' }],
       ['+ tìm "cát"', async () => { await page.fill('#cl-q', 'cát'); await page.waitForTimeout(350); }, { from: '2026-06-01', to: '2026-06-30', ct: db.costs[0].maCT, loai: 'Vật tư', ncc: 'NCC_VuongThinh', q: 'cát' }]
     ];
     const f = {};
@@ -426,7 +427,7 @@ test('F3 sổ chi phí: lọc theo kỳ, công trình, nhà, nhóm, hạng mục
     const single = [['#cl-ct', 'ct', db.costs[5].maCT], ['#cl-nha', 'nha', db.costs[5].maNha], ['#cl-nhom', 'nhom', db.costGroups[1].ma], ['#cl-loai', 'loai', 'Nhân công'], ['#cl-ncc', 'ncc', db.costs[9].maNCC], ['#cl-vt', 'vt', db.costs[3].maVT]];
     for (const [sel, k, v] of single) {
       await clearFilters(page);
-      await page.selectOption(sel, v);
+      await (['#cl-loai'].includes(sel) ? page.selectOption(sel, v) : pick(page, sel, v));
       await settle(page);
       const e = expectFor({ [k]: v });
       const r = await read();
@@ -436,8 +437,8 @@ test('F3 sổ chi phí: lọc theo kỳ, công trình, nhà, nhóm, hạng mục
     // hạng mục (chọn sau khi chọn nhóm)
     await clearFilters(page);
     const hmItem = db.costItems.find((i) => db.costs.some((c) => c.maHM === i.ma));
-    await page.selectOption('#cl-nhom', hmItem.maNhom); await settle(page);
-    await page.selectOption('#cl-hm', hmItem.ma); await settle(page);
+    await pick(page, '#cl-nhom', hmItem.maNhom); await settle(page);
+    await pick(page, '#cl-hm', hmItem.ma); await settle(page);
     const eh = expectFor({ nhom: hmItem.maNhom, hm: hmItem.ma });
     const rh = await read();
     assert.equal(rh.footTotal, eh.total); assert.equal(rh.n, eh.n);
@@ -560,7 +561,7 @@ test('F4 Bảng điều khiển chi phí: số tổng, theo Loại CP, đã tr�
     assert.equal(await page.locator('tr[data-item]').count(), nItems, 'Enter bung lại');
     // đổi công trình
     const ct = db.costs[0].maCT;
-    await page.selectOption('#th-ct', ct); await settle(page);
+    await pick(page, '#th-ct', ct); await settle(page);
     await check(ct);
     // bấm hạng mục → sổ chi phí lọc đúng hạng mục và công trình
     const item = await page.locator('tr[data-item]').first();
@@ -571,7 +572,7 @@ test('F4 Bảng điều khiển chi phí: số tổng, theo Loại CP, đã tr�
     await page.waitForSelector('#cl-body tr, #cl-body td');
     await settle(page);
     assert.equal(await page.$eval('#cl-ct', (e) => e.value), ct);
-    assert.equal(await page.$eval('#cl-hm', (e) => e.value), ma);
+    assert.equal(await page.$eval('#cl-hm', (e) => e.value), db.costItems.find((i) => i.ma === ma).ten, 'ô hạng mục hiện tên hạng mục');
     assert.equal(await page.locator('#cl-body tr[data-id]').count(), expectN);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
@@ -613,7 +614,7 @@ test('F5 Chi tiết theo nhóm: mức 1 / 2 / 3, cộng hạng mục, tổng nh�
     assert.ok(await page.locator('#ct-body tr.dtl').count() < db.costs.length, 'thu gọn một hạng mục làm bớt dòng chi tiết');
     // lọc
     const ct = db.costs[0].maCT;
-    await page.selectOption('#ct-ct', ct); await settle(page);
+    await pick(page, '#ct-ct', ct); await settle(page);
     const Sf = KT.costSummary(db, { ct }, KT.buildCostLedger(db));
     assert.equal(num(await page.$eval('#ct-foot td:last-child', (e) => e.innerText)), Sf.total);
     await page.selectOption('#ct-loai', 'Nhân công'); await settle(page);
@@ -707,8 +708,8 @@ test('F6c Công nợ NCC: lọc theo NCC bằng ô gõ tìm (mã hoặc tên, g�
     const r = KT.supplierDebt(db, {}).rows.filter((x) => x.lienQuan && x.inCatalog).sort((a, b) => b.phatSinh - a.phatSinh)[0];
     assert.ok(r, 'dữ liệu mẫu có NCC công trình');
     // ô có danh sách gợi ý mã + tên NCC
-    assert.equal(await page.getAttribute('#cn-ncc', 'list'), 'dl-cn-ncc');
-    assert.ok(await page.$eval('#dl-cn-ncc', (d, ma) => [...d.options].some((o) => o.value === ma), r.ma));
+    assert.equal(await page.getAttribute('#cn-ncc', 'list'), 'dl-cn-ncc-goi-y');
+    assert.ok(await page.$eval('#dl-cn-ncc-goi-y', (d, ma) => [...d.options].some((o) => o.value === ma), r.ma));
     // gõ tên không có: báo lỗi, không lọc
     await page.fill('#cn-ncc', 'không có ncc này'); await page.press('#cn-ncc', 'Enter');
     await page.waitForFunction(() => /Không có nhà cung cấp/.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
@@ -748,6 +749,81 @@ test('F6c Công nợ NCC: lọc theo NCC bằng ô gõ tìm (mã hoặc tên, g�
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });
+test('F8 ô lọc gõ tìm thay dropdown: gõ mã / tên / “chưa gán”, chọn gợi ý, gõ sai báo lỗi, xóa trắng bỏ lọc — sổ thu chi, sổ chi phí, giá vật tư, form nhà', { skip: SKIP, timeout: 240000 }, async () => {
+  const srv = await startServer({ seed: V2 });
+  const db = readJsonFile(V2);
+  const posted = KT.postedDb(db);
+  const { browser, page, errors } = await openPage(srv, '#/so-thu-chi');
+  try {
+    await page.waitForSelector('#so-body tr');
+    // không còn dropdown chọn dự án / NCC / công trình / nhà / nhóm / hạng mục / vật tư ở các màn lọc
+    const count = () => page.$eval('#so-count', (e) => e.innerText);
+    const led = KT.buildLedger(posted);
+    const p = db.projects.find((x) => db.entries.some((e) => e.maDuAn === x.ma));
+    assert.equal(await page.$eval('#so-duan', (e) => e.tagName + e.getAttribute('list')), 'INPUTdl-so-duan-goi-y');
+    // gõ đúng tên dự án (không dấu, chữ thường vẫn khớp theo normalizeText) rồi Enter
+    await pick(page, '#so-duan', p.ten);
+    assert.equal(await page.inputValue('#so-duan'), p.ma, 'sau khi lọc ô hiện mã');
+    const nP = KT.filterLedger(led, { duAn: p.ma }).rows.length;
+    assert.match(await count(), new RegExp('\\b' + nP + '\\b'));
+    // lựa chọn "chưa gán dự án"
+    await pick(page, '#so-duan', '(Chưa gán dự án)');
+    const nNone = KT.filterLedger(led, { duAn: '__none__' }).rows.length;
+    assert.match(await count(), new RegExp('\\b' + nNone + '\\b'));
+    // gõ sai: báo lỗi, giữ bộ lọc cũ
+    await pick(page, '#so-ncc', 'zzz-khong-co');
+    await page.waitForFunction(() => /Không có nhà cung cấp/.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
+    assert.equal(await page.inputValue('#so-ncc'), '');
+    // chọn gợi ý: lọc ngay không cần Enter
+    const s0 = db.suppliers.find((x) => db.entries.some((e) => e.maNCC === x.ma));
+    await page.$eval('#so-ncc', (el, ma) => { el.value = ma; el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertReplacementText' })); }, s0.ma);
+    await settle(page);
+    assert.match(await count(), new RegExp('\\b' + KT.filterLedger(led, { duAn: '__none__', ncc: s0.ma }).rows.length + '\\b'));
+    // xóa trắng rồi Enter: bỏ lọc
+    await pick(page, '#so-duan', ''); await pick(page, '#so-ncc', '');
+    assert.match(await count(), new RegExp('\\b' + KT.filterLedger(led, {}).rows.length + '\\b'));
+    // sổ chi phí: nhóm gõ tên → ô hiện tên; hạng mục chỉ gợi ý hạng mục của nhóm đó
+    await page.evaluate(() => { location.hash = '#/cp-so'; });
+    await page.waitForSelector('#cl-body tr');
+    const g = db.costGroups.find((x) => db.costItems.some((i) => i.maNhom === x.ma && db.costs.some((c) => c.maHM === i.ma)));
+    await pick(page, '#cl-nhom', g.ma.toLowerCase());
+    assert.equal(await page.inputValue('#cl-nhom'), g.ten);
+    const hmOpts = await page.$$eval('#dl-cl-hm-goi-y option', (os) => os.map((o) => o.value));
+    assert.deepEqual(hmOpts.sort(), db.costItems.filter((i) => i.maNhom === g.ma).map((i) => i.ten).sort());
+    const nG = KT.filterCosts(KT.buildCostLedger(posted), { nhom: g.ma }).rows.length;
+    assert.match(await page.$eval('#cl-count', (e) => e.innerText), new RegExp(String(Math.min(nG, 500))));
+    await page.click('#cl-clear'); await settle(page);
+    assert.equal(await page.inputValue('#cl-nhom'), '');
+    // giá vật tư: lọc NCC bằng ô gõ tìm
+    await page.evaluate(() => { location.hash = '#/cp-gia'; });
+    await page.waitForSelector('#gia-list tr');
+    const st = KT.materialStats(posted, {});
+    const nccVT = db.costs.find((c) => c.maVT && c.maNCC).maNCC;
+    await pick(page, '#gia-ncc', nccVT);
+    assert.equal(await page.locator('#gia-list tr[data-vt]').count(), KT.materialStats(posted, { ncc: nccVT }).length);
+    await pick(page, '#gia-ncc', '');
+    assert.equal(await page.locator('#gia-list tr[data-vt]').count(), st.length);
+    // form thêm nhà: ô Thuộc công trình gõ tên công trình
+    await page.evaluate(() => { location.hash = '#/cp-danh-muc'; });
+    await page.waitForSelector('input[name=dm-tab]');
+    await page.click('label:has(input[name=dm-tab][value=nha])'); await settle(page);
+    await page.click('[data-act=add]');
+    await page.waitForSelector('#modal-root form'); await page.waitForTimeout(150);
+    const ct = db.projects.find((x) => db.costs.some((c) => c.maCT === x.ma));
+    await page.fill('#modal-root input[name=ma]', 'NHA_F8');
+    await page.fill('#modal-root input[name=ten]', 'Nhà kiểm thử ô gõ tìm');
+    await page.fill('#modal-root input[name=maCT]', 'không có công trình này');
+    await page.click('#modal-root [data-act=save]');
+    await page.waitForFunction(() => /chưa có trong danh mục/.test(document.querySelector('#modal-root').textContent), null, { timeout: 4000 });
+    await page.fill('#modal-root input[name=maCT]', ct.ten);
+    await page.click('#modal-root [data-act=save]');
+    await page.waitForSelector('#modal-root form', { state: 'detached' });
+    const h = (await srv.db()).houses.find((x) => x.ma === 'NHA_F8');
+    assert.ok(h); assert.equal(h.maCT, ct.ma, 'lưu mã công trình từ tên đã gõ');
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); await srv.stop(); }
+});
+
 test('F7 Giá vật tư và Danh mục chi phí: chọn vật tư, lịch sử đơn giá; 4 tab danh mục, tìm kiếm, thêm/sửa/xóa, đổi tên lan sang sổ', { skip: SKIP, timeout: 300000 }, async () => {
   const srv = await startServer({ seed: V2 });
   const db = readJsonFile(V2);
@@ -783,7 +859,7 @@ test('F7 Giá vật tư và Danh mục chi phí: chọn vật tư, lịch sử �
     await page.click('[data-act=add]');
     await page.waitForSelector('#modal-root form'); await page.waitForTimeout(150);
     await page.fill('#modal-root input[name=ten]', 'Hạng mục kiểm thử giao diện');
-    await page.selectOption('#modal-root select[name=maNhom]', db.costGroups[1].ma);
+    await page.fill('#modal-root input[name=maNhom]', db.costGroups[1].ma);
     await page.keyboard.press('Enter');
     await page.waitForSelector('#modal-root form', { state: 'detached' });
     const created = (await srv.db()).costItems.find((i) => i.ten === 'Hạng mục kiểm thử giao diện');
@@ -792,7 +868,7 @@ test('F7 Giá vật tư và Danh mục chi phí: chọn vật tư, lịch sử �
     await page.click('[data-act=add]');
     await page.waitForSelector('#modal-root form'); await page.waitForTimeout(150);
     await page.fill('#modal-root input[name=ma]', 'HM_TRUNG'); await page.fill('#modal-root input[name=ten]', 'hạng mục KIỂM THỬ giao diện');
-    await page.selectOption('#modal-root select[name=maNhom]', db.costGroups[1].ma);
+    await page.fill('#modal-root input[name=maNhom]', db.costGroups[1].ma);
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => /đã có/.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
     await page.click('[data-act=cancel]');
