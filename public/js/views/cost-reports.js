@@ -1,8 +1,9 @@
 /* Báo cáo chi phí công trình: bảng điều khiển (TONGHOP), chi tiết theo nhóm (CHI_TIET_THEO_NHOM),
  * công nợ NCC (CONGNO_NCC), thống kê giá vật tư. */
 import { $, $$, esc, money, fdate, fmtShort, icon, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, debounce, highlight, LS, dateField } from '../ui.js';
-import { S, saveFilter, ctOptions, selectOptions, projectByCode, supplierByCode, materialByCode, itemByCode } from '../state.js';
+import { S, saveFilter, costProjects, projectByCode, supplierByCode, materialByCode, itemByCode } from '../state.js';
 import { printView } from '../print.js';
+import { comboHtml, bindCombo } from '../combo.js';
 import { openEntryForm } from '../forms.js';
 
 const KT = window.KT;
@@ -21,11 +22,11 @@ function goLedger(patch) {
   location.hash = '#/cp-so';
 }
 
-function houseSelect(id, ct, value) {
-  const houses = S.db.houses.filter((h) => !ct || KT.keyOf(h.maCT) === KT.keyOf(ct));
-  return '<select id="' + id + '" class="input w-auto max-w-[180px]" aria-label="Nhà">' +
-    selectOptions(houses, value, { allLabel: 'Mọi nhà', withNone: true, noneLabel: '(Không gán nhà)', label: (h) => h.ma + ' — ' + h.ten }) + '</select>';
-}
+// Ô gõ tìm (combo.js) cho các bộ lọc: công trình, nhà, nhà cung cấp, hạng mục
+const ctCombo = (id, value) => ({ id, list: costProjects(), value, noun: 'công trình', placeholder: 'Công trình: gõ mã, tên', label: 'Lọc theo công trình', cls: 'w-[220px] max-sm:w-full' });
+const houseCombo = (id, ct, value) => ({ id, list: S.db.houses.filter((h) => !ct || KT.keyOf(h.maCT) === KT.keyOf(ct)), value, none: '(Không gán nhà)', noun: 'nhà',
+  placeholder: 'Nhà: gõ mã, tên', label: 'Lọc theo nhà', cls: 'w-[160px] max-sm:w-full' });
+const nccCombo = (id, list, value, cls) => ({ id, list, value, noun: 'nhà cung cấp', placeholder: 'NCC: gõ mã, tên', label: 'Lọc theo nhà cung cấp', cls: cls || 'w-[200px] max-sm:w-full' });
 
 /* ============================== BẢNG ĐIỀU KHIỂN ============================== */
 
@@ -37,6 +38,8 @@ export function renderCostDashboard(root) {
   const chk = KT.costCatalogCheck(S.db);
   const nVT = new Set(KT.filterCosts(S.costLedger, f).rows.map((r) => KT.keyOf(r.maVT)).filter(Boolean)).size;
   const openState = LS.get('cp.th.open', {});
+  const cbCt = ctCombo('th-ct', f.ct);
+  const cbNha = houseCombo('th-nha', f.ct, f.nha);
 
   // link: { loai } → mở sổ chi phí đã lọc; { debt: true } → mở công nợ NCC (cùng công trình, cùng kỳ)
   const tile = (label, value, sub, cls, link) => '<div class="stat' + (link ? ' stat-link' : '') + '"' +
@@ -49,8 +52,7 @@ export function renderCostDashboard(root) {
   root.innerHTML =
     '<div class="print-only" id="print-head"></div>' +
     '<div class="no-print flex flex-wrap items-center gap-2">' +
-    '<select id="th-ct" class="input w-auto max-w-[260px]" aria-label="Công trình">' + ctOptions(f.ct) + '</select>' +
-    houseSelect('th-nha', f.ct, f.nha) +
+    comboHtml(cbCt) + comboHtml(cbNha) +
     periodControls(f, 'cth') +
     '<span class="flex-1"></span>' +
     '<button type="button" class="btn btn-ghost" data-act="print">' + icon('print') + 'In</button>' +
@@ -87,8 +89,8 @@ export function renderCostDashboard(root) {
   drawMonthChart($('#th-months', root), s.byMonth);
 
   const rerender = () => renderCostDashboard(root);
-  $('#th-ct', root).addEventListener('change', (e) => { f.ct = e.target.value; f.nha = ''; saveFilter('cpTh'); rerender(); });
-  $('#th-nha', root).addEventListener('change', (e) => { f.nha = e.target.value; saveFilter('cpTh'); rerender(); });
+  bindCombo($('#th-ct', root), cbCt, (v) => { f.ct = v; f.nha = ''; saveFilter('cpTh'); rerender(); });
+  bindCombo($('#th-nha', root), cbNha, (v) => { f.nha = v; saveFilter('cpTh'); rerender(); });
   bindPeriodControls(root, f, 'cth', () => { saveFilter('cpTh'); rerender(); });
 
   root.addEventListener('click', (e) => {
@@ -230,13 +232,15 @@ export function renderCostDetail(root) {
   root = freshRoot(root);
   const f = refreshPeriod(S.filters.cpCt);
   const usedNCC = new Set(S.db.costs.map((c) => KT.keyOf(c.maNCC)));
+  const cbCt = ctCombo('ct-ct', f.ct);
+  const cbNha = houseCombo('ct-nha', f.ct, f.nha);
+  const cbNcc = nccCombo('ct-ncc', S.db.suppliers.filter((s) => usedNCC.has(KT.keyOf(s.ma)) || KT.keyOf(s.ma) === KT.keyOf(f.ncc)), f.ncc);
   root.innerHTML =
     '<div class="print-only" id="print-head"></div>' +
     '<div class="no-print flex flex-wrap items-center gap-2">' +
-    '<select id="ct-ct" class="input w-auto max-w-[260px]" aria-label="Công trình">' + ctOptions(f.ct) + '</select>' +
-    houseSelect('ct-nha', f.ct, f.nha) +
+    comboHtml(cbCt) + comboHtml(cbNha) +
     '<select id="ct-loai" class="input w-auto" aria-label="Loại chi phí"><option value="">Mọi loại CP</option>' + KT.LOAI_CP.map((l) => '<option' + (f.loai === l ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select>' +
-    '<select id="ct-ncc" class="input w-auto max-w-[220px]" aria-label="Nhà cung cấp">' + selectOptions(S.db.suppliers.filter((s) => usedNCC.has(KT.keyOf(s.ma))), f.ncc, { allLabel: 'Mọi nhà cung cấp', label: (s) => s.ten }) + '</select>' +
+    comboHtml(cbNcc) +
     periodControls(f, 'ctd') +
     '</div>' +
     '<div class="no-print flex flex-wrap items-center gap-2">' +
@@ -285,10 +289,10 @@ export function renderCostDetail(root) {
   };
 
   const rerender = () => renderCostDetail(root);
-  $('#ct-ct', root).addEventListener('change', (e) => { f.ct = e.target.value; f.nha = ''; saveFilter('cpCt'); rerender(); });
-  $('#ct-nha', root).addEventListener('change', (e) => { f.nha = e.target.value; saveFilter('cpCt'); draw(); });
+  bindCombo($('#ct-ct', root), cbCt, (v) => { f.ct = v; f.nha = ''; saveFilter('cpCt'); rerender(); });
+  bindCombo($('#ct-nha', root), cbNha, (v) => { f.nha = v; saveFilter('cpCt'); draw(); });
   $('#ct-loai', root).addEventListener('change', (e) => { f.loai = e.target.value; saveFilter('cpCt'); draw(); });
-  $('#ct-ncc', root).addEventListener('change', (e) => { f.ncc = e.target.value; saveFilter('cpCt'); draw(); });
+  bindCombo($('#ct-ncc', root), cbNcc, (v) => { f.ncc = v; saveFilter('cpCt'); draw(); });
   bindPeriodControls(root, f, 'ctd', () => { saveFilter('cpCt'); rerender(); });
   root.querySelectorAll('input[name=ct-level]').forEach((r) => r.addEventListener('change', () => {
     f.level = Number(r.value);
@@ -335,12 +339,16 @@ export function renderDebt(root) {
   const theoCT = KT.projectDebtSummary(S.db, { to: f.to, all: !!f.allCT, ncc: f.ncc });
   const ncc = f.ncc ? supplierByCode(f.ncc) : null;
   const nccLabel = f.ncc ? 'NCC ' + f.ncc + (ncc ? ' ' + ncc.ten : '') : '';
+  // NCC có phát sinh chi phí lên đầu gợi ý; mã lạ chỉ có trong sổ vẫn lọc được
+  const used = new Set(S.db.costs.map((c) => KT.keyOf(c.maNCC)));
+  const cbCt = ctCombo('cn-ct', f.ct);
+  const cbNcc = Object.assign(nccCombo('cn-ncc', S.db.suppliers.filter((x) => used.has(KT.keyOf(x.ma))).concat(S.db.suppliers.filter((x) => !used.has(KT.keyOf(x.ma)))), f.ncc, 'w-[250px] max-sm:w-full'),
+    { placeholder: 'Lọc NCC: gõ mã hoặc tên', accept: unknownNcc });
 
   root.innerHTML =
     '<div class="print-only" id="print-head"></div>' +
     '<div class="no-print flex flex-wrap items-center gap-2">' +
-    '<select id="cn-ct" class="input w-auto max-w-[300px]" aria-label="Công trình">' + ctOptions(f.ct) + '</select>' +
-    '<select id="cn-ncc" class="input w-auto max-w-[300px]" aria-label="Nhà cung cấp">' + nccOptions(f.ncc) + '</select>' +
+    comboHtml(cbCt) + comboHtml(cbNcc) +
     '<span class="flex items-center gap-2 text-[13.5px] text-ink-2"><span aria-hidden="true">Đến ngày</span>' + dateField({ id: 'cn-to', value: f.to || '', label: 'Tính công nợ đến ngày' }) + '</span>' +
     '<select id="cn-pham" class="input w-auto" aria-label="Phạm vi nhà cung cấp"' + (f.ncc ? ' disabled title="Đang lọc một nhà cung cấp"' : '') + '>' + [['ct', 'NCC liên quan công trình'], ['active', 'Mọi NCC có phát sinh'], ['all', 'Tất cả NCC trong danh mục']].map(([v, l]) =>
       '<option value="' + v + '"' + (f.pham === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
@@ -397,10 +405,10 @@ export function renderDebt(root) {
     el.dataset.ma = r.ma;
   };
 
-  $('#cn-ct', root).addEventListener('change', (e) => { f.ct = e.target.value; saveFilter('cpCn'); renderDebt(root); });
-  $('#cn-ncc', root).addEventListener('change', (e) => {
-    f.ncc = e.target.value;
-    if (f.ncc) LS.set('cp.cn.sel', f.ncc);
+  bindCombo($('#cn-ct', root), cbCt, (v) => { f.ct = v; saveFilter('cpCn'); renderDebt(root); });
+  bindCombo($('#cn-ncc', root), cbNcc, (v) => {
+    f.ncc = v;
+    if (v) LS.set('cp.cn.sel', v);
     saveFilter('cpCn');
     renderDebt(root);
   });
@@ -453,12 +461,11 @@ export function renderDebt(root) {
   drawDetail(sel);
 }
 
-// Ô lọc nhà cung cấp: NCC có phát sinh chi phí lên đầu, sau đó các NCC còn lại trong danh mục; mã đang lọc mà không có trong danh mục vẫn giữ
-function nccOptions(selected) {
-  const used = new Set(S.db.costs.map((c) => KT.keyOf(c.maNCC)));
-  const list = S.db.suppliers.filter((x) => used.has(KT.keyOf(x.ma))).concat(S.db.suppliers.filter((x) => !used.has(KT.keyOf(x.ma))));
-  if (selected && !supplierByCode(selected)) list.unshift({ ma: selected, ten: '(Chưa có trong danh mục)' });
-  return selectOptions(list, selected, { allLabel: 'Tất cả nhà cung cấp' });
+// Mã NCC lạ (không có trong danh mục) nhưng có trong sổ chi phí / sổ thu chi: vẫn cho lọc
+function unknownNcc(t) {
+  const k = KT.keyOf(t);
+  const r = S.db.costs.find((c) => KT.keyOf(c.maNCC) === k) || S.db.entries.find((e) => KT.keyOf(e.maNCC) === k);
+  return r ? String(r.maNCC).trim() : '';
 }
 
 /* ---------------- Tổng hợp nợ / đã thanh toán theo công trình ---------------- */
@@ -506,13 +513,14 @@ export function renderPrices(root) {
   root = freshRoot(root);
   const f = S.filters.cpGia;
   const usedNCC = new Set(S.db.costs.filter((c) => c.maVT).map((c) => KT.keyOf(c.maNCC)));
+  const cbNcc = nccCombo('gia-ncc', S.db.suppliers.filter((s) => usedNCC.has(KT.keyOf(s.ma)) || KT.keyOf(s.ma) === KT.keyOf(f.ncc)), f.ncc, 'min-w-0 flex-1');
+  const cbHm = { id: 'gia-hm', list: S.db.costItems, value: f.hm, show: 'ten', noun: 'hạng mục', placeholder: 'Hạng mục: gõ tên', label: 'Lọc theo hạng mục', cls: 'min-w-0 flex-1' };
   root.innerHTML =
     '<div class="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[480px_minmax(0,1fr)]">' +
     '<aside class="sheet flex flex-col overflow-hidden lg:sticky lg:top-[104px] lg:max-h-[calc(100vh-128px)]">' +
     '<div class="flex flex-col gap-2 border-b border-rule p-3">' +
     '<label class="search">' + icon('search') + '<input id="gia-q" type="search" class="input" placeholder="Tìm mã, tên vật tư" value="' + esc(f.q) + '"></label>' +
-    '<div class="flex gap-2"><select id="gia-ncc" class="input flex-1" aria-label="Nhà cung cấp">' + selectOptions(S.db.suppliers.filter((s) => usedNCC.has(KT.keyOf(s.ma))), f.ncc, { allLabel: 'Mọi nhà cung cấp', label: (s) => s.ten }) + '</select>' +
-    '<select id="gia-hm" class="input flex-1" aria-label="Hạng mục">' + selectOptions(S.db.costItems, f.hm, { allLabel: 'Mọi hạng mục', label: (i) => i.ten }) + '</select></div></div>' +
+    '<div class="flex gap-2">' + comboHtml(cbNcc) + comboHtml(cbHm) + '</div></div>' +
     '<div class="flex-1 overflow-auto"><table class="ledger ledger-compact"><thead><tr><th>Vật tư</th><th class="num">Lần</th><th class="num money">Giá gần nhất</th><th class="num" title="Giá cao nhất so với giá thấp nhất">Chênh giá</th></tr></thead><tbody id="gia-list"></tbody></table></div></aside>' +
     '<section class="flex min-w-0 flex-col gap-4" id="gia-detail"></section></div>';
 
@@ -556,8 +564,8 @@ export function renderPrices(root) {
   };
 
   $('#gia-q', root).addEventListener('input', debounce((e) => { f.q = e.target.value; saveFilter('cpGia'); drawList(); }, 120));
-  $('#gia-ncc', root).addEventListener('change', (e) => { f.ncc = e.target.value; saveFilter('cpGia'); drawList(); drawDetail(); });
-  $('#gia-hm', root).addEventListener('change', (e) => { f.hm = e.target.value; saveFilter('cpGia'); drawList(); });
+  bindCombo($('#gia-ncc', root), cbNcc, (v) => { f.ncc = v; saveFilter('cpGia'); drawList(); drawDetail(); });
+  bindCombo($('#gia-hm', root), cbHm, (v) => { f.hm = v; saveFilter('cpGia'); drawList(); });
   root.addEventListener('click', (e) => {
     const a = e.target.closest('[data-act=to-ledger]');
     if (a) { goLedger({ vt: f.vt, ncc: f.ncc }); return; }

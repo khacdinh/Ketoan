@@ -73,6 +73,13 @@ Mục **Kiểm soát** (trên “Cài đặt”; con số màu vàng = số vi�
 - Dòng vừa ghi hoặc vừa sửa được **tô vàng** trong sổ vài giây để dễ kiểm tra lại.
 - Bấm đúp vào một dòng trong sổ để sửa.
 
+**Ô lọc gõ tìm.** Ở mọi màn hình, ô lọc / ô chọn **dự án, công trình, nhà, nhà cung cấp, nhóm chi phí, hạng mục, vật tư** đều là ô
+gõ tìm (không còn danh sách thả xuống), dùng giống ô Mã NCC ở trên: gõ vài chữ của mã hoặc tên, danh sách gợi ý hiện ra, **chọn
+một gợi ý là lọc ngay**; hoặc gõ đủ mã (chữ hoa hay thường đều được) / đúng tên rồi **Enter**. Gõ không khớp mục nào thì phần mềm
+báo và giữ bộ lọc cũ. Xóa trắng ô rồi Enter (hoặc bấm dấu × trong ô) để bỏ lọc. Gõ “(Chưa gán dự án)”, “(Chưa gán NCC)”,
+“(Không gán nhà)” (có sẵn trong gợi ý) để lọc các dòng chưa ghi mã. Ô nhóm chi phí và hạng mục hiện **tên**, các ô khác hiện **mã**
+(rê chuột lên ô để xem tên). Các ô chọn có ít lựa chọn cố định (kỳ, loại CP, sắp xếp, trạng thái…) vẫn là danh sách chọn.
+
 ---
 
 ## 4. In phiếu thu / chi
@@ -233,10 +240,11 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
   - Còn nợ: phát sinh > đã trả. Ứng dư: đã trả nhiều hơn khối lượng đã ghi (thường do chưa nhập khối lượng nghiệm thu).
   - Mặc định chỉ hiện **NCC liên quan công trình** (có chi phí, hoặc có khoản trả gắn với công trình đang có chi phí);
     đổi ở ô chọn phạm vi để xem mọi NCC.
-  - **Lọc theo mã NCC**: chọn một nhà cung cấp ở ô “Tất cả nhà cung cấp” (NCC có chi phí công trình nằm trên đầu). Bảng chỉ
+  - **Lọc theo NCC**: ở ô “Lọc NCC”, gõ mã hoặc tên rồi chọn trong danh sách gợi ý (giống ô Nhà cung cấp ở form phiếu chi; NCC
+    có chi phí công trình nằm trên đầu), hoặc gõ đủ mã / tên rồi Enter. Bảng chỉ
     còn NCC đó, phần chi tiết mở sẵn, bảng **theo công trình** chỉ còn các công trình NCC đó có chi phí hoặc thanh toán (xem
     nhanh nợ NCC này ở từng công trình). Kết hợp được với ô Công trình và Đến ngày; In và Xuất Excel theo đúng bộ lọc.
-    Bỏ lọc: chọn lại “Tất cả nhà cung cấp” hoặc bấm “Xem tất cả nhà cung cấp”.
+    Bỏ lọc: xóa trắng ô rồi Enter (hoặc bấm dấu × trong ô), hoặc bấm “Xem tất cả nhà cung cấp”.
   - Bấm một NCC để xem các phiếu chi phí và các lần trả tiền; nút **Trả tiền / Ghi phiếu chi** mở sẵn form ghi chi
     trong Sổ thu chi với đúng NCC, dự án và số còn nợ.
 - **Giá vật tư**: danh sách vật tư đã mua (số lần, giá gần nhất, cột **Chênh giá** = giá cao nhất so với giá thấp nhất, rê chuột để xem hai mức giá); chọn một vật tư để xem lịch sử đơn giá

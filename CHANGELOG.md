@@ -1,5 +1,19 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Ô lọc gõ tìm thay cho danh sách chọn (01/10/2026)
+
+- Mọi ô lọc / ô chọn dự án, công trình, nhà, nhà cung cấp, nhóm CP, hạng mục, vật tư đổi từ danh sách thả xuống sang ô gõ tìm có gợi ý
+  (như ô NCC ở form phiếu chi): Sổ thu chi (dự án, NCC), Sổ chi phí (công trình, nhà, nhóm, hạng mục, NCC, vật tư), Tổng hợp chi phí
+  (công trình, nhà), Chi tiết theo nhóm (công trình, nhà, NCC), Công nợ NCC (công trình, NCC), Giá vật tư (NCC, hạng mục), form hạng mục
+  (Thuộc nhóm) và form nhà (Thuộc công trình). Chọn gợi ý là áp dụng ngay; gõ mã / tên rồi Enter; gõ sai báo lỗi; xóa trắng bỏ lọc;
+  giữ lựa chọn “chưa gán”. Ô chọn có ít lựa chọn cố định (kỳ, loại CP, sắp xếp…) giữ nguyên.
+- Thành phần dùng chung `public/js/combo.js` (`comboHtml`, `bindCombo`, `comboResolve`). Kiểm thử F8; cập nhật F1b, F3, F4, F5, F6c, F7, G3.
+
+## Công nợ NCC: ô lọc NCC gõ tìm (01/10/2026)
+
+- Ô lọc nhà cung cấp đổi từ danh sách chọn sang ô gõ tìm có gợi ý (mã + tên), như ô Nhà cung cấp ở form phiếu chi: chọn gợi ý là lọc
+  ngay; gõ mã (không phân biệt hoa thường) hoặc đúng tên rồi Enter; tên không có thì báo lỗi; xóa trắng rồi Enter để bỏ lọc. Kiểm thử F6c.
+
 ## Công nợ NCC: lọc theo mã NCC (01/10/2026)
 
 - Màn Công nợ NCC có ô chọn nhà cung cấp: chỉ hiện NCC đó (bỏ qua ô phạm vi), chi tiết mở sẵn, bảng theo công trình chỉ còn các

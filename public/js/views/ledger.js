@@ -1,6 +1,7 @@
 /* Sổ thu chi & tồn quỹ hàng ngày. */
 import { $, esc, money, fdate, icon, highlight, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, debounce, setDateValue, equationHtml, api, toast, showError } from '../ui.js';
-import { S, saveFilter, projectOptions, supplierOptions, draftLedgerRows } from '../state.js';
+import { S, saveFilter, draftLedgerRows } from '../state.js';
+import { comboHtml, bindCombo } from '../combo.js';
 import { openEntryForm, deleteEntry } from '../forms.js';
 import { printView } from '../print.js';
 import { clipHtml, openAttachList } from '../attach.js';
@@ -19,13 +20,16 @@ function exportQuery(f) {
 export function renderLedger(root) {
   root = freshRoot(root);
   const f = refreshPeriod(S.filters.so);
+  // ô gõ tìm thay cho danh sách chọn (xem combo.js)
+  const cbDa = { id: 'so-duan', list: S.db.projects, value: f.duAn, none: '(Chưa gán dự án)', noun: 'dự án', placeholder: 'Dự án: gõ mã, tên', label: 'Lọc theo dự án', cls: 'w-[210px] max-sm:w-full' };
+  const cbNcc = { id: 'so-ncc', list: S.db.suppliers.map((x) => ({ ma: x.ma, ten: x.ten, sub: x.loai })), value: f.ncc, none: '(Chưa gán NCC)', noun: 'nhà cung cấp',
+    placeholder: 'NCC: gõ mã, tên', label: 'Lọc theo nhà cung cấp', cls: 'w-[210px] max-sm:w-full' };
 
   root.innerHTML =
     '<div class="print-only" id="print-head"></div>' +
     '<div class="no-print flex flex-wrap items-center gap-2">' +
     periodControls(f, 'so') +
-    '<label class="sr-only" for="so-duan">Dự án</label><select id="so-duan" class="input w-auto max-w-[230px]">' + projectOptions(f.duAn, { withNone: true }) + '</select>' +
-    '<label class="sr-only" for="so-ncc">Nhà cung cấp</label><select id="so-ncc" class="input w-auto max-w-[230px]">' + supplierOptions(f.ncc, { withNone: true, allLabel: 'Tất cả nhà cung cấp' }) + '</select>' +
+    comboHtml(cbDa) + comboHtml(cbNcc) +
     '<div class="seg seg-sm" role="radiogroup" aria-label="Loại">' +
     [['', 'Thu và chi'], ['thu', 'Thu'], ['chi', 'Chi']].map(([v, l]) => '<label class="seg-item"><input type="radio" name="so-loai" value="' + v + '"' + ((f.loai || '') === v ? ' checked' : '') + '><span>' + l + '</span></label>').join('') +
     '</div>' +
@@ -56,8 +60,8 @@ export function renderLedger(root) {
     setDateValue($('#so-to', root), f.to || '', true);
   };
   bindPeriodControls(root, f, 'so', () => { saveFilter('so'); syncInputs(); draw(); });
-  $('#so-duan', root).addEventListener('change', (e) => { f.duAn = e.target.value; saveFilter('so'); draw(); });
-  $('#so-ncc', root).addEventListener('change', (e) => { f.ncc = e.target.value; saveFilter('so'); draw(); });
+  bindCombo($('#so-duan', root), cbDa, (v) => { f.duAn = v; saveFilter('so'); draw(); });
+  bindCombo($('#so-ncc', root), cbNcc, (v) => { f.ncc = v; saveFilter('so'); draw(); });
   root.querySelectorAll('input[name=so-loai]').forEach((r) => r.addEventListener('change', () => { f.loai = r.value; saveFilter('so'); draw(); }));
   root.querySelectorAll('input[name=so-tt]').forEach((r) => r.addEventListener('change', () => { f.trangThai = r.value; saveFilter('so'); draw(); }));
   $('#so-q', root).addEventListener('input', debounce((e) => { f.q = e.target.value; saveFilter('so'); draw(); }, 150));

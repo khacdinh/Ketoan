@@ -91,26 +91,6 @@ export function saveFilter(name) { LS.set('filter.' + name, S.filters[name]); }
 export function projectByCode(ma) { return KT.indexBy(S.db.projects).get(KT.keyOf(ma)); }
 export function supplierByCode(ma) { return KT.indexBy(S.db.suppliers).get(KT.keyOf(ma)); }
 
-export function projectOptions(selected, opts) {
-  opts = opts || {};
-  let html = '<option value="">' + esc(opts.allLabel || 'Tất cả dự án') + '</option>';
-  if (opts.withNone) html += '<option value="__none__"' + (selected === '__none__' ? ' selected' : '') + '>(Chưa gán dự án)</option>';
-  S.db.projects.forEach((p) => {
-    html += '<option value="' + esc(p.ma) + '"' + (KT.keyOf(selected) === KT.keyOf(p.ma) ? ' selected' : '') + '>' + esc(p.ma + ' — ' + p.ten) + '</option>';
-  });
-  return html;
-}
-
-export function supplierOptions(selected, opts) {
-  opts = opts || {};
-  let html = '<option value="">' + esc(opts.allLabel || 'Tất cả NCC / đối tượng') + '</option>';
-  if (opts.withNone) html += '<option value="__none__"' + (selected === '__none__' ? ' selected' : '') + '>(Chưa gán NCC)</option>';
-  S.db.suppliers.slice().sort((a, b) => a.ten.localeCompare(b.ten, 'vi')).forEach((s) => {
-    html += '<option value="' + esc(s.ma) + '"' + (KT.keyOf(selected) === KT.keyOf(s.ma) ? ' selected' : '') + '>' + esc(s.ten + ' (' + s.ma + ')') + '</option>';
-  });
-  return html;
-}
-
 export function datalists() {
   return '<datalist id="dl-projects">' + S.db.projects.map((p) => '<option value="' + esc(p.ma) + '">' + esc(p.ten) + '</option>').join('') + '</datalist>' +
     '<datalist id="dl-suppliers">' + S.db.suppliers.map((s) => '<option value="' + esc(s.ma) + '">' + esc(s.ten + (s.loai ? ' · ' + s.loai : '')) + '</option>').join('') + '</datalist>';
@@ -186,6 +166,3 @@ export function costProjects() {
   return a.concat(b);
 }
 
-export function ctOptions(selected, allLabel) {
-  return selectOptions(costProjects(), selected, { allLabel: allLabel || 'Tất cả công trình' });
-}
