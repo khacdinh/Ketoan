@@ -111,7 +111,7 @@ test('H4.2 đường dẫn API lạ / tên đối tượng hệ thống (constru
   } finally { await srv.stop(); }
 });
 
-test('H4.3 tham số truy vấn lạ (chuỗi SQL, ký tự điều khiển, rất dài) an toàn; không có SQL nên không có tiêm SQL', async () => {
+test('H4.3 tham số truy vấn lạ (chuỗi SQL, ký tự điều khiển, rất dài) an toàn; SQLite chỉ dùng câu lệnh có tham số (xem thêm S3.4)', async () => {
   const srv = await startServer({ seed: V2 });
   try {
     const evil = ["'; DROP TABLE entries;--", '" OR 1=1 --', '%27%20OR%20%271%27%3D%271', '\u0000\u0001', 'a'.repeat(100000), '../../../etc/passwd', '{{7*7}}', '${7*7}'];
