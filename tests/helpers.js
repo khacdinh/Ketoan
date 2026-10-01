@@ -79,13 +79,15 @@ class TestServer {
   }
 }
 
-// Khởi động server thật. opts: { data: thư mục dữ liệu, seed, port, env }
+// Khởi động server thật. opts: { data: thư mục dữ liệu, seed, port, env, root }
 async function startServer(opts) {
   opts = opts || {};
   const dataDir = opts.data || makeDataDir(opts.seed);
   const port = opts.port || await freePort();
-  const child = spawn(process.execPath, [path.join(ROOT, 'server.js'), '--no-open'], {
-    cwd: ROOT, env: Object.assign({}, process.env, { PORT: String(port), KETOAN_DATA: dataDir, NO_OPEN: '1' }, opts.env || {})
+  // opts.root: chạy server của một bản mã khác (vd bản JSON gốc để đối chiếu); KETOAN_CHO_NODE_CU: máy kiểm thử có thể dùng Node cũ hơn yêu cầu
+  const root = opts.root || ROOT;
+  const child = spawn(process.execPath, [path.join(root, 'server.js'), '--no-open'], {
+    cwd: root, env: Object.assign({}, process.env, { PORT: String(port), KETOAN_DATA: dataDir, NO_OPEN: '1', KETOAN_CHO_NODE_CU: '1' }, opts.env || {})
   });
   const srv = new TestServer(dataDir, port, child);
   const t0 = Date.now();
@@ -101,6 +103,31 @@ async function startServer(opts) {
 }
 
 function readJsonFile(f) { return JSON.parse(fs.readFileSync(f, 'utf8').replace(/^﻿/, '')); }
+
+// Dữ liệu đang nằm trên đĩa (data/ketoan.db, SQLite) — đọc độc lập với server để kiểm tra những gì thật sự đã được lưu.
+// schema = PRAGMA user_version của file.
+function readStored(dir) {
+  const { readDbFile, SqliteDb } = require(path.join(ROOT, 'lib', 'db'));
+  const file = path.join(dir, 'ketoan.db');
+  const out = readDbFile(file);
+  const d = new SqliteDb(file, { readOnly: true });
+  try { out.schema = d.version; } finally { d.close(); }
+  return out;
+}
+
+// Đọc một file sao lưu: .db (SQLite) hoặc .json (bản cũ)
+function readBackupFile(f) {
+  if (/\.db$/.test(f) || (Buffer.isBuffer(f))) {
+    const { readDbFile } = require(path.join(ROOT, 'lib', 'db'));
+    if (Buffer.isBuffer(f)) {
+      const tmp = path.join(tmpDir('ketoan-db-'), 'x.db');
+      fs.writeFileSync(tmp, f);
+      return readDbFile(tmp);
+    }
+    return readDbFile(f);
+  }
+  return readJsonFile(f);
+}
 
 // Số liệu thu chi tính độc lập (không dùng KT) để đối chiếu
 function ledgerTotals(entries) {
@@ -173,4 +200,4 @@ function makeBigDb(n, m) {
   return db;
 }
 
-module.exports = { makeBigDb, ROOT, KT, DATA_SRC, tmpDir, makeDataDir, freePort, rawRequest, startServer, readJsonFile, ledgerTotals, orphanErrors };
+module.exports = { readStored, readBackupFile, makeBigDb, ROOT, KT, DATA_SRC, tmpDir, makeDataDir, freePort, rawRequest, startServer, readJsonFile, ledgerTotals, orphanErrors };

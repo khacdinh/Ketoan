@@ -1,12 +1,13 @@
 'use strict';
-/* B. Lưu trữ, nâng cấp dữ liệu cũ (schema 1 → 2), sao lưu/khôi phục, ràng buộc.
- * Lưu ý: bản này lưu bằng file JSON (lib/store.js), không dùng SQLite — các ca "migrate" kiểm tra đường nâng cấp schema 1 → 2. */
+/* B. Lưu trữ, nâng cấp dữ liệu cũ (schema 1/2 → hiện hành), sao lưu/khôi phục, ràng buộc.
+ * Từ bản SQLite: dữ liệu nằm ở data/ketoan.db; file ketoan.json cũ được tự chuyển sang lần đầu chạy (bản sao lưu "truoc-khi-chuyen-sqlite").
+ * Các ca riêng của việc chuyển đổi / SQLite nằm ở tests/s-sqlite-*.test.js. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
-const { ROOT, KT, startServer, makeDataDir, readJsonFile, ledgerTotals, orphanErrors, tmpDir } = require('./helpers');
+const { ROOT, KT, startServer, makeDataDir, readJsonFile, readStored, readBackupFile, ledgerTotals, orphanErrors, tmpDir } = require('./helpers');
 const { SCHEMA_VERSION } = require('../lib/store');
 
 const V1 = path.join(__dirname, 'fixtures', 'ketoan-v1-goc.json');
@@ -66,11 +67,11 @@ test('B1.1 dữ liệu gốc schema 1 (66 dòng, 15 dự án, 43 NCC, tồn qu�
     // id không trùng
     // bản sao lưu nguyên bản trước khi nâng cấp
     const bdir = path.join(srv.dataDir, 'backups');
-    const names = fs.readdirSync(bdir).filter((f) => /truoc-nang-cap-v/.test(f));
-    assert.equal(names.length, 1, 'phải có đúng 1 bản sao lưu trước nâng cấp');
+    const names = fs.readdirSync(bdir).filter((f) => /truoc-khi-chuyen-sqlite/.test(f));
+    assert.equal(names.length, 1, 'phải có đúng 1 bản sao lưu trước nâng cấp (trước khi chuyển sang SQLite)');
     assert.deepEqual(readJsonFile(path.join(bdir, names[0])), orig, 'bản sao lưu phải giống hệt bản gốc');
     // file trên đĩa đã được ghi ở schema hiện hành
-    assert.equal(readJsonFile(path.join(srv.dataDir, 'ketoan.json')).schema, SCHEMA_VERSION);
+    assert.equal(readStored(srv.dataDir).schema, SCHEMA_VERSION);
   } finally { await srv.stop(); }
 });
 
@@ -92,7 +93,7 @@ test('B2.1 mở lại nhiều lần: không nâng cấp lần hai, không nhân 
       }
     } finally { await srv.stop(); }
   }
-  assert.equal(fs.readdirSync(path.join(dir, 'backups')).filter((f) => /truoc-nang-cap/.test(f)).length, 1);
+  assert.equal(fs.readdirSync(path.join(dir, 'backups')).filter((f) => /truoc-khi-chuyen-sqlite/.test(f)).length, 1);
 });
 
 test('B2.2 dữ liệu hiện tại (schema 2, có chi phí công trình) mở lại nguyên vẹn, không ghi đè', async () => {
@@ -127,8 +128,7 @@ test('B3.1 kill -9 giữa lúc đang ghi: file luôn đọc được, không m�
     await new Promise((r) => srv.child.once('exit', r));
     await worker;
     // file chính phải đọc được
-    const file = path.join(dir, 'ketoan.json');
-    const db = readJsonFile(file);
+    const db = readStored(dir);
     const ids = new Set(db.entries.map((e) => e.id));
     acked.forEach((id) => assert.ok(ids.has(id), 'mất dòng đã lưu thành công (id ' + id + ') ở vòng ' + round));
     assert.ok(acked.length > 0, 'vòng ' + round + ' chưa ghi được dòng nào trước khi kill — tăng thời gian chờ');
@@ -189,7 +189,7 @@ test('B4.1 sao lưu tự động, thủ công, tải về và khôi phục: sau 
     await srv.ok('POST', '/api/entries', { ngay: '2026-09-10', noiDung: 'A', chi: 100 });
     const auto = listNames().filter((n) => /tu-dong/.test(n));
     assert.equal(auto.length >= 1, true, 'chưa có bản sao lưu tự động');
-    const autoNewest = readJsonFile(path.join(bdir, auto[auto.length - 1]));
+    const autoNewest = readBackupFile(path.join(bdir, auto[auto.length - 1]));
     assert.equal(autoNewest.entries.length, before.entries.length, 'bản tự động phải là trạng thái trước khi sửa');
     await srv.ok('POST', '/api/entries', { ngay: '2026-09-10', noiDung: 'B', chi: 200 });
     assert.equal(listNames().filter((n) => /tu-dong/.test(n)).length, auto.length, 'không sao lưu tự động lại trong 10 phút');
@@ -201,7 +201,11 @@ test('B4.1 sao lưu tự động, thủ công, tải về và khôi phục: sau 
     const dl = await srv.call('GET', '/api/backup');
     assert.equal(dl.status, 200);
     assert.match(dl.headers['content-disposition'], /attachment/);
-    assert.deepEqual(JSON.parse(dl.body.toString('utf8')).entries, snap.entries);
+    assert.match(dl.headers['content-disposition'], /\.db"/);
+    assert.deepEqual(readBackupFile(dl.body).entries, snap.entries);
+    const dlJson = await srv.call('GET', '/api/backup-json');
+    assert.equal(dlJson.status, 200);
+    assert.deepEqual(JSON.parse(dlJson.body.toString('utf8')).entries, snap.entries);
     // thay đổi lớn sau T
     await srv.ok('POST', '/api/entries', { ngay: '2026-09-11', noiDung: 'C', chi: 300 });
     const c = (await srv.db()).entries.find((e) => e.noiDung === 'C');
@@ -218,13 +222,16 @@ test('B4.1 sao lưu tự động, thủ công, tải về và khôi phục: sau 
     assert.deepEqual(after.costs, snap.costs);
     assert.equal(KT.filterLedger(KT.buildLedger(after), {}).tonCuoiKy, KT.filterLedger(KT.buildLedger(snap), {}).tonCuoiKy);
     // dữ liệu khôi phục đã được ghi ra đĩa
-    assert.deepEqual(readJsonFile(path.join(srv.dataDir, 'ketoan.json')).entries, snap.entries);
+    assert.deepEqual(readStored(srv.dataDir).entries, snap.entries);
     // luôn có bản sao lưu ngay trước khi xóa toàn bộ / khôi phục
     assert.ok(listNames().some((n) => /truoc-xoa-du-lieu/.test(n)));
     assert.ok(listNames().some((n) => /truoc-khoi-phuc/.test(n)));
     // khôi phục từ file tải lên
     await srv.ok('POST', '/api/entries', { ngay: '2026-09-12', noiDung: 'D', chi: 1 });
-    await srv.ok('POST', '/api/restore', JSON.parse(dl.body.toString('utf8')));
+    await srv.ok('POST', '/api/restore', dl.body); // file .db tải về
+    assert.deepEqual((await srv.db()).entries, snap.entries);
+    await srv.ok('POST', '/api/entries', { ngay: '2026-09-12', noiDung: 'E', chi: 1 });
+    await srv.ok('POST', '/api/restore', JSON.parse(dlJson.body.toString('utf8'))); // file .json xuất ra
     assert.deepEqual((await srv.db()).entries, snap.entries);
     // khôi phục file rác
     const bad = await srv.call('POST', '/api/restore', { foo: 1 });
@@ -261,8 +268,9 @@ test('B4.3 giữ tối đa 60 bản sao lưu, xóa bản cũ nhất', async () =
     fs.utimesSync(f, t, t);
   }
   st.backup('thu-cong');
-  const left = fs.readdirSync(bdir);
+  const left = fs.readdirSync(bdir).filter((n) => !/truoc-khi-chuyen-sqlite/.test(n));
   assert.equal(left.length, 60);
+  assert.ok(fs.readdirSync(bdir).some((n) => /truoc-khi-chuyen-sqlite/.test(n)), 'bản .json trước khi chuyển sang SQLite không bao giờ bị tự xóa');
   assert.ok(left.some((n) => /thu-cong/.test(n)), 'bản mới nhất phải còn');
   assert.ok(!left.includes('ketoan-20200101-000000-tu-dong.json'), 'bản cũ nhất phải bị xóa');
 });
@@ -273,7 +281,7 @@ test('B4.4 sao lưu trước nhập Excel và trước xóa chi phí', async () 
     const bdir = path.join(srv.dataDir, 'backups');
     await srv.ok('POST', '/api/reset-costs', { confirm: 'XOA', keepCatalogs: true });
     assert.ok(fs.readdirSync(bdir).some((n) => /truoc-xoa-chi-phi/.test(n)));
-    const b = readJsonFile(path.join(bdir, fs.readdirSync(bdir).find((n) => /truoc-xoa-chi-phi/.test(n))));
+    const b = readBackupFile(path.join(bdir, fs.readdirSync(bdir).find((n) => /truoc-xoa-chi-phi/.test(n))));
     assert.equal(b.costs.length, 104, 'bản sao lưu phải chứa dữ liệu trước khi xóa');
     const bad = await srv.call('POST', '/api/reset-costs', { confirm: 'xoa' });
     assert.equal(bad.status, 400);
@@ -434,22 +442,33 @@ test('B3.4 nhiều yêu cầu ghi đồng thời: không mất dòng, id và th�
     assert.equal(new Set(db.entries.map((e) => e.id)).size, N);
     assert.equal(new Set(db.entries.map((e) => e.seq)).size, N);
     assert.equal(db.entries.reduce((t, e) => t + e.chi, 0), N * 1000 + (N * (N - 1)) / 2);
-    assert.deepEqual(readJsonFile(path.join(srv.dataDir, 'ketoan.json')).entries, db.entries);
+    assert.deepEqual(readStored(srv.dataDir).entries, db.entries);
   } finally { await srv.stop(); }
 });
 
-test('B3.5 Windows khóa file (đổi tên thất bại) → ghi đè trực tiếp bằng bản sao, dữ liệu vẫn đủ và không để lại file tạm', () => {
+test('B3.5 Windows khóa file (đổi tên thất bại) khi chuyển đổi và sao lưu → dùng đường chép dự phòng, dữ liệu vẫn đủ, không để lại file tạm', () => {
   const { Store } = require(path.join(ROOT, 'lib', 'store'));
   const dir = makeDataDir(V2);
-  const st = new Store(dir);
   const realRename = fs.renameSync;
   fs.renameSync = () => { const e = new Error('EPERM: operation not permitted, rename'); e.code = 'EPERM'; throw e; };
+  let st;
   try {
+    st = new Store(dir); // chuyển đổi: file tạm → ketoan.db phải chép; ketoan.json chưa đổi tên được
     st.db.entries.push({ id: st.newId(), seq: 999, ngay: '2026-09-30', noiDung: 'qua đường dự phòng', thu: 0, chi: 5, soPhieu: '', maDuAn: '', maNCC: '', nguoiNhan: '', ghiChu: '' });
-    st.save();
+    st.save(); // sao lưu tự động: file tạm → tên thật phải chép
   } finally { fs.renameSync = realRename; }
-  const disk = readJsonFile(path.join(dir, 'ketoan.json'));
+  st.close();
+  const disk = readStored(dir);
   assert.ok(disk.entries.some((e) => e.noiDung === 'qua đường dự phòng'));
   assert.equal(disk.entries.length, 67);
-  assert.ok(!fs.existsSync(path.join(dir, 'ketoan.json.tmp')), 'không được để lại file tạm');
+  assert.ok(fs.existsSync(path.join(dir, 'ketoan.json')), 'chưa đổi tên được thì ketoan.json còn nguyên');
+  assert.ok(!fs.readdirSync(dir).some((f) => /dang-chuyen/.test(f)), 'không được để lại file tạm chuyển đổi');
+  assert.ok(!fs.readdirSync(path.join(dir, 'backups')).some((f) => /^\./.test(f)), 'không được để lại file tạm sao lưu');
+  assert.ok(fs.readdirSync(path.join(dir, 'backups')).some((f) => /tu-dong\.db$/.test(f)));
+  // lần mở sau (hết khóa): nhận ra ketoan.json chính là file đã chuyển → hoàn tất đổi tên, không nhập lại
+  const st2 = new Store(dir);
+  assert.equal(st2.db.entries.length, 67);
+  st2.close();
+  assert.ok(!fs.existsSync(path.join(dir, 'ketoan.json')));
+  assert.ok(fs.existsSync(path.join(dir, 'ketoan.json.da-chuyen-sqlite.bak')));
 });

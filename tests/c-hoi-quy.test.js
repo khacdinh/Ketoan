@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { KT, startServer, makeDataDir, readJsonFile, orphanErrors } = require('./helpers');
+const { KT, startServer, makeDataDir, readJsonFile, orphanErrors , readStored } = require('./helpers');
 
 const V2 = path.join(__dirname, 'fixtures', 'ketoan-v2-hien-tai.json');
 
@@ -127,7 +127,7 @@ test('C4 sổ thu chi: thêm/sửa/xóa/xóa nhiều; tồn quỹ lũy kế kh�
     assert.equal(new Set(db.entries.map((e) => e.seq)).size, db.entries.length);
     assert.deepEqual(orphanErrors(db), []);
     // đọc lại từ file trên đĩa giống bộ nhớ
-    assert.deepEqual(readJsonFile(path.join(srv.dataDir, 'ketoan.json')).entries, db.entries);
+    assert.deepEqual(readStored(srv.dataDir).entries, db.entries);
   } finally { await srv.stop(); }
 });
 

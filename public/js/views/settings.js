@@ -40,9 +40,10 @@ export function renderSettings(root) {
     act('export-full', 'excel', 'Xuất toàn bộ sổ sách ra Excel', 'Đủ các sheet như file gốc: Tổng quan có biểu đồ, Sổ thu chi, Phiếu chi chọn số phiếu để in, các danh mục, Tổng hợp NCC. Giữ nguyên công thức.') +
     act('export-costs', 'crane', 'Xuất chi phí công trình ra Excel', 'Cấu trúc như file ChiPhi_CongTrinh: TONGHOP có biểu đồ, NHATKYCHUNG, CHI_TIET_THEO_NHOM, CONGNO_NCC, SO_QUY, giá vật tư, các danh mục. Giữ công thức SUMIFS, INDEX/MATCH.') +
     act('backup-zip', 'database', 'Tải bản sao lưu đầy đủ (.zip)', 'Toàn bộ dữ liệu, chứng từ đính kèm (ảnh, PDF) và nhật ký thay đổi trong một file. Nên cất ra USB hoặc Google Drive định kỳ.') +
-    act('backup', 'database', 'Tải bản sao lưu chỉ dữ liệu (.json)', 'File nhỏ, không kèm ảnh chứng từ.') +
-    act('restore', 'history', 'Khôi phục từ file sao lưu', 'Thay toàn bộ dữ liệu hiện tại bằng dữ liệu trong file .zip hoặc .json đã tải trước đó. Chứng từ trong file .zip được chép lại.') +
-    '<input type="file" id="restore-file" accept=".json,.zip" class="sr-only" tabindex="-1" aria-label="Chọn file sao lưu .zip hoặc .json để khôi phục">' +
+    act('backup', 'database', 'Tải bản sao lưu chỉ dữ liệu (.db)', 'File nhỏ, không kèm ảnh chứng từ.') +
+    act('backup-json', 'database', 'Xuất dữ liệu ra file .json', 'Dùng khi cần quay lại phiên bản phần mềm cũ (lưu bằng JSON) hoặc chuyển dữ liệu sang chương trình khác.') +
+    act('restore', 'history', 'Khôi phục từ file sao lưu', 'Thay toàn bộ dữ liệu hiện tại bằng dữ liệu trong file .zip, .db hoặc .json đã tải trước đó. Chứng từ trong file .zip được chép lại.') +
+    '<input type="file" id="restore-file" accept=".json,.zip,.db" class="sr-only" tabindex="-1" aria-label="Chọn file sao lưu .zip, .db hoặc .json để khôi phục">' +
     '</div></section>' +
 
     /* ---- Sao lưu tự động ---- */
@@ -110,6 +111,18 @@ export function renderSettings(root) {
       try { const r = await api('POST', '/api/restore-zip', await file.arrayBuffer(), true); toast('Đã khôi phục dữ liệu' + (r.copied ? ', chép lại ' + r.copied + ' file chứng từ' : '')); } catch (err) { showError(err); }
       return;
     }
+    if (/\.db$/i.test(file.name)) {
+      if (!(await confirmDialog({
+        title: 'Khôi phục dữ liệu',
+        html: 'Khôi phục từ <b class="text-ink">' + esc(file.name) + '</b>?<p class="mt-2">Toàn bộ dữ liệu hiện tại sẽ được thay thế. Phần mềm kiểm tra file trước, rồi tự sao lưu dữ liệu hiện tại trước khi thay.</p>',
+        okText: 'Khôi phục', danger: true
+      }))) return;
+      try {
+        const r = await api('POST', '/api/restore', await file.arrayBuffer(), true);
+        toast('Đã khôi phục dữ liệu: ' + r.summary.entries + ' dòng sổ, ' + r.summary.costs + ' dòng chi phí');
+      } catch (err) { showError(err); }
+      return;
+    }
     let data;
     try { data = JSON.parse(await file.text()); } catch (e) { return toast('File này không phải bản sao lưu của phần mềm', 'error'); }
     const n = (data.entries || []).length;
@@ -130,6 +143,7 @@ export function renderSettings(root) {
     else if (k === 'export-costs') download('/api/export/costs');
     else if (k === 'reset-costs') openResetCosts();
     else if (k === 'backup') { location.href = '/api/backup'; }
+    else if (k === 'backup-json') { location.href = '/api/backup-json'; }
     else if (k === 'backup-zip') { location.href = '/api/backup-zip'; toast('Đang đóng gói bản sao lưu đầy đủ, file sẽ nằm trong thư mục Downloads', 'info'); }
     else if (k === 'restore') restoreInput.click();
     else if (k === 'backup-now') {
@@ -165,7 +179,9 @@ const REASONS = {
   'truoc-nhap-chi-phi': 'Trước khi nhập Excel chi phí',
   'truoc-gop-chi-phi': 'Trước khi gộp Excel chi phí',
   'truoc-xoa-chi-phi': 'Trước khi xóa dữ liệu chi phí',
-  'truoc-nang-cap-v2': 'Trước khi nâng cấp phần mềm'
+  'truoc-nang-cap-v2': 'Trước khi nâng cấp phần mềm',
+  'truoc-nang-cap-v3': 'Trước khi nâng cấp phần mềm',
+  'truoc-khi-chuyen-sqlite': 'Trước khi chuyển sang SQLite (file .json gốc)'
 };
 
 async function loadBackups(root) {
@@ -176,7 +192,7 @@ async function loadBackups(root) {
     if (!r.backups.length) { el.innerHTML = '<p class="px-5 pb-5 text-ink-3">Chưa có bản sao lưu nào. Bản đầu tiên được tạo khi bạn ghi sổ hoặc bấm “Sao lưu ngay”.</p>'; return; }
     el.innerHTML = '<table class="ledger ledger-compact"><thead><tr><th>Thời điểm</th><th>Lý do</th><th class="num">Dung lượng</th><th><span class="sr-only">Thao tác</span></th></tr></thead><tbody>' +
       r.backups.slice(0, 15).map((b) => {
-        const m = /ketoan-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})-?(.*)\.json$/.exec(b.name) || [];
+        const m = /ketoan-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})-?(.*)\.(?:db|json)$/.exec(b.name) || [];
         const when = m[1] ? m[3] + '/' + m[2] + '/' + m[1] + ' lúc ' + m[4] + ':' + m[5] : b.name;
         return '<tr><td class="whitespace-nowrap tabular-nums">' + esc(when) + '</td><td class="text-ink-2">' + esc(REASONS[m[7]] || m[7] || '') + '</td>' +
           '<td class="num text-ink-2">' + Math.max(1, Math.round(b.size / 1024)) + ' KB</td>' +
