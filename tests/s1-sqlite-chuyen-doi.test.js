@@ -210,7 +210,10 @@ test('S1.7 lỗi giữa chừng / số liệu lệch / lỗi sau khi ghi (giả 
     const ok = await startServer({ data: dir });
     try {
       assert.deepEqual(summarize(await ok.db()), MOC.v2);
-      assert.equal(fs.readdirSync(path.join(dir, 'backups')).filter((f) => /truoc-khi-chuyen-sqlite/.test(f)).length, 2, 'mỗi lần thử có một bản sao lưu');
+      // mỗi lần thử có bản sao lưu nguyên văn file gốc (hai lần thử trong cùng một giây thì trùng tên, ghi đè đúng nội dung đó)
+      const bks = fs.readdirSync(path.join(dir, 'backups')).filter((f) => /truoc-khi-chuyen-sqlite/.test(f));
+      assert.ok(bks.length >= 1 && bks.length <= 2, 'có bản sao lưu trước khi chuyển: ' + bks.join(', '));
+      bks.forEach((f) => assert.equal(sha(path.join(dir, 'backups', f)), h0, 'bản sao lưu giống hệt file gốc'));
     } finally { await ok.stop(); }
   }
 });
