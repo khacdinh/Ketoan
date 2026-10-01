@@ -218,7 +218,34 @@ Ghi chú:
 
 ## 5. Kết quả kiểm thử
 
-_(đang chạy toàn bộ `npm test` trên commit cuối — số liệu sẽ được cập nhật)_
+Toàn bộ `npm test` chạy trên commit cuối của tính năng (`748f1ee`, worktree riêng, đăng nhập mặc định tắt):
+
+| Lần chạy | Tổng | Qua | Lỗi | Bỏ qua | Thời gian |
+|---|---:|---:|---:|---:|---:|
+| Trước khi làm đăng nhập (`405c5aa`) | 194 | 191 | 1 (G1 hiệu năng — phụ thuộc tốc độ máy) | 2 | 14 phút 51 giây |
+| **Sau khi làm xong** (`748f1ee`) | **229** | **227** | **0** | 2 | 15 phút 58 giây |
+
+Hai bài bỏ qua là có chủ ý: A3 (`npm install` sạch — chỉ chạy khi đặt `RUN_NPM_INSTALL=1`) và S3.6 (cần bản mã JSON cũ để đối chiếu).
+Toàn bộ 194 bài cũ chạy với đăng nhập TẮT và vẫn qua (yêu cầu 1). Bài cũ phải sửa: H4.2 (bản ghi mới có thêm trường `nguoiTao`), M0
+(kiểm nâng cấp lược đồ viết tổng quát cho lược đồ mới nhất). Lần chạy giữa chừng phát hiện S2.6 (đọc cấu hình đăng nhập khi file đang bị
+chương trình khác khóa) — đã sửa (cấu hình giữ trong bộ nhớ).
+
+35 bài mới theo 12 nhóm yêu cầu:
+
+| Yêu cầu | Bài kiểm thử |
+|---|---|
+| 1. Tắt: mọi bài cũ qua; tắt không có bước nào thêm | toàn bộ bộ cũ; K1 |
+| 2. Ma trận route tự động (dò route trong mã, 4 trạng thái: tắt / chưa đăng nhập / từng vai trò; thiếu route ⇒ đỏ) | Q1–Q4 |
+| 3. Mật khẩu (scrypt, muối, chính sách, NFC, băm lại) | K2, K7, N5 |
+| 4. Phiên (hết 60 phút / 12 giờ bằng đồng hồ giả, hủy khi đổi mật khẩu / vai trò / vô hiệu, cookie, CSRF) | K3–K6, N2, N4 |
+| 5. Chống đoán (khóa 5 / 15 / 60 phút, theo địa chỉ, không lộ tài khoản kể cả thời gian, Chủ mở khóa) | B1–B4 |
+| 6. Khôi phục (mã trong file, hết hạn, sai quá lần, mã dự phòng, lệnh cứu hộ) | R1–R4 |
+| 7. Không bị khóa ngoài (Chủ cuối, tắt giữ tài khoản, bật lại) | N3, K6, R3, R4 |
+| 8. Sao lưu / khôi phục (giữ tài khoản + trạng thái bật, hủy phiên, file tải về không có dữ liệu đăng nhập) | T5 |
+| 9. XSS / tiêm SQL / không lộ bí mật trong log, nhật ký, sự kiện, Excel | N6, U2, T4, T6, R1 |
+| 10. Giao diện theo vai trò; không mất dữ liệu khi hết phiên | U1–U3 |
+| 11. Nâng cấp lược đồ 5 → 6 (sao lưu, chạy lại không nhân đôi) | K8, M0 |
+| 12. Ghi người thao tác, nhập Excel, lọc sự kiện | T1–T4 |
 
 
 ## 6. Giả định (tự quyết định, không hỏi lại)
@@ -262,7 +289,7 @@ _(đang chạy toàn bộ `npm test` trên commit cuối — số liệu sẽ đ
   lại máy chủ trước khi bắt đăng nhập lại, và yêu cầu ghi bị 401 vẫn được gửi lại sau khi đăng nhập — không mất dữ liệu, chỉ có thể báo
   muộn / sớm.
 - Nhiều cửa sổ: hết phiên ở một cửa sổ thì cửa sổ khác cũng phải đăng nhập lại ở thao tác kế tiếp (cùng cookie).
-- Kiểm thử G1 (hiệu năng 20.000 dòng) phụ thuộc tốc độ máy; trên máy kiểm thử này đã đỏ từ TRƯỚC khi làm chức năng đăng nhập (mục 5).
+- Kiểm thử G1 (hiệu năng 20.000 dòng) phụ thuộc tốc độ máy: đã đỏ một lần TRƯỚC khi làm chức năng đăng nhập, lần chạy cuối thì qua (mục 5).
 
 ## 8. Việc chưa làm / có thể làm sau
 
