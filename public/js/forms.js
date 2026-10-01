@@ -3,10 +3,18 @@ import { $, esc, api, openModal, toast, showError, bindMoneyInput, money, confir
 import { S, datalists, resolveCode, projectByCode, supplierByCode } from './state.js';
 import { openHistory } from './views/control.js';
 import { attachBlock, bindAttach } from './attach.js';
+import { tenNguoi } from './auth.js';
 
 const KT = window.KT;
 
 /* ============================== GHI THU / CHI ============================== */
+
+// "Người tạo / Người sửa" của một bản ghi (dữ liệu trước khi có chức năng này: "Dữ liệu cũ")
+export function nguoiThaoTacHtml(r) {
+  return '<p class="col-span-2 text-[12.5px] text-ink-3 max-sm:col-span-1" data-nguoi>' + icon('user', 'mr-1 align-[-3px] text-[15px]') +
+    'Người tạo: <b class="font-medium text-ink-2">' + esc(tenNguoi(r.nguoiTao)) + '</b>' +
+    (r.nguoiSua ? ' · Người sửa gần nhất: <b class="font-medium text-ink-2">' + esc(tenNguoi(r.nguoiSua)) + '</b>' : '') + '</p>';
+}
 
 let lastUsed = { ngay: '', soPhieu: '', maDuAn: '', maNCC: '', loai: 'chi' };
 
@@ -48,6 +56,7 @@ export function openEntryForm(entry, opts) {
     '<p class="col-span-2 text-[12.5px] leading-relaxed text-ink-3 max-sm:col-span-1">' + icon('keyboard', 'mr-1 align-[-3px] text-[15px]') +
     'Ô số tiền nhận <b class="font-medium text-ink-2">1.250.000</b>, <b class="font-medium text-ink-2">50tr</b>, <b class="font-medium text-ink-2">300k</b> hoặc phép tính <b class="font-medium text-ink-2">58000+11000</b>. ' +
     'Ghi sổ nhanh bằng <kbd>Ctrl</kbd> + <kbd>Enter</kbd>, đóng bằng <kbd>Esc</kbd>.</p>' +
+    (isEdit ? nguoiThaoTacHtml(e) : '') +
     '</form>' + attachBlock('entries', isEdit ? e.id : 0, { readonly: false, newText: 'Ghi sổ (hoặc lưu nháp) dòng này trước, rồi mở lại để đính kèm ảnh hóa đơn, chứng từ.' });
 
   const footer =

@@ -40,6 +40,7 @@ const createAttachApi = require('./lib/attachApi');
 const createMergeApi = require('./lib/mergeApi');
 const aliasImport = require('./lib/aliasImport');
 const createExtPayApi = require('./lib/extPayApi');
+const createAuth = require('./lib/auth');
 const JSZip = require('jszip');
 const { dataSummary } = require('./lib/store');
 const { looksLikeSqlite } = require('./lib/db');
@@ -282,7 +283,10 @@ function checkDbShape(d) {
   if (d.trash !== undefined && (!Array.isArray(d.trash) || d.trash.some((t) => t === null || typeof t !== 'object' || !Array.isArray(t.records)))) throw new HttpError(400, 'File sao lưu không hợp lệ: "trash"');
 }
 
-const trace = createTrace({ store, HttpError, str, readJson, ok, sendJson, findCode });
+// Đăng nhập và phân quyền (mặc định tắt). Người thao tác: tên người đăng nhập (nhật ký) và nhãn lưu vào nguoiTao / nguoiSua
+const auth = createAuth({ store, HttpError, str, readJson, sendJson });
+store.nguoiThaoTac = () => auth.nhanHienTai();
+const trace = createTrace({ store, HttpError, str, readJson, ok, sendJson, findCode, ai: (req) => auth.ai(req), nhanNguoi: (req) => auth.nhanNguoi(req) });
 const costApi = createCostApi({ store, HttpError, str, money, readJson, ok, sendJson, findCode, byId, idList, own, trace, assertNotMerged, assertActive,
   renameTargets: (loai, a, b) => mergeApi.renameTargets(loai, a, b) });
 const mergeApi = createMergeApi({ store, HttpError, str, readJson, ok, sendJson, trace, makeItem: (b) => costApi.makeItem(b) });
@@ -317,7 +321,8 @@ async function handleApi(req, res, url) {
   const db = store.db;
   const now = new Date().toISOString();
 
-  if (p === '/api/ping') return sendJson(res, 200, { app: APP_ID, version: VERSION });
+  if (p === '/api/ping' && m === 'GET') return sendJson(res, 200, { app: APP_ID, version: VERSION });
+  if (await auth.handle(req, res, url)) return;
   if (p === '/api/db' && m === 'GET') return ok(res);
 
   /* ----- Sổ thu chi ----- */
@@ -331,7 +336,7 @@ async function handleApi(req, res, url) {
       store.save();
       return ok(res, { id: rec.id });
     }
-    if (m === 'POST' && seg[2] === 'delete') {
+    if (m === 'POST' && seg[2] === 'delete' && seg.length === 3) {
       const body = await readJson(req);
       const ids = idList(body.ids);
       const gone = db.entries.filter((e) => ids.has(e.id));
@@ -355,7 +360,7 @@ async function handleApi(req, res, url) {
       store.save();
       return ok(res, { posted: list.length });
     }
-    if (seg.length === 3) {
+    if (seg.length === 3 && (m === 'PUT' || m === 'DELETE')) {
       const rec = byId(db.entries, seg[2]);
       if (m === 'PUT') {
         const before = trace.clone(rec);
@@ -395,7 +400,7 @@ async function handleApi(req, res, url) {
       store.save();
       return ok(res, { id: rec.id });
     }
-    if (seg.length === 3) {
+    if (seg.length === 3 && (m === 'PUT' || m === 'DELETE')) {
       const rec = byId(list, seg[2]);
       assertActive(rec, cfg.label);
       if (m === 'PUT') {
@@ -432,7 +437,7 @@ async function handleApi(req, res, url) {
   }
 
   /* ----- Thông tin in phiếu ----- */
-  if (seg[1] === 'vouchers' && m === 'PUT') {
+  if (seg[1] === 'vouchers' && m === 'PUT' && seg.length >= 3) {
     const key = KT.voucherKey(decodeURIComponent(seg.slice(2).join('/')));
     if (!key) throw new HttpError(400, 'Thiếu số phiếu');
     const body = await readJson(req);
@@ -452,7 +457,7 @@ async function handleApi(req, res, url) {
     return ok(res);
   }
 
-  if (seg[1] === 'vouchers' && seg[2] === 'next' && m === 'GET') {
+  if (seg[1] === 'vouchers' && seg[2] === 'next' && m === 'GET' && seg.length === 3) {
     return sendJson(res, 200, { ok: true, soPhieu: KT.nextVoucherNo(db, url.searchParams.get('loai'), url.searchParams.get('ngay')) });
   }
 
@@ -531,7 +536,7 @@ async function handleApi(req, res, url) {
   /* ----- Sao lưu / khôi phục ----- */
   // Bản sao lưu chỉ dữ liệu: file .db (SQLite) nhất quán
   if (p === '/api/backup' && m === 'GET') {
-    return attachment(res, store.snapshotBuffer(), 'SaoLuu_SoThuChi_' + stampNow() + '.db', 'application/vnd.sqlite3');
+    return attachment(res, store.snapshotBuffer({ boXacThuc: true }), 'SaoLuu_SoThuChi_' + stampNow() + '.db', 'application/vnd.sqlite3');
   }
   // Xuất toàn bộ dữ liệu ra .json (cùng dạng ketoan.json cũ: bản phần mềm trước khi chuyển sang SQLite mở được)
   if (p === '/api/backup-json' && m === 'GET') {
@@ -540,7 +545,7 @@ async function handleApi(req, res, url) {
   // Bản sao lưu đầy đủ (.zip): dữ liệu (.db và .json) + chứng từ đính kèm + nhật ký thay đổi
   if (p === '/api/backup-zip' && m === 'GET') {
     const zip = new JSZip();
-    zip.file('ketoan.db', store.snapshotBuffer());
+    zip.file('ketoan.db', store.snapshotBuffer({ boXacThuc: true })); // file tải về không kèm người dùng, mã băm, phiên, mã khôi phục
     zip.file('ketoan.json', store.exportJson());
     if (fs.existsSync(store.log.file)) zip.file('nhat-ky.jsonl', fs.readFileSync(store.log.file));
     const metas = store.db.attachments.concat(...store.db.trash.map((t) => (t.kind === 'attachments' ? t.records : t.attachments || [])));
@@ -580,6 +585,7 @@ async function handleApi(req, res, url) {
     }
     trace.log(req, 'khoi-phuc-sao-luu', 'data', '', null, null, { label: 'Khôi phục từ bản sao lưu đầy đủ (.zip)', note: 'Dữ liệu sau khôi phục: ' + dataSummary(data) + '; chép ' + copied + ' file chứng từ' });
     const bk = store.replaceAll(data, 'truoc-khoi-phuc');
+    auth.sauKhiKhoiPhuc(req, res); // người dùng / mật khẩu / bật-tắt đăng nhập giữ nguyên; mọi phiên bị hủy
     return ok(res, { backup: bk, copied });
   }
   if (p === '/api/backups' && m === 'GET') {
@@ -597,6 +603,7 @@ async function handleApi(req, res, url) {
     checkDbShape(data);
     trace.log(req, 'khoi-phuc-sao-luu', 'data', String(b.name), null, null, { label: 'Khôi phục bản sao lưu tự động ' + String(b.name), note: 'Dữ liệu sau khôi phục: ' + dataSummary(data) });
     const bk = store.replaceAll(data, 'truoc-khoi-phuc');
+    auth.sauKhiKhoiPhuc(req, res);
     return ok(res, { backup: bk });
   }
   // Khôi phục từ file tải lên: .db (SQLite, gửi nguyên file) hoặc .json (bản cũ / file xuất .json)
@@ -617,6 +624,7 @@ async function handleApi(req, res, url) {
     checkDbShape(data);
     trace.log(req, 'khoi-phuc-sao-luu', 'data', '', null, null, { label: 'Khôi phục từ file sao lưu tải lên (.' + kind + ')', note: 'Dữ liệu sau khôi phục: ' + dataSummary(data) });
     const bk = store.replaceAll(data, 'truoc-khoi-phuc');
+    auth.sauKhiKhoiPhuc(req, res);
     return ok(res, { backup: bk, summary: { entries: data.entries.length, projects: data.projects.length, suppliers: data.suppliers.length, costs: (data.costs || []).length } });
   }
   if (p === '/api/reset' && m === 'POST') {
@@ -640,7 +648,7 @@ async function handleApi(req, res, url) {
   }
 
   /* ----- Xuất Excel ----- */
-  if (seg[1] === 'export' && m === 'GET') {
+  if (seg[1] === 'export' && m === 'GET' && seg.length === 3) {
     const db = KT.activeDb(KT.postedDb(store.db)); // báo cáo Excel không tính dòng Nháp; danh mục không có mã đã gộp
     const q = url.searchParams;
     const f = {
@@ -732,14 +740,16 @@ const server = http.createServer(async (req, res) => {
       // Chống DNS rebinding: trang web lạ trỏ tên miền về 127.0.0.1 vẫn gửi Host là tên miền đó
       const host = req.headers.host;
       if (host && !/^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i.test(host)) throw new HttpError(403, 'Không được phép');
-      await handleApi(req, res, url);
+      // Đăng nhập bật: phiên, chống giả mạo yêu cầu, quyền theo lib/quyen.js (mặc định từ chối). Tắt: không làm gì.
+      auth.xacThuc(req, url, res);
+      await auth.als.run({ nguoiDung: req.nguoiDung || null }, () => handleApi(req, res, url));
     } else {
       serveStatic(req, res, url);
     }
   } catch (e) {
     const status = e.status || 500;
     if (status === 500) console.error(e);
-    if (!res.headersSent) sendJson(res, status, { ok: false, error: e.message || 'Lỗi không xác định' });
+    if (!res.headersSent) sendJson(res, status, Object.assign({ ok: false, error: e.message || 'Lỗi không xác định' }, e instanceof HttpError && e.code ? { code: e.code } : {}));
     else res.end();
   }
 });

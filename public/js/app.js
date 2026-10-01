@@ -1,5 +1,5 @@
 /* Khung ứng dụng: điều hướng, thanh trên cùng, tải dữ liệu. */
-import { $, esc, api, onDatabase, showError, duo, attachMenu, download, hasOpenModal } from './ui.js';
+import { $, esc, api, onDatabase, showError, duo, attachMenu, download, hasOpenModal, dangCheDangNhap } from './ui.js';
 import { S, setDb, onChange, vouchers, anomalies } from './state.js';
 import { openEntryForm } from './forms.js';
 import { renderDashboard } from './views/dashboard.js';
@@ -13,6 +13,8 @@ import { renderCostDashboard, renderCostDetail, renderDebt, renderPrices } from 
 import { renderCostCatalogs } from './views/cost-catalogs.js';
 import { renderControl } from './views/control.js';
 import { renderMerge } from './merge.js';
+import { renderUsers } from './views/users.js';
+import { A, napTrangThai, dangNhap, doiMatKhauBatBuoc, coQuyen, onAuthChange } from './auth.js';
 
 const KT = window.KT;
 
@@ -34,7 +36,8 @@ const ROUTES = {
   'cp-danh-muc': { title: 'Danh mục chi phí', sub: 'Nhóm chi phí, hạng mục, vật tư, nhà và khu', icon: 'squares', render: renderCostCatalogs },
   // Kiểm soát sổ sách (nhóm độ chính xác và truy vết)
   'kiem-soat': { title: 'Kiểm soát sổ sách', sub: 'Nhật ký thay đổi, thùng rác và các việc cần xử lý để số liệu luôn đúng', icon: 'shield', render: renderControl },
-  'gop-ma': { title: 'Gộp mã', sub: 'Đưa các mã trùng (NCC, vật tư, hạng mục, nhà, dự án) về một mã — có xem trước và hoàn tác', icon: 'merge', render: renderMerge }
+  'gop-ma': { title: 'Gộp mã', sub: 'Đưa các mã trùng (NCC, vật tư, hạng mục, nhà, dự án) về một mã — có xem trước và hoàn tác', icon: 'merge', render: renderMerge },
+  'nguoi-dung': { title: 'Người dùng', sub: 'Tài khoản, vai trò, mở khóa, đặt lại mật khẩu, sự kiện bảo mật', icon: 'contacts', render: renderUsers }
 };
 const NAV_LABEL = {
   'tong-quan': 'Tổng quan',
@@ -52,26 +55,35 @@ const NAV_LABEL = {
   'cp-gia': 'Giá vật tư',
   'cp-danh-muc': 'Danh mục chi phí',
   'kiem-soat': 'Kiểm soát',
-  'gop-ma': 'Gộp mã'
+  'gop-ma': 'Gộp mã',
+  'nguoi-dung': 'Người dùng'
 };
 const NAV = [['tong-quan', 'so-thu-chi', 'phieu'], ['du-an', 'ncc', 'tong-hop-ncc'],
-  ['cp-tong-hop', 'cp-nhap', 'cp-so', 'cp-chi-tiet', 'cp-cong-no', 'cp-gia', 'cp-danh-muc'], ['kiem-soat', 'gop-ma', 'cai-dat']];
+  ['cp-tong-hop', 'cp-nhap', 'cp-so', 'cp-chi-tiet', 'cp-cong-no', 'cp-gia', 'cp-danh-muc'], ['kiem-soat', 'gop-ma', 'nguoi-dung', 'cai-dat']];
 const NAV_HEAD = { 2: 'Chi phí công trình' };
+// Màn hình cần quyền riêng (đăng nhập bật). Không có quyền: ẩn khỏi menu, mở bằng đường dẫn thì báo không có quyền.
+const QUYEN_MAN = { 'gop-ma': 'gop-ma', 'cp-nhap': 'ghi', 'nguoi-dung': 'quan-ly-nguoi-dung' };
+const duocMo = (k) => (k !== 'nguoi-dung' || A.bat) && (!QUYEN_MAN[k] || coQuyen(QUYEN_MAN[k]));
 
 function current() {
   const k = location.hash.replace(/^#\/?/, '').split('?')[0];
   return ROUTES[k] ? k : 'tong-quan';
 }
 
-function renderShell() {
+// Menu bên trái (vẽ lại khi trạng thái đăng nhập / vai trò đổi)
+function veNav() {
   $('#nav').innerHTML = NAV.map((group, gi) =>
     (gi ? '<div class="nav-sep" aria-hidden="true"></div>' : '') +
     (NAV_HEAD[gi] ? '<div class="nav-head max-lg:sr-only">' + esc(NAV_HEAD[gi]) + '</div>' : '') +
-    group.map((k) =>
+    group.filter(duocMo).map((k) =>
       '<a href="#/' + k + '" class="nav-item max-lg:ml-2 max-lg:justify-center max-lg:px-0" data-route="' + k + '" title="' + esc(ROUTES[k].title) + '">' +
       duo(ROUTES[k].icon) + '<span class="max-lg:sr-only">' + esc(NAV_LABEL[k]) + '</span>' +
       (k === 'kiem-soat' ? '<span class="nav-badge" id="nav-badge" hidden></span>' : '') + '</a>').join('')
   ).join('');
+}
+
+function renderShell() {
+  veNav();
 
   attachMenu($('#btn-export'), () => {
     const f = S.filters.so;
@@ -112,6 +124,12 @@ function render() {
   $('#page-sub').textContent = r.sub;
   document.title = r.title + ' | Sổ Thu Chi';
   const keepScroll = lastRoute === k ? window.scrollY : 0;
+  if (!duocMo(k)) {
+    $('#view').innerHTML = '<div class="sheet p-6"><p class="font-semibold">Tài khoản của bạn không có quyền mở màn hình này.</p><p class="mt-1 text-ink-2">Hỏi người có vai trò Chủ nếu cần.</p></div>';
+    lastRoute = k;
+    updateFooter();
+    return;
+  }
   r.render($('#view'));
   window.scrollTo(0, lastRoute === k ? keepScroll : 0);
   lastRoute = k;
@@ -166,8 +184,14 @@ new MutationObserver(() => {
   requestAnimationFrame(() => { sxPending = false; enhanceScrollers(); });
 }).observe(document.getElementById('view').parentNode, { childList: true, subtree: true });
 
+// Chỉ xem: bấm đúp một dòng không mở form sửa (nút sửa đã ẩn); máy chủ vẫn là nơi chặn thật
+document.addEventListener('dblclick', (e) => {
+  if (!coQuyen('ghi') && e.target.closest && e.target.closest('#view')) { e.stopPropagation(); e.preventDefault(); }
+}, true);
+
 document.addEventListener('keydown', (e) => {
-  if (hasOpenModal()) return;
+  if (hasOpenModal() || dangCheDangNhap()) return;
+  if (!coQuyen('ghi') && (e.key === 'F2' || e.key === 'F3' || (e.altKey && (e.key === 'n' || e.key === 'N')))) { e.preventDefault(); return; }
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
   if (e.key === 'F3') {
     e.preventDefault();
@@ -181,11 +205,17 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+onAuthChange(() => { veNav(); if (S.db) render(); });
+
 async function boot() {
   onDatabase(setDb);
   onChange(render);
   renderShell();
   try {
+    // Đăng nhập đang bật: đăng nhập (và đổi mật khẩu nếu bị bắt buộc) TRƯỚC khi tải dữ liệu. Đang tắt: như trước, không thêm bước nào.
+    await napTrangThai();
+    if (A.bat && !A.nguoiDung) await dangNhap({});
+    if (A.bat && A.nguoiDung && A.nguoiDung.phaiDoiMatKhau) await doiMatKhauBatBuoc();
     await api('GET', '/api/db');
   } catch (e) {
     $('#view').innerHTML = '<div class="sheet p-6"><p class="font-semibold text-alert">Không tải được dữ liệu</p><p class="mt-1 text-ink-2">' + esc(e.message) + '</p></div>';

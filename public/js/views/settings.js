@@ -1,6 +1,7 @@
 /* Cài đặt: thông tin đơn vị, nhập Excel, xuất/sao lưu/khôi phục, xóa dữ liệu. */
 import { $, esc, money, icon, duo, download, api, toast, showError, confirmDialog, openModal, freshRoot, busy, LS } from '../ui.js';
 import { S } from '../state.js';
+import { A, capNhat, hienMaDuPhong, goiAuth, oMatKhau, ganOMatKhau, coQuyen } from '../auth.js';
 
 export function renderSettings(root) {
   root = freshRoot(root);
@@ -20,17 +21,18 @@ export function renderSettings(root) {
     f('nguoiLap', 'Người lập biểu (in trên sổ)', s.nguoiLap) +
     '<label class="field"><span class="label">Hình thức thanh toán thường dùng</span><select name="hinhThucMacDinh" class="input">' +
     ['Tiền mặt', 'Chuyển khoản'].map((h) => '<option' + (h === s.hinhThucMacDinh ? ' selected' : '') + '>' + h + '</option>').join('') + '</select></label>' +
-    '<div class="col-span-2 flex justify-end max-sm:col-span-1"><button type="submit" class="btn btn-primary">' + icon('save') + 'Lưu thông tin</button></div>' +
+    (coQuyen('cai-dat') ? '<div class="col-span-2 flex justify-end max-sm:col-span-1"><button type="submit" class="btn btn-primary">' + icon('save') + 'Lưu thông tin</button></div>'
+      : '<p class="col-span-2 text-[12.5px] text-ink-3 max-sm:col-span-1">' + icon('lock') + ' Chỉ tài khoản Chủ đổi được thông tin này.</p>') +
     '</form></section>' +
 
     /* ---- Nhập Excel ---- */
-    '<section class="sheet" aria-labelledby="h-nhap"><div class="sheet-head"><div><h2 id="h-nhap" class="sheet-title">Nhập dữ liệu từ file Excel</h2>' +
+    (!coQuyen('nhap-excel') ? '' : '<section class="sheet" aria-labelledby="h-nhap"><div class="sheet-head"><div><h2 id="h-nhap" class="sheet-title">Nhập dữ liệu từ file Excel</h2>' +
     '<p class="sheet-note">File “Quản lý thu chi” (So_Thu_Chi_Hang_Ngay, Danh_Muc_Du_An, Danh_Muc_NCC) hoặc file “Chi phí công trình” (NHATKYCHUNG, DM_HANGMUC, DM_VATTU, DM_NHA, SO_QUY), kể cả file xuất từ phần mềm này. Phần mềm tự nhận ra loại file.</p></div></div>' +
     '<div class="px-5 pb-5"><label class="dropzone" id="imp-drop"><input type="file" id="imp-file" accept=".xlsx,.xlsm" class="sr-only">' +
     duo('excel', 'text-[34px] text-income') +
     '<span class="font-semibold text-ink">Chọn file Excel, hoặc kéo thả vào đây</span>' +
     '<span class="text-[13px] text-ink-3">Phần mềm đọc thử và cho xem trước, chưa thay đổi gì cho đến khi bạn xác nhận.</span></label>' +
-    '<div id="imp-preview"></div></div></section>' +
+    '<div id="imp-preview"></div></div></section>') +
 
     /* ---- Xuất & sao lưu ---- */
     '<section class="sheet" aria-labelledby="h-xuat"><div class="sheet-head"><div><h2 id="h-xuat" class="sheet-title">Xuất Excel và sao lưu</h2>' +
@@ -38,31 +40,33 @@ export function renderSettings(root) {
     '<div class="flex flex-col gap-2 px-5 pb-5">' +
     act('export-full', 'excel', 'Xuất toàn bộ sổ sách ra Excel', 'Đủ các sheet như file gốc: Tổng quan có biểu đồ, Sổ thu chi, Phiếu chi chọn số phiếu để in, các danh mục, Tổng hợp NCC. Giữ nguyên công thức.') +
     act('export-costs', 'crane', 'Xuất chi phí công trình ra Excel', 'Cấu trúc như file ChiPhi_CongTrinh: TONGHOP có biểu đồ, NHATKYCHUNG, CHI_TIET_THEO_NHOM, CONGNO_NCC, SO_QUY, giá vật tư, các danh mục. Giữ công thức SUMIFS, INDEX/MATCH.') +
-    act('backup-zip', 'database', 'Tải bản sao lưu đầy đủ (.zip)', 'Toàn bộ dữ liệu, chứng từ đính kèm (ảnh, PDF) và nhật ký thay đổi trong một file. Nên cất ra USB hoặc Google Drive định kỳ.') +
+    (!coQuyen('tao-sao-luu') ? '' : act('backup-zip', 'database', 'Tải bản sao lưu đầy đủ (.zip)', 'Toàn bộ dữ liệu, chứng từ đính kèm (ảnh, PDF) và nhật ký thay đổi trong một file. Nên cất ra USB hoặc Google Drive định kỳ.') +
     act('backup', 'database', 'Tải bản sao lưu chỉ dữ liệu (.db)', 'File nhỏ, không kèm ảnh chứng từ.') +
-    act('backup-json', 'database', 'Xuất dữ liệu ra file .json', 'Dùng khi cần quay lại phiên bản phần mềm cũ (lưu bằng JSON) hoặc chuyển dữ liệu sang chương trình khác.') +
-    act('restore', 'history', 'Khôi phục từ file sao lưu', 'Thay toàn bộ dữ liệu hiện tại bằng dữ liệu trong file .zip, .db hoặc .json đã tải trước đó. Chứng từ trong file .zip được chép lại.') +
+    act('backup-json', 'database', 'Xuất dữ liệu ra file .json', 'Dùng khi cần quay lại phiên bản phần mềm cũ (lưu bằng JSON) hoặc chuyển dữ liệu sang chương trình khác.')) +
+    (!coQuyen('khoi-phuc-sao-luu') ? '' : act('restore', 'history', 'Khôi phục từ file sao lưu', 'Thay toàn bộ dữ liệu hiện tại bằng dữ liệu trong file .zip, .db hoặc .json đã tải trước đó. Chứng từ trong file .zip được chép lại.')) +
     '<input type="file" id="restore-file" accept=".json,.zip,.db" class="sr-only" tabindex="-1" aria-label="Chọn file sao lưu .zip, .db hoặc .json để khôi phục">' +
     '</div></section>' +
 
     /* ---- Sao lưu tự động ---- */
-    '<section class="sheet" aria-labelledby="h-bk"><div class="sheet-head"><div><h2 id="h-bk" class="sheet-title">Bản sao lưu tự động</h2>' +
+    (!coQuyen('xem-sao-luu') ? '' : '<section class="sheet" aria-labelledby="h-bk"><div class="sheet-head"><div><h2 id="h-bk" class="sheet-title">Bản sao lưu tự động</h2>' +
     '<p class="sheet-note">Tạo định kỳ khi đang làm việc và trước mỗi thao tác lớn: nhập Excel, khôi phục, xóa dữ liệu.</p></div>' +
     '<button type="button" class="btn btn-secondary btn-sm" data-act="backup-now">' + icon('save') + 'Sao lưu ngay</button></div>' +
-    '<div id="bk-list" class="max-h-[360px] overflow-auto"><p class="px-5 pb-5 text-ink-3">Đang tải danh sách</p></div></section>' +
+    '<div id="bk-list" class="max-h-[360px] overflow-auto"><p class="px-5 pb-5 text-ink-3">Đang tải danh sách</p></div></section>') +
 
-    /* ---- Người đang dùng máy này (ghi vào nhật ký thay đổi) ---- */
-    '<section class="sheet" aria-labelledby="h-nd"><div class="sheet-head"><div><h2 id="h-nd" class="sheet-title">Người đang dùng máy này</h2>' +
+    authSection() +
+
+    /* ---- Người đang dùng máy này (ghi vào nhật ký thay đổi) — khi đăng nhập bật thì nhật ký ghi theo tài khoản ---- */
+    (A.bat ? '' : '<section class="sheet" aria-labelledby="h-nd"><div class="sheet-head"><div><h2 id="h-nd" class="sheet-title">Người đang dùng máy này</h2>' +
     '<p class="sheet-note">Tên này được ghi vào <a class="font-semibold text-pen underline underline-offset-2" href="#/kiem-soat?tab=nhat-ky">nhật ký thay đổi</a> mỗi lần thêm, sửa, xóa. Chỉ lưu trên trình duyệt của máy này; mỗi máy đặt tên riêng. Để trống thì nhật ký ghi “không rõ”.</p></div></div>' +
     '<form id="nd-form" class="flex flex-wrap items-end gap-3 px-5 pb-5" autocomplete="off"><label class="field min-w-[240px] flex-1"><span class="label">Tên người thao tác</span>' +
     '<input name="nguoiDung" class="input" maxlength="60" value="' + esc(LS.get('nguoiDung', '')) + '" placeholder="VD: Thúy kế toán"></label>' +
-    '<button type="submit" class="btn btn-secondary">' + icon('save') + 'Lưu tên</button></form></section>' +
+    '<button type="submit" class="btn btn-secondary">' + icon('save') + 'Lưu tên</button></form></section>') +
 
     /* ---- Xóa dữ liệu ---- */
-    '<section class="sheet border-alert/30 xl:col-span-2" aria-labelledby="h-xoa"><div class="sheet-head items-center"><div><h2 id="h-xoa" class="sheet-title">Bắt đầu sổ mới</h2>' +
+    (!coQuyen('xoa-toan-bo') ? '' : '<section class="sheet border-alert/30 xl:col-span-2" aria-labelledby="h-xoa"><div class="sheet-head items-center"><div><h2 id="h-xoa" class="sheet-title">Bắt đầu sổ mới</h2>' +
     '<p class="sheet-note">Xóa các dòng sổ thu chi, hoặc xóa riêng dữ liệu chi phí công trình. Hai phần độc lập với nhau; dữ liệu cũ được sao lưu tự động ngay trước khi xóa.</p></div>' +
     '<div class="flex flex-wrap gap-2"><button type="button" class="btn btn-danger-ghost border border-alert/40" data-act="reset">' + icon('trash') + 'Xóa dữ liệu sổ thu chi</button>' +
-    '<button type="button" class="btn btn-danger-ghost border border-alert/40" data-act="reset-costs">' + icon('trash') + 'Xóa dữ liệu chi phí công trình</button></div></div></section>' +
+    '<button type="button" class="btn btn-danger-ghost border border-alert/40" data-act="reset-costs">' + icon('trash') + 'Xóa dữ liệu chi phí công trình</button></div></div></section>') +
 
     '</div>';
 
@@ -74,7 +78,8 @@ export function renderSettings(root) {
     try { await api('PUT', '/api/settings', data); toast('Đã lưu thông tin in trên phiếu'); } catch (err) { showError(err); }
   });
 
-  $('#nd-form', root).addEventListener('submit', (e) => {
+  bindAuthSection(root);
+  if ($('#nd-form', root)) $('#nd-form', root).addEventListener('submit', (e) => {
     e.preventDefault();
     const v = e.target.elements.nguoiDung.value.replace(/\s+/g, ' ').trim().slice(0, 60);
     LS.set('nguoiDung', v);
@@ -84,10 +89,10 @@ export function renderSettings(root) {
   // ---- nhập Excel ----
   const fileInput = $('#imp-file', root);
   const drop = $('#imp-drop', root);
-  fileInput.addEventListener('change', () => { if (fileInput.files[0]) previewImport(fileInput.files[0], root); });
-  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
-  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
-  drop.addEventListener('drop', (e) => {
+  if (fileInput) fileInput.addEventListener('change', () => { if (fileInput.files[0]) previewImport(fileInput.files[0], root); });
+  if (drop) drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+  if (drop) drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  if (drop) drop.addEventListener('drop', (e) => {
     e.preventDefault();
     drop.classList.remove('over');
     const file = e.dataTransfer.files[0];
@@ -194,7 +199,7 @@ async function loadBackups(root) {
         const when = m[1] ? m[3] + '/' + m[2] + '/' + m[1] + ' lúc ' + m[4] + ':' + m[5] : b.name;
         return '<tr><td class="whitespace-nowrap tabular-nums">' + esc(when) + '</td><td class="text-ink-2">' + esc(REASONS[m[7]] || m[7] || '') + '</td>' +
           '<td class="num text-ink-2">' + Math.max(1, Math.round(b.size / 1024)) + ' KB</td>' +
-          '<td class="text-right"><button type="button" class="btn btn-ghost btn-sm" data-act="restore-bk" data-name="' + esc(b.name) + '" data-label="' + esc(when) + '">' + icon('history') + 'Khôi phục</button></td></tr>';
+          '<td class="text-right">' + (!coQuyen('khoi-phuc-sao-luu') ? '' : '<button type="button" class="btn btn-ghost btn-sm" data-act="restore-bk" data-name="' + esc(b.name) + '" data-label="' + esc(when) + '">' + icon('history') + 'Khôi phục</button>') + '</td></tr>';
       }).join('') + '</tbody></table>' +
       (r.backups.length > 15 ? '<p class="px-5 py-3 text-[12.5px] text-ink-3">Còn ' + (r.backups.length - 15) + ' bản cũ hơn trong thư mục data/backups.</p>' : '');
   } catch (err) {
@@ -225,7 +230,7 @@ async function previewImport(file, root) {
       '<div class="mt-4 flex flex-wrap items-center gap-2">' +
       '<button type="button" class="btn btn-ghost" data-imp="cancel">Hủy</button><span class="flex-1"></span>' +
       '<button type="button" class="btn btn-secondary" data-imp="merge" title="Giữ dữ liệu hiện có, chỉ thêm các dòng, dự án, nhà cung cấp chưa có">Gộp thêm vào dữ liệu hiện có</button>' +
-      '<button type="button" class="btn btn-primary" data-imp="replace">Thay toàn bộ dữ liệu</button>' +
+      (coQuyen('nhap-excel-thay-the') ? '<button type="button" class="btn btn-primary" data-imp="replace">Thay toàn bộ dữ liệu</button>' : '') +
       '</div></div>';
   } catch (err) {
     box.innerHTML = '<p class="mt-3 rounded-lg bg-alert-soft px-4 py-3 text-alert">' + esc(err.message) + '</p>';
@@ -326,7 +331,7 @@ function previewCostImport(file, buf, p, box, root) {
     '<div class="mt-4 flex flex-wrap items-center gap-2">' +
     '<button type="button" class="btn btn-ghost" data-imp="cancel">Hủy</button><span class="flex-1"></span>' +
     '<button type="button" class="btn btn-secondary" data-imp="merge" title="Giữ dữ liệu hiện có, chỉ thêm dòng, hạng mục, vật tư... chưa có">Gộp thêm vào dữ liệu hiện có</button>' +
-    '<button type="button" class="btn btn-primary" data-imp="replace" title="Thay sổ chi phí và danh mục chi phí bằng dữ liệu trong file. Sổ thu chi không bị động tới.">Thay toàn bộ dữ liệu chi phí</button>' +
+    (coQuyen('nhap-excel-thay-the') ? '<button type="button" class="btn btn-primary" data-imp="replace" title="Thay sổ chi phí và danh mục chi phí bằng dữ liệu trong file. Sổ thu chi không bị động tới.">Thay toàn bộ dữ liệu chi phí</button>' : '') +
     '</div></div>';
   box.onclick = async (e) => {
     const b = e.target.closest('[data-imp]');
@@ -377,6 +382,127 @@ function openResetCosts() {
         } catch (err) { showError(err); }
       });
       setTimeout(() => inp.focus(), 50);
+    }
+  });
+}
+
+/* ============================== Đăng nhập và phân quyền ============================== */
+
+const LUU_Y_MA_HOA = 'Đăng nhập chỉ bảo vệ giao diện phần mềm, KHÔNG mã hóa file dữ liệu: ai chép được thư mục data vẫn đọc được dữ liệu. ' +
+  'Hãy đặt mật khẩu cho tài khoản Windows (và nếu được, bật mã hóa ổ đĩa BitLocker).';
+
+function authSection() {
+  if (A.bat && !coQuyen('cau-hinh-dang-nhap')) return '';
+  const head = '<section class="sheet" aria-labelledby="h-dn"><div class="sheet-head"><div><h2 id="h-dn" class="sheet-title">Đăng nhập và phân quyền</h2>';
+  if (!A.bat) {
+    return head + '<p class="sheet-note">Đang <b class="text-ink">TẮT</b>: ai mở phần mềm trên máy này cũng dùng được mọi chức năng. Bật lên để mỗi người có tài khoản riêng ' +
+      '(<b class="text-ink">Chủ</b>, <b class="text-ink">Kế toán</b>, <b class="text-ink">Chỉ xem</b>) và phần mềm ghi rõ ai làm gì.</p></div></div>' +
+      '<div class="px-5 pb-5"><p class="mb-3 rounded-md bg-caution-soft px-3 py-2 text-[13px] text-ink">' + icon('info') + ' ' + esc(LUU_Y_MA_HOA) + '</p>' +
+      '<button type="button" class="btn btn-primary" data-act="auth-bat">' + icon('lock') + (A.coTaiKhoan ? 'Bật lại đăng nhập' : 'Bật đăng nhập') + '</button></div></section>';
+  }
+  const c = A.cauHinh || {};
+  return head + '<p class="sheet-note">Đang <b class="text-income">BẬT</b>. Mỗi người dùng tài khoản riêng; quyền theo vai trò.</p></div>' +
+    '<a href="#/nguoi-dung" class="btn btn-secondary btn-sm">' + icon('contacts') + 'Người dùng</a></div>' +
+    '<form id="dn-cfg" class="flex flex-wrap items-end gap-3 px-5" autocomplete="off">' +
+    '<label class="field w-[200px]"><span class="label">Hết phiên khi không thao tác (phút)</span><input name="phutCho" type="number" min="5" max="480" class="input" value="' + esc(String(c.phutCho || 60)) + '"></label>' +
+    '<label class="field w-[200px]"><span class="label">Thời gian tối đa một phiên (giờ)</span><input name="gioToiDa" type="number" min="1" max="72" class="input" value="' + esc(String(c.gioToiDa || 12)) + '"></label>' +
+    '<button type="submit" class="btn btn-secondary">' + icon('save') + 'Lưu</button></form>' +
+    '<p class="mx-5 mt-3 text-[12.5px] text-ink-3">' + esc(LUU_Y_MA_HOA) + '</p>' +
+    '<div class="flex flex-wrap gap-2 px-5 pt-3 pb-5"><button type="button" class="btn btn-ghost" data-act="auth-ma">' + icon('refresh') + 'Tạo mã dự phòng mới</button>' +
+    '<button type="button" class="btn btn-danger-ghost border border-alert/40" data-act="auth-tat">' + icon('unlock') + 'Tắt đăng nhập</button></div></section>';
+}
+
+function bindAuthSection(root) {
+  const bat = root.querySelector('[data-act=auth-bat]');
+  if (bat) bat.addEventListener('click', moBatDangNhap);
+  const tat = root.querySelector('[data-act=auth-tat]');
+  if (tat) tat.addEventListener('click', () => hoiMatKhau('Tắt đăng nhập', 'Sau khi tắt, ai mở phần mềm trên máy này cũng dùng được mọi chức năng. Tài khoản người dùng được GIỮ NGUYÊN; bật lại thì dùng lại tài khoản cũ.',
+    'Tắt đăng nhập', async (matKhau) => {
+      const d = await goiAuth('POST', '/api/auth/tat', { matKhau });
+      capNhat(d);
+      toast('Đã tắt đăng nhập');
+      setTimeout(() => location.reload(), 300);
+    }, true));
+  const ma = root.querySelector('[data-act=auth-ma]');
+  if (ma) ma.addEventListener('click', () => hoiMatKhau('Tạo mã dự phòng mới', 'Mã dự phòng cũ sẽ hết hiệu lực ngay. Mã mới chỉ hiện một lần.', 'Tạo mã mới', async (matKhau) => {
+    const d = await goiAuth('POST', '/api/auth/ma-du-phong', { matKhau });
+    await hienMaDuPhong(d.maDuPhong, 'Mã dự phòng mới');
+  }));
+  const cfg = root.querySelector('#dn-cfg');
+  if (cfg) cfg.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const d = await api('PUT', '/api/auth/cau-hinh', { phutCho: Number(cfg.elements.phutCho.value), gioToiDa: Number(cfg.elements.gioToiDa.value) });
+      capNhat(d);
+      toast('Đã lưu thời gian phiên đăng nhập');
+    } catch (err) { showError(err); }
+  });
+}
+
+// Hộp hỏi lại mật khẩu của chính mình trước thao tác nhạy cảm
+function hoiMatKhau(title, note, okText, fn, danger) {
+  openModal({
+    title, size: 'small',
+    body: '<p class="text-[13.5px] leading-relaxed text-ink-2">' + esc(note) + '</p><form id="hmk-form" class="mt-3" novalidate>' + oMatKhau('mk', 'Mật khẩu của bạn', { autofocus: true }) +
+      '<p class="form-error mt-2" id="hmk-loi" role="alert" hidden></p><button type="submit" hidden></button></form>',
+    footer: '<button type="button" class="btn btn-ghost" data-act="no">Hủy</button><button type="button" class="btn ' + (danger ? 'btn-danger' : 'btn-primary') + '" data-act="yes">' + esc(okText) + '</button>',
+    onMount(el, h) {
+      ganOMatKhau(el);
+      const fm = $('#hmk-form', el);
+      const go = async () => {
+        const done = busy(el.querySelector('[data-act=yes]'), 'Đang xử lý…');
+        try { await fn(fm.elements.mk.value); h.close(); } catch (err) {
+          done();
+          const l = $('#hmk-loi', el);
+          l.hidden = false;
+          l.textContent = err.message;
+          fm.elements.mk.value = '';
+          fm.elements.mk.focus();
+        }
+      };
+      fm.addEventListener('submit', (e) => { e.preventDefault(); go(); });
+      el.querySelector('[data-act=yes]').addEventListener('click', go);
+      el.querySelector('[data-act=no]').addEventListener('click', () => h.close());
+    }
+  });
+}
+
+function moBatDangNhap() {
+  const moi = !A.coTaiKhoan;
+  openModal({
+    title: moi ? 'Bật đăng nhập — tạo tài khoản Chủ' : 'Bật lại đăng nhập', size: 'small', dismissible: false,
+    body: (moi ? '<p class="text-[13.5px] leading-relaxed text-ink-2">Tạo ngay tài khoản đầu tiên, vai trò <b class="text-ink">Chủ</b> (toàn quyền: quản lý người dùng, cài đặt, khôi phục sao lưu…). Chưa tạo xong thì đăng nhập chưa bật.</p>'
+      : '<p class="text-[13.5px] leading-relaxed text-ink-2">Phần mềm đã có tài khoản từ lần bật trước (được giữ nguyên khi tắt). Đăng nhập bằng một tài khoản <b class="text-ink">Chủ</b> để bật lại.</p>') +
+      '<form id="bat-form" class="mt-3 flex flex-col gap-3" novalidate autocomplete="off">' +
+      '<label class="field"><span class="label">Tên đăng nhập <b class="req">*</b></span><input name="ten" class="input" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="40" placeholder="VD: chuthau"' + (moi ? ' autofocus' : ' autofocus') + '>' +
+      (moi ? '<span class="hint">3–40 ký tự: chữ, số, dấu chấm, gạch dưới, gạch ngang; không có khoảng trắng.</span>' : '') + '</label>' +
+      (moi ? '<label class="field"><span class="label">Họ tên <b class="req">*</b></span><input name="hoTen" class="input" maxlength="100" placeholder="VD: Nguyễn Văn An"></label>' : '') +
+      oMatKhau('mk', 'Mật khẩu', { req: true, ac: moi ? 'new-password' : 'current-password', hint: moi ? 'Ít nhất 8 ký tự; gõ tiếng Việt có dấu được. Nên dùng một câu ngắn dễ nhớ.' : '' }) +
+      (moi ? oMatKhau('mk2', 'Nhập lại mật khẩu', { req: true, ac: 'new-password' }) : '') +
+      '<p class="rounded-md bg-caution-soft px-3 py-2 text-[12.5px] text-ink">' + esc(LUU_Y_MA_HOA) + '</p>' +
+      '<p class="form-error" id="bat-loi" role="alert" hidden></p><button type="submit" hidden></button></form>',
+    footer: '<button type="button" class="btn btn-ghost" data-act="no">Hủy</button><button type="button" class="btn btn-primary" data-act="yes">' + icon('lock') + 'Bật đăng nhập</button>',
+    onMount(el, h) {
+      ganOMatKhau(el);
+      const fm = $('#bat-form', el);
+      const loi = $('#bat-loi', el);
+      const go = async () => {
+        const b = { tenDangNhap: fm.elements.ten.value.trim(), matKhau: fm.elements.mk.value };
+        if (moi) { b.hoTen = fm.elements.hoTen.value.trim(); b.matKhau2 = fm.elements.mk2.value; }
+        if (moi && b.matKhau !== b.matKhau2) { loi.hidden = false; loi.textContent = 'Hai lần nhập mật khẩu không khớp'; return; }
+        const done = busy(el.querySelector('[data-act=yes]'), 'Đang bật…');
+        try {
+          const d = await goiAuth('POST', '/api/auth/bat', b);
+          h.close();
+          await hienMaDuPhong(d.maDuPhong);
+          capNhat(d);
+          toast('Đã bật đăng nhập. Bạn đang đăng nhập với tài khoản ' + d.nguoiDung.tenDangNhap);
+          await api('GET', '/api/db');
+        } catch (err) { done(); loi.hidden = false; loi.textContent = err.message; }
+      };
+      fm.addEventListener('submit', (e) => { e.preventDefault(); go(); });
+      el.querySelector('[data-act=yes]').addEventListener('click', go);
+      el.querySelector('[data-act=no]').addEventListener('click', () => h.close());
     }
   });
 }

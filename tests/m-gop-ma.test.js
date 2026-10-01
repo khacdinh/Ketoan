@@ -871,20 +871,23 @@ test('M14 tắt ngang (kill -9) khi đang gộp mã ở nhiều thời điểm: 
 
 /* ============================== Nâng cấp lược đồ 4 → 5 ============================== */
 
-test('M0 nâng cấp lược đồ 4 → 5: file lược đồ 4 mở bằng bản mới → tự sao lưu nguyên trạng, thêm bảng / cột, mọi số liệu báo cáo giữ nguyên, nhật ký ghi lại; mở lại không nâng cấp lần nữa (chạy lại không sao); khôi phục bản sao lưu lược đồ 4 được', async () => {
+test('M0 nâng cấp lược đồ 4 → mới nhất: file lược đồ 4 mở bằng bản mới → tự sao lưu nguyên trạng, thêm bảng / cột, mọi số liệu báo cáo giữ nguyên, nhật ký ghi lại; mở lại không nâng cấp lần nữa (chạy lại không sao); khôi phục bản sao lưu lược đồ 4 được', async () => {
   const fs = require('fs');
   const path = require('path');
   const { DatabaseSync } = require('node:sqlite');
   const { SqliteDb } = require('../lib/db');
   const { summarize } = require('./so-lieu-moc');
-  // 1. dựng file lược đồ 4 đúng như bản trước: tạo bằng mã hiện tại rồi bỏ các bảng / cột của lược đồ 5
+  // 1. dựng file lược đồ 4 đúng như bản trước: tạo bằng mã hiện tại rồi bỏ các bảng / cột của lược đồ 5 và 6
   const srv0 = await startServer({ seed: path.join(__dirname, 'fixtures', 'ketoan-v2-hien-tai.json') });
   await srv0.stop();
   const dir = srv0.dataDir;
   const file = path.join(dir, 'ketoan.db');
   const c = new DatabaseSync(file);
-  ['extPayments', 'aliases', 'mergeLog', 'ignoredDupes'].forEach((t) => c.exec('DROP TABLE "' + t + '"'));
+  ['extPayments', 'aliases', 'mergeLog', 'ignoredDupes', 'nguoiDung', 'phienDangNhap', 'suKienBaoMat', 'cauHinhDangNhap'].forEach((t) => c.exec('DROP TABLE "' + t + '"'));
   ['projects', 'suppliers', 'costItems', 'materials', 'houses'].forEach((t) => c.exec('ALTER TABLE "' + t + '" DROP COLUMN "gopVao"'));
+  ['projects', 'suppliers', 'entries', 'costGroups', 'costItems', 'materials', 'houses', 'costs', 'cashCounts'].forEach((t) => {
+    c.exec('ALTER TABLE "' + t + '" DROP COLUMN "nguoiTao"'); c.exec('ALTER TABLE "' + t + '" DROP COLUMN "nguoiSua"');
+  });
   c.exec('PRAGMA user_version = 4');
   c.close();
   fs.readdirSync(path.join(dir, 'backups')).forEach((f) => fs.unlinkSync(path.join(dir, 'backups', f)));
@@ -894,13 +897,13 @@ test('M0 nâng cấp lược đồ 4 → 5: file lược đồ 4 mở bằng b�
   // 2. mở bằng bản mới
   const srv = await startServer({ data: dir });
   try {
-    assert.match(srv.log, /nâng cấp dữ liệu lên lược đồ 5/i);
+    assert.match(srv.log, /nâng cấp dữ liệu lên lược đồ \d/i);
     const db = readStored(dir);
-    assert.equal(db.schema, 5);
+    assert.equal(db.schema, require('../lib/db').DB_VERSION);
     assert.deepEqual(db.extPayments, []); assert.deepEqual(db.aliases, []); assert.deepEqual(db.mergeLog, []);
     assert.deepEqual(summarize(db), so4, 'mọi số liệu báo cáo giữ nguyên sau nâng cấp');
     ['projects', 'suppliers', 'entries', 'costs', 'costItems', 'materials', 'houses'].forEach((k) => assert.deepEqual(db[k], v4[k], 'bảng ' + k + ' giữ nguyên'));
-    const bks = fs.readdirSync(path.join(dir, 'backups')).filter((f) => /truoc-nang-cap-luoc-do-5/.test(f));
+    const bks = fs.readdirSync(path.join(dir, 'backups')).filter((f) => /truoc-nang-cap-luoc-do-\d/.test(f));
     assert.equal(bks.length, 1, 'có đúng một bản sao lưu trước nâng cấp');
     const bk = require('./helpers').readBackupFile(path.join(dir, 'backups', bks[0]));
     assert.deepEqual(summarize(bk), so4, 'bản sao lưu là dữ liệu lược đồ 4 nguyên trạng');
@@ -915,16 +918,16 @@ test('M0 nâng cấp lược đồ 4 → 5: file lược đồ 4 mở bằng b�
   const srv2 = await startServer({ data: dir });
   try {
     assert.doesNotMatch(srv2.log, /nâng cấp dữ liệu lên lược đồ/i);
-    assert.equal(fs.readdirSync(path.join(dir, 'backups')).filter((f) => /truoc-nang-cap-luoc-do-5/.test(f)).length, 1);
-    // 4. khôi phục bản sao lưu lược đồ 4 (trước nâng cấp): dữ liệu về như lúc đó, file vẫn lược đồ 5
-    const name = fs.readdirSync(path.join(dir, 'backups')).find((f) => /truoc-nang-cap-luoc-do-5/.test(f));
+    assert.equal(fs.readdirSync(path.join(dir, 'backups')).filter((f) => /truoc-nang-cap-luoc-do-\d/.test(f)).length, 1);
+    // 4. khôi phục bản sao lưu lược đồ 4 (trước nâng cấp): dữ liệu về như lúc đó, file vẫn lược đồ mới nhất
+    const name = fs.readdirSync(path.join(dir, 'backups')).find((f) => /truoc-nang-cap-luoc-do-\d/.test(f));
     await srv2.ok('POST', '/api/backups/restore', { name });
     const back = readStored(dir);
-    assert.equal(back.schema, 5);
+    assert.equal(back.schema, require('../lib/db').DB_VERSION);
     assert.deepEqual(summarize(back), so4);
     assert.deepEqual(back.suppliers, v4.suppliers);
   } finally { await srv2.stop(); }
-  // 5. gọi migrate() trên file đã ở lược đồ 5: không làm gì
+  // 5. gọi migrate() trên file đã ở lược đồ mới nhất: không làm gì
   const s = new SqliteDb(file);
-  try { assert.deepEqual(s.migrate(), []); assert.equal(s.version, 5); } finally { s.close(); }
+  try { assert.deepEqual(s.migrate(), []); assert.equal(s.version, require('../lib/db').DB_VERSION); } finally { s.close(); }
 });

@@ -1,4 +1,5 @@
 /* Kiểm soát sổ sách: nhật ký thay đổi, thùng rác (và các thẻ khác của nhóm "độ chính xác và truy vết"). */
+import { coQuyen } from '../auth.js';
 import { $, esc, money, icon, api, toast, showError, confirmDialog, openModal, freshRoot, debounce, dateField, LS, fieldError } from '../ui.js';
 import { S, anomalies, saveFilter } from '../state.js';
 import { openEntryForm } from '../forms.js';
@@ -12,10 +13,15 @@ const KT = window.KT;
 const TABS = [];
 export function registerTab(t) { TABS.push(t); TABS.sort((a, b) => a.order - b.order); }
 
+// Thẻ cần quyền riêng (đăng nhập bật): Nhật ký thay đổi — Chủ và Kế toán
+const QUYEN_THE = { 'nhat-ky': 'xem-nhat-ky' };
+const theDuocXem = () => TABS.filter((t) => !QUYEN_THE[t.key] || coQuyen(QUYEN_THE[t.key]));
+
 function tabOf() {
   const m = /[?&]tab=([\w-]+)/.exec(location.hash);
   const k = m ? m[1] : LS.get('ks.tab', '');
-  return TABS.find((t) => t.key === k) ? k : TABS[0].key;
+  const ds = theDuocXem();
+  return ds.find((t) => t.key === k) ? k : ds[0].key;
 }
 
 export function renderControl(root) {
@@ -24,7 +30,7 @@ export function renderControl(root) {
   LS.set('ks.tab', tab);
   root.innerHTML =
     '<div class="no-print flex flex-wrap items-center gap-2" role="tablist" aria-label="Kiểm soát sổ sách">' +
-    TABS.map((t) => '<a href="#/kiem-soat?tab=' + t.key + '" role="tab" aria-selected="' + (t.key === tab) + '" class="btn ' + (t.key === tab ? 'btn-primary' : 'btn-secondary') + '">' +
+    theDuocXem().map((t) => '<a href="#/kiem-soat?tab=' + t.key + '" role="tab" aria-selected="' + (t.key === tab) + '" class="btn ' + (t.key === tab ? 'btn-primary' : 'btn-secondary') + '">' +
       icon(t.icon) + esc(t.label) + (t.badge ? t.badge() : '') + '</a>').join('') +
     '</div><div id="ks-body" class="flex flex-col gap-5"></div>';
   TABS.find((t) => t.key === tab).render($('#ks-body', root));

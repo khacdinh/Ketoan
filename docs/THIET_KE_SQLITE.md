@@ -186,6 +186,12 @@ lệch tổng hợp theo mã) — mã trùng được liệt kê trong báo cáo
   nguyên trạng `truoc-nang-cap-luoc-do-5` (không bao giờ tự xóa), rồi `SqliteDb.migrate()` tạo bảng / thêm cột (`ALTER TABLE … ADD
   COLUMN`) trong một giao dịch, ghi `meta.nangCap5`; chạy lại không làm gì. File sao lưu lược đồ 4 vẫn đọc / khôi phục được (bảng thiếu
   coi như rỗng).
+- **Lược đồ 6 (đăng nhập và phân quyền — 01/10/2026)**: `DB_VERSION = 6`. Thêm cột `nguoiTao TEXT`, `nguoiSua TEXT` (`since: 6`) vào
+  `projects`, `suppliers`, `entries`, `costGroups`, `costItems`, `materials`, `houses`, `costs`, `cashCounts`, `extPayments` (dữ liệu
+  cũ để trống — giao diện hiện “Dữ liệu cũ”). Bốn bảng đăng nhập `nguoiDung`, `phienDangNhap`, `suKienBaoMat`, `cauHinhDangNhap`
+  (`AUTH_SQL`, `CREATE TABLE IF NOT EXISTS`) nằm trong cùng file nhưng **ngoài** `TABLES` / kho trong bộ nhớ: không đi vào `/api/db`,
+  file xuất, `readDbFile`; khôi phục không ghi đè; file sao lưu tải về bị xóa trắng bốn bảng này rồi `VACUUM`. Sao lưu trước khi nâng
+  cấp `truoc-nang-cap-luoc-do-6` (giữ mãi). Chi tiết: `BAO_CAO_DANG_NHAP.md`.
 
 ### 2.5 Thiết lập kết nối
 

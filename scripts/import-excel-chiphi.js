@@ -323,7 +323,7 @@ async function main(argv, io) {
     store.audit({ by: o.nguoi || '', action: 'nhap-excel', kind: 'costs', recId: lan, label: 'Nhập Excel công trình bằng công cụ dòng lệnh (lần ' + lan + ')',
       note: 'Thêm ' + plan2.add.costs.length + ' dòng chi phí (Σ ' + fm(plan2.add.costs.reduce((t, x) => t + x.rec.thanhTien, 0)) + ' đ), ' + plan2.add.entries.length + ' dòng sổ thu chi' + (o.soQuy === 'nhap' ? ' (Nháp)' : '') +
         ', ' + plan2.add.projects.length + ' công trình, ' + plan2.add.suppliers.length + ' NCC, ' + plan2.add.materials.length + ' vật tư. Từ: ' + plan2.files.map((f) => f.file).join(', ') });
-    const bk = store.commitChecked(next, (back) => imp.verify(cur, back, plan2, r.expected).errs, 'truoc-import-excel');
+    const bk = store.commitChecked(next, (back) => imp.verify(cur, back, plan2, r.expected).errs, 'truoc-import-excel', { danDauMoi: true });
     const ctx2 = Object.assign({}, ctx, { plan: plan2, before: cur, after: store.db, check: imp.verify(cur, store.db, plan2, r.expected), applied: true, from: 'ketoan.db', title: 'Báo cáo nhập Excel công trình (đã ghi)' });
     const rep2 = writeReports(o, ctx2);
     io.log('ĐÃ NHẬP lần ' + lan + '. Bản sao lưu trước khi nhập: backups/' + bk + '. Báo cáo: ' + rep2);

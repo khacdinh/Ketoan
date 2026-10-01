@@ -122,7 +122,8 @@ const ICONS = {
   undo: 'ph-arrow-counter-clockwise',
   swap: 'ph-arrows-left-right',
   split: 'ph-git-fork',
-  dupes: 'ph-intersect'
+  dupes: 'ph-intersect',
+  user: 'ph-user-circle'
 };
 const DUO = {
   dashboard: 'ph-chart-line-up',
@@ -152,7 +153,8 @@ const DUO = {
   undo: 'ph-arrow-counter-clockwise',
   swap: 'ph-arrows-left-right',
   split: 'ph-git-fork',
-  dupes: 'ph-intersect'
+  dupes: 'ph-intersect',
+  user: 'ph-user-circle'
 };
 
 export function icon(name, cls) {
@@ -163,10 +165,27 @@ export function duo(name, cls) {
 }
 
 /* ---------------- Gọi máy chủ ---------------- */
+// Máy chủ (đăng nhập bật) gửi kèm "X-Phien-Con-Lai: <ms đến khi hết vì không thao tác>,<ms đến giới hạn tối đa>" → auth.js báo trước khi hết phiên
+let onPhienFn = null;
+export function onPhien(fn) { onPhienFn = fn; }
+export function baoPhien(res) {
+  const h = res && res.headers && res.headers.get('X-Phien-Con-Lai');
+  if (h && onPhienFn) { try { onPhienFn(h); } catch (e) { /* bỏ qua */ } }
+}
 let onDb = null;
 export function onDatabase(fn) { onDb = fn; }
 
-export async function api(method, url, body, isRaw, extraHeaders) {
+// Đăng nhập (auth.js gắn): trả lời 401 (hết phiên / chưa đăng nhập) hoặc 403 "phải đổi mật khẩu" → hiện hộp đăng nhập / đổi mật khẩu
+// ngay trên màn hình đang dùng; xong thì gửi lại đúng yêu cầu vừa rồi (dữ liệu đang gõ trong hộp thoại không mất).
+let onAuth = null;
+export function onAuthNeeded(fn) { onAuth = fn; }
+async function canDangNhap(res, data, url) {
+  if (!onAuth || /^\/api\/auth\//.test(url)) return false;
+  if (res.status !== 401 && !(res.status === 403 && data && data.code === 'PHAI_DOI_MAT_KHAU')) return false;
+  return onAuth(res.status, data);
+}
+
+export async function api(method, url, body, isRaw, extraHeaders, _lan) {
   let res;
   try {
     const headers = body === undefined ? {} : { 'Content-Type': isRaw ? 'application/octet-stream' : 'application/json' };
@@ -184,8 +203,10 @@ export async function api(method, url, body, isRaw, extraHeaders) {
     throw new Error('Không kết nối được phần mềm. Kiểm tra cửa sổ KhoiDong.bat còn mở không.');
   }
   setOffline(false);
+  baoPhien(res);
   let data;
   try { data = await res.json(); } catch (e) { throw new Error('Máy chủ trả về dữ liệu không hợp lệ (mã ' + res.status + ')'); }
+  if ((res.status === 401 || res.status === 403) && !_lan && await canDangNhap(res, data, url)) return api(method, url, body, isRaw, extraHeaders, 1);
   if (!res.ok || data.ok === false) throw Object.assign(new Error(data.error || 'Lỗi ' + res.status), { status: res.status, data });
   if (data.db && onDb) onDb(data.db);
   return data;
@@ -215,14 +236,37 @@ export function busy(btn, text) {
   return () => { btn.disabled = false; btn.removeAttribute('aria-busy'); btn.innerHTML = html; };
 }
 
-export function download(url) {
+// Tải file (Excel, sao lưu): tải bằng fetch rồi lưu — lỗi (hết phiên, không có quyền…) hiện thông báo thay vì mở trang lỗi
+// làm mất màn hình đang dùng; hết phiên thì đăng nhập lại rồi tải tiếp.
+export async function download(url, _lan) {
+  if (!_lan) toast('Đang tạo file. File sẽ nằm trong thư mục Downloads.', 'info');
+  let res;
+  try { res = await fetch(url); } catch (e) { setOffline(true); toast('Không kết nối được phần mềm. Kiểm tra cửa sổ KhoiDong.bat còn mở không.', 'error'); return; }
+  setOffline(false);
+  baoPhien(res);
+  const ct = res.headers.get('Content-Type') || '';
+  if (!res.ok || /json/.test(ct)) {
+    let data = {};
+    try { data = await res.json(); } catch (e) { data = {}; }
+    if (!_lan && await canDangNhap(res, data, url)) return download(url, 1);
+    toast(data.error || 'Không tải được file (mã ' + res.status + ')', 'error');
+    return;
+  }
+  const blob = await res.blob();
+  const cd = res.headers.get('Content-Disposition') || '';
+  let name = 'tai-ve';
+  const m1 = /filename\*=UTF-8''([^;]+)/i.exec(cd);
+  const m2 = /filename="([^"]+)"/i.exec(cd);
+  try { name = m1 ? decodeURIComponent(m1[1]) : m2 ? m2[1] : name; } catch (e) { name = m2 ? m2[1] : name; }
+  const href = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
+  a.href = href;
+  a.download = name;
   a.rel = 'noopener';
   document.body.appendChild(a);
   a.click();
   a.remove();
-  toast('Đang tạo file Excel. File sẽ nằm trong thư mục Downloads.', 'info');
+  setTimeout(() => URL.revokeObjectURL(href), 60000);
 }
 
 /* ---------------- Thông báo nhỏ ---------------- */
@@ -336,7 +380,11 @@ export function openModal(opts) {
   return handle;
 }
 
+// Màn đăng nhập / đăng nhập lại đang che màn hình: phím tắt không được chạm vào hộp thoại bên dưới (Esc không đóng form đang nhập dở)
+export const dangCheDangNhap = () => !!document.querySelector('#auth-root .auth-screen');
+
 document.addEventListener('keydown', (e) => {
+  if (dangCheDangNhap()) return;
   if (e.key === 'Escape' && openModals.length) {
     e.preventDefault();
     openModals[openModals.length - 1].close();
