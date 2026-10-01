@@ -179,6 +179,13 @@ lệch tổng hợp theo mã) — mã trùng được liệt kê trong báo cáo
   cấp khi schema nhỏ hơn của nó) — đây là đường quay lại.
 - Mở file `.db` có `user_version` lớn hơn phần mềm biết → từ chối (dữ liệu của phiên bản mới hơn).
 - Lần nâng cấp sau: tăng `SCHEMA_VERSION`, thêm bước `ALTER`/chuyển dữ liệu theo `user_version` trong `lib/db.js`.
+- **Lược đồ 5 (gộp mã, trả NCC ngoài quỹ — 01/10/2026)**: `DB_VERSION = 5`, `MIN_VERSION = 4`. Thêm cột `gopVao TEXT` (mã đích khi mã
+  đã được gộp) vào `projects`, `suppliers`, `costItems`, `materials`, `houses`; bảng mới `aliases(loai, ma, dich, mergeId, at)`,
+  `mergeLog(at, by, loai, nguon JSON, dich, trangThai, nhan, chiTiet JSON)`, `ignoredDupes` (map theo `khoa`), `extPayments(ngay, maNCC,
+  maDuAn, soTien INTEGER, nguon, ghiChu, createdAt, updatedAt, by)`. Mỗi bảng / cột mới có `since: 5`. Mở file lược đồ 4: sao lưu
+  nguyên trạng `truoc-nang-cap-luoc-do-5` (không bao giờ tự xóa), rồi `SqliteDb.migrate()` tạo bảng / thêm cột (`ALTER TABLE … ADD
+  COLUMN`) trong một giao dịch, ghi `meta.nangCap5`; chạy lại không làm gì. File sao lưu lược đồ 4 vẫn đọc / khôi phục được (bảng thiếu
+  coi như rỗng).
 
 ### 2.5 Thiết lập kết nối
 
