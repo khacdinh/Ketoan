@@ -42,8 +42,9 @@ export function renderDashboard(root) {
     '</div>' +
     equationHtml({ dau: L.tonDauKy, thu: L.tongThu, chi: L.tongChi, cuoi: L.tonCuoiKy, dauLabel: f.from ? 'Tồn quỹ ngày ' + fdate(f.from) : 'Tồn quỹ đầu sổ' }) +
     '<div class="sheet px-5 pt-4 pb-3">' +
-    '<div class="flex flex-wrap items-baseline justify-between gap-2"><h3 class="sheet-title">Nhịp tồn quỹ theo ngày</h3>' +
-    '<p class="text-[12.5px] text-ink-3">' + esc(KT.describeRange(f.from, f.to)) + '<span class="screen-hint">. Rê chuột lên đường để xem từng ngày</span>.</p></div>' +
+    '<div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><div><h3 class="sheet-title">Nhịp tồn quỹ theo ngày</h3>' +
+    '<p class="text-[12.5px] text-ink-3">' + esc(KT.describeRange(f.from, f.to)) + '<span class="screen-hint">. Rê chuột lên biểu đồ để xem từng ngày</span>.</p></div>' +
+    '<div class="flow-legend"><span><i class="sw sw-ton"></i>Tồn quỹ cuối ngày</span><span><i class="sw sw-thu"></i>▲ Thu</span><span><i class="sw sw-chi"></i>▼ Chi</span></div></div>' +
     '<div class="flow mt-3" id="flow"></div>' +
     '</div>' +
     '</section>' +
@@ -207,6 +208,30 @@ function niceStep(range, count) {
   return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
 }
 
+// Mốc ngày trên trục: bước theo lịch (1, 2, 3, 5, 7, 10, 14 ngày; rồi theo tháng), không theo ngày có phát sinh
+function dateTicks(t0, t1, maxTicks) {
+  const DAY = 86400000;
+  const span = (t1 - t0) / DAY;
+  const out = [];
+  const stepD = [1, 2, 3, 5, 7, 10, 14].find((k) => span / k <= maxTicks);
+  if (stepD) {
+    for (let t = t0; t <= t1 + 1; t += stepD * DAY) out.push(t);
+    return out;
+  }
+  const stepM = [1, 2, 3, 6, 12, 24].find((k) => span / (30.4 * k) <= maxTicks) || 24;
+  const d = new Date(t0);
+  let y = d.getUTCFullYear();
+  let m = d.getUTCMonth() + (d.getUTCDate() > 1 ? 1 : 0);
+  for (;;) {
+    y += Math.floor(m / 12); m %= 12;
+    const t = Date.UTC(y, m, 1);
+    if (t > t1) break;
+    if (m % stepM === 0 || stepM === 1) out.push(t);
+    m += 1;
+  }
+  return out;
+}
+
 function drawFlow(el, L, f) {
   const days = [];
   L.rows.forEach((r) => {
@@ -221,81 +246,157 @@ function drawFlow(el, L, f) {
     el.innerHTML = '<p class="py-10 text-center text-ink-3">Không có giao dịch nào trong kỳ này.</p>';
     return;
   }
+  const DAY = 86400000;
   const opening = L.tonDauKy;
   const t0 = toTime(f.from && f.from < days[0].date ? f.from : days[0].date);
   let t1 = toTime(f.to && f.to > days[days.length - 1].date ? f.to : days[days.length - 1].date);
-  if (t1 <= t0) t1 = t0 + 86400000;
+  if (t1 <= t0) t1 = t0 + DAY;
+  const spanDays = Math.round((t1 - t0) / DAY) + 1;
+  const multiYear = new Date(t0).getUTCFullYear() !== new Date(t1).getUTCFullYear();
 
   const peak = days.reduce((m, d) => (d.bal > m.bal ? d : m), days[0]);
+  const low = days.reduce((m, d) => (d.bal < m.bal ? d : m), days[0]);
   const last = days[days.length - 1];
+
+  // Cột thu / chi: theo ngày; kỳ dài (> 120 ngày) gộp theo tuần cho khỏi thành vạch mảnh
+  const bucket = spanDays > 120 ? 7 : 1;
+  const bars = [];
+  days.forEach((d) => {
+    const t = toTime(d.date);
+    const k = bucket === 1 ? t : t - (((new Date(t).getUTCDay() + 6) % 7) * DAY); // tuần bắt đầu thứ Hai
+    let b = bars[bars.length - 1];
+    if (!b || b.t !== k) { b = { t: k, thu: 0, chi: 0 }; bars.push(b); }
+    b.thu += d.thu;
+    b.chi += d.chi;
+  });
+
+  // Thang tồn quỹ (gồm 0 và tồn đầu kỳ)
   const vals = days.map((d) => d.bal).concat([opening, 0]);
-  let lo = Math.min.apply(null, vals);
-  let hi = Math.max.apply(null, vals);
-  const step = niceStep((hi - lo) || 1, 4);
-  lo = Math.floor(lo / step) * step;
-  hi = Math.ceil(hi / step) * step || step;
+  const loRaw = Math.min.apply(null, vals);
+  const hiRaw = Math.max.apply(null, vals);
+  const step = niceStep((hiRaw - loRaw) || 1, 4);
+  // làm tròn ra vạch kế tiếp, trừ khi vạch đó quá xa số liệu (bỏ khoảng trống thừa — vạch lưới vẫn đặt ở bội số của bước)
+  let lo = Math.floor(loRaw / step) * step;
+  let hi = Math.ceil(hiRaw / step) * step || step;
+  if (hiRaw > 0 && hi - hiRaw > step * 0.6) hi = hiRaw + step * 0.12;
+  if (loRaw < 0 && loRaw - lo > step * 0.6) lo = loRaw - step * 0.12;
+  // Thang thu / chi: thu lên trên, chi xuống dưới, chung số 0
+  const maxThu = Math.max.apply(null, bars.map((b) => b.thu).concat([0]));
+  const maxChi = Math.max.apply(null, bars.map((b) => b.chi).concat([0]));
+  const fMax = Math.max(maxThu, maxChi) || 1;
 
   const tip = document.createElement('div');
   tip.className = 'tip';
   tip.setAttribute('role', 'status');
+  const uid = 'flow' + Math.random().toString(36).slice(2, 8);
 
   function render() {
-    const W = Math.max(320, el.clientWidth);
-    const H = 230;
-    const m = { l: 58, r: 118, t: 22, b: 30 };
+    const W = Math.max(300, el.clientWidth);
+    const hep = W < 560; // màn hẹp: nhãn cuối kỳ nằm trong vùng vẽ, bớt lề phải
+    const m = { l: 52, r: hep ? 12 : 104, t: 26 };
+    const H1 = hep ? 150 : 180;  // khung tồn quỹ
+    const GAP = 36;              // khoảng giữa (chứa tiêu đề nhỏ khung dưới)
+    const H2 = hep ? 64 : 76;    // khung thu / chi
+    const AX = 26;               // trục ngày
+    const H = m.t + H1 + GAP + H2 + AX;
     const iw = W - m.l - m.r;
-    const ih = H - m.t - m.b;
     const x = (t) => m.l + ((t - t0) / (t1 - t0)) * iw;
-    const y = (v) => m.t + (1 - (v - lo) / (hi - lo)) * ih;
+    const y = (v) => m.t + (1 - (v - lo) / (hi - lo)) * H1;
+    const top2 = m.t + H1 + GAP;
+    // thu / chi: thu chiếm phần trên theo tỉ lệ, chi phần dưới — số 0 đặt sao cho hai bên cùng thang
+    const z2 = top2 + (maxThu / ((maxThu + maxChi) || 1)) * H2;
+    const k2 = H2 / ((maxThu + maxChi) || 1);
+    const y0 = y(0);
 
     // đường bậc thang: giữ nguyên số dư đến ngày có phát sinh rồi nhảy
     let dPath = 'M' + x(t0).toFixed(1) + ',' + y(opening).toFixed(1);
-    days.forEach((d) => {
-      dPath += 'H' + x(toTime(d.date)).toFixed(1) + 'V' + y(d.bal).toFixed(1);
-    });
+    days.forEach((d) => { dPath += 'H' + x(toTime(d.date)).toFixed(1) + 'V' + y(d.bal).toFixed(1); });
     dPath += 'H' + x(t1).toFixed(1);
-    const area = dPath + 'V' + y(Math.max(lo, 0)).toFixed(1) + 'H' + x(t0).toFixed(1) + 'Z';
+    const area = dPath + 'V' + y0.toFixed(1) + 'H' + x(t0).toFixed(1) + 'Z';
 
-    let grid = '';
-    for (let v = lo; v <= hi + 1; v += step) {
-      grid += '<line class="' + (v === 0 ? 'zero-line' : 'grid-line') + '" x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + y(v).toFixed(1) + '" y2="' + y(v).toFixed(1) + '"/>' +
+    let g = '';
+    for (let v = Math.ceil(lo / step) * step; v <= hi + 1; v += step) {
+      g += '<line class="' + (v === 0 ? 'zero-line' : 'grid-line') + '" x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + y(v).toFixed(1) + '" y2="' + y(v).toFixed(1) + '"/>' +
         '<text class="axis" x="' + (m.l - 8) + '" y="' + (y(v) + 4).toFixed(1) + '" text-anchor="end">' + esc(v === 0 ? '0' : fmtShort(v)) + '</text>';
     }
-    // nhãn ngày: tối đa ~7 nhãn, không chồng nhau
-    const maxTicks = Math.max(2, Math.floor(iw / 70));
-    const every = Math.max(1, Math.ceil(days.length / maxTicks));
+    // khung dưới: tiêu đề nhỏ, số 0, mức cao nhất mỗi bên
+    g += '<text class="panel-title" x="' + m.l + '" y="' + (top2 - 13) + '">Thu, chi ' + (bucket === 7 ? 'mỗi tuần' : 'trong ngày') + '</text>' +
+      '<line class="zero-line" x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + z2.toFixed(1) + '" y2="' + z2.toFixed(1) + '"/>';
+    if (maxThu) g += '<text class="axis" x="' + (m.l - 8) + '" y="' + (top2 + 4) + '" text-anchor="end">+' + esc(fmtShort(maxThu)) + '</text>';
+    if (maxChi) g += '<text class="axis" x="' + (m.l - 8) + '" y="' + (top2 + H2) + '" text-anchor="end">−' + esc(fmtShort(maxChi)) + '</text>';
+
+    // cột: ≤ 24 px, đầu cột bo 4 px (gốc vuông ở số 0), chừa khe giữa các cột
+    const slot = (iw / ((t1 - t0) / DAY + 1)) * bucket;
+    const bw = Math.max(1.5, Math.min(24, slot - 2, slot * 0.7));
+    const col = (cx, h, up) => {
+      if (h < 0.5) return '';
+      const r = Math.min(4, bw / 2, h);
+      const x0 = cx - bw / 2;
+      const x1 = cx + bw / 2;
+      if (up) {
+        const yt = z2 - h;
+        return 'M' + x0.toFixed(1) + ',' + z2.toFixed(1) + 'V' + (yt + r).toFixed(1) + 'Q' + x0.toFixed(1) + ',' + yt.toFixed(1) + ' ' + (x0 + r).toFixed(1) + ',' + yt.toFixed(1) +
+          'H' + (x1 - r).toFixed(1) + 'Q' + x1.toFixed(1) + ',' + yt.toFixed(1) + ' ' + x1.toFixed(1) + ',' + (yt + r).toFixed(1) + 'V' + z2.toFixed(1) + 'Z';
+      }
+      const yb = z2 + h;
+      return 'M' + x0.toFixed(1) + ',' + z2.toFixed(1) + 'V' + (yb - r).toFixed(1) + 'Q' + x0.toFixed(1) + ',' + yb.toFixed(1) + ' ' + (x0 + r).toFixed(1) + ',' + yb.toFixed(1) +
+        'H' + (x1 - r).toFixed(1) + 'Q' + x1.toFixed(1) + ',' + yb.toFixed(1) + ' ' + x1.toFixed(1) + ',' + (yb - r).toFixed(1) + 'V' + z2.toFixed(1) + 'Z';
+    };
+    const cx = (b) => x(b.t + (bucket === 7 ? 3.5 * DAY : 0));
+    const thuPath = bars.map((b) => col(cx(b), b.thu * k2, true)).join('');
+    const chiPath = bars.map((b) => col(cx(b), b.chi * k2, false)).join('');
+
+    // trục ngày
+    const ticks = dateTicks(t0, t1, Math.max(2, Math.floor(iw / (multiYear ? 74 : 62))));
+    const fmtTick = (t) => { const s = new Date(t).toISOString().slice(0, 10); return multiYear ? s.slice(5, 7) + '/' + s.slice(2, 4) : s.slice(8, 10) + '/' + s.slice(5, 7); };
     let xt = '';
-    let lastX = -Infinity;
-    days.forEach((d, i) => {
-      if (i % every !== 0 && i !== days.length - 1) return;
-      const xx = x(toTime(d.date));
-      if (xx - lastX < 44) return;
-      lastX = xx;
-      xt += '<text class="axis" x="' + xx.toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle">' + esc(fdate(d.date).slice(0, 5)) + '</text>';
+    ticks.forEach((t) => {
+      const xx = x(t);
+      xt += '<line class="tick" x1="' + xx.toFixed(1) + '" x2="' + xx.toFixed(1) + '" y1="' + (top2 + H2) + '" y2="' + (top2 + H2 + 4) + '"/>' +
+        '<text class="axis" x="' + xx.toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle">' + esc(fmtTick(t)) + '</text>';
     });
 
-    // nhãn trực tiếp: cuối kỳ và đỉnh cao nhất (đẩy lên nếu sát trục ngày)
+    // nhãn trực tiếp: cuối kỳ, cao nhất, thấp nhất (khi âm quỹ)
     const ex = x(t1);
     const ey = y(last.bal);
-    const ly = Math.min(ey - 8, H - m.b - 26);
-    let labels = '<circle class="end-dot" cx="' + ex.toFixed(1) + '" cy="' + ey.toFixed(1) + '" r="4.5"/>' +
-      '<text class="direct-sub" x="' + (ex + 10).toFixed(1) + '" y="' + ly.toFixed(1) + '">Cuối kỳ</text>' +
-      '<text class="direct" x="' + (ex + 10).toFixed(1) + '" y="' + (ly + 15).toFixed(1) + '">' + esc(money(last.bal)) + '</text>';
-    if (peak !== last && peak.bal > 0) {
-      const px = x(toTime(peak.date));
-      const py = y(peak.bal);
-      labels += '<text class="direct" x="' + (px + 6).toFixed(1) + '" y="' + (py - 7).toFixed(1) + '">Cao nhất ' + esc(fmtShort(peak.bal)) + '</text>';
+    let labels = '<circle class="end-dot" cx="' + ex.toFixed(1) + '" cy="' + ey.toFixed(1) + '" r="4.5"/>';
+    if (hep) {
+      const ly = ey - 26 < m.t ? ey + 22 : ey - 22;
+      labels += '<text class="direct-sub" x="' + (ex - 8).toFixed(1) + '" y="' + (ly - 14).toFixed(1) + '" text-anchor="end">Cuối kỳ</text>' +
+        '<text class="direct" x="' + (ex - 8).toFixed(1) + '" y="' + ly.toFixed(1) + '" text-anchor="end">' + esc(money(last.bal)) + '</text>';
+    } else {
+      const ly = Math.min(ey - 8, m.t + H1 - 18);
+      labels += '<text class="direct-sub" x="' + (ex + 10).toFixed(1) + '" y="' + ly.toFixed(1) + '">Cuối kỳ</text>' +
+        '<text class="direct" x="' + (ex + 10).toFixed(1) + '" y="' + (ly + 15).toFixed(1) + '">' + esc(money(last.bal)) + '</text>';
     }
+    const ghim = (d, chu, duoi) => {
+      const px = x(toTime(d.date));
+      const py = y(d.bal);
+      const trai = px > m.l + iw * 0.7;
+      return '<circle class="mark-dot" cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="3.5"/>' +
+        '<text class="direct" x="' + (px + (trai ? -8 : 8)).toFixed(1) + '" y="' + (duoi ? py + 16 : Math.max(m.t - 8, py - 8)).toFixed(1) + '"' + (trai ? ' text-anchor="end"' : '') + '>' +
+        esc(chu + ' ' + fmtShort(d.bal)) + '</text>';
+    };
+    if (peak !== last && peak.bal > 0) labels += ghim(peak, 'Cao nhất', false);
+    if (low.bal < 0 && low !== last) labels += ghim(low, 'Thấp nhất', true);
 
     el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="' +
-      esc('Tồn quỹ theo ngày, ' + KT.describeRange(f.from, f.to).toLowerCase() + '. Cao nhất ' + money(peak.bal) + ' đồng ngày ' + fdate(peak.date) + ', cuối kỳ ' + money(last.bal) + ' đồng.') + '">' +
-      grid + xt +
-      '<path class="area" d="' + area + '"/>' +
+      esc('Tồn quỹ theo ngày, ' + KT.describeRange(f.from, f.to).toLowerCase() + '. Cao nhất ' + money(peak.bal) + ' đồng ngày ' + fdate(peak.date) +
+        (low.bal < 0 ? ', thấp nhất ' + money(low.bal) + ' đồng ngày ' + fdate(low.date) : '') + ', cuối kỳ ' + money(last.bal) + ' đồng. Bên dưới: cột thu (lên) và chi (xuống) ' +
+        (bucket === 7 ? 'mỗi tuần' : 'mỗi ngày') + ', thu nhiều nhất ' + money(maxThu) + ' đồng, chi nhiều nhất ' + money(maxChi) + ' đồng.') + '">' +
+      '<defs><linearGradient id="' + uid + '-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="area-top"/><stop offset="1" class="area-bot"/></linearGradient>' +
+      '<clipPath id="' + uid + '-tren"><rect x="0" y="0" width="' + W + '" height="' + Math.max(0, y0).toFixed(1) + '"/></clipPath>' +
+      '<clipPath id="' + uid + '-duoi"><rect x="0" y="' + y0.toFixed(1) + '" width="' + W + '" height="' + Math.max(0, H - y0).toFixed(1) + '"/></clipPath></defs>' +
+      g + xt +
+      '<path class="area" fill="url(#' + uid + '-g)" clip-path="url(#' + uid + '-tren)" d="' + area + '"/>' +
+      '<path class="area-neg" clip-path="url(#' + uid + '-duoi)" d="' + area + '"/>' +
       '<path class="line" d="' + dPath + '"/>' +
+      '<path class="bar-thu" d="' + thuPath + '"/>' +
+      '<path class="bar-chi" d="' + chiPath + '"/>' +
       labels +
-      '<line class="cross" x1="0" x2="0" y1="' + m.t + '" y2="' + (H - m.b) + '" visibility="hidden"/>' +
+      '<line class="cross" x1="0" x2="0" y1="' + m.t + '" y2="' + (top2 + H2) + '" visibility="hidden"/>' +
       '<circle class="hover-dot" r="5" visibility="hidden"/>' +
-      '<rect class="hit" x="' + m.l + '" y="' + m.t + '" width="' + iw + '" height="' + ih + '" fill="transparent"/>' +
+      '<rect class="hit" x="' + m.l + '" y="' + m.t + '" width="' + iw + '" height="' + (top2 + H2 - m.t) + '" fill="transparent"/>' +
       '</svg>';
     el.appendChild(tip);
 
@@ -313,17 +414,19 @@ function drawFlow(el, L, f) {
       cross.setAttribute('x1', best.px); cross.setAttribute('x2', best.px); cross.setAttribute('visibility', 'visible');
       dot.setAttribute('cx', best.px); dot.setAttribute('cy', best.py); dot.setAttribute('visibility', 'visible');
       const d = best.d;
+      const doi = d.thu - d.chi;
       tip.innerHTML = '<div class="font-semibold">Ngày ' + esc(fdate(d.date)) + '</div>' +
         '<div class="row"><span class="muted">Tồn quỹ cuối ngày</span><b>' + money(d.bal) + '</b></div>' +
-        (d.thu ? '<div class="row"><span class="muted">Thu</span><b>+' + money(d.thu) + '</b></div>' : '') +
-        (d.chi ? '<div class="row"><span class="muted">Chi</span><b>−' + money(d.chi) + '</b></div>' : '') +
+        (d.thu ? '<div class="row"><span class="muted"><i class="sw sw-thu"></i>Thu</span><b>+' + money(d.thu) + '</b></div>' : '') +
+        (d.chi ? '<div class="row"><span class="muted"><i class="sw sw-chi"></i>Chi</span><b>−' + money(d.chi) + '</b></div>' : '') +
+        (d.thu && d.chi ? '<div class="row"><span class="muted">Thay đổi</span><b>' + (doi >= 0 ? '+' : '−') + money(Math.abs(doi)) + '</b></div>' : '') +
         '<div class="muted">' + d.n + ' dòng sổ</div>';
       tip.classList.add('show');
       const tw = tip.offsetWidth;
       let left = best.px * scale + 14;
       if (left + tw > el.clientWidth) left = best.px * scale - tw - 14;
       tip.style.left = Math.max(0, left) + 'px';
-      tip.style.top = Math.max(0, best.py * scale - 20) + 'px';
+      tip.style.top = Math.max(0, Math.min(best.py * scale - 20, el.clientHeight - tip.offsetHeight)) + 'px';
     }
     function hide() {
       tip.classList.remove('show');

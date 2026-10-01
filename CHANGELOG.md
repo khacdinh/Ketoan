@@ -1,5 +1,16 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Biểu đồ "Nhịp tồn quỹ theo ngày" ở Tổng quan (01/10/2026)
+
+- Hai khung chung trục ngày: trên là tồn quỹ cuối ngày (đường bậc thang, nền chuyển màu; phần âm quỹ tô đỏ nhạt), dưới là **cột thu
+  (lên) / chi (xuống)** từng ngày — kỳ dài hơn 120 ngày gộp theo tuần. Nhìn là thấy ngày nào tiền vào / ra làm tồn quỹ nhảy.
+- Chú thích (Tồn quỹ, ▲ Thu, ▼ Chi); nhãn Cao nhất / Thấp nhất (khi âm) / Cuối kỳ có viền nền để không lẫn vào đường; trục ngày theo
+  lịch (mỗi 1–14 ngày hoặc theo tháng, thêm năm khi kỳ vắt qua năm); thang tồn quỹ bỏ khoảng trống thừa.
+- Rê chuột: một đường dóng qua cả hai khung, bảng nhỏ có thu, chi, thay đổi trong ngày. Màn hẹp (điện thoại): nhãn cuối kỳ nằm trong
+  vùng vẽ, không mất lề phải.
+- Màu thu #2A8A66 / chi #D97A2B đã kiểm bằng công cụ kiểm bảng màu (đủ tương phản, phân biệt được với người mù màu nhờ thêm hướng cột
+  lên / xuống và chú thích).
+
 ## Đăng nhập đơn giản và phân quyền — mặc định TẮT (01/10/2026)
 
 - **Mặc định tắt**: không bật thì phần mềm chạy y như trước (không màn hình đăng nhập, không thêm bước; toàn bộ kiểm thử cũ vẫn qua).
