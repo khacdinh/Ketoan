@@ -13,6 +13,7 @@ import { renderCostDashboard, renderCostDetail, renderDebt, renderPrices } from 
 import { renderCostCatalogs } from './views/cost-catalogs.js';
 import { renderControl } from './views/control.js';
 import { renderMerge } from './merge.js';
+import { renderUsers } from './views/users.js';
 import { A, napTrangThai, dangNhap, doiMatKhauBatBuoc, coQuyen, onAuthChange } from './auth.js';
 
 const KT = window.KT;
@@ -35,7 +36,8 @@ const ROUTES = {
   'cp-danh-muc': { title: 'Danh mục chi phí', sub: 'Nhóm chi phí, hạng mục, vật tư, nhà và khu', icon: 'squares', render: renderCostCatalogs },
   // Kiểm soát sổ sách (nhóm độ chính xác và truy vết)
   'kiem-soat': { title: 'Kiểm soát sổ sách', sub: 'Nhật ký thay đổi, thùng rác và các việc cần xử lý để số liệu luôn đúng', icon: 'shield', render: renderControl },
-  'gop-ma': { title: 'Gộp mã', sub: 'Đưa các mã trùng (NCC, vật tư, hạng mục, nhà, dự án) về một mã — có xem trước và hoàn tác', icon: 'merge', render: renderMerge }
+  'gop-ma': { title: 'Gộp mã', sub: 'Đưa các mã trùng (NCC, vật tư, hạng mục, nhà, dự án) về một mã — có xem trước và hoàn tác', icon: 'merge', render: renderMerge },
+  'nguoi-dung': { title: 'Người dùng', sub: 'Tài khoản, vai trò, mở khóa, đặt lại mật khẩu, sự kiện bảo mật', icon: 'contacts', render: renderUsers }
 };
 const NAV_LABEL = {
   'tong-quan': 'Tổng quan',
@@ -53,14 +55,15 @@ const NAV_LABEL = {
   'cp-gia': 'Giá vật tư',
   'cp-danh-muc': 'Danh mục chi phí',
   'kiem-soat': 'Kiểm soát',
-  'gop-ma': 'Gộp mã'
+  'gop-ma': 'Gộp mã',
+  'nguoi-dung': 'Người dùng'
 };
 const NAV = [['tong-quan', 'so-thu-chi', 'phieu'], ['du-an', 'ncc', 'tong-hop-ncc'],
-  ['cp-tong-hop', 'cp-nhap', 'cp-so', 'cp-chi-tiet', 'cp-cong-no', 'cp-gia', 'cp-danh-muc'], ['kiem-soat', 'gop-ma', 'cai-dat']];
+  ['cp-tong-hop', 'cp-nhap', 'cp-so', 'cp-chi-tiet', 'cp-cong-no', 'cp-gia', 'cp-danh-muc'], ['kiem-soat', 'gop-ma', 'nguoi-dung', 'cai-dat']];
 const NAV_HEAD = { 2: 'Chi phí công trình' };
 // Màn hình cần quyền riêng (đăng nhập bật). Không có quyền: ẩn khỏi menu, mở bằng đường dẫn thì báo không có quyền.
-const QUYEN_MAN = { 'gop-ma': 'gop-ma', 'cp-nhap': 'ghi' };
-const duocMo = (k) => !QUYEN_MAN[k] || coQuyen(QUYEN_MAN[k]);
+const QUYEN_MAN = { 'gop-ma': 'gop-ma', 'cp-nhap': 'ghi', 'nguoi-dung': 'quan-ly-nguoi-dung' };
+const duocMo = (k) => (k !== 'nguoi-dung' || A.bat) && (!QUYEN_MAN[k] || coQuyen(QUYEN_MAN[k]));
 
 function current() {
   const k = location.hash.replace(/^#\/?/, '').split('?')[0];

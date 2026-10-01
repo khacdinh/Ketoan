@@ -98,3 +98,49 @@ test('U1 vai trò ở giao diện: Chỉ xem không thấy nút thêm / sửa / 
     assert.deepEqual(loiThat(errors), []);
   } finally { await browser.close(); await srv.stop(); }
 });
+
+test('U2 màn Người dùng (Chủ): thêm người dùng (họ tên chứa mã HTML hiện nguyên văn, không chạy), người mới đăng nhập lần đầu bị bắt đổi mật khẩu rồi vào được; thẻ Sự kiện bảo mật lọc được', { skip: SKIP, timeout: 240000 }, async () => {
+  const srv = await startServer({ seed: seed() });
+  await batDangNhap(srv);
+  const { browser, page, errors } = await openPage(srv, '#/nguoi-dung');
+  let dialog = false;
+  page.on('dialog', async (d) => { dialog = true; await d.dismiss(); });
+  try {
+    await dangNhapUI(page, 'chu', MK_CHU);
+    await page.waitForSelector('#nd-bang');
+    const xss = '<img src=x onerror="window.__xss=1">Lan';
+    await page.click('[data-act=them-nd]');
+    await page.fill('#nd-form [name=ten]', 'lan.ketoan');
+    await page.fill('#nd-form [name=hoTen]', xss);
+    await page.selectOption('#nd-form [name=vaiTro]', 'ke-toan');
+    await page.fill('#nd-form [name=mk]', 'mật khẩu tạm của Lan');
+    await page.fill('#nd-form [name=mk2]', 'mật khẩu tạm của Lan');
+    await page.click('.modal [data-act=yes]');
+    await page.waitForFunction(() => document.querySelector('#nd-bang') && /lan\.ketoan/.test(document.querySelector('#nd-bang').innerText));
+    assert.match(await page.$eval('#nd-bang', (e) => e.innerText), /<img src=x onerror="window.__xss=1">Lan/, 'hiện nguyên văn');
+    assert.equal(await page.$$eval('#nd-bang img', (x) => x.length), 0, 'không tạo thẻ img');
+    assert.equal(await page.evaluate(() => window.__xss), undefined);
+    assert.match(await page.$eval('#nd-bang', (e) => e.innerText), /Phải đổi mật khẩu/);
+    // thẻ sự kiện bảo mật
+    await page.click('[data-the=su-kien]');
+    await page.waitForSelector('#sk-bang');
+    await page.selectOption('#sk-loc [name=loai]', 'tao-nguoi-dung');
+    await page.click('#sk-loc [type=submit]');
+    await page.waitForFunction(() => document.querySelector('#sk-bang') && /lan\.ketoan/.test(document.querySelector('#sk-bang').innerText));
+    // người mới đăng nhập: bắt đổi mật khẩu
+    await page.click('#btn-user');
+    await page.click('.menu button:has-text("Đăng xuất")');
+    await dangNhapUI(page, 'lan.ketoan', 'mật khẩu tạm của Lan').catch(() => {});
+    await page.waitForSelector('#dmk-form');
+    await page.fill('#dmk-form [name=cu]', 'mật khẩu tạm của Lan');
+    await page.fill('#dmk-form [name=moi]', 'Lan đổi mật khẩu riêng');
+    await page.fill('#dmk-form [name=moi2]', 'Lan đổi mật khẩu riêng');
+    await page.press('#dmk-form [name=moi2]', 'Enter');
+    await page.waitForSelector('#user-root .user-box');
+    await page.waitForSelector('#view .sheet');
+    assert.match(await page.$eval('#user-root', (e) => e.innerText), /<img src=x/, 'tên ở góc trên cũng hiện nguyên văn');
+    assert.equal(await page.$$eval('#user-root img', (x) => x.length), 0);
+    assert.equal(dialog, false);
+    assert.deepEqual(loiThat(errors), []);
+  } finally { await browser.close(); await srv.stop(); }
+});
