@@ -312,18 +312,33 @@
   .balance .unit { @apply ml-1.5 text-[0.4em] font-semibold tracking-normal text-ink-3; font-stretch: 100%; }
 
   /* ---------------- Biểu đồ nhịp tồn quỹ ---------------- */
-  .flow { @apply relative; }
+  /* Nhịp tồn quỹ: khung trên tồn quỹ (đường bậc thang), khung dưới thu ▲ / chi ▼ — chung trục ngày.
+     Thu #2A8A66 / chi #D97A2B: kiểm bằng validate_palette (mù màu ΔE 7,8 — hợp lệ vì có mã hóa phụ: hướng lên / xuống + chú thích). */
+  .flow { @apply relative; --thu: #2A8A66; --chi: #D97A2B; }
   .flow svg { @apply block h-auto w-full overflow-visible; }
-  .flow .grid-line { stroke: #E4EAE2; stroke-width: 1; }
+  .flow .grid-line { stroke: #E9EEE7; stroke-width: 1; }
   .flow .zero-line { stroke: var(--color-rule-2); stroke-width: 1; }
+  .flow .tick { stroke: var(--color-rule-2); stroke-width: 1; }
   .flow .axis { fill: var(--color-ink-3); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  .flow .panel-title { fill: var(--color-ink-2); font-size: 12px; font-weight: 600; }
   .flow .line { fill: none; stroke: var(--color-pen); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-  .flow .area { fill: var(--color-pen); fill-opacity: 0.06; }
+  .flow .area-top { stop-color: var(--color-pen); stop-opacity: 0.22; }
+  .flow .area-bot { stop-color: var(--color-pen); stop-opacity: 0.03; }
+  .flow .area-neg { fill: var(--color-alert); fill-opacity: 0.14; }
+  .flow .bar-thu { fill: var(--thu); }
+  .flow .bar-chi { fill: var(--chi); }
   .flow .end-dot { fill: var(--color-pen); stroke: var(--color-sheet); stroke-width: 2; }
-  .flow .direct { fill: var(--color-ink); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .flow .direct-sub { fill: var(--color-ink-3); font-size: 11.5px; }
-  .flow .cross { stroke: var(--color-ink); stroke-width: 1; stroke-dasharray: none; opacity: 0.35; }
+  .flow .mark-dot { fill: var(--color-sheet); stroke: var(--color-pen); stroke-width: 2; }
+  .flow .direct { fill: var(--color-ink); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; paint-order: stroke; stroke: var(--color-sheet); stroke-width: 3px; stroke-linejoin: round; }
+  .flow .direct-sub { fill: var(--color-ink-3); font-size: 11.5px; paint-order: stroke; stroke: var(--color-sheet); stroke-width: 3px; stroke-linejoin: round; }
+  .flow .cross { stroke: var(--color-ink); stroke-width: 1; opacity: 0.3; }
   .flow .hover-dot { fill: var(--color-sheet); stroke: var(--color-pen); stroke-width: 2.5; }
+  .flow-legend { @apply flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] text-ink-2; --thu: #2A8A66; --chi: #D97A2B; }
+  .flow-legend span, .tip .muted:has(.sw) { @apply inline-flex items-center gap-1.5; }
+  .sw { @apply inline-block h-2.5 w-2.5 flex-none rounded-[3px]; }
+  .sw-ton { @apply h-0.5 w-4 rounded-full bg-pen; }
+  .sw-thu { background: #2A8A66; }
+  .sw-chi { background: #D97A2B; }
   .tip {
     @apply pointer-events-none absolute z-30 rounded-lg bg-ink px-3 py-2 text-[12.5px] leading-relaxed text-white opacity-0 shadow-[0_8px_24px_rgb(23_42_78/0.25)] transition-opacity;
     min-width: 180px;
