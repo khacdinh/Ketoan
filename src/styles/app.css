@@ -366,6 +366,21 @@
   .user-box .vai { @apply rounded-full bg-pen-soft px-2 py-0.5 text-[11.5px] font-semibold text-pen; }
   .code-box { @apply rounded-lg border-2 border-dashed border-ink-3 bg-[#F8FAF6] px-4 py-3 text-center font-mono text-[20px] font-semibold tracking-wider text-ink select-all; }
 
+  /* ---------------- Phân quyền ở giao diện (chỉ để tiện dùng — máy chủ mới là nơi chặn thật, lib/quyen.js) ---------------- */
+  /* Chỉ xem: ẩn mọi nút thêm / sửa / xóa / ghi sổ / trả tiền / khôi phục / gộp mã / khóa sổ… */
+  body[data-vai="chi-xem"] :is(#btn-new, [data-act="add"], [data-act^="add-"], [data-act="edit"], [data-act="edit-line"], [data-act="del"], [data-act="del-slip"],
+    [data-act="del-row"], [data-act="delete"], [data-act="dup"], [data-act="post"], [data-act="pay"], [data-act="xp-add"], [data-act="xp-edit"], [data-act="xp-del"],
+    [data-act="slip"], [data-act="mo"], [data-act="new"], [data-act="restore"], [data-act="restore-bk"], [data-act="bo-qua"], [data-act="theo-doi"],
+    [data-act="backup-now"], [data-act="save-draft"], [data-act="save-next"], [data-act="purge"], [data-act="purge-all"], [data-act="lock"], [data-act="lock-to"],
+    [data-act="unlock"], [data-act="merge"], [data-act="gop"], [data-act="undo"], [data-act="reset"], [data-act="reset-costs"], [data-pick], [data-merged-toggle]) {
+    display: none !important;
+  }
+  /* Kế toán: ẩn việc của Chủ (xóa vĩnh viễn, khóa sổ, gộp mã, khôi phục sao lưu, xóa toàn bộ) */
+  body[data-vai="ke-toan"] :is([data-act="purge"], [data-act="purge-all"], [data-act="lock"], [data-act="lock-to"], [data-act="unlock"], [data-act="merge"],
+    [data-act="gop"], [data-act="undo"], [data-act="restore-bk"], [data-act="reset"], [data-act="reset-costs"], [data-pick], [data-merged-toggle]) {
+    display: none !important;
+  }
+
   /* ---------------- Menu thả xuống ---------------- */
   .menu { @apply absolute z-[60] min-w-[300px] rounded-xl border border-rule bg-sheet p-1.5 shadow-[0_16px_40px_rgb(14_27_48/0.18)]; }
   .menu button { @apply flex w-full cursor-pointer items-start gap-3 rounded-lg px-3 py-2 text-left text-ink hover:bg-pen-soft focus-visible:bg-pen-soft disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent; }

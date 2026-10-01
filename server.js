@@ -321,7 +321,7 @@ async function handleApi(req, res, url) {
   const db = store.db;
   const now = new Date().toISOString();
 
-  if (p === '/api/ping') return sendJson(res, 200, { app: APP_ID, version: VERSION });
+  if (p === '/api/ping' && m === 'GET') return sendJson(res, 200, { app: APP_ID, version: VERSION });
   if (await auth.handle(req, res, url)) return;
   if (p === '/api/db' && m === 'GET') return ok(res);
 
@@ -336,7 +336,7 @@ async function handleApi(req, res, url) {
       store.save();
       return ok(res, { id: rec.id });
     }
-    if (m === 'POST' && seg[2] === 'delete') {
+    if (m === 'POST' && seg[2] === 'delete' && seg.length === 3) {
       const body = await readJson(req);
       const ids = idList(body.ids);
       const gone = db.entries.filter((e) => ids.has(e.id));
@@ -360,7 +360,7 @@ async function handleApi(req, res, url) {
       store.save();
       return ok(res, { posted: list.length });
     }
-    if (seg.length === 3) {
+    if (seg.length === 3 && (m === 'PUT' || m === 'DELETE')) {
       const rec = byId(db.entries, seg[2]);
       if (m === 'PUT') {
         const before = trace.clone(rec);
@@ -400,7 +400,7 @@ async function handleApi(req, res, url) {
       store.save();
       return ok(res, { id: rec.id });
     }
-    if (seg.length === 3) {
+    if (seg.length === 3 && (m === 'PUT' || m === 'DELETE')) {
       const rec = byId(list, seg[2]);
       assertActive(rec, cfg.label);
       if (m === 'PUT') {
@@ -437,7 +437,7 @@ async function handleApi(req, res, url) {
   }
 
   /* ----- Thông tin in phiếu ----- */
-  if (seg[1] === 'vouchers' && m === 'PUT') {
+  if (seg[1] === 'vouchers' && m === 'PUT' && seg.length >= 3) {
     const key = KT.voucherKey(decodeURIComponent(seg.slice(2).join('/')));
     if (!key) throw new HttpError(400, 'Thiếu số phiếu');
     const body = await readJson(req);
@@ -457,7 +457,7 @@ async function handleApi(req, res, url) {
     return ok(res);
   }
 
-  if (seg[1] === 'vouchers' && seg[2] === 'next' && m === 'GET') {
+  if (seg[1] === 'vouchers' && seg[2] === 'next' && m === 'GET' && seg.length === 3) {
     return sendJson(res, 200, { ok: true, soPhieu: KT.nextVoucherNo(db, url.searchParams.get('loai'), url.searchParams.get('ngay')) });
   }
 
@@ -648,7 +648,7 @@ async function handleApi(req, res, url) {
   }
 
   /* ----- Xuất Excel ----- */
-  if (seg[1] === 'export' && m === 'GET') {
+  if (seg[1] === 'export' && m === 'GET' && seg.length === 3) {
     const db = KT.activeDb(KT.postedDb(store.db)); // báo cáo Excel không tính dòng Nháp; danh mục không có mã đã gộp
     const q = url.searchParams;
     const f = {
