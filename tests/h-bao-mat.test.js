@@ -168,11 +168,11 @@ test('H1.2 khôi phục / tải tệp: tên sao lưu dạng đường dẫn, li�
     // danh sách sao lưu chỉ gồm tệp đúng mẫu tên
     fs.writeFileSync(path.join(bdir, 'khac.txt'), 'x');
     const list = (await srv.ok('GET', '/api/backups')).backups.map((b) => b.name);
-    assert.ok(list.every((n) => /^ketoan-.*\.json$/.test(n)));
+    assert.ok(list.every((n) => /^ketoan-.*\.(db|json)$/.test(n)));
     // tệp tĩnh: bản sao lưu / dữ liệu không được phục vụ qua web
-    for (const u of ['/data/ketoan.json', '/../data/ketoan.json', '/backups/x', '/ketoan.json']) {
+    for (const u of ['/data/ketoan.json', '/../data/ketoan.json', '/backups/x', '/ketoan.json', '/data/ketoan.db', '/ketoan.db', '/../ketoan.db', '/..%2fketoan.db', '/%2e%2e/data/ketoan.db']) {
       const r = await rawRequest({ port: srv.port, path: u, method: 'GET' });
-      assert.ok(!/"entries"/.test(r.body.toString()), u + ' lộ dữ liệu');
+      assert.ok(!/"entries"|SQLite format 3/.test(r.body.toString('latin1')), u + ' lộ dữ liệu');
     }
   } finally { await srv.stop(); }
 });

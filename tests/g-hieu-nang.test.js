@@ -7,7 +7,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execSync } = require('child_process');
-const { KT, startServer, makeBigDb, makeDataDir, orphanErrors } = require('./helpers');
+const { KT, startServer, makeBigDb, makeDataDir, orphanErrors, readStored } = require('./helpers');
 const X = require('./excel-helpers');
 
 let chromium = null;
@@ -89,7 +89,7 @@ test('G2 gọi API đồng thời trên 20.000 dòng: không mất dữ liệu, 
     assert.equal(KT.costSummary(db, {}, KT.buildCostLedger(db)).total, db0.costs.reduce((t, c) => t + c.thanhTien, 0) + Array.from({ length: 20 }, (_, k) => 1000 + (3 * k + 1)).reduce((t, v) => t + v, 0));
     assert.deepEqual(orphanErrors(db), []);
     // file trên đĩa = bộ nhớ
-    const disk = JSON.parse(fs.readFileSync(path.join(srv.dataDir, 'ketoan.json'), 'utf8'));
+    const disk = readStored(srv.dataDir);
     assert.equal(disk.costs.length, db.costs.length);
     assert.equal(disk.entries.length, db.entries.length);
     flush();

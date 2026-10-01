@@ -22,8 +22,8 @@ test('N7.1 dữ liệu gốc schema 1 nâng thẳng lên schema mới; khôi ph�
     // làm vài việc với tính năng mới
     await srv.ok('POST', '/api/entries', { ngay: '2026-09-30', noiDung: 'sau nâng cấp', chi: 1000 });
     await srv.ok('POST', '/api/locks', { months: ['2026-08'] });
-    // khôi phục bản sao lưu trước nâng cấp (schema 1) → được nâng cấp lại, số liệu như mốc, khóa sổ của bản cũ không có
-    const name = (await srv.ok('GET', '/api/backups')).backups.find((b) => /truoc-nang-cap/.test(b.name)).name;
+    // khôi phục bản sao lưu trước nâng cấp (file .json schema 1, tạo lúc chuyển sang SQLite) → được nâng cấp lại, số liệu như mốc, khóa sổ của bản cũ không có
+    const name = (await srv.ok('GET', '/api/backups')).backups.find((b) => /truoc-khi-chuyen-sqlite/.test(b.name)).name;
     const r = await srv.ok('POST', '/api/backups/restore', { name });
     assert.equal(r.db.schema, SCHEMA_VERSION);
     assert.deepEqual(summarize(r.db), moc);
@@ -32,7 +32,7 @@ test('N7.1 dữ liệu gốc schema 1 nâng thẳng lên schema mới; khôi ph�
     const items = (await srv.ok('GET', '/api/audit')).items;
     assert.deepEqual(items.map((a) => a.action), ['khoi-phuc-sao-luu', 'khoa-so', 'them', 'khoi-tao']);
   } finally { await srv.stop(); }
-  assert.equal(fs.readdirSync(path.join(dir, 'backups')).filter((f) => /truoc-nang-cap/.test(f)).length, 1);
+  assert.equal(fs.readdirSync(path.join(dir, 'backups')).filter((f) => /truoc-khi-chuyen-sqlite/.test(f)).length, 1);
 });
 
 test('N7.2 hiệu năng 20.000 dòng chi phí + 5.000 dòng sổ: ghi / sửa / xóa mềm / khôi phục có nhật ký vẫn nhanh; nhật ký 1.000 mục lọc nhanh', { timeout: 300000 }, async () => {

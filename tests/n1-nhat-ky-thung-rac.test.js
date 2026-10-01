@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { KT, startServer, makeDataDir, readJsonFile, orphanErrors } = require('./helpers');
+const { KT, startServer, makeDataDir, readJsonFile, orphanErrors, readStored } = require('./helpers');
 const { summarize, FILE: MOC, SOURCES } = require('./so-lieu-moc');
 const { SCHEMA_VERSION } = require('../lib/store');
 
@@ -44,10 +44,10 @@ test('N1.1 nâng cấp schema: sao lưu trước, bản ghi không đổi, một
       assert.match(items[items.length - 1].note, /66 dòng sổ thu chi, 104 dòng chi phí/);
     } finally { await srv.stop(); }
   }
-  const bk = fs.readdirSync(path.join(dir, 'backups')).filter((f) => /truoc-nang-cap-v3/.test(f));
+  const bk = fs.readdirSync(path.join(dir, 'backups')).filter((f) => /truoc-khi-chuyen-sqlite/.test(f));
   assert.equal(bk.length, 1);
   assert.deepEqual(readJsonFile(path.join(dir, 'backups', bk[0])), orig, 'bản sao lưu trước nâng cấp giống hệt bản gốc');
-  assert.equal(readJsonFile(path.join(dir, 'ketoan.json')).schema, SCHEMA_VERSION);
+  assert.equal(readStored(dir).schema, SCHEMA_VERSION);
 });
 
 test('N1.2 mọi thêm / sửa / xóa đều vào nhật ký: thời điểm, người thao tác, bản ghi, giá trị trước và sau', async () => {
@@ -190,10 +190,11 @@ test('N1.5 id và số thứ tự của bản ghi trong thùng rác không bị 
     id = (await srv.ok('POST', '/api/entries', { ngay: '2026-09-30', noiDung: 'dòng cuối', chi: 1 })).id;
     await srv.ok('DELETE', '/api/entries/' + id);
   } finally { await srv.stop(); }
-  const f = path.join(dir, 'ketoan.json');
-  const raw = readJsonFile(f);
-  raw.nextId = 1; // file bị sửa tay: nextId sai → vẫn không cấp lại id đang nằm trong thùng rác
-  fs.writeFileSync(f, JSON.stringify(raw));
+  // file bị sửa tay (công cụ SQLite): nextId sai → vẫn không cấp lại id đang nằm trong thùng rác
+  const { SqliteDb } = require('../lib/db');
+  const sq = new SqliteDb(path.join(dir, 'ketoan.db'));
+  sq.setMeta('nextId', 1);
+  sq.close();
   srv = await startServer({ data: dir });
   try {
     const n = (await srv.ok('POST', '/api/entries', { ngay: '2026-09-30', noiDung: 'mới', chi: 2 })).id;
