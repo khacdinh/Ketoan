@@ -1,5 +1,36 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Đăng nhập đơn giản và phân quyền — mặc định TẮT (01/10/2026)
+
+- **Mặc định tắt**: không bật thì phần mềm chạy y như trước (không màn hình đăng nhập, không thêm bước; toàn bộ kiểm thử cũ vẫn qua).
+  Bật / tắt ở Cài đặt → **Đăng nhập và phân quyền** (bật phải tạo ngay tài khoản Chủ; tắt phải nhập lại mật khẩu; tài khoản được giữ).
+- **Ba vai trò** Chủ / Kế toán / Chỉ xem. Kiểm quyền THẬT ở tầng API theo một bảng duy nhất `lib/quyen.js` (mặc định từ chối: route
+  chưa khai báo bị chặn 403 khi đăng nhập bật); giao diện chỉ ẩn nút cho tiện. Việc chưa rõ (nhập Excel thay thế, gộp mã, khóa sổ,
+  xóa vĩnh viễn, khôi phục sao lưu) thuộc Chủ. 401 khi chưa đăng nhập / hết phiên, 403 kèm thông báo tiếng Việt.
+- **Mật khẩu**: băm scrypt (N=2^15, r=8, p=1, muối 16 byte, khóa 64 byte, dạng `scrypt$N$r$p$muoi$bam`, tự băm lại khi đổi tham số),
+  so sánh thời gian hằng, chuẩn hóa NFC, ≥ 8 ký tự, khác tên, không nằm trong danh sách phổ biến. Chỉ dùng `crypto` / `node:sqlite`.
+- **Phiên**: mã ngẫu nhiên 32 byte, CSDL chỉ giữ SHA-256; cookie `HttpOnly; SameSite=Strict; Path=/` (không `Secure` vì chạy http
+  cục bộ); hết sau 60 phút không thao tác, tối đa 12 giờ (Chủ chỉnh được); hủy khi đổi mật khẩu / vai trò, vô hiệu hóa, tắt đăng
+  nhập, khôi phục sao lưu; dọn phiên hết hạn định kỳ. Chống giả mạo yêu cầu: kiểm Origin / Referer cho mọi thao tác ghi.
+- **Chống đoán**: sai 5 lần → khóa 5, rồi 15, rồi 60 phút; giới hạn theo địa chỉ nguồn (20 lần sai / 15 phút); thông báo chung, tên
+  không tồn tại xử lý giống hệt (kể cả thời gian băm); Chủ mở khóa được.
+- **Quản lý người dùng** (`#/nguoi-dung`): thêm, sửa họ tên / vai trò, đặt lại mật khẩu (bắt đổi ở lần đăng nhập sau), mở khóa, vô hiệu
+  hóa / kích hoạt (không xóa hẳn); không khóa được Chủ hoạt động cuối cùng. Tự đổi mật khẩu phải nhập mật khẩu cũ. Thẻ **Sự kiện bảo mật**.
+- **Không bao giờ bị khóa ngoài**: quên mật khẩu → mã một lần (15 phút) ghi vào `data/khoi-phuc/MA_KHOI_PHUC.txt` (CSDL chỉ giữ bản băm);
+  mã dự phòng của Chủ (hiện một lần khi bật, tạo mới sau khi dùng); lệnh cứu hộ `node scripts/dat-lai-mat-khau-chu.js`.
+- **Ghi người thao tác**: cột `nguoiTao` / `nguoiSua` trên dòng sổ, chi phí, danh mục, kiểm quỹ, trả ngoài quỹ (“Dữ liệu cũ” cho dữ liệu
+  trước đây, “Người dùng máy này” khi tắt); nhật ký thay đổi lấy người từ phiên (bỏ qua tiêu đề `X-Nguoi-Dung` khi bật); nhập Excel ghi
+  người đang đăng nhập.
+- **Trải nghiệm**: Enter để đăng nhập, hiện / ẩn mật khẩu, cảnh báo Caps Lock; báo trước khi hết phiên 2 phút + nút **Tiếp tục làm việc**;
+  hết phiên giữa chừng thì hộp đăng nhập lại đè lên, dữ liệu đang nhập còn nguyên, thao tác dở được gửi tiếp sau khi đăng nhập.
+- **Sao lưu / khôi phục**: bảng đăng nhập nằm trong `ketoan.db` nhưng ngoài kho dữ liệu nghiệp vụ — khôi phục giữ nguyên người dùng, mật
+  khẩu, trạng thái bật; file sao lưu tải về, `/api/db` và file Excel không chứa dữ liệu đăng nhập.
+- Lược đồ dữ liệu **6** (tự nâng cấp, sao lưu `truoc-nang-cap-luoc-do-6` giữ mãi, chạy lại không nhân đôi): bảng `nguoiDung`,
+  `phienDangNhap`, `suKienBaoMat`, `cauHinhDangNhap`; cột `nguoiTao`, `nguoiSua`.
+- Kiểm thử: K1–K8, Q1–Q4 (tự dò mọi route trong mã × 4 trạng thái), B1–B4, N1–N6, R1–R4, T1–T6, U1–U3. Báo cáo: `BAO_CAO_DANG_NHAP.md`.
+- Sửa kèm: cấu hình đăng nhập giữ trong bộ nhớ (chương trình khác khóa file thì phần mềm vẫn đọc được như trước); route API chặt hơn
+  (phương thức / số đoạn đường dẫn sai → 404 thay vì rơi vào xử lý khác).
+
 ## Gộp mã trùng, tách mã hạng mục, lọc công nợ nhiều NCC (01/10/2026)
 
 - **Công nợ NCC lọc theo nhiều NCC**: ô gõ tìm chọn nhiều (không dấu, hoa / thường), chip “Đang lọc” bỏ từng NCC, **Xóa lọc**, lọc nhanh

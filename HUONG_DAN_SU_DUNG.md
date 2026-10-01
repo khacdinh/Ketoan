@@ -553,3 +553,93 @@ không nhắc lại (nhớ cả khi mở lại phần mềm; bấm **Hiện lạ
   so công nợ / tổng hợp trước và sau.
 - Lần đầu mở bản có gộp mã, phần mềm tự nâng cấp dữ liệu lên lược đồ 5 và tạo bản sao lưu `truoc-nang-cap-luoc-do-5` (giữ mãi).
 
+
+## 20. Đăng nhập và phân quyền (tùy chọn — mặc định TẮT)
+
+> **LƯU Ý QUAN TRỌNG:** đăng nhập chỉ bảo vệ giao diện phần mềm, KHÔNG mã hóa file dữ liệu; ai chép được thư mục `data/` vẫn đọc
+> được dữ liệu, nên cần đặt mật khẩu tài khoản Windows (và nếu được thì bật mã hóa ổ đĩa).
+
+Mặc định phần mềm **không có đăng nhập**: mở là dùng, y như trước. Chỉ bật khi máy có nhiều người dùng chung và cần chia quyền.
+
+### 20.1 Bật đăng nhập
+
+1. **Sao lưu** trước (Cài đặt → Sao lưu đầy đủ .zip).
+2. Cài đặt → **Đăng nhập và phân quyền** → **Bật đăng nhập**. Tạo tài khoản **Chủ** ngay trong bước này: tên đăng nhập, họ tên,
+   mật khẩu (ít nhất 8 ký tự, khác tên đăng nhập, không phải mật khẩu quá phổ biến như `12345678`; nên dùng một câu dễ nhớ, có dấu
+   tiếng Việt cũng được).
+3. Phần mềm hiện **mã khôi phục dự phòng** (20 ký tự) **một lần duy nhất**. In ra hoặc chép cất ở nơi an toàn (không để cạnh máy).
+   Phải tích “Tôi đã chép (hoặc in) mã này…” mới đóng được hộp này.
+
+Từ lúc này, mở phần mềm sẽ thấy màn hình đăng nhập (Enter để đăng nhập; nút con mắt để hiện / ẩn mật khẩu; có cảnh báo khi đang bật
+Caps Lock). Góc trên bên phải hiện tên, vai trò, menu **Đổi mật khẩu / Quản lý người dùng / Đăng xuất**.
+
+### 20.2 Vai trò
+
+| Việc | Chủ | Kế toán | Chỉ xem |
+|---|:-:|:-:|:-:|
+| Xem sổ, báo cáo, công nợ, thùng rác; xuất Excel; in phiếu | ✓ | ✓ | ✓ |
+| Thêm / sửa / xóa (vào thùng rác) dòng sổ, phiếu nhập, danh mục, kiểm quỹ, chứng từ, trả ngoài quỹ | ✓ | ✓ | |
+| Nhập Excel **gộp thêm** (và xem trước) | ✓ | ✓ | |
+| Xem nhật ký thay đổi; tạo / tải sao lưu; khôi phục từ thùng rác | ✓ | ✓ | |
+| Nhập Excel **thay thế toàn bộ**, khôi phục sao lưu, xóa toàn bộ sổ | ✓ | | |
+| Xóa vĩnh viễn / dọn thùng rác, khóa / mở khóa sổ, gộp mã / tách mã | ✓ | | |
+| Đổi cài đặt; quản lý người dùng; bật / tắt / cấu hình đăng nhập; sự kiện bảo mật | ✓ | | |
+
+Nút không được phép thì ẩn; nếu cố gọi thẳng, phần mềm từ chối với thông báo “Bạn không có quyền …”.
+
+### 20.3 Quản lý người dùng (Chủ)
+
+Menu tên → **Quản lý người dùng** (hoặc Cài đặt → Đăng nhập và phân quyền):
+
+- **Thêm người dùng**: tên đăng nhập (không phân biệt hoa / thường), họ tên, vai trò, mật khẩu tạm. Người mới đăng nhập lần đầu **bắt
+  buộc đổi** mật khẩu của riêng mình.
+- **Sửa**: họ tên, vai trò (đổi vai trò thì người đó bị đăng xuất ngay).
+- **Đặt lại mật khẩu** khi nhân viên quên: đặt mật khẩu tạm, người đó bị đăng xuất và phải đổi ở lần đăng nhập sau.
+- **Mở khóa** tài khoản đang bị khóa vì nhập sai nhiều lần.
+- **Vô hiệu hóa / Kích hoạt lại** (không có xóa hẳn — để nhật ký luôn biết ai đã làm gì). Không hạ quyền hay vô hiệu hóa được tài
+  khoản Chủ đang hoạt động cuối cùng.
+- Thẻ **Sự kiện bảo mật**: đăng nhập đúng / sai, khóa tài khoản, đổi / đặt lại mật khẩu, bật / tắt, khôi phục sao lưu… lọc theo
+  loại, ngày, chữ tìm.
+
+Mỗi người tự **Đổi mật khẩu** ở menu tên (phải nhập đúng mật khẩu hiện tại). Đổi mật khẩu thì các phiên khác của người đó bị đăng xuất.
+
+### 20.4 Nhập sai mật khẩu, hết phiên
+
+- Sai 5 lần liên tiếp: tài khoản khóa **5 phút**; lần khóa tiếp theo 15 phút, rồi 60 phút. Chủ mở khóa sớm được. Thông báo lỗi luôn
+  là “Sai tên đăng nhập hoặc mật khẩu” (không tiết lộ tên nào có thật).
+- Phiên đăng nhập hết sau **60 phút không thao tác**, và tối đa **12 giờ** kể từ lúc đăng nhập (Chủ đổi được ở Cài đặt).
+- **2 phút trước khi hết** phiên, đầu màn hình hiện dải cảnh báo đếm ngược và nút **Tiếp tục làm việc**.
+- Nếu phiên đã hết khi đang gõ dở một phiếu: hộp **Đăng nhập lại** hiện đè lên, **phiếu đang gõ vẫn còn nguyên**; đăng nhập lại rồi bấm
+  lưu như bình thường (nếu vừa bấm lưu đúng lúc hết phiên, đăng nhập xong phần mềm tự lưu tiếp, không bị ghi hai lần).
+
+### 20.5 Quên mật khẩu
+
+- **Nhân viên** quên: nhờ Chủ **Đặt lại mật khẩu** (mục 20.3), hoặc tự làm như dưới đây.
+- **Ai cũng làm được trên chính máy chạy phần mềm**: màn đăng nhập → **Quên mật khẩu?** → nhập tên → **Lấy mã khôi phục**. Mã KHÔNG hiện
+  trên màn hình mà được ghi vào file `data\khoi-phuc\MA_KHOI_PHUC.txt` (mở bằng Notepad). Nhập mã + mật khẩu mới. Mã dùng **một lần**,
+  hết hạn sau **15 phút**, nhập sai 5 lần thì phải lấy mã mới. Dùng xong file tự xóa.
+- **Chủ quên mật khẩu**: cách trên, hoặc **Dùng mã dự phòng của Chủ** (mã 20 ký tự đã cất ở bước bật). Dùng xong phần mềm cấp **mã dự
+  phòng mới** (hiện một lần — cất lại). Chủ tự tạo mã mới bất cứ lúc nào: Cài đặt → **Tạo mã dự phòng mới**.
+- **Cứu hộ cuối cùng** (mất cả mật khẩu Chủ lẫn mã dự phòng): đóng cửa sổ KhoiDong.bat, mở cửa sổ lệnh ở thư mục phần mềm, chạy
+
+  ```
+  node scripts\dat-lai-mat-khau-chu.js
+  ```
+
+  rồi làm theo câu hỏi (mật khẩu mới gõ hai lần, gõ `CO` để xác nhận). Lệnh mở khóa, kích hoạt lại tài khoản Chủ và ghi vào sự kiện
+  bảo mật. Ai mở được máy và thư mục phần mềm thì dùng được lệnh này — đó là chủ ý (phần mềm chạy trên máy; xem lưu ý đầu mục).
+
+### 20.6 Ai đã làm gì
+
+Mỗi dòng sổ, phiếu nhập, danh mục… ghi **người tạo** và **người sửa gần nhất** (xem trong form sửa dòng sổ). Dữ liệu có từ trước khi có
+chức năng này hiện “Dữ liệu cũ”; khi đăng nhập tắt, ghi “Người dùng máy này”. Nhật ký thay đổi (Kiểm soát sổ sách → Nhật ký) ghi tên
+người đăng nhập — ô “Người đang dùng máy này” ở Cài đặt chỉ dùng khi đăng nhập tắt. Nhập Excel cũng ghi người đang đăng nhập.
+
+### 20.7 Sao lưu, khôi phục, tắt đăng nhập
+
+- **Khôi phục sao lưu không đụng tới tài khoản**: người dùng, mật khẩu, trạng thái bật / tắt đăng nhập giữ nguyên như hiện tại (kể cả
+  khi khôi phục một bản sao lưu từ trước lúc bật đăng nhập). Sau khi khôi phục, mọi người phải đăng nhập lại.
+- File sao lưu **tải về** (.db / .zip / .json) và file Excel xuất ra **không chứa** tài khoản, mật khẩu, phiên đăng nhập.
+- **Tắt đăng nhập**: Cài đặt → Đăng nhập và phân quyền → **Tắt đăng nhập** (nhập lại mật khẩu của bạn). Phần mềm quay về như chưa bật;
+  các tài khoản vẫn được giữ, **Bật lại đăng nhập** chỉ cần đăng nhập bằng một tài khoản Chủ cũ.
+- Mở phần mềm ở máy khác qua mạng LAN: KHÔNG hỗ trợ (phần mềm chỉ nghe trên chính máy này).
