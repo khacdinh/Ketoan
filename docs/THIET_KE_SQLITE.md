@@ -84,8 +84,13 @@ Giữ nguyên hợp đồng này (đề bài: ưu tiên giữ các hàm công kh
 - Khởi động: đọc mọi bảng SQLite → dựng lại đúng đối tượng `db` như bản JSON (cùng trường, cùng kiểu, cùng thứ tự mảng).
 - `save()`: so sánh từng bản ghi với ảnh chụp lần lưu trước (chuỗi JSON của bản ghi + vị trí) → chỉ ghi các dòng **thêm / sửa / xóa**,
   tất cả trong **một giao dịch** (`BEGIN IMMEDIATE … COMMIT`). Đổi tên mã lan sang 5.000 dòng = 5.001 câu UPDATE trong một giao dịch.
-- Lỗi khi ghi (đĩa đầy, file bị khóa, ràng buộc…) → `ROLLBACK`, **nạp lại bộ nhớ từ đĩa** (bỏ thay đổi chưa lưu được) rồi báo lỗi.
-  Bản JSON cũ khi ghi lỗi vẫn giữ thay đổi trong bộ nhớ (lần lưu sau có thể ghi nửa vời); bản mới bảo đảm bộ nhớ = đĩa.
+- Lỗi khi ghi (đĩa đầy, file bị khóa, ràng buộc…) → `ROLLBACK`, **dựng lại bộ nhớ từ ảnh chụp lần COMMIT gần nhất**
+  (`rollbackMemory`, không cần đọc đĩa — đĩa có thể đang bị khóa) rồi báo lỗi “CHƯA được ghi”. Bản JSON cũ khi ghi lỗi vẫn giữ thay đổi
+  trong bộ nhớ (lần lưu sau có thể ghi nửa vời); bản mới bảo đảm bộ nhớ = đĩa. (Kiểm thử S2.6 phát hiện: nếu nạp lại từ đĩa khi file
+  đang bị khóa thì cũng thất bại — vì vậy dùng ảnh chụp.)
+- Một tiến trình khác COMMIT vào file (phần mềm mở hai cửa sổ trên hai cổng, công cụ SQLite): `PRAGMA data_version` đổi → lần lưu kế
+  tiếp bị từ chối (HTTP 409), bộ nhớ nạp lại từ đĩa, không ghi đè thay đổi của bên kia. Bản JSON cũ trong tình huống này ghi đè cả file.
+- Chờ khóa: `busy_timeout` 5 giây cho mỗi câu lệnh; quá thời gian → lỗi như trên. Trong lúc chờ, máy chủ (đơn luồng) tạm không trả lời.
 - `replaceAll()`: sao lưu → xóa sạch và chèn lại toàn bộ trong **một giao dịch**.
 - Truy vấn báo cáo vẫn chạy trong JS trên dữ liệu bộ nhớ (như cũ) → số liệu giống hệt; SQLite không tính tổng.
   ("tối ưu truy vấn sau khi đúng": đo ở mục hiệu năng; với 40.000 dòng không cần chuyển phép tính sang SQL.)

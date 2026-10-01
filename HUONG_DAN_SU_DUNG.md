@@ -23,6 +23,11 @@ Muốn có biểu tượng trên Desktop: bấm đúp **`TaoBieuTuongDesktop.bat
 > Lần đầu mở bản mới, phần mềm tự nâng cấp dữ liệu cũ lên phiên bản có phần chi phí công trình
 > và **tự sao lưu bản cũ** trước (bản sao lưu “Trước khi nâng cấp phần mềm” trong Cài đặt).
 
+> **Từ phiên bản lưu bằng SQLite** (cần **Node.js 24.16.0 trở lên** hoặc **26.1.0 trở lên**): lần đầu mở, phần mềm tự chuyển dữ liệu
+> từ `data\ketoan.json` sang `data\ketoan.db`, đối chiếu từng con số (tồn quỹ, tổng thu / chi, từng dự án, từng NCC, chi phí…)
+> rồi mới dùng. Cửa sổ đen báo *“Đã chuyển dữ liệu sang SQLite”*; chi tiết đối chiếu ở `data\migrate-bao-cao.txt`.
+> File cũ được giữ lại (đổi tên thành `ketoan.json.da-chuyen-sqlite.bak`) và có thêm một bản trong `data\backups`. Xem mục 17.
+
 ---
 
 ## 2. Các màn hình (tương ứng với các sheet Excel)
@@ -111,14 +116,28 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
 
 ## 7. Sao lưu — dữ liệu nằm ở đâu
 
-- Dữ liệu: `C:\KeToan\data\ketoan.json` (lưu ngay sau mỗi thao tác).
-- Sao lưu tự động: `C:\KeToan\data\backups\` — tự tạo định kỳ và **trước mỗi thao tác lớn** (nâng cấp phần mềm, nhập Excel,
-  khôi phục, xóa). Khôi phục bằng 1 nút trong **Cài đặt & dữ liệu → Bản sao lưu tự động**.
+- Dữ liệu: **`C:\KeToan\data\ketoan.db`** (cơ sở dữ liệu SQLite, một file; lưu ngay sau mỗi thao tác, mỗi lần lưu là trọn vẹn
+  hoặc không có gì — mất điện giữa chừng thì lần mở sau tự bỏ phần dở dang).
+  Bản trước đây lưu ở `ketoan.json`; file đó nay là `ketoan.json.da-chuyen-sqlite.bak` (chỉ để dự phòng, phần mềm không dùng nữa).
+- Sao lưu tự động: `C:\KeToan\data\backups\` — file `ketoan-<ngày giờ>-<lý do>.db`, tự tạo định kỳ (tối đa 1 bản / 10 phút khi đang
+  sửa) và **trước mỗi thao tác lớn** (nhập Excel, khôi phục, xóa); giữ 60 bản mới nhất. Các bản `.json` từ trước khi chuyển vẫn nằm
+  đó và vẫn khôi phục được; bản “Trước khi chuyển sang SQLite” không bao giờ bị tự xóa.
+  Khôi phục bằng 1 nút trong **Cài đặt & dữ liệu → Bản sao lưu tự động**.
 - Chứng từ đính kèm (ảnh, PDF): `C:\KeToan\data\attachments\`. Nhật ký thay đổi: `C:\KeToan\data\nhat-ky.jsonl`.
-- Nên định kỳ bấm **Tải bản sao lưu đầy đủ (.zip)** — gồm dữ liệu, chứng từ đính kèm và nhật ký — rồi cất ra USB / Google Drive.
-  (Nút **Tải bản sao lưu chỉ dữ liệu (.json)** cho file nhỏ, không kèm ảnh.) **Khôi phục từ file sao lưu** nhận cả `.zip` lẫn `.json`.
+- Nên định kỳ bấm **Tải bản sao lưu đầy đủ (.zip)** — gồm dữ liệu (cả `ketoan.db` lẫn `ketoan.json`), chứng từ đính kèm và nhật ký —
+  rồi cất ra USB / Google Drive. Nút **Tải bản sao lưu chỉ dữ liệu (.db)** cho file nhỏ, không kèm ảnh; nút **Xuất dữ liệu ra file .json**
+  dùng khi cần quay lại phiên bản cũ (mục 17). **Khôi phục từ file sao lưu** nhận `.zip`, `.db` và `.json`; phần mềm kiểm tra file
+  trước, file hỏng / không phải của phần mềm thì báo lỗi và **giữ nguyên** dữ liệu đang có; file hợp lệ thì tự sao lưu dữ liệu hiện tại
+  rồi mới thay.
+- Không mở `ketoan.db` bằng chương trình khác (DB Browser…) **trong lúc phần mềm đang chạy**. Nếu lỡ sửa, phần mềm phát hiện và báo
+  “dữ liệu vừa bị một chương trình khác thay đổi”, nạp lại dữ liệu mới nhất, không ghi đè.
 
-**Chuyển sang máy khác:** chép cả thư mục `C:\KeToan` sang máy mới (đã cài Node.js) rồi bấm `KhoiDong.bat`.
+**Chuyển sang máy khác:**
+1. Tắt phần mềm (đóng cửa sổ đen) — để `ketoan.db` không đang được ghi.
+2. Chép **cả thư mục** `C:\KeToan` (gồm `data\ketoan.db`, `data\backups`, `data\attachments`, `data\nhat-ky.jsonl`) sang máy mới.
+   Có thể đặt ở thư mục có dấu cách / chữ có dấu (vd `D:\Kế toán\Sổ thu chi`).
+3. Cài Node.js **24.16.0 trở lên** (bản LTS) hoặc **26.1.0 trở lên** trên máy mới, rồi bấm `KhoiDong.bat`.
+   Cách khác: trên máy cũ bấm **Tải bản sao lưu đầy đủ (.zip)**, trên máy mới cài phần mềm rồi **Khôi phục từ file sao lưu**.
 
 ---
 
@@ -127,10 +146,14 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
 | Hiện tượng | Cách xử lý |
 |---|---|
 | Bấm `KhoiDong.bat` báo chưa cài Node.js | Cài Node.js bản LTS tại https://nodejs.org rồi chạy lại. |
-| `KhoiDong.bat` báo Node.js quá cũ | Cần Node.js 18 trở lên. Cài bản LTS mới tại https://nodejs.org (cài đè lên bản cũ) rồi chạy lại. |
+| `KhoiDong.bat` báo Node.js “không dùng được với phần mềm này” | Cần Node.js **24.16.0 trở lên** (dòng 24 LTS) hoặc **26.1.0 trở lên** (dòng 25 và 26.0 không dùng được). Vào https://nodejs.org, tải bản **LTS** (Windows Installer .msi), cài đè lên bản cũ, rồi chạy lại. Dữ liệu không bị ảnh hưởng. |
+| Lần đầu chạy bản SQLite báo **“Chưa chuyển được dữ liệu sang SQLite”** | Phần mềm dừng để an toàn, **`ketoan.json` giữ nguyên, chưa bị sửa**. Mở `data\migrate-bao-cao.txt` xem lý do (dòng “Kết quả”). Nếu là file `ketoan.json` hỏng: lấy bản đúng trong `data\backups` (bản `.json` mới nhất) chép đè thành `data\ketoan.json` rồi chạy lại. Lý do khác: gửi cả thư mục `data` cho người hỗ trợ; trong lúc chờ có thể dùng bản cũ (mục 17). |
+| Cửa sổ đen báo “Có cả ketoan.db và ketoan.json” | Phần mềm dùng `ketoan.db`; `ketoan.json` bên cạnh **không** được tự nhập. Muốn đưa dữ liệu trong file đó vào: **Cài đặt → Khôi phục từ file sao lưu** chọn file đó. |
+| Báo “file dữ liệu đang bị một chương trình khác khóa” | Đóng chương trình đang mở `ketoan.db` (DB Browser, phần mềm mở ở cửa sổ khác, phần mềm sao lưu / diệt virus đang quét) rồi chạy lại. |
+| Báo “Không lưu được dữ liệu… CHƯA được ghi” | Thao tác vừa rồi không được lưu, dữ liệu giữ như trước. Thường do ổ đĩa đầy hoặc file bị khóa: giải phóng ổ đĩa / đóng chương trình đang khóa file rồi làm lại. |
 | Trình duyệt báo “Không kết nối được”, hoặc đầu trang hiện dải đỏ **“Mất kết nối với phần mềm”** | Cửa sổ đen đã bị đóng → bấm lại `KhoiDong.bat`, rồi bấm **Thử lại** trên dải đỏ. Nội dung đang gõ trong hộp thoại vẫn còn, bấm Ghi sổ lại là được. |
 | Nhập nhầm / xóa nhầm | Vào **Cài đặt & dữ liệu → Bản sao lưu tự động**, khôi phục bản trước thời điểm nhầm. |
-| Mở phần mềm báo “file dữ liệu bị hỏng” | Phần mềm tự lấy lại bản sao lưu gần nhất còn đọc được và giữ file hỏng với tên `ketoan.json.hong-…` trong thư mục `data`. Nếu báo không có bản sao lưu nào đọc được: đừng xóa gì, chép cả thư mục `data` cho người hỗ trợ. |
+| Mở phần mềm báo “file dữ liệu bị hỏng” | Phần mềm tự lấy lại bản sao lưu gần nhất còn đọc được (`.db` hoặc `.json`) và giữ file hỏng với tên `ketoan.db.hong-…` trong thư mục `data`. Nếu báo không có bản sao lưu nào đọc được: đừng xóa gì, chép cả thư mục `data` cho người hỗ trợ. |
 | Cổng 3939 bị phần mềm khác dùng | Phần mềm tự chuyển sang cổng kế tiếp (3940, 3941…) và mở đúng địa chỉ. |
 | Màn hình không thấy chức năng mới | Bấm **Ctrl + F5** trên trình duyệt để tải lại giao diện. |
 
@@ -265,9 +288,10 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
   `costExporter.js` cho chi phí công trình), `public/` (giao diện; `views/cost-*.js` cho chi phí công trình),
   `public/js/shared.js` (công thức tính dùng chung: tồn quỹ, tổng hợp, gộp phiếu, đọc số tiền bằng chữ, thành tiền,
   tổng hợp chi phí, công nợ, giá vật tư).
-- Dữ liệu `data/ketoan.json` phiên bản (schema) 3 (thêm thùng rác, trạng thái nháp, khóa sổ, cảnh báo đã bỏ qua, kiểm quỹ,
-  chứng từ đính kèm). Lần đầu mở bằng bản này, dữ liệu cũ được sao lưu (`backups/ketoan-…-truoc-nang-cap-v3.json`) rồi tự nâng cấp;
-  không bản ghi cũ nào bị đổi. Bản phần mềm cũ hơn không đọc được các phần mới.
+- Dữ liệu lưu bằng SQLite có sẵn trong Node.js (`node:sqlite`, không cần cài thêm thư viện): `data/ketoan.db`, lược đồ phiên bản 4
+  (`PRAGMA user_version`). Phiên bản 3 là `data/ketoan.json` (thêm thùng rác, trạng thái nháp, khóa sổ, cảnh báo đã bỏ qua, kiểm quỹ,
+  chứng từ đính kèm); phiên bản 4 chỉ đổi cách lưu, hình dạng dữ liệu giữ nguyên. Thiết kế chi tiết: `docs/THIET_KE_SQLITE.md`.
+- Cần Node.js ≥ 24.16.0 (dòng 24) hoặc ≥ 26.1.0: bản cũ hơn có lỗi cắt chữ tại ký tự NUL khi ghi vào SQLite.
 - Nhật ký thay đổi ở `data/nhat-ky.jsonl` (mỗi dòng một thao tác, chỉ ghi thêm), chứng từ ở `data/attachments/`.
 
 ---
@@ -339,3 +363,38 @@ Mở một dòng sổ thu chi (sửa), một dòng chi phí, hoặc một phiế
 - Dòng có chứng từ hiện **kẹp giấy kèm số lượng** trong sổ; bấm vào để xem nhanh.
 - Chứng từ nằm trong `data/attachments/`, có trong **bản sao lưu đầy đủ (.zip)**; xóa dòng thì chứng từ vào thùng rác cùng dòng đó.
 
+---
+
+## 17. Dữ liệu SQLite — chuyển đổi, kiểm tra, quay lại bản cũ
+
+### 17.1 Lần đầu chạy bản SQLite
+1. **Trước khi chạy**: chép cả thư mục `C:\KeToan\data` ra một chỗ khác (USB / thư mục khác) — để chắc chắn tuyệt đối.
+2. Cài Node.js 24.16.0 trở lên (hoặc 26.1.0 trở lên), bấm `KhoiDong.bat`.
+3. Phần mềm tự chuyển `ketoan.json` → `ketoan.db` (vài giây; dữ liệu rất lớn có thể tới 5–10 giây). Nếu đối chiếu lệch dù 1 đồng thì
+   **không chuyển**, dừng lại và giữ nguyên `ketoan.json`.
+4. Kiểm tra: mở **Tổng quan** — tồn quỹ phải đúng như trước khi nâng cấp; mở `data\migrate-bao-cao.txt` — mọi dòng đều “khớp”, mục
+   “Dữ liệu bất thường” liệt kê những chỗ đáng xem lại (mã mồ côi, số dạng chữ…; phần mềm giữ nguyên chúng, không tự sửa).
+5. Chạy lại các lần sau: không chuyển lần hai, không nhân đôi dữ liệu.
+
+### 17.2 Quay lại phiên bản cũ (lưu bằng JSON) — kế hoạch dự phòng
+Dùng khi bản SQLite gặp sự cố mà chưa kịp sửa. **Không mất dữ liệu đã nhập sau khi chuyển**, miễn là làm đủ bước 1:
+1. Đang ở bản SQLite: vào **Cài đặt & dữ liệu → Xuất dữ liệu ra file .json** (file `DuLieu_SoThuChi_<ngày giờ>.json` vào thư mục
+   Downloads). File này chứa **toàn bộ** dữ liệu hiện tại (kể cả mọi thứ nhập sau khi chuyển sang SQLite, thùng rác, khóa sổ, kiểm quỹ),
+   cùng dạng với `ketoan.json` cũ. Nên bấm thêm **Tải bản sao lưu đầy đủ (.zip)** (có cả chứng từ và nhật ký) và **Xuất toàn bộ sổ sách
+   ra Excel** để có thêm bản đối chiếu.
+   - Nếu phần mềm không mở được nữa: lấy bản `.db` mới nhất trong `data\backups` (hoặc chính `data\ketoan.db`) đưa người hỗ trợ xuất ra
+     `.json` bằng bản SQLite trên máy khác (Khôi phục file `.db` → Xuất dữ liệu ra file .json). Không có máy nào chạy được thì dùng
+     `ketoan.json.da-chuyen-sqlite.bak` (dữ liệu lúc chuyển đổi) và nhập bù phần phát sinh sau đó từ file Excel đã xuất.
+2. Tắt phần mềm. Lấy lại mã phiên bản cũ (người hỗ trợ: `git switch feature/truy-vet-chinh-xac`, hoặc giải nén bản phần mềm cũ).
+3. Trong thư mục `data`: **đổi tên** `ketoan.db` thành `ketoan.db.tam-ngung` (đừng xóa), rồi chép file `.json` ở bước 1 vào và đặt tên
+   là `ketoan.json`. (Không có file bước 1 thì đổi tên `ketoan.json.da-chuyen-sqlite.bak` thành `ketoan.json` — dữ liệu lúc chuyển đổi.)
+4. Bấm `KhoiDong.bat` của bản cũ (bản cũ chạy được với Node.js 18 trở lên). Kiểm tra tồn quỹ ở Tổng quan.
+   Bản sao lưu `.zip` mới vẫn khôi phục được ở bản cũ (bản cũ đọc phần `ketoan.json` trong đó).
+5. Khi muốn dùng lại bản SQLite: đổi tên / xóa `ketoan.db.tam-ngung`, để `ketoan.json` trong thư mục `data`, chạy bản SQLite — phần
+   mềm chuyển đổi lại từ đầu (có sao lưu và đối chiếu như lần đầu).
+
+### 17.3 Người hỗ trợ: kiểm tra bằng công cụ
+- `node tests/doi-chieu-sqlite.js --goc <thư mục mã bản JSON> data\ketoan.json.da-chuyen-sqlite.bak` chạy song song bản cũ và bản
+  mới trên cùng dữ liệu (thư mục tạm, không đụng `data`), so từng bản ghi, mọi con số báo cáo và từng ô của mọi file Excel xuất ra.
+- `ketoan.db` mở được bằng DB Browser for SQLite (khi phần mềm đã tắt): mỗi danh sách là một bảng, tên cột trùng tên trường; cột `vt` là
+  thứ tự, cột `khac` (JSON) giữ những giá trị bất thường; bảng `meta` chứa cài đặt và bộ đếm id.

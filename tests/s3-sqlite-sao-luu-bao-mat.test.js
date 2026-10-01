@@ -176,3 +176,32 @@ test('S3.5 path traversal: tên bản sao lưu .db dạng đường dẫn / file
     }
   } finally { await srv.stop(); }
 });
+
+test('S3.6 kế hoạch quay lại: bản JSON cũ mở được file .json xuất từ bản SQLite (làm ketoan.json) và khôi phục được .zip mới — không mất dữ liệu nhập sau khi chuyển', { skip: process.env.KETOAN_BAN_GOC ? false : 'đặt KETOAN_BAN_GOC=<thư mục mã bản JSON> để chạy', timeout: 120000 }, async () => {
+  const goc = process.env.KETOAN_BAN_GOC;
+  const srv = await startServer({ seed: V2 });
+  let json; let zipBuf; let want;
+  try {
+    await srv.ok('POST', '/api/entries', { ngay: '2026-09-30', noiDung: 'nhập sau khi chuyển sang SQLite', chi: 4321 });
+    await srv.ok('POST', '/api/cash-counts', { ngay: '2026-09-30', thucTe: 1 });
+    await srv.ok('POST', '/api/locks', { months: ['2026-01'] });
+    await srv.ok('DELETE', '/api/entries/' + (await srv.db()).entries[0].id);
+    want = await srv.db();
+    json = (await srv.call('GET', '/api/backup-json')).body.toString('utf8');
+    zipBuf = (await srv.call('GET', '/api/backup-zip')).body;
+  } finally { await srv.stop(); }
+  const strip = (d) => { const x = JSON.parse(JSON.stringify(d)); delete x.schema; delete x.updatedAt; return x; };
+  // (1) bỏ file .json xuất ra vào data/ketoan.json của bản cũ
+  const old = await startServer({ seed: JSON.parse(json), root: goc });
+  try {
+    const got = await old.db();
+    assert.deepEqual(strip(got), strip(want));
+    assert.equal((await old.ok('GET', '/api/trash')).items.length, 1);
+  } finally { await old.stop(); }
+  // (2) khôi phục .zip mới bằng bản cũ
+  const old2 = await startServer({ root: goc });
+  try {
+    const r = await old2.ok('POST', '/api/restore-zip', zipBuf);
+    assert.deepEqual(strip(r.db), strip(want));
+  } finally { await old2.stop(); }
+});

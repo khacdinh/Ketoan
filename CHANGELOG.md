@@ -1,5 +1,30 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Lưu dữ liệu bằng SQLite (01/10/2026, nhánh `feature/chuyen-sqlite`)
+
+Chỉ đổi **cách lưu dữ liệu**: không thêm tính năng nghiệp vụ, không đổi cách tính. Đối chiếu với bản JSON trên dữ liệu thật: mọi bản ghi,
+mọi con số báo cáo và từng ô của mọi file Excel xuất ra giống hệt (148/148 hạng mục, xem `BAO_CAO_CHUYEN_SQLITE.md`).
+
+### Thay đổi
+- Dữ liệu nằm ở **`data/ketoan.db`** (SQLite có sẵn trong Node.js — `node:sqlite`, không cần thư viện biên dịch). Lược đồ phiên bản 4
+  (`PRAGMA user_version`), bảng có kiểu cột và chỉ mục; thiết kế ở `docs/THIET_KE_SQLITE.md`.
+- **Tự chuyển** từ `data/ketoan.json` lần đầu chạy: sao lưu file JSON (`backups/ketoan-…-truoc-khi-chuyen-sqlite.json`, không bao giờ tự
+  xóa), dựng file tạm trong một giao dịch, đối chiếu toàn bộ bản ghi và mọi tổng số trước khi ghi; lệch thì dừng và giữ nguyên file
+  JSON. Báo cáo ở `data/migrate-bao-cao.txt`. File gốc đổi tên `ketoan.json.da-chuyen-sqlite.bak`. Chạy lại không chuyển lần hai.
+- Mỗi lần lưu là **một giao dịch** (trọn vẹn hoặc không có gì); chỉ ghi các dòng thay đổi. Lưu lỗi (ổ đầy, file bị khóa) → báo rõ
+  “CHƯA được ghi” và dữ liệu trên màn hình trở về đúng trạng thái đã lưu. Chương trình khác ghi chen vào file → phát hiện, nạp lại,
+  không ghi đè (HTTP 409).
+- Sao lưu tự động là file `.db` nhất quán (`VACUUM INTO`); vẫn khôi phục được các bản `.json` cũ. File `.db` hỏng khi khởi động → tự lấy
+  bản sao lưu gần nhất, giữ file hỏng.
+- Cài đặt → **Tải bản sao lưu chỉ dữ liệu** nay là file `.db`; thêm **Xuất dữ liệu ra file .json** (để quay lại bản cũ); bản đầy đủ
+  `.zip` chứa cả `ketoan.db` lẫn `ketoan.json`; **Khôi phục** nhận `.db`, `.json`, `.zip`, kiểm tra file trước khi thay.
+- Yêu cầu **Node.js ≥ 24.16.0 (dòng 24) hoặc ≥ 26.1.0**; `KhoiDong.bat` và `server.js` báo lỗi tiếng Việt kèm cách cài.
+- Hướng dẫn sử dụng: mục 7, 8 cập nhật; mục 17 mới (chuyển đổi, kiểm tra, **kế hoạch quay lại bản JSON**).
+
+### Tệp mới
+`lib/db.js`, `lib/migrate.js`, `lib/node-version.js`, `docs/THIET_KE_SQLITE.md`, `BAO_CAO_CHUYEN_SQLITE.md`, `tests/doi-chieu-sqlite.js`,
+`tests/s1…s5-sqlite-*.test.js`.
+
 ## Nhóm 1 — Độ chính xác và truy vết (30/09/2026, nhánh `feature/truy-vet-chinh-xac`)
 
 Dữ liệu nâng từ **schema 2 lên schema 3**: tự sao lưu trước khi nâng (`backups/ketoan-…-truoc-nang-cap-v3.json`), không bản ghi cũ
