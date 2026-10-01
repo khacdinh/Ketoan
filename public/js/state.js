@@ -19,7 +19,7 @@ export const S = {
     cpSo: LS.get('filter.cpSo', { period: 'tat-ca', from: '', to: '', ct: '', nha: '', nhom: '', hm: '', loai: '', ncc: '', vt: '', q: '' }),
     cpTh: LS.get('filter.cpTh', { period: 'tat-ca', from: '', to: '', ct: '', nha: '' }),
     cpCt: LS.get('filter.cpCt', { period: 'tat-ca', from: '', to: '', ct: '', nha: '', loai: '', ncc: '', level: 3 }),
-    cpCn: LS.get('filter.cpCn', { ct: '', ncc: '', to: '', pham: 'ct', sort: 'conLai' }),
+    cpCn: LS.get('filter.cpCn', { ct: '', nccs: [], tt: '', to: '', pham: 'ct', sort: 'conLai' }),
     cpGia: LS.get('filter.cpGia', { q: '', ncc: '', hm: '', vt: '' }),
     cpDm: LS.get('filter.cpDm', { tab: 'hang-muc', q: '' })
   },
@@ -46,8 +46,13 @@ function markChanged(prev, db) {
 
 export function setDb(db) {
   markChanged(S.all, db);
-  S.all = db;
-  S.db = KT.postedDb(db);
+  // Mã "Đã gộp vào …" không hiện ở ô chọn, danh sách, báo cáo (S.raw giữ nguyên để màn hình danh mục / lịch sử gộp xem lại)
+  S.raw = db;
+  S.aliasIdx = KT.aliasIndex(db);
+  const act = KT.activeDb(db);
+  remapSavedCodes();
+  S.all = act;
+  S.db = KT.postedDb(act);
   S.drafts = KT.draftsOf(db);
   S._allCostLedger = null;
   S.ledger = KT.buildLedger(S.db);
@@ -58,6 +63,50 @@ export function setDb(db) {
 }
 
 export function onChange(fn) { S.listeners.push(fn); }
+
+// Mã gõ vào là mã cũ đã gộp → mã đích (theo bảng bí danh); không phải thì trả lại nguyên văn
+export function aliasOf(loai, code) {
+  if (!S.raw || !code) return code;
+  return KT.resolveAlias(S.raw, loai, code, S.aliasIdx);
+}
+
+// Bộ lọc / bản nháp đã lưu trong trình duyệt còn chứa mã vừa bị gộp → đổi sang mã đích (để không lọc theo mã không còn dùng)
+const FILTER_LOAI = { duAn: 'da', ct: 'da', nha: 'nha', hm: 'hm', ncc: 'ncc', nccs: 'ncc', vt: 'vt' };
+function remapSavedCodes() {
+  if (!S.raw || !(S.raw.aliases || []).length) return;
+  const map = (loai, v) => (v && v !== '__none__' ? aliasOf(loai, v) : v);
+  Object.keys(S.filters).forEach((name) => {
+    const f = S.filters[name];
+    let changed = false;
+    Object.keys(FILTER_LOAI).forEach((k) => {
+      if (Array.isArray(f[k])) {
+        const nv = f[k].map((v) => map(FILTER_LOAI[k], v)).filter((v, i, a) => a.findIndex((x) => KT.keyOf(x) === KT.keyOf(v)) === i);
+        if (JSON.stringify(nv) !== JSON.stringify(f[k])) { f[k] = nv; changed = true; }
+      } else if (typeof f[k] === 'string' && f[k]) {
+        const nv = map(FILTER_LOAI[k], f[k]);
+        if (nv !== f[k]) { f[k] = nv; changed = true; }
+      }
+    });
+    if (changed) saveFilter(name);
+  });
+  // đầu phiếu nhập gần nhất và phiếu đang nhập dở
+  const fixHead = (h) => {
+    if (!h) return false;
+    let c = false;
+    [['maCT', 'da'], ['maNha', 'nha'], ['maNCC', 'ncc']].forEach(([k, l]) => { if (h[k]) { const v = map(l, h[k]); if (v !== h[k]) { h[k] = v; c = true; } } });
+    return c;
+  };
+  const last = LS.get('cp.lastHeader', null);
+  if (fixHead(last)) LS.set('cp.lastHeader', last);
+  const draft = LS.get('cp.draft', null);
+  if (draft) {
+    let c = fixHead(draft.header);
+    (draft.lines || []).forEach((l) => { if (l.maVT) { const v = map('vt', l.maVT); if (v !== l.maVT) { l.maVT = v; c = true; } } });
+    if (c) LS.set('cp.draft', draft);
+  }
+  const sel = LS.get('cp.cn.sel', '');
+  if (sel && map('ncc', sel) !== sel) LS.set('cp.cn.sel', map('ncc', sel));
+}
 
 // Cảnh báo "Cần xử lý": tính một lần cho mỗi phiên bản dữ liệu (dữ liệu lớn mất vài trăm ms, nên chỉ tính khi cần)
 export function anomalies() {
@@ -88,8 +137,8 @@ export function vouchers() {
 
 export function saveFilter(name) { LS.set('filter.' + name, S.filters[name]); }
 
-export function projectByCode(ma) { return KT.indexBy(S.db.projects).get(KT.keyOf(ma)); }
-export function supplierByCode(ma) { return KT.indexBy(S.db.suppliers).get(KT.keyOf(ma)); }
+export function projectByCode(ma) { return KT.indexBy(S.db.projects).get(KT.keyOf(aliasOf('da', ma))); }
+export function supplierByCode(ma) { return KT.indexBy(S.db.suppliers).get(KT.keyOf(aliasOf('ncc', ma))); }
 
 export function datalists() {
   return '<datalist id="dl-projects">' + S.db.projects.map((p) => '<option value="' + esc(p.ma) + '">' + esc(p.ten) + '</option>').join('') + '</datalist>' +
@@ -110,14 +159,19 @@ export function resolveCode(list, text) {
     const c = list.find((x) => KT.keyOf(x.ma) === KT.keyOf(m[1]));
     if (c) return c.ma;
   }
+  // mã cũ đã gộp → mã đích (nếu mã đích có trong danh sách này)
+  for (const loai of Object.keys(KT.MERGE_LISTS)) {
+    const a = aliasOf(loai, t);
+    if (a !== t) { const c = list.find((x) => KT.keyOf(x.ma) === KT.keyOf(a)); if (c) return c.ma; }
+  }
   return t;
 }
 
 /* ---------------- Chi phí công trình ---------------- */
 
-export function itemByCode(ma) { return KT.indexBy(S.db.costItems).get(KT.keyOf(ma)); }
-export function materialByCode(ma) { return KT.indexBy(S.db.materials).get(KT.keyOf(ma)); }
-export function houseByCode(ma) { return KT.indexBy(S.db.houses).get(KT.keyOf(ma)); }
+export function itemByCode(ma) { return KT.indexBy(S.db.costItems).get(KT.keyOf(aliasOf('hm', ma))); }
+export function materialByCode(ma) { return KT.indexBy(S.db.materials).get(KT.keyOf(aliasOf('vt', ma))); }
+export function houseByCode(ma) { return KT.indexBy(S.db.houses).get(KT.keyOf(aliasOf('nha', ma))); }
 export function groupByCode(ma) { return KT.indexBy(S.db.costGroups).get(KT.keyOf(ma)); }
 
 // Gõ tên hoặc mã hạng mục -> mã hạng mục ('' nếu không thấy)

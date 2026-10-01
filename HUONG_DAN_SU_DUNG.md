@@ -50,7 +50,7 @@ Nhóm menu **Chi phí công trình** (bên trái, dưới “Tổng hợp NCC”
 | **Phiếu nhập chi phí** | `PHIEU_NHAP` + macro `GhiPhieuNhap` | Khai báo đầu phiếu một lần, nhập nhiều dòng Mã VT × Số lượng × Đơn giá (hoặc chỉ Thành tiền cho khoản khoán), lưu một lần. Sửa / nhân bản / xóa phiếu. Phím **F3**. |
 | **Sổ chi phí** | `NHATKYCHUNG` | Toàn bộ dòng chi phí; lọc theo kỳ, công trình, nhà, nhóm, hạng mục, loại CP, NCC, vật tư; tìm kiếm; sửa trực tiếp trong bảng; tổng cuối bảng. |
 | **Chi tiết theo nhóm** | `CHI_TIET_THEO_NHOM` | Nhóm → Hạng mục → từng dòng, 3 mức hiển thị như nút 1 / 2 / 3 của Excel, có cộng hạng mục và tổng nhóm. |
-| **Công nợ NCC** | `CONGNO_NCC` | Bảng tổng hợp **theo công trình** (chi phí, đã thanh toán, % đã thanh toán, còn nợ, ứng dư), rồi công nợ từng NCC: Chi phí phát sinh − Đã trả (lấy từ Sổ thu chi) = Còn nợ / Ứng dư / Đã tất toán. |
+| **Công nợ NCC** | `CONGNO_NCC` | Bảng tổng hợp **theo công trình** (chi phí, đã thanh toán, % đã thanh toán, còn nợ, ứng dư), rồi công nợ từng NCC: Chi phí phát sinh − Đã trả (Sổ thu chi + khoản trả từ nguồn khác, ngoài quỹ) = Còn nợ / Ứng dư / Đã tất toán. |
 | **Giá vật tư** | (mới) | Lịch sử đơn giá từng vật tư theo NCC, giá thấp / cao / gần nhất, biểu đồ giá. |
 | **Danh mục chi phí** | `DM_NHOM`, `DM_HANGMUC`, `DM_VATTU`, `DM_NHA` | Nhóm chi phí, hạng mục, vật tư, nhà / khu. |
 
@@ -236,17 +236,33 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
   chưa nhập chi phí” để xem thêm số đã trả NCC của các dự án khác. Nếu có khoản trả cho NCC công trình mà chưa ghi mã
   dự án, phần mềm nhắc ngay dưới bảng.
 - **Công nợ NCC** = Chi phí phát sinh (Sổ chi phí) − Đã trả (Sổ thu chi: tổng **chi** trừ tổng **thu** của cùng
-  Mã NCC). Chọn công trình thì chỉ tính các dòng cùng Mã dự án. Hai sổ **không sửa dữ liệu của nhau**.
+  Mã NCC; cộng các khoản **trả từ nguồn khác, ngoài quỹ** — xem dưới). Chọn công trình thì chỉ tính các dòng cùng Mã dự án. Hai sổ **không sửa dữ liệu của nhau**.
   - Còn nợ: phát sinh > đã trả. Ứng dư: đã trả nhiều hơn khối lượng đã ghi (thường do chưa nhập khối lượng nghiệm thu).
   - Mặc định chỉ hiện **NCC liên quan công trình** (có chi phí, hoặc có khoản trả gắn với công trình đang có chi phí);
     đổi ở ô chọn phạm vi để xem mọi NCC.
-  - **Lọc theo NCC**: ở ô “Lọc NCC”, gõ mã hoặc tên rồi chọn trong danh sách gợi ý (giống ô Nhà cung cấp ở form phiếu chi; NCC
-    có chi phí công trình nằm trên đầu), hoặc gõ đủ mã / tên rồi Enter. Bảng chỉ
-    còn NCC đó, phần chi tiết mở sẵn, bảng **theo công trình** chỉ còn các công trình NCC đó có chi phí hoặc thanh toán (xem
-    nhanh nợ NCC này ở từng công trình). Kết hợp được với ô Công trình và Đến ngày; In và Xuất Excel theo đúng bộ lọc.
-    Bỏ lọc: xóa trắng ô rồi Enter (hoặc bấm dấu × trong ô), hoặc bấm “Xem tất cả nhà cung cấp”.
+  - **Lọc theo NCC** (chọn được **nhiều** NCC): ở ô “Lọc NCC”, gõ mã hoặc tên — có dấu hay không dấu, hoa hay thường đều được —
+    rồi chọn trong danh sách gợi ý dạng “mã – tên” (↑ ↓ để di chuyển, Enter để chọn; NCC có chi phí công trình nằm trên đầu).
+    Mỗi NCC đã chọn hiện thành một **chip** “Đang lọc: …” phía trên bảng; bấm × trên chip để bỏ riêng NCC đó, bấm **Xóa lọc** để bỏ
+    hết. Ô lọc vẫn để trống để chọn tiếp NCC khác ngay. Bảng chỉ còn các NCC đã chọn (bỏ qua ô phạm vi), **Tổng cộng** và dòng
+    phương trình ở trên chỉ cộng các NCC đang hiện; bảng **theo công trình** chỉ còn các công trình các NCC đó có phát sinh / thanh toán.
+    Chọn một NCC thì khung chi tiết mở sẵn. Gõ mã không có trong danh mục thì báo “Không có nhà cung cấp …”.
+  - **Lọc nhanh theo tình trạng**: ô “Mọi tình trạng / Chỉ NCC còn nợ / Chỉ NCC ứng dư / Ẩn NCC đã tất toán”, dùng chung được với lọc NCC.
+  - Bộ lọc (công trình, NCC, đến ngày, tình trạng) được **nhớ** khi chuyển màn hình hoặc mở lại phần mềm. **In** và **Xuất Excel**
+    đúng theo bộ lọc; đầu bản in / file Excel ghi rõ đang lọc NCC nào (vd “NCC: Xuân Trang, Sông Hàn. Chỉ NCC còn nợ”).
   - Bấm một NCC để xem các phiếu chi phí và các lần trả tiền; nút **Trả tiền / Ghi phiếu chi** mở sẵn form ghi chi
     trong Sổ thu chi với đúng NCC, dự án và số còn nợ.
+  - **Trả từ nguồn khác (ngoài quỹ)** — khi NCC đã được trả bằng tiền KHÔNG thuộc quỹ tiền mặt do thủ quỹ quản lý
+    (công ty chuyển khoản, chủ nhà / chủ đầu tư trả thẳng cho thợ, giám đốc trả…), nên không thể ghi phiếu chi vào Sổ thu chi:
+    bấm nút **Nguồn khác** ở dòng NCC (hoặc **Trả từ nguồn khác** trong khung chi tiết). Form điền sẵn NCC, công trình đang lọc
+    và số còn nợ; ghi **Ngày trả**, **Số tiền**, **Nguồn tiền** (chọn gợi ý hoặc gõ) và **Ghi chú** (vd số UNC, ai chuyển, đợt
+    mấy). Khoản này:
+    - được cộng vào cột **Đã trả / đã ứng** (dưới số có dòng nhỏ “ngoài quỹ …”), nên công nợ giảm đúng; ghi công trình thì
+      công nợ theo công trình cũng giảm đúng chỗ (không ghi công trình thì phần mềm nhắc “trả chưa gán công trình”);
+    - **không** vào Sổ thu chi, **không** làm đổi Tồn quỹ, không có phiếu chi để in;
+    - hiện ở khung chi tiết NCC, mục “Đã trả từ nguồn khác, ngoài quỹ”, có nút sửa / xóa (xóa thì vào Thùng rác, khôi phục được);
+    - tôn trọng **khóa sổ** tháng, được ghi vào **Nhật ký thay đổi**; đổi mã / gộp mã NCC, dự án thì khoản trả đi theo;
+    - có trong file Excel: sheet **TRA_NGOAI_QUY** của file Chi phí công trình (CONGNO_NCC, CONGNO_CONGTRINH cộng sheet này bằng
+      công thức) và sheet **Tra_Ngoai_Quy** của file Công nợ; nhập lại file chi phí thì khoản trả được nhập theo, khoản trùng bỏ qua.
 - **Giá vật tư**: danh sách vật tư đã mua (số lần, giá gần nhất, cột **Chênh giá** = giá cao nhất so với giá thấp nhất, rê chuột để xem hai mức giá); chọn một vật tư để xem lịch sử đơn giá
   từng lần mua theo NCC, chênh lệch so với lần trước, biểu đồ giá.
 
@@ -467,3 +483,73 @@ nhập (phần mềm lưu lại thành dòng mới) thì không gỡ tự độn
 ### 18.5 Tùy chọn khác
 `--input <thư mục>` (nơi để file Excel), `--data <thư mục>` (thư mục dữ liệu), `--report <thư mục>` (nơi ghi báo cáo),
 `--help`. Công cụ chạy được cả khi thư mục dữ liệu mới chỉ có `ketoan.json` (lần `--apply` đầu sẽ chuyển sang SQLite như khi mở phần mềm).
+
+---
+
+## 19. Gộp mã trùng, tách mã hạng mục
+
+Dùng khi **cùng một thứ** đang có **nhiều mã** (vd NCC `NCC_ThienHai` và `NCC_THienHAi`, vật tư `VL-XERAC6` và `VL-XERAC6B`, dự án
+`DANHAMsHanh` và `NHAMsHANH`), làm báo cáo, công nợ bị tách đôi. Gộp mã **chỉ đổi mã** trên các dòng; **không đổi số tiền nào** —
+tổng chi phí, tổng thu, tổng chi, tồn quỹ, công nợ luôn giữ nguyên, chỉ dồn về một mã.
+
+### 19.1 Gộp mã
+1. Mở danh mục: **Nhà cung cấp**, **Dự án**, hoặc **Danh mục chi phí** (tab Hạng mục / Vật tư / Nhà và khu). Tích ô đầu dòng các mã cần
+   gộp — **mã tích đầu tiên là mã giữ lại (mã đích)** — rồi bấm **Gộp mã**. Hoặc vào màn **Gộp mã** (menu bên trái, nhóm Kiểm soát)
+   → bấm loại mã ở “Gộp mã mới”, gõ chọn mã nguồn (bị gộp, chọn được nhiều) và mã đích.
+2. Bấm **Xem trước**: phần mềm cho biết mỗi mã nguồn có bao nhiêu dòng sổ thu chi / dòng chi phí / vật tư / nhà / khoản trả ngoài quỹ
+   (kể cả dòng trong Thùng rác) và số tiền liên quan; bảng **Thông tin giữ lại** cho chọn giữ tên, loại, địa chỉ… của mã nào (mặc định giữ
+   của mã đích; mã đích để trống thì lấy của mã nguồn).
+3. Đọc **cảnh báo** và các ô phải **xác nhận**:
+   - NCC khác loại / khác tên: cảnh báo, chọn thông tin giữ lại.
+   - Vật tư **khác ĐVT**: chỉ gộp khi tích “ĐVT khác nhau, số lượng giữ nguyên”. Mã khoản (`XX-…`, `CHUNG`) với vật tư thường: phải xác nhận.
+   - Hạng mục **khác tên**: chỉ gộp khi tích “hai hạng mục CÙNG NGHĨA”. Nếu một mã đang mang hai nghĩa thì dùng **Tách mã** (19.3).
+     Khác nhóm chi phí: các dòng của hạng mục nguồn sẽ tính vào nhóm của hạng mục đích (tổng tiền không đổi).
+   - Nhà / khu: **chỉ gộp trong cùng một công trình** (khác công trình thì không gộp được).
+   - Dự án: cả hai có **ngân sách** thì phải chọn giữ ngân sách của mã nào hoặc **Cộng**; ngày khởi công mặc định lấy ngày sớm nhất;
+     nhà của công trình nguồn chuyển sang công trình đích (nhà trùng, vd hai nhà “dùng chung”, chọn **Gộp vào** nhà của công trình đích).
+     Khác địa chỉ, thời gian phát sinh không giao nhau: cảnh báo để kiểm tra.
+   - Có dòng thuộc **tháng đã khóa sổ**: không gộp được, phần mềm liệt kê các dòng đó (mở khóa ở Kiểm soát → Khóa sổ nếu thật cần).
+4. Bấm **Gộp mã** → xác nhận. Phần mềm tự **sao lưu** (`truoc-gop-ma`) rồi gộp trong **một lần ghi** (mất điện giữa chừng thì hoặc chưa
+   gộp gì, hoặc đã gộp xong — không bao giờ gộp dở). Kết quả hiện số bản ghi đã chuyển và nút **Hoàn tác**.
+
+Sau khi gộp, mã nguồn **không bị xóa** mà chuyển sang trạng thái **“Đã gộp vào &lt;mã đích&gt;”**: ẩn khỏi danh mục, ô chọn, báo cáo, file
+Excel xuất ra (tích **Hiện mã đã gộp** ở danh mục để xem lại); không sửa / xóa / tạo lại được mã đó.
+
+### 19.2 Bí danh: gõ hoặc nhập Excel bằng mã cũ
+Mã đã gộp trở thành **bí danh** của mã đích: gõ mã cũ (hoa hay thường đều được) ở phiếu thu chi, phiếu nhập chi phí, khoản trả ngoài
+quỹ… thì phần mềm tự ghi mã đích. **Nhập file Excel** có mã cũ: ở bước xem trước có bảng **“… chỗ dùng mã cũ đã gộp — sẽ tự đổi sang mã đích”**
+(tên file, sheet, dòng, cột, mã cũ → mã mới); dòng danh mục của mã cũ trong file bị bỏ qua (không tạo lại mã đã gộp). Báo cáo nhập và
+nhật ký ghi lại số lần đổi. Bộ lọc đang nhớ (sổ thu chi, sổ chi phí, công nợ…) có mã cũ cũng tự chuyển sang mã đích.
+
+### 19.3 Tách mã hạng mục
+Khi **một mã hạng mục mang hai nghĩa** (vd HM37 vừa dùng cho “Bảo hành” vừa cho “Chi phí quản lý”): màn **Gộp mã** → tab **Tách mã
+hạng mục**:
+1. Chọn **Hạng mục cần tách** và **Đổi sang hạng mục** (có sẵn), hoặc tích **Tạo hạng mục mới** rồi ghi mã, tên, nhóm chi phí.
+2. Lọc nhóm dòng của nghĩa sai: công trình, nhà / khu, nhà cung cấp, vật tư, từ ngày – đến ngày (phải có ít nhất một điều kiện).
+3. **Xem trước**: danh sách từng dòng (ngày, công trình / nhà, diễn giải, NCC, thành tiền), mặc định tích hết; **bỏ tích** các dòng
+   không đổi. Phần mềm báo nếu nhóm chi phí của các dòng sẽ thay đổi.
+4. **Đổi sang hạng mục mới** → xác nhận. Tổng tiền không đổi; có sao lưu; kết quả hiện ngay kèm nút **Hoàn tác** (hoàn tác thì các
+   dòng trở về hạng mục cũ, hạng mục vừa tạo được gỡ vào Thùng rác nếu không còn dùng).
+
+### 19.4 Lịch sử gộp mã, hoàn tác
+Màn **Gộp mã** → tab **Lịch sử gộp mã**: mỗi lần gộp / tách một dòng (lúc nào, ai, nội dung, số bản ghi, tiền chịu ảnh hưởng, đã xác
+nhận gì). **Hoàn tác** trả mọi dòng về mã cũ, trả thông tin mã đích như trước, mã nguồn dùng lại bình thường, bí danh bị gỡ; có sao lưu
+`truoc-hoan-tac-gop`. Phần mềm **từ chối hoàn tác** (và ghi rõ lý do) khi:
+- có lần gộp / tách **sau** đụng tới cùng mã — hoàn tác lần sau trước (ngược thứ tự);
+- dữ liệu đã bị **sửa sau khi gộp** (vd một dòng đã chuyển sang NCC khác, thông tin mã đích đã sửa, dòng đã bị xóa vĩnh viễn) — để tránh làm sai.
+Mọi lần gộp, tách, hoàn tác đều có trong **Nhật ký thay đổi**.
+
+### 19.5 Gợi ý mã trùng
+Màn **Gộp mã** → tab **Gợi ý mã trùng**: phần mềm **chỉ gợi ý**, không bao giờ tự gộp:
+- mã chỉ khác chữ hoa / thường hoặc khoảng trắng;
+- trùng tên (không tính dấu, hoa / thường, dấu câu); vật tư phải cùng ĐVT; nhà phải cùng công trình;
+- NCC, hạng mục, dự án có tên gần giống (tên này nằm trọn trong tên kia, vd “10 Phạm Quang Ảnh” và “Dự án 10 Phạm Quang Ảnh”);
+- nhà / khu không có dòng chi phí nào (gợi ý dọn — phần mềm không tự xóa).
+Mỗi nhóm có số chỗ đang dùng của từng mã. **Gộp…** mở hộp thoại gộp với mã dùng nhiều nhất làm đích (đổi được); **Bỏ qua gợi ý này** thì
+không nhắc lại (nhớ cả khi mở lại phần mềm; bấm **Hiện lại** để xem lại các nhóm đã bỏ qua).
+
+### 19.6 Lưu ý
+- Trước khi gộp nhiều mã trên dữ liệu thật: **sao lưu thư mục `data`** (Cài đặt → **Sao lưu ngay**, hoặc chép cả thư mục), thử gộp + hoàn tác một cặp,
+  so công nợ / tổng hợp trước và sau.
+- Lần đầu mở bản có gộp mã, phần mềm tự nâng cấp dữ liệu lên lược đồ 5 và tạo bản sao lưu `truoc-nang-cap-luoc-do-5` (giữ mãi).
+

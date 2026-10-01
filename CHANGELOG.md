@@ -1,5 +1,50 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Gộp mã trùng, tách mã hạng mục, lọc công nợ nhiều NCC (01/10/2026)
+
+- **Công nợ NCC lọc theo nhiều NCC**: ô gõ tìm chọn nhiều (không dấu, hoa / thường), chip “Đang lọc” bỏ từng NCC, **Xóa lọc**, lọc nhanh
+  tình trạng (còn nợ / ứng dư / ẩn đã tất toán), tổng = các dòng đang hiện, bảng theo công trình theo NCC đã chọn, nhớ bộ lọc; In / Excel
+  ghi rõ bộ lọc (`/api/export/cost-debt?ncc=…&ncc=…&tt=`). Màn Tổng hợp NCC (sổ thu chi) cũng lọc được nhiều NCC.
+- **Gộp mã** cho NCC, vật tư, hạng mục, nhà / khu, dự án / công trình: chọn mã nguồn + mã đích → **xem trước** (số bản ghi theo bảng, kể
+  cả thùng rác; tiền chịu ảnh hưởng; thuộc tính giữ lại) → xác nhận → gộp trong **một giao dịch**, có sao lưu `truoc-gop-ma`. Chỉ đổi
+  trường mã; mọi tổng tiền bất biến. Mã nguồn không bị xóa mà thành “Đã gộp vào …” (ẩn khỏi danh mục, ô chọn, báo cáo, Excel xuất ra;
+  không sửa / xóa / tạo lại). Quy tắc riêng: vật tư khác ĐVT hoặc mã khoản `XX-` / `CHUNG` với vật tư thường phải xác nhận; hạng mục
+  khác tên phải xác nhận CÙNG NGHĨA, khác nhóm thì cảnh báo; nhà / khu chỉ gộp trong cùng công trình; dự án: nhà chuyển theo (nhà trùng
+  chọn gộp vào nhà của đích), ngân sách hai bên phải chọn giữ / cộng, ngày khởi công sớm nhất, cảnh báo địa chỉ / thời gian. Tháng đã
+  khóa sổ chặn (423, liệt kê dòng). Dữ liệu đổi giữa xem trước và gộp: 409.
+- **Bí danh**: mã đã gộp tự đổi sang mã đích khi gõ tay (phiếu thu chi, phiếu nhập chi phí, khoản trả ngoài quỹ…), khi nhập Excel (sổ thu
+  chi, chi phí công trình, công cụ dòng lệnh ChiPhi_CongTrinh; bước xem trước có bảng file / sheet / dòng / cột / mã cũ → mã mới, dòng
+  danh mục của mã cũ bị bỏ), và trong bộ lọc đã nhớ.
+- **Tách mã hạng mục** (một mã mang hai nghĩa): lọc theo công trình / nhà / NCC / vật tư / kỳ (bắt buộc ít nhất một điều kiện), xem trước
+  từng dòng để tích / bỏ tích, đổi sang hạng mục có sẵn hoặc **tạo mới ngay**.
+- **Lịch sử gộp mã + hoàn tác** (màn **Gộp mã** `#/gop-ma`): hoàn tác trả mọi dòng, thông tin mã đích, mã nguồn, bí danh, cảnh báo đã bỏ
+  qua về như cũ (sao lưu `truoc-hoan-tac-gop`); từ chối có lý do khi có lần gộp sau đụng cùng mã hoặc dữ liệu đã sửa sau khi gộp.
+- **Gợi ý mã trùng**: mã khác hoa / thường / khoảng trắng; trùng tên bỏ dấu, dấu câu (vật tư cùng ĐVT, nhà cùng công trình); tên gần
+  giống (NCC, hạng mục, dự án); nhà không dùng. Chỉ gợi ý, không tự gộp; Bỏ qua được nhớ, Hiện lại.
+- Lược đồ dữ liệu **5** (tự nâng cấp khi mở, sao lưu `truoc-nang-cap-luoc-do-5` giữ mãi, chạy lại không sao): cột `gopVao` ở 5 danh mục,
+  bảng `aliases`, `mergeLog`, `ignoredDupes`, `extPayments`. API `/api/merge/preview`, `/api/merge`, `/api/merge/log`,
+  `/api/merge/:id/undo`, `/api/merge/split[/preview]`, `/api/merge/suggest`, `/api/merge/suggest/ignore`. Nhật ký: `gop-ma`, `tach-ma`,
+  `hoan-tac-gop`, `nang-cap`.
+- Ô chọn gõ tìm (`combo.js`) chọn được nhiều mã (chip), loại trừ mã, gợi ý “mã – tên”; ↑ ↓ Enter, Esc chỉ đóng danh sách gợi ý.
+- Kiểm thử M0–M14 (`tests/m-gop-ma.test.js`: nâng cấp lược đồ, bất biến tiền, không mồ côi, hoàn tác về nguyên trạng từng bảng, trường
+  hợp biên, thùng rác, bí danh nhập Excel, hiệu năng 20.000 dòng, từng loại mã, tách mã, gợi ý, tắt ngang khi gộp), MU1–MU5
+  (giao diện thật), D6.3–D6.4, F6c, F6d, F8.
+- Báo cáo chi tiết: `BAO_CAO_GOP_MA.md`.
+
+## Trả nhà cung cấp từ nguồn khác, ngoài quỹ (01/10/2026)
+
+- Công nợ NCC: nút **Nguồn khác** (dòng NCC) / **Trả từ nguồn khác** (khung chi tiết) ghi khoản đã trả NCC bằng tiền không thuộc
+  quỹ tiền mặt (chuyển khoản công ty, chủ nhà trả thẳng, giám đốc trả…) kèm ngày, số tiền, nguồn tiền, công trình, ghi chú. Khoản này
+  cộng vào **Đã trả** của công nợ (theo NCC và theo công trình, “tính đến ngày”, gợi ý công nợ ở form phiếu chi) nhưng không vào Sổ thu chi,
+  không đổi tồn quỹ. Cột Đã trả có dòng phụ “ngoài quỹ …”; khung chi tiết liệt kê, sửa, xóa (vào Thùng rác, khôi phục được).
+- Bảng mới `extPayments` (lược đồ 5, tự tạo khi mở dữ liệu cũ); API `POST/PUT/DELETE /api/ext-payments`; kiểm tra dữ liệu vào, khóa sổ
+  tháng (423), nhật ký thay đổi; đổi mã / xóa NCC, dự án tính cả khoản trả này; gộp mã NCC / dự án chuyển cả khoản trả (xem trước hiện
+  “trả ngoài quỹ”), hoàn tác trả lại.
+- Excel: sheet `TRA_NGOAI_QUY` trong file chi phí (CONGNO_NCC và CONGNO_CONGTRINH cộng bằng SUMIFS), sheet `Tra_Ngoai_Quy` trong file
+  công nợ; nhập file chi phí đọc lại sheet này (bỏ khoản trùng kiểu đa tập, đổi mã cũ theo bí danh, bỏ tháng đã khóa).
+- Kiểm thử X1–X5 (`tests/x-tra-ngoai-quy.test.js`); dữ liệu mẫu gộp mã có khoản trả ngoài quỹ (M1 kiểm bất biến cả phần này);
+  `tests/so-lieu-moc.js` kiểm các trường mới bằng 0 khi không có khoản ngoài quỹ rồi so với mốc cũ.
+
 ## Ô lọc gõ tìm thay cho danh sách chọn (01/10/2026)
 
 - Mọi ô lọc / ô chọn dự án, công trình, nhà, nhà cung cấp, nhóm CP, hạng mục, vật tư đổi từ danh sách thả xuống sang ô gõ tìm có gợi ý

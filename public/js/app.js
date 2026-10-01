@@ -12,6 +12,7 @@ import { renderCostLedger } from './views/cost-ledger.js';
 import { renderCostDashboard, renderCostDetail, renderDebt, renderPrices } from './views/cost-reports.js';
 import { renderCostCatalogs } from './views/cost-catalogs.js';
 import { renderControl } from './views/control.js';
+import { renderMerge } from './merge.js';
 
 const KT = window.KT;
 
@@ -32,7 +33,8 @@ const ROUTES = {
   'cp-gia': { title: 'Giá vật tư', sub: 'Lịch sử đơn giá theo vật tư và nhà cung cấp', icon: 'tag', render: renderPrices },
   'cp-danh-muc': { title: 'Danh mục chi phí', sub: 'Nhóm chi phí, hạng mục, vật tư, nhà và khu', icon: 'squares', render: renderCostCatalogs },
   // Kiểm soát sổ sách (nhóm độ chính xác và truy vết)
-  'kiem-soat': { title: 'Kiểm soát sổ sách', sub: 'Nhật ký thay đổi, thùng rác và các việc cần xử lý để số liệu luôn đúng', icon: 'shield', render: renderControl }
+  'kiem-soat': { title: 'Kiểm soát sổ sách', sub: 'Nhật ký thay đổi, thùng rác và các việc cần xử lý để số liệu luôn đúng', icon: 'shield', render: renderControl },
+  'gop-ma': { title: 'Gộp mã', sub: 'Đưa các mã trùng (NCC, vật tư, hạng mục, nhà, dự án) về một mã — có xem trước và hoàn tác', icon: 'merge', render: renderMerge }
 };
 const NAV_LABEL = {
   'tong-quan': 'Tổng quan',
@@ -49,10 +51,11 @@ const NAV_LABEL = {
   'cp-cong-no': 'Công nợ NCC',
   'cp-gia': 'Giá vật tư',
   'cp-danh-muc': 'Danh mục chi phí',
-  'kiem-soat': 'Kiểm soát'
+  'kiem-soat': 'Kiểm soát',
+  'gop-ma': 'Gộp mã'
 };
 const NAV = [['tong-quan', 'so-thu-chi', 'phieu'], ['du-an', 'ncc', 'tong-hop-ncc'],
-  ['cp-tong-hop', 'cp-nhap', 'cp-so', 'cp-chi-tiet', 'cp-cong-no', 'cp-gia', 'cp-danh-muc'], ['kiem-soat', 'cai-dat']];
+  ['cp-tong-hop', 'cp-nhap', 'cp-so', 'cp-chi-tiet', 'cp-cong-no', 'cp-gia', 'cp-danh-muc'], ['kiem-soat', 'gop-ma', 'cai-dat']];
 const NAV_HEAD = { 2: 'Chi phí công trình' };
 
 function current() {
@@ -88,7 +91,7 @@ function renderShell() {
       { sep: true },
       { icon: 'crane', label: 'Chi phí công trình', hint: 'Đủ các sheet như file ChiPhi_CongTrinh: TONGHOP, NHATKYCHUNG, CHI_TIET_THEO_NHOM, CONGNO_NCC... giữ công thức', action: () => download('/api/export/costs') },
       { icon: 'rows', label: 'Sổ chi phí', hint: 'Theo bộ lọc đang chọn ở màn hình Sổ chi phí', action: () => download('/api/export/cost-ledger?' + ['from', 'to', 'ct', 'nha', 'nhom', 'hm', 'loai', 'ncc', 'vt', 'q'].filter((k) => S.filters.cpSo[k]).map((k) => k + '=' + encodeURIComponent(S.filters.cpSo[k])).join('&')) },
-      { icon: 'scales', label: 'Công nợ nhà cung cấp', hint: S.filters.cpCn.ct ? 'Công trình ' + S.filters.cpCn.ct : 'Tất cả công trình', action: () => download('/api/export/cost-debt?' + (S.filters.cpCn.ct ? 'ct=' + encodeURIComponent(S.filters.cpCn.ct) : '')) }
+      { icon: 'scales', label: 'Công nợ nhà cung cấp', hint: S.filters.cpCn.ct ? 'Công trình ' + S.filters.cpCn.ct : 'Tất cả công trình', action: () => { const c = S.filters.cpCn; download('/api/export/cost-debt?' + [c.ct ? 'ct=' + encodeURIComponent(c.ct) : ''].concat((c.nccs || []).map((x) => 'ncc=' + encodeURIComponent(x)), [c.tt ? 'tt=' + c.tt : '', c.to ? 'to=' + c.to : '']).filter(Boolean).join('&')); } }
     ];
   });
   $('#btn-new').addEventListener('click', () => openEntryForm(null));

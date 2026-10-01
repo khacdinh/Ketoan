@@ -208,7 +208,7 @@ async function previewImport(file, root) {
   let buf;
   try {
     buf = await file.arrayBuffer();
-    const r = await api('POST', '/api/import?dryRun=1', buf, true);
+    const r = await api('POST', '/api/import?dryRun=1&ten=' + encodeURIComponent(file.name), buf, true);
     const p = r.preview;
     if (p.kind === 'chi-phi') return previewCostImport(file, buf, p, box, root);
     const st = p.stats;
@@ -219,7 +219,7 @@ async function previewImport(file, root) {
       '<dl class="mt-3 grid grid-cols-3 gap-2 max-sm:grid-cols-2">' +
       stat('Dòng sổ thu chi', st.soDong) + stat('Dự án', st.soDuAn) + stat('Nhà cung cấp', st.soNCC) +
       stat('Tổng thu', money(st.tongThu)) + stat('Tổng chi', money(st.tongChi)) + stat('Tồn quỹ', money(st.tonQuy)) +
-      '</dl>' +
+      '</dl>' + aliasTable(p.biDanh) +
       (p.warnings.length ? '<details class="mt-3 text-[13px]"><summary class="cursor-pointer font-semibold text-caution">' + p.warnings.length + ' điều cần biết khi đọc file</summary>' +
         '<ul class="mt-2 max-h-40 list-disc overflow-auto pl-5 text-ink-2">' + p.warnings.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul></details>' : '') +
       '<div class="mt-4 flex flex-wrap items-center gap-2">' +
@@ -244,12 +244,23 @@ async function previewImport(file, root) {
     const done = busy(b, 'Đang nhập…');
     box.querySelectorAll('[data-imp]').forEach((x) => { x.disabled = true; });
     try {
-      const r = await api('POST', '/api/import?mode=' + mode, buf, true);
+      const r = await api('POST', '/api/import?mode=' + mode + '&ten=' + encodeURIComponent(file.name), buf, true);
       const a = r.result.added;
       toast('Đã nhập ' + a.entries + ' dòng sổ, ' + a.projects + ' dự án, ' + a.suppliers + ' nhà cung cấp' + (r.result.skipped ? '. Bỏ qua ' + r.result.skipped + ' dòng trùng' : ''));
     } catch (err) { showError(err); }
     if (b.isConnected) { done(); box.querySelectorAll('[data-imp]').forEach((x) => { x.disabled = false; }); }
   };
+}
+
+// Bí danh khi nhập Excel: mỗi mã cũ đã gộp được đổi sang mã đích (tên file, sheet, dòng gốc, mã cũ → mã mới)
+function aliasTable(rows) {
+  if (!rows || !rows.length) return '';
+  return '<details class="mt-3 text-[13px]" open id="imp-bidanh"><summary class="cursor-pointer font-semibold text-pen">' + icon('swap', 'mr-1 align-[-3px]') + rows.length +
+    ' chỗ dùng mã cũ đã gộp — sẽ tự đổi sang mã đích</summary>' +
+    '<div class="mt-2 max-h-56 overflow-auto"><table class="ledger ledger-compact"><thead><tr><th>File</th><th>Sheet</th><th class="num">Dòng</th><th>Cột</th><th>Mã cũ</th><th>Mã mới</th></tr></thead><tbody>' +
+    rows.slice(0, 500).map((x) => '<tr><td>' + esc(x.file) + '</td><td>' + esc(x.sheet) + '</td><td class="num">' + esc(String(x.dong)) + '</td><td>' + esc(x.cot) + '</td>' +
+      '<td class="code">' + esc(x.cu) + '</td><td class="code">' + esc(x.moi) + (x.boDong ? ' <span class="text-ink-3">(bỏ dòng danh mục)</span>' : '') + '</td></tr>').join('') +
+    '</tbody></table></div></details>';
 }
 
 function stat(label, value) {
@@ -294,6 +305,7 @@ function previewCostImport(file, buf, p, box, root) {
     stat('Nhân công', money(st.byLoai['Nhân công'] || 0)) + stat('Dịch vụ-Phí', money(st.byLoai['Dịch vụ-Phí'] || 0)) + stat('Hạng mục / nhóm', st.soHangMuc + ' / ' + st.soNhom) +
     stat('Mã vật tư', st.soVatTu) + stat('Nhà cung cấp', st.soNCC) + stat('Nhà / khu', st.soNha) +
     '</dl>' +
+    aliasTable(p.biDanh) +
     (st.trungKhiGop ? '<p class="mt-2 text-[13px] text-ink-2">' + icon('info', 'mr-1 align-[-3px] text-pen') + st.trungKhiGop + ' dòng chi phí đã có sẵn trong phần mềm sẽ được bỏ qua khi gộp.</p>' : '') +
     '<h3 class="mt-4 text-[13.5px] font-semibold">Mã công trình trong file</h3>' +
     '<p class="text-[12.5px] text-ink-3">Công trình trong phần mềm chính là dự án trong danh mục dự án. Ghép đúng mã để sổ chi phí và sổ thu chi nối được với nhau (công nợ nhà cung cấp).</p>' +
@@ -307,6 +319,8 @@ function previewCostImport(file, buf, p, box, root) {
       (c.goiY ? '<div class="hint good">Gợi ý theo tên: ' + esc(c.goiY) + '</div>' : '') + '</td></tr>').join('') + '</tbody></table>' +
     (st.soQuy.soDong ? '<label class="check mt-4 items-start"><input type="checkbox" id="imp-soquy" class="mt-0.5"><span>Nhập cả sheet SO_QUY (' + st.soQuy.soDong + ' dòng, chi ' + money(st.soQuy.tongChi) + ' đ' + (st.soQuy.tongThu ? ', thu ' + money(st.soQuy.tongThu) + ' đ' : '') + ') vào Sổ thu chi' +
       '<span class="block text-[12.5px] text-ink-3">Chỉ chọn khi các khoản trả tiền này CHƯA được ghi trong Sổ thu chi của phần mềm, nếu không sẽ bị tính trùng tồn quỹ và công nợ. Dòng trùng hoàn toàn được bỏ qua.</span></span></label>' : '') +
+    (st.traNgoaiQuy && st.traNgoaiQuy.soKhoan ? '<p class="mt-3 text-[13px] text-ink-2">' + icon('bank', 'mr-1 align-[-3px] text-pen') + 'Sheet TRA_NGOAI_QUY: ' + st.traNgoaiQuy.soKhoan + ' khoản trả NCC từ nguồn khác (' + money(st.traNgoaiQuy.tong) + ' đ), ' +
+      (st.traNgoaiQuy.moi ? st.traNgoaiQuy.moi + ' khoản mới sẽ được thêm' : 'đều đã có') + '. Khoản trùng hoàn toàn được bỏ qua; không vào Sổ thu chi.</p>' : '') +
     (p.warnings.length ? '<details class="mt-3 text-[13px]"><summary class="cursor-pointer font-semibold text-caution">' + p.warnings.length + ' điều cần biết khi đọc file</summary>' +
       '<ul class="mt-2 max-h-48 list-disc overflow-auto pl-5 text-ink-2">' + p.warnings.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul></details>' : '') +
     '<div class="mt-4 flex flex-wrap items-center gap-2">' +
@@ -331,9 +345,9 @@ function previewCostImport(file, buf, p, box, root) {
     const done = busy(b, 'Đang nhập…');
     box.querySelectorAll('[data-imp]').forEach((x) => { x.disabled = true; });
     try {
-      const r = await api('POST', '/api/import?mode=' + mode + (soQuy ? '&soQuy=1' : '') + '&map=' + encodeURIComponent(JSON.stringify(map)), buf, true);
+      const r = await api('POST', '/api/import?mode=' + mode + (soQuy ? '&soQuy=1' : '') + '&map=' + encodeURIComponent(JSON.stringify(map)) + '&ten=' + encodeURIComponent(file.name), buf, true);
       const a = r.result.added;
-      toast('Đã nhập ' + a.costs + ' dòng chi phí, ' + a.materials + ' vật tư, ' + a.items + ' hạng mục' + (a.entries ? ', ' + a.entries + ' dòng sổ thu chi' : '') +
+      toast('Đã nhập ' + a.costs + ' dòng chi phí, ' + a.materials + ' vật tư, ' + a.items + ' hạng mục' + (a.entries ? ', ' + a.entries + ' dòng sổ thu chi' : '') + (a.extPayments ? ', ' + a.extPayments + ' khoản trả ngoài quỹ' : '') +
         (r.result.skipped ? '. Bỏ qua ' + r.result.skipped + ' dòng trùng' : ''));
     } catch (err) {
       showError(err);

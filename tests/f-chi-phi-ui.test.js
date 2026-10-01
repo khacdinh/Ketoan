@@ -179,7 +179,9 @@ test('F1b phiếu nhập: kiểm tra dữ liệu bằng bàn phím (báo lỗi, 
     await page.waitForSelector('#modal-root form', { timeout: 5000 }).catch(async () => { await page.screenshot({ path: '/tmp/f1b-fail.png' }); throw new Error('không mở được hộp thêm hạng mục; toast: ' + (await toast(page)) + ' lỗi trang: ' + JSON.stringify(errors)); });
     await page.waitForTimeout(150);
     // ô Thuộc nhóm là ô gõ tìm: chọn nhóm thứ hai trong gợi ý
-    await page.fill('#modal-root input[name=maNhom]', await page.$eval('#modal-root input[name=maNhom]', (e) => e.list.options[1].value));
+    await page.focus('#modal-root input[name=maNhom]'); await page.keyboard.press('ArrowDown');
+    await page.fill('#modal-root input[name=maNhom]', await page.$eval('#modal-root .combo-list', (ul) => ul.querySelectorAll('.combo-opt b')[1].textContent));
+    await page.keyboard.press('Escape');
     await page.keyboard.press('Enter');
     await page.waitForSelector('#modal-root form', { state: 'detached' });
     await page.waitForTimeout(300);
@@ -698,57 +700,78 @@ test('F6 Công nợ NCC: bảng, tổng, chi tiết từng NCC; Trả tiền →
 });
 
 
-test('F6c Công nợ NCC: lọc theo NCC bằng ô gõ tìm (mã hoặc tên, gợi ý như form phiếu chi) — chỉ còn NCC đó, chi tiết mở sẵn, bảng theo công trình của NCC đó, nhớ bộ lọc; bỏ lọc trở về như cũ', { skip: SKIP, timeout: 180000 }, async () => {
+test('F6c Công nợ NCC: lọc theo một / nhiều NCC (gõ mã hoặc tên, không dấu cũng ra gợi ý mã – tên, ↑↓ Enter), chip NCC đang lọc, Xóa lọc, lọc tình trạng; tổng = các dòng đang hiện; nhớ bộ lọc', { skip: SKIP, timeout: 180000 }, async () => {
   const srv = await startServer({ seed: V2 });
   const db = readJsonFile(V2);
   const { browser, page, errors } = await openPage(srv, '#/cp-cong-no');
   try {
     await page.waitForSelector('tr[data-ma]');
     const nAll = await page.locator('tr[data-ma]').count();
-    const r = KT.supplierDebt(db, {}).rows.filter((x) => x.lienQuan && x.inCatalog).sort((a, b) => b.phatSinh - a.phatSinh)[0];
-    assert.ok(r, 'dữ liệu mẫu có NCC công trình');
-    // ô có danh sách gợi ý mã + tên NCC
-    assert.equal(await page.getAttribute('#cn-ncc', 'list'), 'dl-cn-ncc-goi-y');
-    assert.ok(await page.$eval('#dl-cn-ncc-goi-y', (d, ma) => [...d.options].some((o) => o.value === ma), r.ma));
-    // gõ tên không có: báo lỗi, không lọc
+    const ds = KT.supplierDebt(db, {}).rows.filter((x) => x.lienQuan && x.inCatalog).sort((a, b) => b.phatSinh - a.phatSinh);
+    const [r, r2] = ds;
+    assert.ok(r && r2, 'dữ liệu mẫu có ít nhất 2 NCC công trình');
+    const sumShown = async () => (await page.$$eval('tr[data-ma] td:nth-child(3)', (tds) => tds.map((t) => t.textContent))).reduce((t, x) => t + num(x), 0);
+    const footPS = async () => num(await page.$eval('tr[data-ma]', (tr) => tr.closest('table').querySelector('tfoot td:nth-child(2)').textContent));
+    // ô có danh sách gợi ý tự vẽ: gõ tên KHÔNG dấu, chữ thường → gợi ý "mã – tên"
+    const plain = KT.normalizeText(r.ten).trim();
+    await page.focus('#cn-ncc'); await page.keyboard.type(plain, { delay: 5 });
+    await page.waitForSelector('#cn-ncc-ds:not([hidden]) .combo-opt');
+    const opt = await page.$eval('#cn-ncc-ds .combo-opt', (li) => li.textContent);
+    assert.ok(opt.includes(r.ma) && opt.includes(r.ten), 'gợi ý hiện mã – tên: ' + opt);
+    assert.equal(await page.getAttribute('#cn-ncc', 'aria-expanded'), 'true');
+    // Enter lấy dòng đang chọn
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelectorAll('tr[data-ma]').length === 1, null, { timeout: 5000 });
+    assert.equal(await page.getAttribute('tr[data-ma]', 'data-ma'), r.ma);
+    assert.match(await page.$eval('#cn-chips', (e) => e.innerText), new RegExp(r.ma));
+    assert.equal(await page.inputValue('#cn-ncc'), '', 'chọn xong ô để trống để chọn thêm');
+    assert.match(await page.$eval('#cn-detail', (e) => e.innerText), new RegExp(r.ten.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'chi tiết NCC mở sẵn');
+    assert.ok(await page.$eval('#cn-pham', (e) => e.disabled), 'phạm vi không áp dụng khi lọc theo NCC');
+    // chọn thêm NCC thứ hai bằng mã chữ thường + ↓ + Enter (tiêu điểm vẫn ở ô sau khi vẽ lại)
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'cn-ncc');
+    await page.keyboard.type(r2.ma.toLowerCase(), { delay: 5 });
+    await page.waitForSelector('#cn-ncc-ds:not([hidden]) .combo-opt');
+    await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowUp'); await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelectorAll('tr[data-ma]').length === 2, null, { timeout: 5000 });
+    const exp2 = KT.supplierDebt(db, { ncc: [r.ma, r2.ma] });
+    assert.equal(await sumShown(), exp2.total.phatSinh, 'tổng chi phí 2 NCC');
+    assert.equal(await footPS(), exp2.total.phatSinh, 'tổng cuối bảng = tổng các dòng đang hiện');
+    assert.match(await page.$eval('#cn-count', (e) => e.textContent), /2 nhà cung cấp/);
+    const sum = KT.projectDebtSummary(db, { ncc: [r.ma, r2.ma] });
+    assert.equal(await page.locator('tr[data-ct]').count(), sum.rows.length, 'bảng theo công trình chỉ còn công trình của 2 NCC');
+    // gõ tên không có: báo lỗi, giữ bộ lọc
     await page.fill('#cn-ncc', 'không có ncc này'); await page.press('#cn-ncc', 'Enter');
     await page.waitForFunction(() => /Không có nhà cung cấp/.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
-    assert.equal(await page.locator('tr[data-ma]').count(), nAll);
-    // gõ đúng tên (không cần mã) rồi Enter
-    await page.fill('#cn-ncc', r.ten.toUpperCase()); await page.press('#cn-ncc', 'Enter');
-    await page.waitForFunction(() => document.querySelectorAll('tr[data-ma]').length === 1, null, { timeout: 5000 });
-    assert.equal(await page.inputValue('#cn-ncc'), r.ma, 'ô hiện mã NCC sau khi lọc');
-    assert.equal(await page.getAttribute('tr[data-ma]', 'data-ma'), r.ma);
-    assert.match(await page.$eval('#cn-detail', (e) => e.innerText), new RegExp(r.ten.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'chi tiết NCC mở sẵn');
-    assert.ok(await page.$eval('#cn-pham', (e) => e.disabled), 'phạm vi không áp dụng khi lọc một NCC');
-    assert.equal(num(await page.$eval('#cn-ncc', () => document.querySelector('tr[data-ma] td:nth-child(3)').textContent)), r.phatSinh);
-    const sum = KT.projectDebtSummary(db, { ncc: r.ma });
-    assert.equal(await page.locator('tr[data-ct]').count(), sum.rows.length, 'bảng theo công trình chỉ còn công trình của NCC');
-    assert.match(await page.$eval('#h-theo-ct', (e) => e.textContent), new RegExp('NCC ' + r.ma));
-    // nhớ bộ lọc khi tải lại
-    await page.reload();
-    await page.waitForSelector('tr[data-ma]');
-    assert.equal(await page.inputValue('#cn-ncc'), r.ma);
-    assert.equal(await page.locator('tr[data-ma]').count(), 1);
-    // xóa trắng ô rồi Enter: bỏ lọc
-    await page.fill('#cn-ncc', ''); await page.press('#cn-ncc', 'Enter');
+    assert.equal(await page.locator('tr[data-ma]').count(), 2);
+    // lọc nhanh tình trạng: chỉ NCC ứng dư (có thể không còn dòng nào → thông báo trống rõ ràng)
+    await page.selectOption('#cn-tt', 'du'); await settle(page);
+    const du = exp2.rows.filter((x) => x.conLai < 0);
+    assert.equal(await page.locator('tr[data-ma]').count(), du.length);
+    if (!du.length) assert.match(await page.$eval('#view', (e) => e.innerText), /Không có nhà cung cấp nào khớp bộ lọc/);
+    await page.selectOption('#cn-tt', 'no'); await settle(page);
+    assert.equal(await page.locator('tr[data-ma]').count(), exp2.rows.filter((x) => x.conLai > 0).length);
+    // nhớ bộ lọc khi chuyển màn hình rồi quay lại
+    await page.evaluate(() => { location.hash = '#/cp-so'; });
+    await page.waitForSelector('#cl-body');
+    await page.evaluate(() => { location.hash = '#/cp-cong-no'; });
+    await page.waitForSelector('#cn-chips');
+    assert.equal(await page.locator('#cn-chips .filter-chip').count(), 3, '2 NCC + tình trạng');
+    // bỏ một NCC bằng nút × của chip
+    await page.click('#cn-chips .filter-chip[data-ma="' + r2.ma + '"] button');
+    await page.waitForFunction(() => document.querySelectorAll('#cn-chips .filter-chip[data-ma]').length === 1, null, { timeout: 4000 });
+    // Xóa lọc: trở về như cũ
+    await page.click('#cn-clear');
     await page.waitForFunction((n) => document.querySelectorAll('tr[data-ma]').length === n, nAll, { timeout: 5000 });
-    // chọn một dòng trong danh sách gợi ý (trình duyệt gửi insertReplacementText): lọc ngay, không cần Enter
-    await page.$eval('#cn-ncc', (el, ma) => { el.value = ma; el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertReplacementText' })); }, r.ma);
-    await page.waitForFunction(() => document.querySelectorAll('tr[data-ma]').length === 1, null, { timeout: 5000 });
-    await page.fill('#cn-ncc', ''); await page.press('#cn-ncc', 'Enter');
-    await page.waitForFunction((n) => document.querySelectorAll('tr[data-ma]').length === n, nAll, { timeout: 5000 });
-    // gõ từng chữ thì chưa lọc (không làm mất ô đang gõ); gõ mã chữ thường rồi Enter: lọc; bỏ lọc bằng liên kết
-    await page.focus('#cn-ncc'); await page.keyboard.type(r.ma.toLowerCase(), { delay: 10 });
-    assert.equal(await page.locator('tr[data-ma]').count(), nAll);
-    await page.press('#cn-ncc', 'Enter');
-    await page.waitForFunction(() => document.querySelectorAll('tr[data-ma]').length === 1, null, { timeout: 5000 });
-    await page.click('[data-act=all-ncc]');
-    await page.waitForFunction((n) => document.querySelectorAll('tr[data-ma]').length === n, nAll, { timeout: 5000 });
-    assert.equal(await page.inputValue('#cn-ncc'), '');
+    assert.equal(await page.locator('#cn-chips').count(), 0);
+    // Esc đóng danh sách gợi ý
+    await page.focus('#cn-ncc'); await page.keyboard.press('ArrowDown');
+    assert.equal(await page.getAttribute('#cn-ncc', 'aria-expanded'), 'true');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.getAttribute('#cn-ncc', 'aria-expanded'), 'false');
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });
+
 test('F8 ô lọc gõ tìm thay dropdown: gõ mã / tên / “chưa gán”, chọn gợi ý, gõ sai báo lỗi, xóa trắng bỏ lọc — sổ thu chi, sổ chi phí, giá vật tư, form nhà', { skip: SKIP, timeout: 240000 }, async () => {
   const srv = await startServer({ seed: V2 });
   const db = readJsonFile(V2);
@@ -760,7 +783,7 @@ test('F8 ô lọc gõ tìm thay dropdown: gõ mã / tên / “chưa gán”, ch�
     const count = () => page.$eval('#so-count', (e) => e.innerText);
     const led = KT.buildLedger(posted);
     const p = db.projects.find((x) => db.entries.some((e) => e.maDuAn === x.ma));
-    assert.equal(await page.$eval('#so-duan', (e) => e.tagName + e.getAttribute('list')), 'INPUTdl-so-duan-goi-y');
+    assert.equal(await page.$eval('#so-duan', (e) => e.tagName + e.getAttribute('role')), 'INPUTcombobox');
     // gõ đúng tên dự án (không dấu, chữ thường vẫn khớp theo normalizeText) rồi Enter
     await pick(page, '#so-duan', p.ten);
     assert.equal(await page.inputValue('#so-duan'), p.ma, 'sau khi lọc ô hiện mã');
@@ -776,7 +799,9 @@ test('F8 ô lọc gõ tìm thay dropdown: gõ mã / tên / “chưa gán”, ch�
     assert.equal(await page.inputValue('#so-ncc'), '');
     // chọn gợi ý: lọc ngay không cần Enter
     const s0 = db.suppliers.find((x) => db.entries.some((e) => e.maNCC === x.ma));
-    await page.$eval('#so-ncc', (el, ma) => { el.value = ma; el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertReplacementText' })); }, s0.ma);
+    await page.focus('#so-ncc'); await page.keyboard.type(s0.ma, { delay: 5 });
+    await page.waitForSelector('#so-ncc-ds:not([hidden]) .combo-opt');
+    await page.click('#so-ncc-ds .combo-opt'); // bấm chuột vào dòng gợi ý
     await settle(page);
     assert.match(await count(), new RegExp('\\b' + KT.filterLedger(led, { duAn: '__none__', ncc: s0.ma }).rows.length + '\\b'));
     // xóa trắng rồi Enter: bỏ lọc
@@ -788,8 +813,10 @@ test('F8 ô lọc gõ tìm thay dropdown: gõ mã / tên / “chưa gán”, ch�
     const g = db.costGroups.find((x) => db.costItems.some((i) => i.maNhom === x.ma && db.costs.some((c) => c.maHM === i.ma)));
     await pick(page, '#cl-nhom', g.ma.toLowerCase());
     assert.equal(await page.inputValue('#cl-nhom'), g.ten);
-    const hmOpts = await page.$$eval('#dl-cl-hm-goi-y option', (os) => os.map((o) => o.value));
-    assert.deepEqual(hmOpts.sort(), db.costItems.filter((i) => i.maNhom === g.ma).map((i) => i.ten).sort());
+    await page.focus('#cl-hm'); await page.keyboard.press('ArrowDown');
+    const hmOpts = await page.$$eval('#cl-hm-ds .combo-opt b', (os) => os.map((o) => o.textContent));
+    assert.deepEqual(hmOpts.sort(), db.costItems.filter((i) => i.maNhom === g.ma).map((i) => i.ma).sort());
+    await page.keyboard.press('Escape');
     const nG = KT.filterCosts(KT.buildCostLedger(posted), { nhom: g.ma }).rows.length;
     assert.match(await page.$eval('#cl-count', (e) => e.innerText), new RegExp(String(Math.min(nG, 500))));
     await page.click('#cl-clear'); await settle(page);
@@ -820,6 +847,30 @@ test('F8 ô lọc gõ tìm thay dropdown: gõ mã / tên / “chưa gán”, ch�
     await page.waitForSelector('#modal-root form', { state: 'detached' });
     const h = (await srv.db()).houses.find((x) => x.ma === 'NHA_F8');
     assert.ok(h); assert.equal(h.maCT, ct.ma, 'lưu mã công trình từ tên đã gõ');
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); await srv.stop(); }
+});
+
+test('F6d Tổng hợp NCC (sổ thu chi): lọc nhiều NCC bằng ô gõ tìm, tổng = các dòng đang hiện, chip + Xóa lọc', { skip: SKIP, timeout: 120000 }, async () => {
+  const srv = await startServer({ seed: V2 });
+  const db = readJsonFile(V2);
+  const { browser, page, errors } = await openPage(srv, '#/tong-hop-ncc');
+  try {
+    await page.waitForSelector('#th-body tr');
+    await page.selectOption('#th-period', 'tat-ca'); await settle(page);
+    const ss = KT.supplierSummary(KT.postedDb(db), {});
+    const two = ss.rows.filter((r) => r.chi > 0).sort((a, b) => b.chi - a.chi).slice(0, 2);
+    for (const r of two) {
+      await page.focus('#th-ncc'); await page.keyboard.type(KT.normalizeText(r.ten).trim(), { delay: 5 });
+      await page.waitForSelector('#th-ncc-ds:not([hidden]) .combo-opt');
+      await page.keyboard.press('Enter'); await settle(page);
+    }
+    assert.equal(await page.locator('#th-body tr[data-ma]').count(), 2);
+    assert.equal(await page.locator('#th-chips .filter-chip').count(), 2);
+    const foot = num(await page.$eval('#th-foot td:nth-child(2)', (e) => e.textContent));
+    assert.equal(foot, two[0].chi + two[1].chi, 'tổng cuối bảng = 2 NCC đang lọc');
+    await page.click('#th-chips [data-act=clear-ncc]'); await settle(page);
+    assert.equal(await page.locator('#th-chips').count(), 0);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });
@@ -860,6 +911,7 @@ test('F7 Giá vật tư và Danh mục chi phí: chọn vật tư, lịch sử �
     await page.waitForSelector('#modal-root form'); await page.waitForTimeout(150);
     await page.fill('#modal-root input[name=ten]', 'Hạng mục kiểm thử giao diện');
     await page.fill('#modal-root input[name=maNhom]', db.costGroups[1].ma);
+    await page.keyboard.press('Enter'); // Enter thứ nhất lấy dòng gợi ý, thứ hai lưu
     await page.keyboard.press('Enter');
     await page.waitForSelector('#modal-root form', { state: 'detached' });
     const created = (await srv.db()).costItems.find((i) => i.ten === 'Hạng mục kiểm thử giao diện');
@@ -869,6 +921,7 @@ test('F7 Giá vật tư và Danh mục chi phí: chọn vật tư, lịch sử �
     await page.waitForSelector('#modal-root form'); await page.waitForTimeout(150);
     await page.fill('#modal-root input[name=ma]', 'HM_TRUNG'); await page.fill('#modal-root input[name=ten]', 'hạng mục KIỂM THỬ giao diện');
     await page.fill('#modal-root input[name=maNhom]', db.costGroups[1].ma);
+    await page.keyboard.press('Enter'); // Enter thứ nhất lấy dòng gợi ý, thứ hai lưu
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => /đã có/.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
     await page.click('[data-act=cancel]');

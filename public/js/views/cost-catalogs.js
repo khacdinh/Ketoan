@@ -1,7 +1,8 @@
 /* Danh mục chi phí công trình: nhóm CP, hạng mục, vật tư, nhà / khu (DM_NHOM, DM_HANGMUC, DM_VATTU, DM_NHA). */
 import { $, esc, money, icon, api, toast, showError, confirmDialog, openModal, freshRoot, debounce, highlight, download, fieldError, busy } from '../ui.js';
 import { S, saveFilter, groupName, itemByCode, costProjects, selectOptions } from '../state.js';
-import { comboHtml, comboResolve } from '../combo.js';
+import { comboHtml, comboResolve, bindCombo } from '../combo.js';
+import { mergeToolbarHtml, bindMergeUI, pickHead, pickCell, mergedRecords, mergedChip } from '../merge.js';
 
 const KT = window.KT;
 
@@ -12,6 +13,7 @@ const KT = window.KT;
 function catalogForm(o) {
   const isEdit = !!(o.values && o.values.id);
   const v = o.values || {};
+  const combos = {};
   const field = (f) => {
     const val = v[f.name] == null ? '' : v[f.name];
     const cls = 'field' + (f.wide ? ' col-span-2 max-sm:col-span-1' : '');
@@ -21,7 +23,8 @@ function catalogForm(o) {
     }
     let input;
     if (f.type === 'combo') {
-      input = comboHtml(Object.assign({ name: f.name, value: val, type: 'text', placeholder: f.placeholder }, f.combo));
+      combos[f.name] = Object.assign({ name: f.name, value: val, type: 'text', placeholder: f.placeholder, quiet: true }, f.combo);
+      input = comboHtml(combos[f.name]);
     } else if (f.type === 'select') {
       input = '<select name="' + f.name + '" class="input">' + f.options.map(([ov, ol]) => '<option value="' + esc(ov) + '"' + (KT.keyOf(ov) === KT.keyOf(val) ? ' selected' : '') + '>' + esc(ol) + '</option>').join('') + '</select>';
     } else if (f.type === 'textarea') {
@@ -40,6 +43,7 @@ function catalogForm(o) {
       '<button type="button" class="btn btn-primary" data-act="save">' + (isEdit ? 'Lưu thay đổi' : esc(o.addText || 'Thêm vào danh mục')) + '</button>',
     onMount(el, h) {
       const f = el.querySelector('form');
+      Object.keys(combos).forEach((k) => bindCombo(f.elements[k], combos[k], null));
       if (o.onMount) o.onMount(f, el);
       const save = async () => {
         const data = {};
@@ -198,16 +202,25 @@ export function renderCostCatalogs(root) {
     '<div class="seg" role="radiogroup" aria-label="Loại danh mục">' + TABS.map(([k, l]) =>
       '<label class="seg-item"><input type="radio" name="dm-tab" value="' + k + '"' + (f.tab === k ? ' checked' : '') + '><span>' + l + '</span></label>').join('') + '</div>' +
     '<label class="search min-w-[240px]">' + icon('search') + '<input id="dm-q" type="search" class="input" placeholder="Tìm mã, tên" value="' + esc(f.q) + '" aria-label="Tìm trong danh mục"></label>' +
-    '<span class="flex-1"></span>' +
+    '<span class="flex-1"></span><span class="flex flex-wrap items-center gap-2" id="dm-merge"></span>' +
     '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất Excel</button>' +
     '<button type="button" class="btn btn-primary" data-act="add">' + icon('plus') + '<span id="dm-add-label"></span></button>' +
     '</div>' +
     '<section class="sheet overflow-hidden"><p class="border-b border-rule px-4 py-2.5 text-[13px] text-ink-2" id="dm-count"></p>' +
     '<div class="table-scroll max-h-[calc(100vh-250px)] overflow-auto"><table class="ledger" id="dm-table"></table></div></section>';
 
+  const TAB_LOAI = { 'hang-muc': 'hm', 'vat-tu': 'vt', nha: 'nha' };
   const draw = () => {
     const q = KT.normalizeText(f.q).trim();
     const match = (s) => !q || KT.normalizeText(s).includes(q);
+    const loai = TAB_LOAI[f.tab];
+    const showMerged = !!(f.merged && loai);
+    $('#dm-merge', root).innerHTML = loai ? mergeToolbarHtml(loai, f.merged) : '';
+    const pk = loai ? pickHead : '';
+    const pc = (ma) => (loai ? pickCell(ma) : '');
+    // mã đã gộp (ẩn mặc định): chỉ để tra cứu; muốn dùng lại thì hoàn tác ở màn Gộp mã
+    const mergedRows = (cols) => (showMerged ? mergedRecords(loai).filter((x) => match(x.ma + ' ' + x.ten + ' ' + x.gopVao)).map((x) =>
+      '<tr class="text-ink-3"><td class="no-print"></td><td class="code">' + esc(x.ma) + '</td><td>' + esc(x.ten || '') + '</td><td colspan="' + (cols - 3) + '">' + mergedChip(x) + '</td></tr>').join('') : '');
     $('#dm-add-label', root).textContent = { 'hang-muc': 'Thêm hạng mục', nhom: 'Thêm nhóm', 'vat-tu': 'Thêm vật tư', nha: 'Thêm nhà' }[f.tab];
     const table = $('#dm-table', root);
     let count = '';
@@ -224,55 +237,56 @@ export function renderCostCatalogs(root) {
       count = S.db.costGroups.length + ' nhóm lớn. Đổi tên nhóm: mọi hạng mục và báo cáo tự đổi theo.';
     } else if (f.tab === 'hang-muc') {
       const use = usageMap('maHM');
-      let html = '<thead><tr><th>Mã HM</th><th>Hạng mục</th><th>Nhóm chi phí</th><th class="num">Số dòng</th><th class="num money">Tổng chi phí</th><th>Ghi chú</th><th class="no-print"></th></tr></thead><tbody>';
+      let html = '<thead><tr>' + pk + '<th>Mã HM</th><th>Hạng mục</th><th>Nhóm chi phí</th><th class="num">Số dòng</th><th class="num money">Tổng chi phí</th><th>Ghi chú</th><th class="no-print"></th></tr></thead><tbody>';
       let n = 0;
       const groups = S.db.costGroups.concat([{ ma: '', ten: '(Chưa có nhóm)' }]);
       groups.forEach((g) => {
         const items = S.db.costItems.filter((i) => (g.ma ? KT.keyOf(i.maNhom) === KT.keyOf(g.ma) : !S.db.costGroups.some((x) => KT.keyOf(x.ma) === KT.keyOf(i.maNhom))) &&
           match(i.ma + ' ' + i.ten + ' ' + g.ten + ' ' + (i.ghiChu || '')));
         if (!items.length) return;
-        html += '<tr class="group-row"><td colspan="7">' + esc(g.ten) + ' <span class="font-normal text-ink-3">· ' + items.length + ' hạng mục</span></td></tr>';
+        html += '<tr class="group-row"><td colspan="8">' + esc(g.ten) + ' <span class="font-normal text-ink-3">· ' + items.length + ' hạng mục</span></td></tr>';
         items.forEach((i) => {
           n++;
           const u = use.get(KT.keyOf(i.ma)) || { n: 0, tien: 0 };
-          html += '<tr data-id="' + i.id + '"><td class="code">' + highlight(i.ma, f.q) + '</td><td>' + highlight(i.ten, f.q) + '</td><td class="text-ink-2">' + esc(groupName(i.maNhom) || '') + '</td>' +
+          html += '<tr data-id="' + i.id + '">' + pc(i.ma) + '<td class="code">' + highlight(i.ma, f.q) + '</td><td>' + highlight(i.ten, f.q) + '</td><td class="text-ink-2">' + esc(groupName(i.maNhom) || '') + '</td>' +
             '<td class="num">' + (u.n || '') + '</td><td class="num money' + (u.tien ? ' font-semibold' : ' text-ink-3') + '">' + money(u.tien) + '</td><td class="text-[12.5px] text-ink-2">' + esc(i.ghiChu || '') + '</td>' + actions(i.ma) + '</tr>';
         });
       });
-      table.innerHTML = html + (n ? '' : '<tr><td colspan="7" class="empty">Không có hạng mục nào khớp.</td></tr>') + '</tbody>';
+      table.innerHTML = html + (n ? '' : '<tr><td colspan="8" class="empty">Không có hạng mục nào khớp.</td></tr>') + mergedRows(8) + '</tbody>';
       count = n + ' trên ' + S.db.costItems.length + ' hạng mục. Đổi tên hoặc chuyển nhóm: sổ chi phí và báo cáo tự cập nhật.';
     } else if (f.tab === 'vat-tu') {
       const stats = new Map(KT.materialStats(S.db).map((m) => [KT.keyOf(m.ma), m]));
       const list = S.db.materials.filter((m) => match(m.ma + ' ' + m.ten + ' ' + ((itemByCode(m.maHM) || {}).ten || '') + ' ' + (m.ghiChu || '')));
       const shown = list.slice(0, 600);
-      table.innerHTML = '<thead><tr><th>Mã VT</th><th>Tên vật tư</th><th>ĐVT</th><th>Hạng mục hay dùng</th><th>Loại CP</th><th class="num">Số lần mua</th><th class="num money">Tổng đã mua</th><th class="num money">Giá gần nhất</th><th class="no-print"></th></tr></thead><tbody>' +
+      table.innerHTML = '<thead><tr>' + pk + '<th>Mã VT</th><th>Tên vật tư</th><th>ĐVT</th><th>Hạng mục hay dùng</th><th>Loại CP</th><th class="num">Số lần mua</th><th class="num money">Tổng đã mua</th><th class="num money">Giá gần nhất</th><th class="no-print"></th></tr></thead><tbody>' +
         (shown.map((m) => {
           const st = stats.get(KT.keyOf(m.ma));
           const it = itemByCode(m.maHM);
-          return '<tr data-id="' + m.id + '"><td class="code">' + highlight(m.ma, f.q) + '</td><td class="min-w-[200px]">' + highlight(m.ten, f.q) + '</td><td>' + esc(m.dvt || '') + '</td>' +
+          return '<tr data-id="' + m.id + '">' + pc(m.ma) + '<td class="code">' + highlight(m.ma, f.q) + '</td><td class="min-w-[200px]">' + highlight(m.ten, f.q) + '</td><td>' + esc(m.dvt || '') + '</td>' +
             '<td class="text-ink-2">' + esc(it ? it.ten : '') + '</td><td class="text-ink-2">' + esc(m.loaiCP || '') + '</td>' +
             '<td class="num">' + (st ? st.soLan : '') + '</td><td class="num money' + (st ? ' font-semibold' : '') + '">' + (st ? money(st.tongTien) : '') + '</td>' +
             '<td class="num money">' + (st ? money(st.last) : '') + '</td>' +
             actions(m.ma, st ? '<button type="button" class="icon-btn" data-act="price" title="Lịch sử giá" aria-label="Lịch sử giá ' + esc(m.ma) + '">' + icon('chartLineSimple') + '</button>' : '') + '</tr>';
-        }).join('') || '<tr><td colspan="9" class="empty">Không có vật tư nào khớp.</td></tr>') +
-        (list.length > shown.length ? '<tr><td colspan="9" class="text-[12.5px] text-ink-3">Đang hiện ' + shown.length + ' / ' + list.length + ' mã. Gõ từ khóa để lọc.</td></tr>' : '') + '</tbody>';
+        }).join('') || '<tr><td colspan="10" class="empty">Không có vật tư nào khớp.</td></tr>') +
+        (list.length > shown.length ? '<tr><td colspan="10" class="text-[12.5px] text-ink-3">Đang hiện ' + shown.length + ' / ' + list.length + ' mã. Gõ từ khóa để lọc.</td></tr>' : '') + mergedRows(10) + '</tbody>';
       count = list.length + ' trên ' + S.db.materials.length + ' mã vật tư. Số lần mua và tổng tự tính từ sổ chi phí.';
     } else {
       const use = usageMap('maNha');
       const list = S.db.houses.filter((h) => match(h.ma + ' ' + h.ten + ' ' + h.maCT + ' ' + (h.chuNha || '')));
-      table.innerHTML = '<thead><tr><th>Mã nhà</th><th>Công trình</th><th>Tên nhà / khu</th><th class="num">Diện tích (m2)</th><th>Chủ nhà</th><th>Dùng chung</th><th class="num">Số dòng</th><th class="num money">Tổng chi phí</th><th class="no-print"></th></tr></thead><tbody>' +
+      table.innerHTML = '<thead><tr>' + pk + '<th>Mã nhà</th><th>Công trình</th><th>Tên nhà / khu</th><th class="num">Diện tích (m2)</th><th>Chủ nhà</th><th>Dùng chung</th><th class="num">Số dòng</th><th class="num money">Tổng chi phí</th><th class="no-print"></th></tr></thead><tbody>' +
         (list.map((h) => {
           const u = use.get(KT.keyOf(h.ma)) || { n: 0, tien: 0 };
-          return '<tr data-id="' + h.id + '"><td class="code">' + highlight(h.ma, f.q) + '</td><td>' + highlight(h.maCT || '', f.q) + '</td><td>' + highlight(h.ten, f.q) + '</td>' +
+          return '<tr data-id="' + h.id + '">' + pc(h.ma) + '<td class="code">' + highlight(h.ma, f.q) + '</td><td>' + highlight(h.maCT || '', f.q) + '</td><td>' + highlight(h.ten, f.q) + '</td>' +
             '<td class="num">' + (h.dienTich !== '' && h.dienTich != null ? KT.fmtQty(h.dienTich) : '') + '</td><td>' + esc(h.chuNha || '') + '</td>' +
             '<td>' + (h.chung ? '<span class="pill">Cả công trình</span>' : '') + '</td><td class="num">' + (u.n || '') + '</td><td class="num money">' + money(u.tien) + '</td>' + actions(h.ma) + '</tr>';
-        }).join('') || '<tr><td colspan="9" class="empty">Chưa có nhà nào. Mỗi công trình nên có một mục “dùng chung cả công trình” cho chi phí không tách được.</td></tr>') + '</tbody>';
+        }).join('') || '<tr><td colspan="10" class="empty">Chưa có nhà nào. Mỗi công trình nên có một mục “dùng chung cả công trình” cho chi phí không tách được.</td></tr>') + mergedRows(10) + '</tbody>';
       count = list.length + ' nhà / khu. Chi phí không tách được về một nhà thì chọn nhà “dùng chung”.';
     }
     $('#dm-count', root).textContent = count;
   };
 
   root.querySelectorAll('input[name=dm-tab]').forEach((r) => r.addEventListener('change', () => { f.tab = r.value; saveFilter('cpDm'); draw(); }));
+  bindMergeUI(root, () => TAB_LOAI[f.tab], (v) => { f.merged = v; saveFilter('cpDm'); draw(); });
   $('#dm-q', root).addEventListener('input', debounce((e) => { f.q = e.target.value; saveFilter('cpDm'); draw(); }, 120));
 
   const listOf = () => ({ nhom: S.db.costGroups, 'hang-muc': S.db.costItems, 'vat-tu': S.db.materials, nha: S.db.houses }[f.tab]);

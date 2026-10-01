@@ -37,6 +37,9 @@ const createCostApi = require('./lib/costApi');
 const createTrace = require('./lib/traceApi');
 const createCashCountApi = require('./lib/cashCountApi');
 const createAttachApi = require('./lib/attachApi');
+const createMergeApi = require('./lib/mergeApi');
+const aliasImport = require('./lib/aliasImport');
+const createExtPayApi = require('./lib/extPayApi');
 const JSZip = require('jszip');
 const { dataSummary } = require('./lib/store');
 const { looksLikeSqlite } = require('./lib/db');
@@ -167,8 +170,33 @@ function money(v, label) {
   return n;
 }
 
+// Danh mục gộp được (gộp mã): tên danh sách → loại mã
+const LOAI_OF_LIST = { projects: 'da', suppliers: 'ncc', materials: 'vt', costItems: 'hm', houses: 'nha' };
+function loaiOfList(list) { return Object.keys(LOAI_OF_LIST).filter((k) => store.db[k] === list).map((k) => LOAI_OF_LIST[k])[0] || ''; }
+
+// Tìm mã đang dùng trong danh mục (không phân biệt hoa thường). Mã cũ đã gộp → theo bí danh về mã đích.
+// Bản ghi "Đã gộp vào …" không bao giờ được trả về (không dùng để nhập mới).
 function findCode(list, ma) {
-  return list.find((x) => KT.keyOf(x.ma) === KT.keyOf(ma));
+  const loai = loaiOfList(list);
+  const t = loai ? KT.resolveAlias(store.db, loai, ma) : ma;
+  return list.find((x) => !x.gopVao && KT.keyOf(x.ma) === KT.keyOf(t));
+}
+
+// Mã đã gộp vào mã khác (còn bản ghi "Đã gộp" hoặc còn bí danh) → không cho tạo mới / đổi sang mã này
+function assertNotMerged(list, ma, label) {
+  const loai = loaiOfList(list);
+  if (!loai || !ma) return;
+  const k = KT.keyOf(ma);
+  if (list.some((x) => !x.gopVao && KT.keyOf(x.ma) === k)) return;
+  const dich = KT.resolveAlias(store.db, loai, ma);
+  const gone = list.find((x) => x.gopVao && KT.keyOf(x.ma) === k);
+  if (gone || dich !== String(ma).trim()) {
+    throw new HttpError(400, label + ' "' + ma + '" đã được gộp vào "' + (dich !== String(ma).trim() ? dich : gone.gopVao) + '": không dùng mã này để tạo mới, hãy dùng mã đích (hoặc hoàn tác lần gộp).');
+  }
+}
+// Bản ghi đã gộp chỉ để tra lịch sử / hoàn tác: không sửa, không xóa
+function assertActive(rec, label) {
+  if (rec && rec.gopVao) throw new HttpError(400, label + ' "' + rec.ma + '" đã được gộp vào "' + rec.gopVao + '": không sửa / xóa được. Muốn dùng lại thì hoàn tác lần gộp ở màn Gộp mã.');
 }
 
 function cleanEntry(body) {
@@ -188,7 +216,7 @@ function cleanEntry(body) {
   // Trạng thái: 'nhap' = Nháp (chưa ghi sổ, không tính vào tồn quỹ, báo cáo, công nợ). Đã ghi sổ thì không lưu trường này.
   if (body.trangThai === 'nhap') e.trangThai = 'nhap';
   if (e.maDuAn) {
-    const p = findCode(store.db.projects, e.maDuAn);
+    const p = findCode(store.db.projects, e.maDuAn); // mã dự án cũ đã gộp tự đổi sang mã đích
     if (!p) throw new HttpError(400, 'Mã dự án "' + e.maDuAn + '" chưa có trong danh mục');
     e.maDuAn = p.ma;
   }
@@ -245,7 +273,7 @@ function usage(field, ma) {
 
 // Bản sao lưu đưa vào phải đúng hình dạng: các danh sách là mảng đối tượng (tránh làm hỏng kho khi file lạ)
 function checkDbShape(d) {
-  ['projects', 'suppliers', 'entries', 'costGroups', 'costItems', 'materials', 'houses', 'costs', 'cashCounts', 'attachments'].forEach((k) => {
+  ['projects', 'suppliers', 'entries', 'costGroups', 'costItems', 'materials', 'houses', 'costs', 'cashCounts', 'attachments', 'extPayments'].forEach((k) => {
     if (d[k] === undefined) return;
     if (!Array.isArray(d[k]) || d[k].some((x) => x === null || typeof x !== 'object' || Array.isArray(x))) throw new HttpError(400, 'File sao lưu không hợp lệ: "' + k + '" phải là danh sách các bản ghi');
   });
@@ -255,7 +283,10 @@ function checkDbShape(d) {
 }
 
 const trace = createTrace({ store, HttpError, str, readJson, ok, sendJson, findCode });
-const costApi = createCostApi({ store, HttpError, str, money, readJson, ok, sendJson, findCode, byId, idList, own, trace });
+const costApi = createCostApi({ store, HttpError, str, money, readJson, ok, sendJson, findCode, byId, idList, own, trace, assertNotMerged, assertActive,
+  renameTargets: (loai, a, b) => mergeApi.renameTargets(loai, a, b) });
+const mergeApi = createMergeApi({ store, HttpError, str, readJson, ok, sendJson, trace, makeItem: (b) => costApi.makeItem(b) });
+const extPayApi = createExtPayApi({ store, HttpError, str, money, readJson, ok, findCode, byId, trace });
 const cashCountApi = createCashCountApi({ store, HttpError, str, money, readJson, ok, byId, trace });
 const attachApi = createAttachApi({ store, HttpError, str, sendJson, ok, readBody, trace, send });
 trace.hooks.afterPurge.push((item) => attachApi.retire(item.kind === 'attachments' ? item.records : (item.attachments || [])));
@@ -357,6 +388,7 @@ async function handleApi(req, res, url) {
     if (m === 'POST' && seg.length === 2) {
       const x = cfg.clean(await readJson(req));
       if (findCode(list, x.ma)) throw new HttpError(400, cfg.label + ' "' + x.ma + '" đã tồn tại');
+      assertNotMerged(list, x.ma, cfg.label);
       const rec = Object.assign({ id: store.newId() }, x);
       list.push(rec);
       trace.log(req, 'them', seg[1], rec, null, rec);
@@ -365,11 +397,13 @@ async function handleApi(req, res, url) {
     }
     if (seg.length === 3) {
       const rec = byId(list, seg[2]);
+      assertActive(rec, cfg.label);
       if (m === 'PUT') {
         const before = trace.clone(rec);
         const x = cfg.clean(await readJson(req));
         const dup = findCode(list, x.ma);
         if (dup && dup !== rec) throw new HttpError(400, cfg.label + ' "' + x.ma + '" đã tồn tại');
+        if (KT.keyOf(x.ma) !== KT.keyOf(rec.ma)) assertNotMerged(list, x.ma, cfg.label);
         const oldKey = KT.keyOf(rec.ma);
         let renamed = 0;
         if (oldKey !== KT.keyOf(x.ma) || rec.ma !== x.ma) {
@@ -377,6 +411,7 @@ async function handleApi(req, res, url) {
             if (KT.keyOf(e[cfg.field]) === oldKey) { e[cfg.field] = x.ma; e.updatedAt = now; renamed++; }
           });
           renamed += costApi.cascadeRename(seg[1], rec.ma, x.ma, now);
+          mergeApi.renameTargets(LOAI_OF_LIST[seg[1]], rec.ma, x.ma); // bí danh / mã đã gộp đang trỏ tới mã cũ
         }
         Object.assign(rec, x);
         trace.log(req, 'sua', seg[1], rec, before, rec, renamed ? { note: 'Đổi mã ' + before.ma + ' → ' + rec.ma + ', cập nhật ' + renamed + ' chỗ đang dùng' } : null);
@@ -456,9 +491,12 @@ async function handleApi(req, res, url) {
     } catch (e) {
       throw new HttpError(400, 'Không đọc được file Excel: ' + e.message);
     }
+    // Bí danh (gộp mã): mã cũ trong file → mã đích, có dòng báo cáo cho từng lần đổi (hiện cả ở bước xem trước)
+    const tenFile = String(url.searchParams.get('ten') || '').slice(0, 200);
+    const biDanh = isCost ? aliasImport.costBook(store.db, parsed, tenFile) : aliasImport.cashBook(store.db, parsed, tenFile);
     if (isCost) {
       if (url.searchParams.get('dryRun') === '1') {
-        return sendJson(res, 200, { ok: true, preview: costImporter.previewOf(parsed, store.db) });
+        return sendJson(res, 200, { ok: true, preview: Object.assign(costImporter.previewOf(parsed, store.db), { biDanh }) });
       }
       let map = {};
       try { map = JSON.parse(url.searchParams.get('map') || '{}'); } catch (e) { throw new HttpError(400, 'Bảng ghép mã công trình không hợp lệ'); }
@@ -468,22 +506,26 @@ async function handleApi(req, res, url) {
         map
       };
       const result = costImporter.applyCostImport(store, parsed, opts);
-      trace.log(req, 'nhap-excel', 'costs', '', null, null, { label: 'Nhập file Excel chi phí công trình (' + (opts.mode === 'replace' ? 'thay toàn bộ chi phí' : 'gộp thêm') + ')',
-        note: 'Thêm ' + JSON.stringify(result.added || {}) + (result.skipped ? ', bỏ qua ' + result.skipped + ' dòng trùng' : '') + '. Sau khi nhập: ' + dataSummary(store.db) });
+      result.biDanh = biDanh;
+      trace.log(req, 'nhap-excel', 'costs', '', null, null, { label: 'Nhập file Excel chi phí công trình' + (tenFile ? ' ' + tenFile : '') + ' (' + (opts.mode === 'replace' ? 'thay toàn bộ chi phí' : 'gộp thêm') + ')',
+        note: 'Thêm ' + JSON.stringify(result.added || {}) + (result.skipped ? ', bỏ qua ' + result.skipped + ' dòng trùng' : '') + (biDanh.length ? '; ' + biDanh.length + ' lần đổi mã cũ theo bí danh' : '') +
+          '. Sau khi nhập: ' + dataSummary(store.db) });
       store.flushAudit();
-      return ok(res, { kind: 'chi-phi', result, warnings: result.warnings.slice(0, 300) });
+      return ok(res, { kind: 'chi-phi', result, warnings: result.warnings.slice(0, 300), biDanh });
     }
     if (url.searchParams.get('dryRun') === '1') {
       const nLocked = KT.isLockedDate(store.db, '') || !store.db.locks.length ? 0 : parsed.entries.filter((e) => KT.isLockedDate(store.db, e.ngay)).length;
       const w = (nLocked ? ['Có ' + nLocked + ' dòng thuộc tháng đã khóa sổ: sẽ được bỏ qua khi nhập.'] : []).concat(parsed.warnings);
-      return sendJson(res, 200, { ok: true, preview: { stats: parsed.stats, warnings: w.slice(0, 200), settings: parsed.settings } });
+      return sendJson(res, 200, { ok: true, preview: { stats: parsed.stats, warnings: w.slice(0, 200), settings: parsed.settings, biDanh } });
     }
     const mode = url.searchParams.get('mode') === 'merge' ? 'merge' : 'replace';
     const result = importer.applyImport(store, parsed, mode);
-    trace.log(req, 'nhap-excel', 'entries', '', null, null, { label: 'Nhập file Excel sổ thu chi (' + (mode === 'replace' ? 'thay toàn bộ' : 'gộp thêm') + ')',
-      note: 'Thêm ' + JSON.stringify(result.added || {}) + (result.skipped ? ', bỏ qua ' + result.skipped + ' dòng trùng' : '') + '. Sau khi nhập: ' + dataSummary(store.db) });
+    result.biDanh = biDanh;
+    trace.log(req, 'nhap-excel', 'entries', '', null, null, { label: 'Nhập file Excel sổ thu chi' + (tenFile ? ' ' + tenFile : '') + ' (' + (mode === 'replace' ? 'thay toàn bộ' : 'gộp thêm') + ')',
+      note: 'Thêm ' + JSON.stringify(result.added || {}) + (result.skipped ? ', bỏ qua ' + result.skipped + ' dòng trùng' : '') + (biDanh.length ? '; ' + biDanh.length + ' lần đổi mã cũ theo bí danh' : '') +
+        '. Sau khi nhập: ' + dataSummary(store.db) });
     store.flushAudit();
-    return ok(res, { result, warnings: parsed.warnings.slice(0, 200) });
+    return ok(res, { result, warnings: parsed.warnings.slice(0, 200), biDanh });
   }
 
   /* ----- Sao lưu / khôi phục ----- */
@@ -599,7 +641,7 @@ async function handleApi(req, res, url) {
 
   /* ----- Xuất Excel ----- */
   if (seg[1] === 'export' && m === 'GET') {
-    const db = KT.postedDb(store.db); // báo cáo Excel không tính dòng Nháp
+    const db = KT.activeDb(KT.postedDb(store.db)); // báo cáo Excel không tính dòng Nháp; danh mục không có mã đã gộp
     const q = url.searchParams;
     const f = {
       from: KT.isISODate(q.get('from')) ? q.get('from') : '',
@@ -608,7 +650,8 @@ async function handleApi(req, res, url) {
       ncc: q.get('ncc') || '',
       loai: q.get('loai') || '',
       q: q.get('q') || '',
-      chiCoPhatSinh: q.get('chiCoPhatSinh') === '1'
+      chiCoPhatSinh: q.get('chiCoPhatSinh') === '1',
+      nccs: q.getAll('nccs').map((x) => String(x).trim()).filter(Boolean).slice(0, 500)
     };
     switch (seg[2]) {
       case 'full':
@@ -629,7 +672,7 @@ async function handleApi(req, res, url) {
         return attachment(res, await runExport('cost', 'buildCostLedgerWorkbook', [db, cf]), 'SoChiPhi' + rangeSuffix(f) + '.xlsx', XLSX_TYPE);
       }
       case 'cost-debt': {
-        return attachment(res, await runExport('cost', 'buildDebtWorkbook', [db, { ct: q.get('ct') || '', ncc: q.get('ncc') || '', to: f.to }]), 'CongNoNCC_' + stampNow() + '.xlsx', XLSX_TYPE);
+        return attachment(res, await runExport('cost', 'buildDebtWorkbook', [db, { ct: q.get('ct') || '', ncc: q.getAll('ncc').map((x) => String(x).trim()).filter(Boolean).slice(0, 500), tt: ['no', 'du', 'an'].includes(q.get('tt')) ? q.get('tt') : '', to: f.to }]), 'CongNoNCC_' + stampNow() + '.xlsx', XLSX_TYPE);
       }
       case 'cash-count': {
         const buf = await cashCountApi.buildWorkbook(store.db, q.get('id'));
@@ -647,6 +690,8 @@ async function handleApi(req, res, url) {
   if (await trace.handle(req, res, url)) return;
   if (await cashCountApi.handle(req, res, url)) return;
   if (await attachApi.handle(req, res, url)) return;
+  if (await mergeApi.handle(req, res, url)) return;
+  if (await extPayApi.handle(req, res, url)) return;
   if (await costApi.handle(req, res, url)) return;
 
   throw new HttpError(404, 'Không có chức năng ' + m + ' ' + p);
