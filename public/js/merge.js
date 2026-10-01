@@ -333,13 +333,15 @@ export const pickCell = (ma) => '<td class="no-print"><input type="checkbox" cla
 export function mergedRecords(loai) { return ((S.raw && S.raw[LOAI[loai].list]) || []).filter((x) => x.gopVao); }
 export const mergedChip = (x) => '<span class="chip chip-idle" title="Mã này đã gộp, không dùng để nhập mới">' + icon('merge') + 'Đã gộp vào ' + esc(x.gopVao) + '</span>';
 // Bấm Gộp mã: lấy các dòng đang tích làm mã nguồn
+// loai: mã loại hoặc hàm trả mã loại (màn hình có nhiều tab). Dòng tích đầu tiên = mã đích gợi ý, các dòng sau = mã nguồn.
 export function bindMergeUI(root, loai, onToggle) {
   root.addEventListener('click', (e) => {
     const a = e.target.closest('[data-act=merge]');
     if (!a) return;
+    const l = typeof loai === 'function' ? loai() : loai;
+    if (!l) return;
     const picks = Array.from(root.querySelectorAll('[data-pick]:checked')).map((c) => c.dataset.pick);
-    openMergeDialog(loai, { nguon: picks.length > 1 ? picks.slice(1) : picks, dich: picks.length > 1 ? picks[0] : '' });
+    openMergeDialog(l, { nguon: picks.length > 1 ? picks.slice(1) : picks, dich: picks.length > 1 ? picks[0] : '' });
   });
-  const t = root.querySelector('[data-merged-toggle]');
-  if (t && onToggle) t.addEventListener('change', () => onToggle(t.checked));
+  root.addEventListener('change', (e) => { if (e.target.matches('[data-merged-toggle]') && onToggle) onToggle(e.target.checked); });
 }

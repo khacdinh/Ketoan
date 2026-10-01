@@ -121,8 +121,9 @@ function checkInvariant(before, after, dims, nguon, dich) {
     const keys = Object.keys(before[d]);
     const srcKeys = keys.filter((k) => nguon.some((n) => mapKey(k, n)));
     const dstKeys = keys.filter((k) => mapKey(k, dich, true));
-    const want = sumKeys(before[d], srcKeys) + sumKeys(before[d], dstKeys);
-    const got = sumKeys(after[d], Object.keys(after[d]).filter((k) => mapKey(k, dich, true)));
+    const r4 = (x) => Math.round(x * 10000) / 10000; // số lượng có số lẻ: so tới 4 chữ số (tiền là số nguyên nên không ảnh hưởng)
+    const want = r4(sumKeys(before[d], srcKeys) + sumKeys(before[d], dstKeys));
+    const got = r4(sumKeys(after[d], Object.keys(after[d]).filter((k) => mapKey(k, dich, true))));
     assert.equal(got, want, d + ': tổng mã đích = đích cũ + các nguồn (' + got + ' vs ' + want + ')');
     Object.keys(after[d]).filter((k) => nguon.some((n) => mapKey(k, n))).forEach((k) => assert.equal(after[d][k] || 0, 0, d + ': mã nguồn ' + k + ' không còn tiền'));
     keys.filter((k) => !srcKeys.includes(k) && !dstKeys.includes(k)).forEach((k) => assert.equal(after[d][k], before[d][k], d + ': mã khác ' + k + ' không đổi'));
@@ -402,5 +403,61 @@ test('M7 hiệu năng: 20.000 dòng chi phí + 3.000 dòng thu chi — xem trư�
     assert.ok(msUndo < 3000, 'hoàn tác < 3 giây');
     assert.ok(msPv2 + msGop2 < 3000, 'xem trước + gộp vật tư < 3 giây');
     void pv2;
+  } finally { await srv.stop(); }
+});
+
+/* ============================== VẬT TƯ ============================== */
+
+test('M8 gộp vật tư: khác ĐVT bị chặn (chỉ gộp khi xác nhận, ghi lại xác nhận); mã khoản XX-… / CHUNG với vật tư thường bị chặn; bất biến tiền + số lượng; số lần mua, tổng đã mua, lịch sử giá của mã đích tính lại đúng; hạng mục hay dùng; hoàn tác', async () => {
+  const srv = await startServer({ seed: mau({ seed: 31 }) });
+  try {
+    const start = readStored(srv.dataDir);
+    // 1. khác ĐVT ("" và "XE")
+    let r = await preview(srv, { loai: 'vt', nguon: ['VL-XERAC6B'], dich: 'VL-XERAC6' });
+    assert.equal(r.status, 200);
+    assert.ok(r.json.preview.chan.some((c) => c.can === 'dvt'), 'cảnh báo chặn khác ĐVT');
+    r = await merge(srv, { loai: 'vt', nguon: ['VL-XERAC6B'], dich: 'VL-XERAC6' });
+    assert.equal(r.status, 400); assert.match(r.json.error, /ĐVT khác nhau/);
+    const b0 = soLieu(readStored(srv.dataDir));
+    const st0 = KT.materialStats(readStored(srv.dataDir));
+    r = await merge(srv, { loai: 'vt', nguon: ['VL-XERAC6B'], dich: 'VL-XERAC6', xacNhan: { dvt: true } });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.ok(r.json.merge.xacNhan.some((x) => /ĐVT khác nhau/.test(x)), 'lịch sử ghi lại việc xác nhận khác ĐVT');
+    let db = readStored(srv.dataDir);
+    const a0 = soLieu(db);
+    checkInvariant(b0, a0, [['vt', exactKey], ['vtSL', exactKey]], ['VL-XERAC6B'], 'VL-XERAC6');
+    noOrphans(db, 'vt', ['VL-XERAC6B'], 'VL-XERAC6');
+    // thống kê mua của mã đích = cộng dồn; hạng mục hay dùng và ĐVT: đích trống → mặc định lấy của nguồn
+    const st1 = KT.materialStats(db);
+    const s = (st, ma) => st.find((x) => x.ma === ma) || { soLan: 0, tongTien: 0, tongSL: 0 };
+    assert.equal(s(st1, 'VL-XERAC6').soLan, s(st0, 'VL-XERAC6').soLan + s(st0, 'VL-XERAC6B').soLan);
+    assert.equal(s(st1, 'VL-XERAC6').tongTien, s(st0, 'VL-XERAC6').tongTien + s(st0, 'VL-XERAC6B').tongTien);
+    assert.ok(!st1.some((x) => x.ma === 'VL-XERAC6B'));
+    assert.equal(KT.priceHistory(db, 'VL-XERAC6').length, s(st1, 'VL-XERAC6').soLan, 'lịch sử giá đủ mọi lần mua');
+    const d = db.materials.find((m) => m.ma === 'VL-XERAC6');
+    assert.equal(d.maHM, 'HM01'); assert.equal(d.dvt, 'XE', 'ĐVT đích trống → mặc định lấy của nguồn');
+    // 2. mã khoản với vật tư thường
+    r = await preview(srv, { loai: 'vt', nguon: ['XX-KHAC'], dich: 'CAT' });
+    assert.ok(r.json.preview.chan.some((c) => c.can === 'khoan'));
+    r = await merge(srv, { loai: 'vt', nguon: ['XX-KHAC'], dich: 'CAT' });
+    assert.equal(r.status, 400); assert.match(r.json.error, /mã khoản/);
+    // 3. cùng ĐVT, khác cách viết tên: chỉ cảnh báo; gộp được; giữ tên của nguồn nếu chọn
+    r = await preview(srv, { loai: 'vt', nguon: ['BT-BOMDUN2'], dich: 'BT-BOMDUN' });
+    assert.ok(r.json.preview.canhBao.some((x) => /Tên vật tư khác/.test(x)));
+    assert.ok(!r.json.preview.chan.length);
+    r = await merge(srv, { loai: 'vt', nguon: ['BT-BOMDUN2'], dich: 'BT-BOMDUN', giuLai: { ten: 'BT-BOMDUN2' } });
+    assert.equal(r.status, 200);
+    db = readStored(srv.dataDir);
+    assert.equal(db.materials.find((m) => m.ma === 'BT-BOMDUN').ten, 'BÊ tông bơm/đùn');
+    // nhập tay mã vật tư cũ → mã đích
+    r = await srv.ok('POST', '/api/cost-slips', { header: { ngay: '2026-09-20', maCT: 'CT3', maNCC: 'NCC_HoaLan', maHM: 'HM01' }, lines: [{ maVT: 'bt-bomdun2', soLuong: 1, donGia: 1000 }] });
+    assert.equal(r.db.costs.find((c) => c.ngay === '2026-09-20').maVT, 'BT-BOMDUN');
+    // hoàn tác cả hai (ngược thứ tự) → như ban đầu (bỏ dòng vừa thêm)
+    const added = r.db.costs.find((c) => c.ngay === '2026-09-20');
+    await srv.ok('POST', '/api/costs/delete', { ids: [added.id] });
+    const log = (await srv.ok('GET', '/api/merge/log')).items;
+    for (const g of log) { const u = await srv.call('POST', '/api/merge/' + g.id + '/undo'); assert.equal(u.status, 200, JSON.stringify(u.json)); }
+    const end = readStored(srv.dataDir);
+    sameData(Object.assign({}, start, { trash: end.trash }), end, 'hoàn tác gộp vật tư:');
   } finally { await srv.stop(); }
 });
