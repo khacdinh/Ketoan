@@ -12,11 +12,17 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-node -e "process.exit(Number(process.versions.node.split('.')[0])<18?1:0)" >nul 2>nul
+rem Du lieu luu bang SQLite co san trong Node.js: can Node 24.16.0 tro len (dong 24) hoac 26.1.0 tro len.
+rem Ban cu hon co loi cat mat chu sau ky tu NUL khi ghi vao SQLite (dong 25 va 26.0 cung khong dung duoc).
+for /f "delims=" %%v in ('node -v') do set NODEV=%%v
+node -e "process.exit(require('./lib/node-version').nodeOk(process.versions.node)?0:1)" >nul 2>nul
 if errorlevel 1 (
   echo.
-  echo   Node.js tren may qua cu - phan mem can Node.js 18 tro len.
-  echo   Hay cai ban LTS moi tai https://nodejs.org roi bam dup lai file nay.
+  echo   Node.js tren may la ban %NODEV% - khong dung duoc voi phan mem nay.
+  echo   Phan mem can Node.js 24.16.0 tro len ^(ban LTS dong 24^) hoac 26.1.0 tro len.
+  echo   Cach sua: vao https://nodejs.org , tai ban "LTS" ^(Windows Installer .msi^),
+  echo   cai dat ^(bam Next den het^), roi bam dup lai file KhoiDong.bat nay.
+  echo   Du lieu cua ban trong thu muc data khong bi anh huong.
   echo.
   start "" "https://nodejs.org"
   pause
