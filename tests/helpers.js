@@ -109,6 +109,9 @@ function readJsonFile(f) { return JSON.parse(fs.readFileSync(f, 'utf8').replace(
 function readStored(dir) {
   const { readDbFile, SqliteDb } = require(path.join(ROOT, 'lib', 'db'));
   const file = path.join(dir, 'ketoan.db');
+  // Sau kill -9 có thể còn file nhật ký giao dịch (-journal): mở đọc-ghi một lần để SQLite tự hoàn tác phần dở dang, đúng như
+  // phần mềm làm khi mở lại (kết nối chỉ-đọc không được phép hoàn tác)
+  if (fs.existsSync(file + '-journal')) { const w = new SqliteDb(file); try { w.version; w.conn.prepare('SELECT count(*) AS n FROM "meta"').get(); } finally { w.close(); } }
   const out = readDbFile(file);
   const d = new SqliteDb(file, { readOnly: true });
   try { out.schema = d.version; } finally { d.close(); }

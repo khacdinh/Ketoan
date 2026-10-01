@@ -12,7 +12,8 @@ const { SqliteDb } = require('../lib/db');
 
 const V2 = path.join(__dirname, 'fixtures', 'ketoan-v2-hien-tai.json');
 const quiet = (fn) => { const w = console.warn; const l = console.log; console.warn = () => {}; console.log = () => {}; try { return fn(); } finally { console.warn = w; console.log = l; } };
-const integrity = (dir) => { const d = new SqliteDb(path.join(dir, 'ketoan.db'), { readOnly: true }); try { return d.problem(); } finally { d.close(); } };
+// mở đọc-ghi như phần mềm khi khởi động lại (tự hoàn tác giao dịch dở dang nếu còn file -journal), rồi kiểm tra toàn vẹn
+const integrity = (dir) => { const d = new SqliteDb(path.join(dir, 'ketoan.db')); try { return d.problem(); } finally { d.close(); } };
 
 // Dữ liệu đã chuyển sang SQLite sẵn (ketoan.db), không còn ketoan.json
 function sqliteDir(seed) {
@@ -21,9 +22,10 @@ function sqliteDir(seed) {
   return dir;
 }
 
-test('S2.1 kill -9 lặp lại giữa lúc ghi dòng sổ và phiếu nhập 30 dòng: file luôn nguyên vẹn, không mất thao tác đã xác nhận, không có phiếu nửa vời', { timeout: 300000 }, async () => {
+test('S2.1 kill -9 lặp lại giữa lúc ghi dòng sổ và phiếu nhập 30 dòng: file luôn nguyên vẹn, không mất thao tác đã xác nhận, không có phiếu nửa vời', { timeout: 300000 }, async (t) => {
   const dir = sqliteDir();
   const acked = { entries: new Set(), slips: new Map() };
+  let hot = 0; // số lần bị giết đúng lúc đang giữa giao dịch (còn file -journal)
   for (let round = 0; round < 10; round++) {
     const srv = await startServer({ data: dir });
     const db0 = await srv.db();
@@ -51,6 +53,7 @@ test('S2.1 kill -9 lặp lại giữa lúc ghi dòng sổ và phiếu nhập 30 
     srv.child.kill('SIGKILL');
     await new Promise((r) => srv.child.once('exit', r));
     await Promise.all([w1, w2]);
+    if (fs.existsSync(path.join(dir, 'ketoan.db-journal'))) hot++;
     assert.equal(integrity(dir), null, 'vòng ' + round + ': file .db phải nguyên vẹn');
     const disk = readStored(dir);
     const ids = new Set(disk.entries.map((e) => e.id));
@@ -66,6 +69,7 @@ test('S2.1 kill -9 lặp lại giữa lúc ghi dòng sổ và phiếu nhập 30 
     assert.deepEqual(orphanErrors(db), []);
     assert.equal(new Set(db.entries.map((e) => e.id)).size, db.entries.length);
     assert.equal(new Set(db.costs.map((e) => e.id)).size, db.costs.length);
+    t.diagnostic('bị giết giữa giao dịch ' + hot + '/10 vòng; đã xác nhận ' + acked.entries.size + ' dòng sổ, ' + acked.slips.size + ' phiếu 30 dòng');
     assert.ok(acked.entries.size > 20 && acked.slips.size > 5, 'đã ghi đủ nhiều: ' + acked.entries.size + ' dòng, ' + acked.slips.size + ' phiếu');
   } finally { await srv.stop(); }
 });
