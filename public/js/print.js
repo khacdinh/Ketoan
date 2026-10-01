@@ -6,7 +6,6 @@ const KT = window.KT;
 function part(v, s, lien) {
   const thu = v.loai === 'thu';
   const signs = [['Giám đốc', s.giamDoc]];
-  if (s.hienKeToanTruong) signs.push(['Kế toán trưởng', s.keToanTruong]);
   signs.push([thu ? 'Người nộp tiền' : 'Người nhận tiền', '']);
   signs.push(['Thủ quỹ', s.thuQuy]);
   return '<div class="vc">' +
@@ -61,7 +60,8 @@ export function printVoucher(v, settings) {
 export function printView(title, subtitle, settings) {
   const head = $('#print-head');
   head.innerHTML = '<div class="ph-org"><b>' + esc(settings.tenDonVi || '') + '</b><br>' + esc(settings.diaChi || '') + '</div>' +
-    '<h1>' + esc(title) + '</h1>' + (subtitle ? '<div class="ph-sub">' + esc(subtitle) + '</div>' : '');
+    '<h1>' + esc(title) + '</h1>' + (subtitle ? '<div class="ph-sub">' + esc(subtitle) + '</div>' : '') +
+    '<div class="ph-date">Ngày in: ' + esc(KT.fmtDate(KT.todayISO())) + ' ' + String(new Date().getHours()).padStart(2, '0') + ':' + String(new Date().getMinutes()).padStart(2, '0') + '</div>';
   document.body.classList.add('printing-view');
   setTimeout(() => window.print(), 50);
 }

@@ -4,8 +4,12 @@
   "description": "Phần mềm kế toán thu chi, quản lý dự án, nhà cung cấp và in phiếu thu/chi",
   "main": "server.js",
   "private": true,
+  "engines": {
+    "node": ">=24.16.0 <25 || >=26.1.0"
+  },
   "scripts": {
     "start": "node server.js",
+    "test": "node tests/run.js",
     "build:assets": "node scripts/build-assets.js",
     "build:css": "tailwindcss -i src/styles/app.css -o public/css/app.css --minify",
     "watch:css": "tailwindcss -i src/styles/app.css -o public/css/app.css --watch",
@@ -18,6 +22,8 @@
     "@fontsource-variable/archivo": "^5.3.0",
     "@phosphor-icons/web": "^2.1.2",
     "@tailwindcss/cli": "^4.3.3",
+    "axe-core": "^4.10.2",
+    "playwright": "^1.56.1",
     "tailwindcss": "^4.3.3"
   }
 }

@@ -1,6 +1,6 @@
 /* Khung ứng dụng: điều hướng, thanh trên cùng, tải dữ liệu. */
 import { $, esc, api, onDatabase, showError, duo, attachMenu, download, hasOpenModal } from './ui.js';
-import { S, setDb, onChange, vouchers } from './state.js';
+import { S, setDb, onChange, vouchers, anomalies } from './state.js';
 import { openEntryForm } from './forms.js';
 import { renderDashboard } from './views/dashboard.js';
 import { renderLedger } from './views/ledger.js';
@@ -11,6 +11,7 @@ import { renderCostEntry } from './views/cost-entry.js';
 import { renderCostLedger } from './views/cost-ledger.js';
 import { renderCostDashboard, renderCostDetail, renderDebt, renderPrices } from './views/cost-reports.js';
 import { renderCostCatalogs } from './views/cost-catalogs.js';
+import { renderControl } from './views/control.js';
 
 const KT = window.KT;
 
@@ -29,7 +30,9 @@ const ROUTES = {
   'cp-chi-tiet': { title: 'Chi tiết chi phí theo nhóm', sub: 'Nhóm, hạng mục, từng dòng; bung hoặc thu gọn 3 cấp', icon: 'tree', render: renderCostDetail },
   'cp-cong-no': { title: 'Công nợ nhà cung cấp', sub: 'Chi phí phát sinh trừ số đã trả trong sổ thu chi', icon: 'scales', render: renderDebt },
   'cp-gia': { title: 'Giá vật tư', sub: 'Lịch sử đơn giá theo vật tư và nhà cung cấp', icon: 'tag', render: renderPrices },
-  'cp-danh-muc': { title: 'Danh mục chi phí', sub: 'Nhóm chi phí, hạng mục, vật tư, nhà và khu', icon: 'squares', render: renderCostCatalogs }
+  'cp-danh-muc': { title: 'Danh mục chi phí', sub: 'Nhóm chi phí, hạng mục, vật tư, nhà và khu', icon: 'squares', render: renderCostCatalogs },
+  // Kiểm soát sổ sách (nhóm độ chính xác và truy vết)
+  'kiem-soat': { title: 'Kiểm soát sổ sách', sub: 'Nhật ký thay đổi, thùng rác và các việc cần xử lý để số liệu luôn đúng', icon: 'shield', render: renderControl }
 };
 const NAV_LABEL = {
   'tong-quan': 'Tổng quan',
@@ -45,10 +48,11 @@ const NAV_LABEL = {
   'cp-chi-tiet': 'Chi tiết theo nhóm',
   'cp-cong-no': 'Công nợ NCC',
   'cp-gia': 'Giá vật tư',
-  'cp-danh-muc': 'Danh mục chi phí'
+  'cp-danh-muc': 'Danh mục chi phí',
+  'kiem-soat': 'Kiểm soát'
 };
 const NAV = [['tong-quan', 'so-thu-chi', 'phieu'], ['du-an', 'ncc', 'tong-hop-ncc'],
-  ['cp-tong-hop', 'cp-nhap', 'cp-so', 'cp-chi-tiet', 'cp-cong-no', 'cp-gia', 'cp-danh-muc'], ['cai-dat']];
+  ['cp-tong-hop', 'cp-nhap', 'cp-so', 'cp-chi-tiet', 'cp-cong-no', 'cp-gia', 'cp-danh-muc'], ['kiem-soat', 'cai-dat']];
 const NAV_HEAD = { 2: 'Chi phí công trình' };
 
 function current() {
@@ -58,11 +62,12 @@ function current() {
 
 function renderShell() {
   $('#nav').innerHTML = NAV.map((group, gi) =>
-    (gi ? '<div class="mx-5 my-2.5 h-px bg-white/10 max-lg:mx-3" aria-hidden="true"></div>' : '') +
+    (gi ? '<div class="nav-sep" aria-hidden="true"></div>' : '') +
     (NAV_HEAD[gi] ? '<div class="nav-head max-lg:sr-only">' + esc(NAV_HEAD[gi]) + '</div>' : '') +
     group.map((k) =>
       '<a href="#/' + k + '" class="nav-item max-lg:ml-2 max-lg:justify-center max-lg:px-0" data-route="' + k + '" title="' + esc(ROUTES[k].title) + '">' +
-      duo(ROUTES[k].icon) + '<span class="max-lg:sr-only">' + esc(NAV_LABEL[k]) + '</span></a>').join('')
+      duo(ROUTES[k].icon) + '<span class="max-lg:sr-only">' + esc(NAV_LABEL[k]) + '</span>' +
+      (k === 'kiem-soat' ? '<span class="nav-badge" id="nav-badge" hidden></span>' : '') + '</a>').join('')
   ).join('');
 
   attachMenu($('#btn-export'), () => {
@@ -108,20 +113,55 @@ function render() {
   window.scrollTo(0, lastRoute === k ? keepScroll : 0);
   lastRoute = k;
   updateFooter();
+  scheduleBadge();
+}
+
+// Số cảnh báo chưa xử lý trên menu: tính sau khi đã vẽ xong màn hình để không làm chậm thao tác
+let badgeTimer = null;
+function scheduleBadge() {
+  clearTimeout(badgeTimer);
+  badgeTimer = setTimeout(() => {
+    const b = $('#nav-badge');
+    if (!b || !S.all) return;
+    const n = anomalies().open;
+    b.hidden = !n;
+    b.textContent = n > 99 ? '99+' : String(n);
+    b.title = n + ' việc cần xử lý';
+    b.closest('a').setAttribute('aria-label', 'Kiểm soát sổ sách' + (n ? ', ' + n + ' việc cần xử lý' : ''));
+  }, 60);
 }
 
 function updateFooter() {
   const s = S.db.settings;
   $('#org-name').textContent = s.tenDonVi || 'Chưa đặt tên đơn vị';
   const ton = S.ledger.length ? S.ledger[S.ledger.length - 1].ton : 0;
-  $('#side-fund').innerHTML = '<div class="text-[12px] text-[#DDE9E0]/65">Tồn quỹ hiện tại</div>' +
+  $('#side-fund').innerHTML = '<div class="text-[12px] text-cover-ink-2">Tồn quỹ hiện tại</div>' +
     '<div class="mt-0.5 text-[20px] font-semibold tabular-nums font-stretch-[110%] ' + (ton < 0 ? 'text-[#FFB4AB]' : 'text-white') + '">' +
-    KT.fmtMoney(ton) + '<span class="ml-1 text-[12px] font-medium text-[#DDE9E0]/65">đ</span></div>';
+    KT.fmtMoney(ton) + '<span class="ml-1 text-[12px] font-medium text-cover-ink-2">đ</span></div>';
   const t = S.savedAt;
   $('#save-state').textContent = t ? 'Đã lưu lúc ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') + ', ' + S.db.entries.length + ' dòng sổ' : '';
 }
 
 window.addEventListener('hashchange', render);
+
+// Khung bảng cuộn được: cho phép dùng bàn phím (Tab vào rồi ← →) khi bên trong không có ô/nút nào nhận tiêu điểm
+function enhanceScrollers() {
+  document.querySelectorAll('#view :is(.overflow-x-auto, .overflow-auto, .table-scroll):not([data-sx])').forEach((el) => {
+    if (!el.querySelector(':scope > table')) return;
+    el.dataset.sx = '1';
+    if (el.querySelector('a[href], button, input, select, textarea, [tabindex]')) return;
+    el.tabIndex = 0;
+    el.setAttribute('role', 'region');
+    const h = el.closest('section') && el.closest('section').querySelector('h2, h3');
+    el.setAttribute('aria-label', (h ? h.textContent + ': ' : '') + 'bảng, dùng phím mũi tên để cuộn');
+  });
+}
+let sxPending = false;
+new MutationObserver(() => {
+  if (sxPending) return;
+  sxPending = true;
+  requestAnimationFrame(() => { sxPending = false; enhanceScrollers(); });
+}).observe(document.getElementById('view').parentNode, { childList: true, subtree: true });
 
 document.addEventListener('keydown', (e) => {
   if (hasOpenModal()) return;

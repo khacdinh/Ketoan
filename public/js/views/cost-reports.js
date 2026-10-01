@@ -1,12 +1,14 @@
 /* Báo cáo chi phí công trình: bảng điều khiển (TONGHOP), chi tiết theo nhóm (CHI_TIET_THEO_NHOM),
  * công nợ NCC (CONGNO_NCC), thống kê giá vật tư. */
-import { $, $$, esc, money, fdate, fmtShort, icon, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, debounce, highlight, LS } from '../ui.js';
+import { $, $$, esc, money, fdate, fmtShort, icon, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, debounce, highlight, LS, dateField } from '../ui.js';
 import { S, saveFilter, ctOptions, selectOptions, projectByCode, supplierByCode, materialByCode, itemByCode } from '../state.js';
 import { printView } from '../print.js';
 import { openEntryForm } from '../forms.js';
 
 const KT = window.KT;
-const pct = (x) => (x * 100).toFixed(1).replace('.', ',') + '%';
+const HEAVY_ROWS = 1500;
+// tỷ lệ rất nhỏ nhưng khác 0 thì ghi "< 0,1%" (tránh hiện 0,0% cho khoản có phát sinh)
+const pct = (x) => (x > 0 && x < 0.0005 ? '< 0,1%' : (x * 100).toFixed(1).replace('.', ',') + '%');
 
 function ctLabel(ct) {
   const p = ct ? projectByCode(ct) : null;
@@ -65,9 +67,9 @@ export function renderCostDashboard(root) {
     tile('Đã trả nhà cung cấp', money(debt.total.daTra), 'Từ sổ thu chi, theo mã NCC' + (f.ct ? ' và công trình' : ''), '', { debt: true }) +
     tile('Còn nợ nhà cung cấp', money(debt.total.conNo), debt.total.ungDu ? 'Ứng dư ' + money(debt.total.ungDu) + ' đ' : '', debt.total.conNo ? 'text-alert' : '', { debt: true }) +
     '</div>' +
-    '<div class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">' +
+    '<div class="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">' +
     '<section class="sheet overflow-hidden" aria-labelledby="h-nhom"><div class="sheet-head"><div><h3 id="h-nhom" class="sheet-title">Chi phí theo nhóm và hạng mục</h3>' +
-    '<p class="sheet-note">Bấm dòng nhóm để bung hoặc thu gọn hạng mục. Bấm hạng mục để xem chi tiết.</p></div>' +
+    '<p class="sheet-note screen-hint">Bấm dòng nhóm để bung hoặc thu gọn hạng mục. Bấm hạng mục để xem chi tiết.</p></div>' +
     '<div class="no-print flex gap-1"><button type="button" class="btn btn-ghost btn-sm" data-act="expand">Bung hết</button><button type="button" class="btn btn-ghost btn-sm" data-act="collapse">Thu gọn</button></div></div>' +
     '<div class="overflow-x-auto"><table class="ledger tree"><thead><tr><th>Nhóm lớn / hạng mục</th><th class="num money w-[36%]">Tổng chi</th><th class="num">Tỷ trọng</th><th class="num">Số dòng</th></tr></thead><tbody>' +
     groupRowsHtml(s, openState) + '</tbody>' +
@@ -118,7 +120,10 @@ export function renderCostDashboard(root) {
       const st = LS.get('cp.th.open', {});
       st[g.dataset.group] = !(st[g.dataset.group] !== false);
       LS.set('cp.th.open', st);
+      const refocus = !!e.target.closest('.tree-toggle');
       rerender();
+      // vẽ lại cả màn hình: đưa tiêu điểm bàn phím về đúng nút nhóm vừa bấm
+      if (refocus) { const b = document.querySelector('#view tr[data-group="' + CSS.escape(g.dataset.group) + '"] .tree-toggle'); if (b) b.focus(); }
       return;
     }
     const it = e.target.closest('tr[data-item]');
@@ -132,7 +137,7 @@ export function renderCostDashboard(root) {
     }
   });
   root.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter') return;
+    if (e.key !== 'Enter' || e.target.closest('button, a')) return;
     const tr = e.target.closest('tr[data-group], tr[data-item], tr[data-ct], [data-tile]');
     if (tr) tr.click();
   });
@@ -155,8 +160,8 @@ function groupRowsHtml(s, openState) {
   s.groups.forEach((g) => {
     if (!g.total && !g.inCatalog) return;
     const open = openState[g.ma] !== false && g.total > 0;
-    html += '<tr class="grp clickable" data-group="' + esc(g.ma) + '" tabindex="0" aria-expanded="' + open + '">' +
-      '<td><span class="caret' + (open ? ' open' : '') + '">' + icon('caretRight') + '</span>' + esc(g.ten) + '</td>' +
+    html += '<tr class="grp clickable" data-group="' + esc(g.ma) + '">' +
+      '<td><button type="button" class="tree-toggle" aria-expanded="' + open + '"><span class="caret' + (open ? ' open' : '') + '">' + icon('caretRight') + '</span>' + esc(g.ten) + '</button></td>' +
       '<td class="num money"><div class="font-semibold">' + money(g.total) + '</div><div class="mbar" aria-hidden="true"><span class="mbar-fill" style="width:' + (g.total / max * 100).toFixed(2) + '%"></span></div></td>' +
       '<td class="num">' + (s.total ? pct(g.total / s.total) : '') + '</td>' +
       '<td class="num">' + (g.soDong || '') + '</td></tr>';
@@ -174,9 +179,9 @@ function groupRowsHtml(s, openState) {
 
 function monthTable(byMonth) {
   if (!byMonth.length) return '';
-  return '<table class="ledger ledger-compact mt-2"><thead><tr><th>Tháng</th><th class="num money">Trong tháng</th><th class="num money">Lũy kế</th></tr></thead><tbody>' +
+  return '<div class="mt-2 overflow-x-auto"><table class="ledger ledger-compact"><thead><tr><th>Tháng</th><th class="num money">Trong tháng</th><th class="num money">Lũy kế</th></tr></thead><tbody>' +
     byMonth.map((m) => '<tr><td>' + (m.thang ? m.thang.slice(5) + '/' + m.thang.slice(0, 4) : 'Chưa có ngày') + '</td><td class="num money">' + money(m.total) + '</td><td class="num money text-ink-2">' + money(m.luyKe) + '</td></tr>').join('') +
-    '</tbody></table>';
+    '</tbody></table></div>';
 }
 
 function drawMonthChart(el, byMonth) {
@@ -252,18 +257,21 @@ export function renderCostDetail(root) {
     const byItem = new Map();
     res.rows.forEach((r) => { const k = KT.keyOf(r.maHM); if (!byItem.has(k)) byItem.set(k, []); byItem.get(k).push(r); });
     const level = Number(f.level) || 3;
-    let html = '';
+    // Nhiều dòng thì không bung sẵn từng dòng chi tiết (hàng chục nghìn dòng DOM vẽ rất chậm): bấm từng hạng mục để xem
+    const heavy = level >= 3 && res.rows.length > HEAVY_ROWS;
+    let html = heavy ? '<tr><td colspan="9" class="text-[12.5px] text-ink-3">Có ' + res.rows.length + ' dòng chi phí nên các hạng mục đang thu gọn. Bấm vào một hạng mục để xem từng dòng, hoặc ' +
+      '<button type="button" class="btn btn-ghost btn-sm no-print" data-act="open-all">mở tất cả (chậm)</button></td></tr>' : '';
     s.groups.forEach((g) => {
       if (!g.total && !g.soDong) return;
       const gOpen = level >= 2 && open['g:' + g.ma] !== false;
-      html += '<tr class="grp clickable" data-toggle="g:' + esc(g.ma) + '" tabindex="0"><td colspan="8"><span class="caret' + (gOpen ? ' open' : '') + '">' + icon('caretRight') + '</span>' + esc(g.ten) +
+      html += '<tr class="grp clickable" data-toggle="g:' + esc(g.ma) + '"><td colspan="8"><button type="button" class="tree-toggle" aria-expanded="' + gOpen + '"><span class="caret' + (gOpen ? ' open' : '') + '">' + icon('caretRight') + '</span>' + esc(g.ten) + '</button>' +
         ' <span class="font-normal text-ink-3">· ' + g.soDong + ' dòng</span></td><td class="num money"><span class="dbl">' + money(g.total) + '</span></td></tr>';
       if (!gOpen) return;
       g.items.forEach((it) => {
         const rows = byItem.get(KT.keyOf(it.ma));
         if (!rows) return;
-        const iOpen = level >= 3 && open['i:' + it.ma] !== false;
-        html += '<tr class="itm-sum clickable" data-toggle="i:' + esc(it.ma) + '" tabindex="0" id="hm-' + esc(it.ma) + '"><td colspan="8" class="pl-8"><span class="caret' + (iOpen ? ' open' : '') + '">' + icon('caretRight') + '</span>Cộng ' + esc(it.ten) +
+        const iOpen = level >= 3 && (heavy ? open['i:' + it.ma] === true : open['i:' + it.ma] !== false);
+        html += '<tr class="itm-sum clickable" data-toggle="i:' + esc(it.ma) + '" id="hm-' + esc(it.ma) + '"><td colspan="8" class="pl-8"><button type="button" class="tree-toggle" aria-expanded="' + iOpen + '"><span class="caret' + (iOpen ? ' open' : '') + '">' + icon('caretRight') + '</span>Cộng ' + esc(it.ten) + '</button>' +
           ' <span class="font-normal text-ink-3">· ' + rows.length + ' dòng</span></td><td class="num money font-semibold">' + money(it.total) + '</td></tr>';
         if (!iOpen) return;
         html += rows.map((r) => '<tr class="dtl"><td class="whitespace-nowrap pl-14">' + fdate(r.ngay) + '</td>' +
@@ -292,6 +300,7 @@ export function renderCostDetail(root) {
   root.addEventListener('click', (e) => {
     const a = e.target.closest('[data-act]');
     if (a) {
+      if (a.dataset.act === 'open-all') { S.db.costItems.forEach((it) => { open['i:' + it.ma] = true; open['g:' + it.maNhom] = true; }); LS.set('cp.ct.open', open); draw(); }
       if (a.dataset.act === 'export') download('/api/export/costs' + (f.ct ? '?ct=' + encodeURIComponent(f.ct) : ''));
       if (a.dataset.act === 'print') printView('CHI TIẾT CHI PHÍ THEO NHÓM', ctLabel(f.ct) + '. ' + KT.describeRange(f.from, f.to), S.db.settings);
       return;
@@ -302,11 +311,9 @@ export function renderCostDetail(root) {
     const isOpen = !!t.querySelector('.caret.open');
     open[k] = !isOpen;
     LS.set('cp.ct.open', open);
+    const refocus = !!e.target.closest('.tree-toggle');
     draw();
-  });
-  root.addEventListener('keydown', (e) => {
-    const t = e.target.closest('[data-toggle]');
-    if (t && e.key === 'Enter') t.click();
+    if (refocus) { const b = root.querySelector('tr[data-toggle="' + CSS.escape(k) + '"] .tree-toggle'); if (b) b.focus(); }
   });
   draw();
 }
@@ -330,7 +337,7 @@ export function renderDebt(root) {
     '<div class="print-only" id="print-head"></div>' +
     '<div class="no-print flex flex-wrap items-center gap-2">' +
     '<select id="cn-ct" class="input w-auto max-w-[300px]" aria-label="Công trình">' + ctOptions(f.ct) + '</select>' +
-    '<label class="flex items-center gap-2 text-[13.5px] text-ink-2">Đến ngày <input type="date" id="cn-to" class="input w-auto" value="' + esc(f.to || '') + '"></label>' +
+    '<span class="flex items-center gap-2 text-[13.5px] text-ink-2"><span aria-hidden="true">Đến ngày</span>' + dateField({ id: 'cn-to', value: f.to || '', label: 'Tính công nợ đến ngày' }) + '</span>' +
     '<select id="cn-pham" class="input w-auto" aria-label="Phạm vi nhà cung cấp">' + [['ct', 'NCC liên quan công trình'], ['active', 'Mọi NCC có phát sinh'], ['all', 'Tất cả NCC trong danh mục']].map(([v, l]) =>
       '<option value="' + v + '"' + (f.pham === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
     '<span class="flex-1"></span>' +
@@ -339,7 +346,7 @@ export function renderDebt(root) {
     '<button type="button" class="btn btn-ghost" data-act="print">' + icon('print') + 'In</button>' +
     '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất Excel</button></div>' +
     '<section class="sheet overflow-hidden" aria-labelledby="h-theo-ct"><div class="sheet-head pb-1"><div><h3 id="h-theo-ct" class="sheet-title">Tổng hợp nợ và đã thanh toán theo công trình</h3>' +
-    '<p class="sheet-note">Bấm một công trình để xem công nợ từng nhà cung cấp của công trình đó' + (f.to ? ', tính đến ngày ' + fdate(f.to) : '') + '.' +
+    '<p class="sheet-note screen-hint">Bấm một công trình để xem công nợ từng nhà cung cấp của công trình đó' + (f.to ? ', tính đến ngày ' + fdate(f.to) : '') + '.' +
     (f.ct ? ' <a href="#" class="font-semibold text-pen underline underline-offset-2" data-act="all-ct">Xem tất cả công trình</a>' : '') + '</p></div>' +
     '<label class="check no-print"><input type="checkbox" id="cn-allct"' + (f.allCT ? ' checked' : '') + '>Hiện cả dự án chưa nhập chi phí</label></div>' +
     projectDebtHtml(theoCT, f.ct) + '</section>' +
@@ -351,7 +358,7 @@ export function renderDebt(root) {
     '<div class="eq-cell"><span class="eq-label">Tổng ứng dư</span><span class="eq-value text-caution">' + money(tot.ungDu) + '</span></div></div>' +
     '<p class="text-[13px] text-ink-3">Chi phí phát sinh lấy từ sổ chi phí (khối lượng đã nhận). Đã trả lấy từ sổ thu chi: tổng chi trừ tổng thu của cùng mã NCC' + (f.ct ? ' và cùng mã dự án ' + esc(f.ct) : '') + '. Hai sổ không sửa dữ liệu của nhau. ' +
     (f.pham === 'ct' ? '“Liên quan công trình” = NCC có chi phí công trình, hoặc có khoản trả gắn với công trình đang có chi phí.' : '') + '</p>' +
-    '<div class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">' +
+    '<div class="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">' +
     '<section class="sheet overflow-hidden"><div class="overflow-x-auto"><table class="ledger">' +
     '<thead><tr><th>Nhà cung cấp</th><th>Loại</th><th class="num money">Chi phí phát sinh</th><th class="num money">Đã trả / đã ứng</th><th class="num money">Còn lại</th><th>Tình trạng</th><th class="no-print"></th></tr></thead><tbody>' +
     (rows.length ? rows.map((r) => '<tr class="clickable' + (KT.keyOf(r.ma) === KT.keyOf(sel) ? ' is-active' : '') + '" data-ma="' + esc(r.ma) + '" tabindex="0">' +
@@ -480,13 +487,13 @@ export function renderPrices(root) {
   const f = S.filters.cpGia;
   const usedNCC = new Set(S.db.costs.filter((c) => c.maVT).map((c) => KT.keyOf(c.maNCC)));
   root.innerHTML =
-    '<div class="grid items-start gap-5 lg:grid-cols-[480px_minmax(0,1fr)]">' +
+    '<div class="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[480px_minmax(0,1fr)]">' +
     '<aside class="sheet flex flex-col overflow-hidden lg:sticky lg:top-[104px] lg:max-h-[calc(100vh-128px)]">' +
     '<div class="flex flex-col gap-2 border-b border-rule p-3">' +
     '<label class="search">' + icon('search') + '<input id="gia-q" type="search" class="input" placeholder="Tìm mã, tên vật tư" value="' + esc(f.q) + '"></label>' +
     '<div class="flex gap-2"><select id="gia-ncc" class="input flex-1" aria-label="Nhà cung cấp">' + selectOptions(S.db.suppliers.filter((s) => usedNCC.has(KT.keyOf(s.ma))), f.ncc, { allLabel: 'Mọi nhà cung cấp', label: (s) => s.ten }) + '</select>' +
     '<select id="gia-hm" class="input flex-1" aria-label="Hạng mục">' + selectOptions(S.db.costItems, f.hm, { allLabel: 'Mọi hạng mục', label: (i) => i.ten }) + '</select></div></div>' +
-    '<div class="flex-1 overflow-auto"><table class="ledger ledger-compact"><thead><tr><th>Vật tư</th><th class="num">Lần</th><th class="num money">Giá gần nhất</th><th class="num">Biến động</th></tr></thead><tbody id="gia-list"></tbody></table></div></aside>' +
+    '<div class="flex-1 overflow-auto"><table class="ledger ledger-compact"><thead><tr><th>Vật tư</th><th class="num">Lần</th><th class="num money">Giá gần nhất</th><th class="num" title="Giá cao nhất so với giá thấp nhất">Chênh giá</th></tr></thead><tbody id="gia-list"></tbody></table></div></aside>' +
     '<section class="flex min-w-0 flex-col gap-4" id="gia-detail"></section></div>';
 
   const drawList = () => {
@@ -497,7 +504,7 @@ export function renderPrices(root) {
     $('#gia-list', root).innerHTML = stats.length ? stats.map((m) => {
       const spread = m.min > 0 ? (m.max - m.min) / m.min : 0;
       return '<tr class="clickable' + (KT.keyOf(m.ma) === KT.keyOf(f.vt) ? ' is-active' : '') + '" data-vt="' + esc(m.ma) + '" tabindex="0"><td><div class="font-semibold">' + highlight(m.ma, f.q) + '</div><div class="sub">' + highlight(m.ten, f.q) + (m.dvt ? ' · ' + esc(m.dvt) : '') + '</div></td>' +
-        '<td class="num">' + m.soLan + '</td><td class="num money">' + money(m.last) + '</td><td class="num text-[12.5px] ' + (spread > 0.05 ? 'text-caution font-semibold' : 'text-ink-3') + '">' + (m.soLan > 1 ? (spread ? '±' + pct(spread) : 'ổn định') : '') + '</td></tr>';
+        '<td class="num">' + m.soLan + '</td><td class="num money">' + money(m.last) + '</td><td class="num text-[12.5px] ' + (spread > 0.05 ? 'text-caution font-semibold' : 'text-ink-3') + '"' + (m.soLan > 1 && spread ? ' title="Giá cao nhất ' + money(m.max) + ' đ, thấp nhất ' + money(m.min) + ' đ: chênh ' + pct(spread) + '"' : '') + '>' + (m.soLan > 1 ? (spread ? pct(spread) : 'ổn định') : '') + '</td></tr>';
     }).join('') : '<tr><td colspan="4" class="empty">Chưa có vật tư nào được mua.</td></tr>';
   };
 

@@ -1,6 +1,8 @@
 /* Biểu mẫu: ghi thu/chi, dự án, nhà cung cấp. */
-import { $, esc, api, openModal, toast, showError, bindMoneyInput, money, confirmDialog, icon, dateField, focusInput } from './ui.js';
+import { $, esc, api, openModal, toast, showError, bindMoneyInput, money, confirmDialog, icon, dateField, focusInput, fieldError, busy } from './ui.js';
 import { S, datalists, resolveCode, projectByCode, supplierByCode } from './state.js';
+import { openHistory } from './views/control.js';
+import { attachBlock, bindAttach } from './attach.js';
 
 const KT = window.KT;
 
@@ -11,12 +13,17 @@ let lastUsed = { ngay: '', soPhieu: '', maDuAn: '', maNCC: '', loai: 'chi' };
 export function openEntryForm(entry, opts) {
   opts = opts || {};
   const isEdit = !!(entry && entry.id && !opts.duplicate);
+  // Dòng Nháp (hoặc dòng mới) được chọn giữa Lưu nháp và Ghi sổ; dòng đã ghi sổ chỉ Lưu thay đổi
+  const isDraftRec = isEdit && KT.isDraft(entry);
+  const lockedRec = isEdit && KT.isLockedDate(S.all, entry.ngay); // tháng đã khóa sổ: chỉ xem
+  const canDraft = (!isEdit || isDraftRec) && !lockedRec;
   const e = Object.assign({ ngay: lastUsed.ngay || KT.todayISO(), soPhieu: '', maDuAn: '', maNCC: '', noiDung: '', thu: 0, chi: 0, nguoiNhan: '', ghiChu: '' }, entry || {});
   if (opts.duplicate) { e.id = undefined; }
   let loai = e.thu > 0 && e.chi > 0 ? 'ca-hai' : e.thu > 0 ? 'thu' : (entry && entry.id) ? 'chi' : (opts.loai || lastUsed.loai || 'chi');
 
   const body =
     '<form id="entry-form" class="grid grid-cols-2 gap-x-5 gap-y-4 max-sm:grid-cols-1" novalidate autocomplete="off">' +
+    (lockedRec ? '<p class="form-error col-span-2 max-sm:col-span-1" role="note">' + icon('lock') + '<span>' + esc(KT.lockMessage(KT.monthOf(entry.ngay), 'sửa')) + '</span></p>' : '') +
     datalists() +
     '<div class="col-span-2 max-sm:col-span-1"><div class="seg" role="radiogroup" aria-label="Loại nghiệp vụ">' +
     [['chi', 'Chi tiền'], ['thu', 'Thu tiền'], ['ca-hai', 'Thu và chi cùng lúc']].map(([v, l]) =>
@@ -31,32 +38,34 @@ export function openEntryForm(entry, opts) {
     '<span class="hint" id="da-hint"></span></label>' +
     '<label class="field"><span class="label">Nhà cung cấp, đối tượng</span><input name="maNCC" class="input" list="dl-suppliers" value="' + esc(e.maNCC) + '" placeholder="Gõ mã hoặc tên">' +
     '<span class="hint" id="ncc-hint"></span></label>' +
-    '<label class="field col-span-2 max-sm:col-span-1"><span class="label">Nội dung thu, chi <b class="req">*</b></span><textarea name="noiDung" class="input" rows="2" placeholder="VD: Thanh toán công nợ vật tư">' + esc(e.noiDung) + '</textarea></label>' +
-    '<label class="field" data-show="chi"><span class="label">Số tiền chi (đồng)</span><input name="chi" inputmode="decimal" class="input money-input h-11" value="' + (e.chi ? money(e.chi) : '') + '" placeholder="0">' +
+    '<label class="field col-span-2 max-sm:col-span-1"><span class="label">Nội dung thu, chi <b class="req">*</b></span><textarea name="noiDung" class="input" rows="2" placeholder="VD: Thanh toán công nợ vật tư" required>' + esc(e.noiDung) + '</textarea></label>' +
+    '<label class="field" data-show="chi"><span class="label">Số tiền chi (đồng)</span><input name="chi" inputmode="decimal" class="input money-input h-11" value="' + (e.chi ? money(e.chi) : '') + '" placeholder="VD: 1.250.000 hoặc 50tr" aria-describedby="chi-hint">' +
     '<span class="hint" id="chi-hint"></span></label>' +
-    '<label class="field" data-show="thu"><span class="label">Số tiền thu (đồng)</span><input name="thu" inputmode="decimal" class="input money-input h-11" value="' + (e.thu ? money(e.thu) : '') + '" placeholder="0">' +
+    '<label class="field" data-show="thu"><span class="label">Số tiền thu (đồng)</span><input name="thu" inputmode="decimal" class="input money-input h-11" value="' + (e.thu ? money(e.thu) : '') + '" placeholder="VD: 1.250.000 hoặc 50tr" aria-describedby="thu-hint">' +
     '<span class="hint" id="thu-hint"></span></label>' +
     '<label class="field"><span class="label">Người nhận, người nộp</span><input name="nguoiNhan" class="input" value="' + esc(e.nguoiNhan) + '" placeholder="Để trống thì lấy theo nhà cung cấp khi in"></label>' +
     '<label class="field"><span class="label">Ghi chú</span><input name="ghiChu" class="input" value="' + esc(e.ghiChu) + '"></label>' +
     '<p class="col-span-2 text-[12.5px] leading-relaxed text-ink-3 max-sm:col-span-1">' + icon('keyboard', 'mr-1 align-[-3px] text-[15px]') +
     'Ô số tiền nhận <b class="font-medium text-ink-2">1.250.000</b>, <b class="font-medium text-ink-2">50tr</b>, <b class="font-medium text-ink-2">300k</b> hoặc phép tính <b class="font-medium text-ink-2">58000+11000</b>. ' +
-    'Lưu nhanh bằng <kbd>Ctrl</kbd> + <kbd>Enter</kbd>.</p>' +
-    '</form>';
+    'Ghi sổ nhanh bằng <kbd>Ctrl</kbd> + <kbd>Enter</kbd>, đóng bằng <kbd>Esc</kbd>.</p>' +
+    '</form>' + attachBlock('entries', isEdit ? e.id : 0, { readonly: false, newText: 'Ghi sổ (hoặc lưu nháp) dòng này trước, rồi mở lại để đính kèm ảnh hóa đơn, chứng từ.' });
 
   const footer =
-    (isEdit ? '<button type="button" class="btn btn-danger-ghost" data-act="delete">' + icon('trash') + 'Xóa dòng</button>' : '') +
+    (isEdit ? (lockedRec ? '' : '<button type="button" class="btn btn-danger-ghost" data-act="delete">' + icon('trash') + 'Xóa dòng</button>') +
+      '<button type="button" class="btn btn-ghost" data-act="history" title="Xem mọi lần thêm, sửa của dòng này trong nhật ký">' + icon('history') + 'Lịch sử</button>' : '') +
     '<span class="flex-1"></span>' +
     '<button type="button" class="btn btn-ghost" data-act="cancel">Hủy</button>' +
-    (isEdit ? '' : '<button type="button" class="btn btn-secondary" data-act="save-next" title="Lưu rồi giữ lại ngày, số phiếu, dự án, nhà cung cấp để nhập dòng tiếp theo">Lưu và nhập tiếp</button>') +
-    '<button type="button" class="btn btn-primary" data-act="save">' + (isEdit ? 'Lưu thay đổi' : 'Lưu') + '</button>';
+    (canDraft ? '<button type="button" class="btn btn-secondary" data-act="save-draft" title="Lưu lại để làm tiếp; dòng Nháp chưa tính vào tồn quỹ, báo cáo, công nợ">' + icon('draft') + 'Lưu nháp</button>' : '') +
+    (isEdit ? '' : '<button type="button" class="btn btn-secondary" data-act="save-next" title="Ghi sổ rồi giữ lại ngày, số phiếu, dự án, nhà cung cấp để ghi dòng tiếp theo">Ghi sổ và ghi tiếp</button>') +
+    (lockedRec ? '' : '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon(isEdit && !isDraftRec ? 'save' : 'check') + (isEdit && !isDraftRec ? 'Lưu thay đổi' : 'Ghi sổ') + '</button>');
 
   const m = openModal({
-    title: isEdit ? 'Sửa dòng sổ thu chi' : opts.duplicate ? 'Nhân bản dòng sổ thu chi' : 'Ghi thu, chi mới',
+    title: isDraftRec ? 'Sửa dòng nháp (chưa ghi sổ)' : isEdit ? 'Sửa dòng sổ thu chi' : opts.duplicate ? 'Nhân bản dòng sổ thu chi' : 'Ghi thu / chi',
     size: 'wide',
     body,
     footer,
     dismissible: false,
-    onMount(el) { bindEntryForm(el); }
+    onMount(el) { bindEntryForm(el); bindAttach(el); }
   });
 
   function bindEntryForm(el) {
@@ -74,19 +83,17 @@ export function openEntryForm(entry, opts) {
     }
     f.querySelectorAll('input[name=loai]').forEach((r) => r.addEventListener('change', applyLoai));
 
+    // Chỉ ghi lại khi nội dung đổi: bấm vào liên kết trong gợi ý (Thêm ... này, Điền số này) làm ô nhập mất tiêu điểm → sự kiện change
+    // vẽ lại gợi ý ngay giữa lúc nhấn chuột, liên kết bị thay mới và cú bấm không tới được.
+    function setHint(h, html, cls) { if (h.dataset.src !== html) { h.innerHTML = html; h.dataset.src = html; } if (h.className !== cls) h.className = cls; }
     function hint(input, list, hintSel, kind) {
       const code = resolveCode(list, input.value);
       const h = $(hintSel, el);
-      if (!input.value.trim()) { h.textContent = ''; h.className = 'hint'; return; }
+      if (!input.value.trim()) { setHint(h, '', 'hint'); return; }
       const found = list.find((x) => KT.keyOf(x.ma) === KT.keyOf(code));
-      if (found && kind === 'supplier') {
-        h.innerHTML = esc(found.ten) + debtHint(found.ma);
-        h.className = 'hint good';
-      } else if (found) { h.textContent = found.ten; h.className = 'hint good'; }
-      else {
-        h.innerHTML = 'Chưa có trong danh mục. <a href="#" data-act="add-' + kind + '">Thêm ' + (kind === 'project' ? 'dự án' : 'nhà cung cấp') + ' này</a>';
-        h.className = 'hint bad';
-      }
+      if (found && kind === 'supplier') setHint(h, esc(found.ten) + debtHint(found.ma), 'hint good');
+      else if (found) setHint(h, esc(found.ten), 'hint good');
+      else setHint(h, 'Chưa có trong danh mục. <a href="#" data-act="add-' + kind + '">Thêm ' + (kind === 'project' ? 'dự án' : 'nhà cung cấp') + ' này</a>', 'hint bad');
     }
     const daHint = () => hint(get('maDuAn'), S.db.projects, '#da-hint', 'project');
     const nccHint = () => hint(get('maNCC'), S.db.suppliers, '#ncc-hint', 'supplier');
@@ -116,7 +123,7 @@ export function openEntryForm(entry, opts) {
         return;
       }
       const t = KT.voucherType(so);
-      const others = S.db.entries.filter((x) => KT.voucherKey(x.soPhieu) === KT.voucherKey(so) && x.id !== e.id);
+      const others = S.all.entries.filter((x) => KT.voucherKey(x.soPhieu) === KT.voucherKey(so) && x.id !== e.id);
       let txt = t === 'thu' ? 'Phiếu thu' : 'Phiếu chi';
       if (others.length) txt += ', đã có ' + others.length + ' dòng cùng số (sẽ gộp khi in)';
       if (t === 'thu' && loai === 'chi') txt += '. Lưu ý: số phiếu PT dành cho khoản thu';
@@ -134,7 +141,7 @@ export function openEntryForm(entry, opts) {
         get('chi').dispatchEvent(new Event('input'));
         get('chi').focus();
       } else if (act === 'so-moi') {
-        get('soPhieu').value = KT.nextVoucherNo(S.db, loai === 'thu' ? 'thu' : 'chi', get('ngay').value);
+        get('soPhieu').value = KT.nextVoucherNo(S.all, loai === 'thu' ? 'thu' : 'chi', get('ngay').value);
         updateSoHint();
       } else if (act === 'so-truoc') {
         ev.preventDefault();
@@ -146,12 +153,17 @@ export function openEntryForm(entry, opts) {
       } else if (act === 'add-supplier') {
         ev.preventDefault();
         openSupplierForm({ ma: get('maNCC').value.trim() }, (s) => { get('maNCC').value = s.ma; refreshLists(); nccHint(); });
+      } else if (act === 'history') {
+        m.close();
+        openHistory(e.id);
       } else if (act === 'cancel') {
         m.close();
       } else if (act === 'delete') {
         if (await deleteEntry(e)) m.close();
       } else if (act === 'save' || act === 'save-next') {
         save(act === 'save-next');
+      } else if (act === 'save-draft') {
+        save(false, true);
       }
     });
 
@@ -168,9 +180,10 @@ export function openEntryForm(entry, opts) {
     f.addEventListener('submit', (ev) => { ev.preventDefault(); save(false); });
 
     let saving = false;
-    async function save(next) {
+    async function save(next, asDraft) {
       if (saving) return;
       const data = {
+        trangThai: asDraft ? 'nhap' : '',
         ngay: get('ngay').value,
         soPhieu: get('soPhieu').value.trim(),
         maDuAn: resolveCode(S.db.projects, get('maDuAn').value),
@@ -181,21 +194,25 @@ export function openEntryForm(entry, opts) {
         nguoiNhan: get('nguoiNhan').value.trim(),
         ghiChu: get('ghiChu').value.trim()
       };
+      if (lockedRec) return;
       if (!KT.isISODate(data.ngay)) return fail('ngay', 'Nhập ngày chứng từ, ví dụ 29/9');
-      if (isNaN(data.thu)) return fail('thu', 'Số tiền thu không hợp lệ');
-      if (isNaN(data.chi)) return fail('chi', 'Số tiền chi không hợp lệ');
+      if (KT.isLockedDate(S.all, data.ngay)) return fail('ngay', KT.lockMessage(KT.monthOf(data.ngay), 'ghi'));
+      if (data.maDuAn && !projectByCode(data.maDuAn)) return fail('maDuAn', 'Mã dự án chưa có trong danh mục. Bấm “Thêm dự án này” hoặc chọn mã có sẵn');
+      if (data.maNCC && !supplierByCode(data.maNCC)) return fail('maNCC', 'Mã nhà cung cấp chưa có trong danh mục. Bấm “Thêm nhà cung cấp này” hoặc chọn mã có sẵn');
+      if (!data.noiDung) return fail('noiDung', 'Nhập nội dung thu, chi');
+      if (isNaN(data.chi)) return fail('chi', 'Số tiền chi không hợp lệ. Ví dụ: 1.250.000, 50tr, 300k');
+      if (isNaN(data.thu)) return fail('thu', 'Số tiền thu không hợp lệ. Ví dụ: 1.250.000, 50tr, 300k');
       if (loai === 'chi' && !data.chi) return fail('chi', 'Nhập số tiền chi');
       if (loai === 'thu' && !data.thu) return fail('thu', 'Nhập số tiền thu');
-      if (loai === 'ca-hai' && !data.thu && !data.chi) return fail('chi', 'Nhập số tiền');
-      if (!data.noiDung) return fail('noiDung', 'Nhập nội dung thu, chi');
-      if (data.maDuAn && !projectByCode(data.maDuAn)) return fail('maDuAn', 'Mã dự án chưa có trong danh mục');
-      if (data.maNCC && !supplierByCode(data.maNCC)) return fail('maNCC', 'Mã nhà cung cấp chưa có trong danh mục');
+      if (loai === 'ca-hai' && !data.thu && !data.chi) return fail('chi', 'Nhập số tiền thu hoặc chi');
       saving = true;
+      const btn = el.querySelector(asDraft ? '[data-act=save-draft]' : next ? '[data-act=save-next]' : '[data-act=save]');
+      const done = busy(btn, isEdit || asDraft ? 'Đang lưu…' : 'Đang ghi…');
       try {
         if (isEdit) await api('PUT', '/api/entries/' + e.id, data);
         else await api('POST', '/api/entries', data);
         lastUsed = { ngay: data.ngay, soPhieu: data.soPhieu, maDuAn: data.maDuAn, maNCC: data.maNCC, loai };
-        toast(isEdit ? 'Đã lưu thay đổi' : 'Đã ghi sổ ' + (data.chi ? 'khoản chi ' + money(data.chi) : 'khoản thu ' + money(data.thu)) + ' đ');
+        toast(asDraft ? 'Đã lưu nháp (chưa ghi sổ, chưa tính vào tồn quỹ)' : isDraftRec ? 'Đã ghi sổ dòng nháp' : isEdit ? 'Đã lưu thay đổi' : 'Đã ghi sổ ' + (data.chi ? 'khoản chi ' + money(data.chi) : 'khoản thu ' + money(data.thu)) + ' đ');
         if (next) {
           ['noiDung', 'chi', 'thu', 'nguoiNhan', 'ghiChu'].forEach((n) => { get(n).value = ''; });
           get('chi').dispatchEvent(new Event('input'));
@@ -210,39 +227,39 @@ export function openEntryForm(entry, opts) {
         showError(err);
       } finally {
         saving = false;
+        if (btn && btn.isConnected) done();
       }
     }
 
+    // Lỗi hiện ngay dưới ô (không che nút Ghi sổ như thông báo góc màn hình)
     function fail(name, msg) {
-      toast(msg, 'error');
-      const input = get(name);
-      if (input) {
-        const shown = focusInput(input);
-        shown.classList.add('invalid');
-        shown.addEventListener('input', () => shown.classList.remove('invalid'), { once: true });
-      }
+      if (!fieldError(get(name), msg)) toast(msg, 'error');
     }
 
     applyLoai();
+    if (lockedRec) f.querySelectorAll('input, textarea, select, button').forEach((x) => { x.disabled = true; });
     daHint();
     nccHint();
-    setTimeout(() => focusInput(isEdit ? get('noiDung') : get('ngay')), 40);
+    let touched = false;
+    ['pointerdown', 'keydown', 'input'].forEach((t) => el.addEventListener(t, () => { touched = true; }, true));
+    setTimeout(() => { if (!touched) focusInput(isEdit ? get('noiDung') : get('ngay')); }, 40);
   }
 }
 
 export async function deleteEntry(e) {
   const ok = await confirmDialog({
+    trash: true,
     title: 'Xóa dòng sổ thu chi',
     html: 'Xóa dòng ngày <b class="text-ink">' + esc(KT.fmtDate(e.ngay)) + '</b>: “' + esc(e.noiDung || '') + '” ' +
       (e.chi ? '(chi <b class="text-ink">' + money(e.chi) + ' đ</b>)' : '(thu <b class="text-ink">' + money(e.thu) + ' đ</b>)') + '?' +
-      '<p class="mt-2 text-[13px] text-ink-3">Tồn quỹ các dòng sau tự tính lại. Dữ liệu cũ vẫn còn trong bản sao lưu tự động.</p>',
+      '<p class="mt-2 text-[13px] text-ink-3">Tồn quỹ các dòng sau tự tính lại.</p>',
     okText: 'Xóa dòng',
     danger: true
   });
   if (!ok) return false;
   try {
     await api('DELETE', '/api/entries/' + e.id);
-    toast('Đã xóa dòng sổ');
+    toast('Đã xóa dòng sổ, chuyển vào Thùng rác');
     return true;
   } catch (err) {
     showError(err);
@@ -257,7 +274,7 @@ export const PROJECT_STATUSES = ['Đang thực hiện', 'Đang thi công', 'Tạ
 export function openProjectForm(p, onSaved) {
   const isEdit = !!(p && p.id);
   p = Object.assign({ ma: '', ten: '', nganSach: 0, trangThai: 'Đang thực hiện', ghiChu: '', ngayKhoiCong: '', diaChi: '' }, p || {});
-  const used = isEdit ? S.db.entries.filter((e) => KT.keyOf(e.maDuAn) === KT.keyOf(p.ma)).length + S.db.costs.filter((c) => KT.keyOf(c.maCT) === KT.keyOf(p.ma)).length : 0;
+  const used = isEdit ? S.all.entries.filter((e) => KT.keyOf(e.maDuAn) === KT.keyOf(p.ma)).length + S.all.costs.filter((c) => KT.keyOf(c.maCT) === KT.keyOf(p.ma)).length : 0;
   return openModal({
     title: isEdit ? 'Sửa dự án ' + p.ma : 'Thêm dự án',
     body:
@@ -281,15 +298,16 @@ export function openProjectForm(p, onSaved) {
       const save = async () => {
         const data = { ma: f.elements.ma.value.trim(), ten: f.elements.ten.value.trim(), nganSach: getNs(), trangThai: f.elements.trangThai.value, ghiChu: f.elements.ghiChu.value.trim(),
           ngayKhoiCong: f.elements.ngayKhoiCong.value, diaChi: f.elements.diaChi.value.trim() };
-        if (!data.ma) return toast('Nhập mã dự án', 'error');
-        if (!data.ten) return toast('Nhập tên dự án', 'error');
-        if (isNaN(data.nganSach)) return toast('Ngân sách không hợp lệ', 'error');
+        if (!data.ma) return fieldError(f.elements.ma, 'Nhập mã dự án');
+        if (!data.ten) return fieldError(f.elements.ten, 'Nhập tên dự án');
+        if (isNaN(data.nganSach)) return fieldError(f.elements.nganSach, 'Ngân sách không hợp lệ. Ví dụ: 500tr, 1.200.000.000');
+        const done = busy(el.querySelector('[data-act=save]'), 'Đang lưu…');
         try {
           const r = isEdit ? await api('PUT', '/api/projects/' + p.id, data) : await api('POST', '/api/projects', data);
           toast(isEdit ? 'Đã lưu dự án' + (r.renamed ? ', cập nhật mã trên ' + r.renamed + ' dòng sổ' : '') : 'Đã thêm dự án ' + data.ma);
           h.close();
           if (onSaved) onSaved(data);
-        } catch (err) { showError(err); }
+        } catch (err) { done(); showError(err); }
       };
       el.addEventListener('click', (ev) => {
         const a = ev.target.closest('[data-act]');
@@ -307,7 +325,7 @@ export function openProjectForm(p, onSaved) {
 export function openSupplierForm(s, onSaved) {
   const isEdit = !!(s && s.id);
   s = Object.assign({ ma: '', ten: '', loai: '', sdt: '', diaChi: '', ghiChu: '' }, s || {});
-  const used = isEdit ? S.db.entries.filter((e) => KT.keyOf(e.maNCC) === KT.keyOf(s.ma)).length : 0;
+  const used = isEdit ? S.all.entries.filter((e) => KT.keyOf(e.maNCC) === KT.keyOf(s.ma)).length : 0;
   const types = Array.from(new Set(S.db.suppliers.map((x) => x.loai).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'vi'));
   openModal({
     title: isEdit ? 'Sửa ' + s.ma : 'Thêm nhà cung cấp, đối tượng',
@@ -322,20 +340,21 @@ export function openSupplierForm(s, onSaved) {
       '<label class="field"><span class="label">Địa chỉ</span><input name="diaChi" class="input" value="' + esc(s.diaChi) + '"><span class="hint">Được in lên phiếu chi</span></label>' +
       '<label class="field col-span-2 max-sm:col-span-1"><span class="label">Ghi chú</span><input name="ghiChu" class="input" value="' + esc(s.ghiChu) + '"></label>' +
       '</form>',
-    footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="cancel">Hủy</button><button type="button" class="btn btn-primary" data-act="save">' + (isEdit ? 'Lưu thay đổi' : 'Thêm vào danh mục') + '</button>',
+    footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="cancel">Hủy</button><button type="button" class="btn btn-primary" data-act="save">' + (isEdit ? 'Lưu thay đổi' : 'Thêm nhà cung cấp') + '</button>',
     onMount(el, h) {
       const f = $('#s-form', el);
       const save = async () => {
         const data = {};
         ['ma', 'ten', 'loai', 'sdt', 'diaChi', 'ghiChu'].forEach((k) => { data[k] = f.elements[k].value.trim(); });
-        if (!data.ma) return toast('Nhập mã nhà cung cấp', 'error');
-        if (!data.ten) return toast('Nhập tên nhà cung cấp', 'error');
+        if (!data.ma) return fieldError(f.elements.ma, 'Nhập mã nhà cung cấp');
+        if (!data.ten) return fieldError(f.elements.ten, 'Nhập tên nhà cung cấp');
+        const done = busy(el.querySelector('[data-act=save]'), 'Đang lưu…');
         try {
           const r = isEdit ? await api('PUT', '/api/suppliers/' + s.id, data) : await api('POST', '/api/suppliers', data);
           toast(isEdit ? 'Đã lưu ' + data.ma + (r.renamed ? ', cập nhật mã trên ' + r.renamed + ' dòng sổ' : '') : 'Đã thêm ' + data.ma);
           h.close();
           if (onSaved) onSaved(data);
-        } catch (err) { showError(err); }
+        } catch (err) { done(); showError(err); }
       };
       el.addEventListener('click', (ev) => {
         const a = ev.target.closest('[data-act]');

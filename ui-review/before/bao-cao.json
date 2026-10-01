@@ -1,0 +1,1136 @@
+{
+ "luc": "2026-09-30T21:07:51.076Z",
+ "states": {
+  "trong": {
+   "1366x768": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "aria-required-children",
+       "impact": "critical",
+       "help": "Certain ARIA roles must contain particular children",
+       "n": 1,
+       "vd": [
+        "#ph-list — Required ARIA children role not present: group, option"
+       ]
+      },
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      },
+      {
+       "id": "label",
+       "impact": "critical",
+       "help": "Form elements must have labels",
+       "n": 1,
+       "vd": [
+        "#restore-file — Element does not have an implicit (wrapped) <label>"
+       ]
+      }
+     ]
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "aria-conditional-attr",
+       "impact": "serious",
+       "help": "ARIA attributes must be used as specified for the element's role",
+       "n": 6,
+       "vd": [
+        "tr[data-group=\"NHOM_ChiPhiBanDau\"]",
+        "tr[data-group=\"NHOM_ChiPhiPhanTho\"]",
+        "tr[data-group=\"NHOM_HeThongDienNuoc\"]",
+        "tr[data-group=\"NHOM_HoanThien\"]"
+       ]
+      },
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "aria-required-children",
+       "impact": "critical",
+       "help": "Certain ARIA roles must contain particular children",
+       "n": 1,
+       "vd": [
+        ".seg — Element has children which are not allowed: input[tabindex]"
+       ]
+      },
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "_errors": []
+   },
+   "1920x1080": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "_errors": []
+   },
+   "768x1024": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "_errors": []
+   },
+   "390x844": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "_errors": []
+   }
+  },
+  "mau": {
+   "1366x768": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 4,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:",
+        "button[data-key=\"PC044/09\"] > .truncate.text-ink-3.text-\\[12\\.5px\\] — Element has insufficient color contrast of 4.26 (foreground color: #667085, background color: #e8eef8, font size: 9.4pt (12.5px), font weigh",
+        ".vc-cut > span — Element has insufficient color contrast of 4.47 (foreground color: #777777, background color: #ffffff, font size: 9.5pt (12.6667px), font we"
+       ]
+      }
+     ]
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      },
+      {
+       "id": "label",
+       "impact": "critical",
+       "help": "Form elements must have labels",
+       "n": 1,
+       "vd": [
+        "#restore-file — Element does not have an implicit (wrapped) <label>"
+       ]
+      }
+     ]
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "aria-conditional-attr",
+       "impact": "serious",
+       "help": "ARIA attributes must be used as specified for the element's role",
+       "n": 6,
+       "vd": [
+        "tr[data-group=\"NHOM_ChiPhiBanDau\"]",
+        "tr[data-group=\"NHOM_ChiPhiPhanTho\"]",
+        "tr[data-group=\"NHOM_HeThongDienNuoc\"]",
+        "tr[data-group=\"NHOM_HoanThien\"]"
+       ]
+      },
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 3,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:",
+        ".is-active > td:nth-child(1) > .sub — Element has insufficient color contrast of 4.26 (foreground color: #667085, background color: #e8eef8, font size: 9.4pt (12.5px), font weigh"
+       ]
+      },
+      {
+       "id": "scrollable-region-focusable",
+       "impact": "serious",
+       "help": "Scrollable region must have keyboard access",
+       "n": 1,
+       "vd": [
+        ".overflow-x-auto — Element should have focusable content"
+       ]
+      }
+     ]
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": [
+      {
+       "id": "aria-required-children",
+       "impact": "critical",
+       "help": "Certain ARIA roles must contain particular children",
+       "n": 1,
+       "vd": [
+        ".seg — Element has children which are not allowed: input[tabindex]"
+       ]
+      },
+      {
+       "id": "color-contrast",
+       "impact": "serious",
+       "help": "Elements must meet minimum color contrast ratio thresholds",
+       "n": 2,
+       "vd": [
+        ".nav-head — Element has insufficient color contrast of 3.77 (foreground color: #87a094, background color: #1e4636, font size: 8.3pt (11px), font weight:",
+        "#save-state — Element has insufficient color contrast of 4.17 (foreground color: #91a89c, background color: #1e4636, font size: 9.0pt (12px), font weight:"
+       ]
+      }
+     ]
+    },
+    "_errors": []
+   },
+   "1920x1080": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "_errors": []
+   },
+   "768x1024": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "_errors": []
+   },
+   "390x844": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "_errors": []
+   }
+  },
+  "lon": {
+   "1366x768": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "_errors": []
+   },
+   "1920x1080": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "_errors": []
+   },
+   "768x1024": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "_errors": []
+   },
+   "390x844": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 16,
+     "errors": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "_errors": []
+   }
+  }
+ }
+}

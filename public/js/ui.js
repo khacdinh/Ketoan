@@ -107,7 +107,16 @@ const ICONS = {
   handCoins: 'ph-hand-coins',
   rows: 'ph-rows',
   funnel: 'ph-funnel',
-  grid: 'ph-squares-four'
+  grid: 'ph-squares-four',
+  spinner: 'ph-circle-notch',
+  draft: 'ph-file-dashed',
+  lock: 'ph-lock-simple',
+  unlock: 'ph-lock-simple-open',
+  flag: 'ph-flag',
+  paperclip: 'ph-paperclip',
+  money: 'ph-money',
+  eye: 'ph-eye',
+  eyeSlash: 'ph-eye-slash'
 };
 const DUO = {
   dashboard: 'ph-chart-line-up',
@@ -131,7 +140,8 @@ const DUO = {
   tag: 'ph-tag',
   stack: 'ph-stack',
   squares: 'ph-squares-four',
-  package: 'ph-package'
+  package: 'ph-package',
+  shield: 'ph-shield-check'
 };
 
 export function icon(name, cls) {
@@ -145,22 +155,53 @@ export function duo(name, cls) {
 let onDb = null;
 export function onDatabase(fn) { onDb = fn; }
 
-export async function api(method, url, body, isRaw) {
+export async function api(method, url, body, isRaw, extraHeaders) {
   let res;
   try {
+    const headers = body === undefined ? {} : { 'Content-Type': isRaw ? 'application/octet-stream' : 'application/json' };
+    // Tên người đang dùng máy này (Cài đặt) để nhật ký thay đổi ghi được ai thao tác
+    const who = LS.get('nguoiDung', '');
+    if (who) headers['X-Nguoi-Dung'] = encodeURIComponent(who);
+    Object.assign(headers, extraHeaders || {});
     res = await fetch(url, {
       method,
-      headers: body === undefined ? {} : { 'Content-Type': isRaw ? 'application/octet-stream' : 'application/json' },
+      headers,
       body: body === undefined ? undefined : isRaw ? body : JSON.stringify(body)
     });
   } catch (e) {
+    setOffline(true);
     throw new Error('Không kết nối được phần mềm. Kiểm tra cửa sổ KhoiDong.bat còn mở không.');
   }
+  setOffline(false);
   let data;
   try { data = await res.json(); } catch (e) { throw new Error('Máy chủ trả về dữ liệu không hợp lệ (mã ' + res.status + ')'); }
   if (!res.ok || data.ok === false) throw new Error(data.error || 'Lỗi ' + res.status);
   if (data.db && onDb) onDb(data.db);
   return data;
+}
+
+// Dải báo mất kết nối ở đầu trang: còn hiện đến khi gọi được máy chủ lại (dữ liệu đang gõ trong hộp thoại vẫn giữ nguyên)
+let offline = false;
+function setOffline(on) {
+  if (on === offline) return;
+  offline = on;
+  const root = document.getElementById('offline-root');
+  if (!root) return;
+  if (!on) { root.innerHTML = ''; toast('Đã kết nối lại với phần mềm'); return; }
+  root.innerHTML = '<div class="offline-bar no-print" role="alert">' + icon('warnTri', 'text-[18px]') +
+    '<span class="flex-1"><b class="font-semibold">Mất kết nối với phần mềm.</b> Các thay đổi chưa được lưu. Mở lại <b class="font-semibold">KhoiDong.bat</b> rồi bấm Thử lại.</span>' +
+    '<button type="button" class="btn" data-act="reconnect">' + icon('refresh') + 'Thử lại</button></div>';
+  root.querySelector('[data-act=reconnect]').addEventListener('click', () => { api('GET', '/api/db').catch(() => toast('Vẫn chưa kết nối được. Kiểm tra cửa sổ KhoiDong.bat.', 'error')); });
+}
+
+// Nút đang xử lý: khóa nút, đổi chữ (vd. "Đang lưu…"), trả về hàm khôi phục
+export function busy(btn, text) {
+  if (!btn) return () => {};
+  const html = btn.innerHTML;
+  btn.disabled = true;
+  btn.setAttribute('aria-busy', 'true');
+  if (text) btn.innerHTML = icon('spinner') + esc(text);
+  return () => { btn.disabled = false; btn.removeAttribute('aria-busy'); btn.innerHTML = html; };
 }
 
 export function download(url) {
@@ -179,13 +220,59 @@ export function toast(msg, type) {
   const el = document.createElement('div');
   el.className = 'toast ' + (type || 'ok');
   el.setAttribute('role', type === 'error' ? 'alert' : 'status');
-  el.innerHTML = icon(type === 'error' ? 'warn' : type === 'info' ? 'info' : 'checkCircle') + '<span>' + esc(msg) + '</span>';
+  el.innerHTML = icon(type === 'error' ? 'warn' : type === 'info' ? 'info' : 'checkCircle') + '<span>' + esc(msg) + '</span>' +
+    (type === 'error' ? '<button type="button" class="toast-x" aria-label="Đóng thông báo">' + icon('x') + '</button>' : '');
   root.appendChild(el);
   requestAnimationFrame(() => el.classList.add('show'));
-  setTimeout(() => {
-    el.classList.remove('show');
-    setTimeout(() => el.remove(), 250);
-  }, type === 'error' ? 6000 : 3200);
+  const close = () => { el.classList.remove('show'); setTimeout(() => el.remove(), 250); };
+  if (type === 'error') el.querySelector('.toast-x').addEventListener('click', close);
+  // lỗi để lâu hơn cho kịp đọc; rê chuột vào thì giữ lại
+  let t = setTimeout(close, type === 'error' ? 8000 : 3200);
+  el.addEventListener('mouseenter', () => clearTimeout(t));
+  el.addEventListener('mouseleave', () => { t = setTimeout(close, 2500); });
+}
+
+/* ---------------- Báo lỗi ngay tại ô nhập ---------------- */
+let errSeq = 0;
+// Hiện lỗi dưới ô (trong .field), đánh dấu aria-invalid, đưa con trỏ vào ô; tự xóa khi người dùng sửa
+export function fieldError(input, msg) {
+  if (!input) return null;
+  const shown = focusInput(input);
+  const field = shown.closest('.field');
+  clearFieldError(shown);
+  shown.classList.add('invalid');
+  shown.setAttribute('aria-invalid', 'true');
+  if (field) {
+    const id = 'ferr-' + (++errSeq);
+    const box = document.createElement('span');
+    box.className = 'field-error';
+    box.id = id;
+    box.setAttribute('role', 'alert');
+    box.innerHTML = icon('warn') + '<span>' + esc(msg) + '</span>';
+    const hint = field.querySelector(':scope > .hint');
+    if (hint) hint.hidden = true;
+    field.appendChild(box);
+    shown.setAttribute('aria-describedby', ((shown.getAttribute('aria-describedby') || '') + ' ' + id).trim());
+  }
+  const off = () => clearFieldError(shown);
+  shown.addEventListener('input', off, { once: true });
+  shown.addEventListener('change', off, { once: true });
+  return shown;
+}
+
+export function clearFieldError(input) {
+  if (!input) return;
+  input.classList.remove('invalid');
+  input.removeAttribute('aria-invalid');
+  const field = input.closest('.field');
+  if (!field) return;
+  field.querySelectorAll(':scope > .field-error').forEach((b) => {
+    const ids = (input.getAttribute('aria-describedby') || '').split(' ').filter((x) => x && x !== b.id);
+    if (ids.length) input.setAttribute('aria-describedby', ids.join(' ')); else input.removeAttribute('aria-describedby');
+    b.remove();
+  });
+  const hint = field.querySelector(':scope > .hint');
+  if (hint) hint.hidden = false;
 }
 
 export function showError(e) {
@@ -215,6 +302,7 @@ export function openModal(opts) {
     close() {
       const i = openModals.indexOf(handle);
       if (i >= 0) openModals.splice(i, 1);
+      document.body.classList.toggle('has-modal', openModals.length > 0);
       wrap.classList.remove('show');
       setTimeout(() => wrap.remove(), 160);
       if (opts.onClose) opts.onClose();
@@ -222,6 +310,7 @@ export function openModal(opts) {
     }
   };
   openModals.push(handle);
+  document.body.classList.add('has-modal');
   modal.querySelector('.modal-x').addEventListener('click', () => handle.close());
   wrap.addEventListener('mousedown', (e) => {
     if (e.target === wrap && opts.dismissible !== false) handle.close();
@@ -229,7 +318,10 @@ export function openModal(opts) {
   requestAnimationFrame(() => wrap.classList.add('show'));
   if (opts.onMount) opts.onMount(modal, handle);
   const first = modal.querySelector('[autofocus]') || modal.querySelector('input:not([type=hidden]):not([type=radio]):not([disabled]):not(.date-native), select, textarea, button.btn');
-  if (first) setTimeout(() => first.focus(), 30);
+  // không giật tiêu điểm nếu người dùng đã kịp bấm vào một ô khác trong hộp thoại
+  let touched = false;
+  ['pointerdown', 'keydown', 'input'].forEach((t) => modal.addEventListener(t, () => { touched = true; }, true));
+  if (first) setTimeout(() => { if (!touched) first.focus(); }, 30);
   return handle;
 }
 
@@ -248,9 +340,11 @@ export function confirmDialog(o) {
     const m = openModal({
       title: o.title || 'Xác nhận',
       size: 'small',
-      body: '<div class="leading-relaxed text-ink-2">' + (o.html || esc(o.message || '')) + '</div>',
-      footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="no">' + esc(o.cancelText || 'Hủy') + '</button>' +
-        '<button type="button" class="btn ' + (o.danger ? 'btn-danger' : 'btn-primary') + '" data-act="yes" autofocus>' + esc(o.okText || 'Đồng ý') + '</button>',
+      body: '<div class="leading-relaxed text-ink-2">' + (o.html || esc(o.message || '')) +
+        (o.trash ? '<p class="mt-2 flex items-start gap-1.5 text-[13px] text-ink-3">' + icon('info', 'mt-0.5') + '<span>Sẽ chuyển vào <b class="font-semibold text-ink-2">Thùng rác</b> (mục Kiểm soát sổ sách), khôi phục lại được bất cứ lúc nào.</span></p>' : '') + '</div>',
+      // thao tác xóa/thay dữ liệu: con trỏ đặt sẵn ở nút Hủy để lỡ tay bấm Enter không mất dữ liệu
+      footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="no"' + (o.danger ? ' autofocus' : '') + '>' + esc(o.cancelText || 'Hủy') + '</button>' +
+        '<button type="button" class="btn ' + (o.danger ? 'btn-danger' : 'btn-primary') + '" data-act="yes"' + (o.danger ? '' : ' autofocus') + '>' + (o.danger && /^Xóa/.test(o.okText || '') ? icon('trash') : '') + esc(o.okText || 'Đồng ý') + '</button>',
       onClose() { if (!done) resolve(false); }
     });
     m.el.querySelector('[data-act=no]').addEventListener('click', () => m.close());
@@ -316,7 +410,8 @@ export function bindMoneyInput(input, hintEl) {
       hintEl.textContent = 'Số tiền không hợp lệ';
       hintEl.className = 'hint bad';
     } else {
-      hintEl.textContent = (/[^\d.]/.test(raw) ? '= ' + money(n) + ' đ. ' : '') + (KT.docTienBangChu(n) || 'Không đồng');
+      // luôn cho thấy số đã tách nhóm khi người dùng gõ liền (1250000) hoặc viết tắt (50tr, 300k, 58000+11000)
+      hintEl.textContent = (raw !== money(n) ? '= ' + money(n) + ' đ · ' : '') + (KT.docTienBangChu(n) || 'Không đồng');
       hintEl.className = 'hint';
     }
   }

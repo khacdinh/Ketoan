@@ -1,0 +1,54 @@
+#!/usr/bin/env node
+'use strict';
+/*
+ * "Số liệu mốc": mọi con số báo cáo chính (tồn quỹ, sổ thu chi, dự án, NCC, phiếu, chi phí theo loại/nhóm/hạng mục/tháng,
+ * công nợ NCC, công nợ theo công trình, giá vật tư, phiếu nhập) tính từ một bộ dữ liệu.
+ * Chụp một lần bằng mã TRƯỚC khi cải tiến nhóm 1 (tests/fixtures/moc-so-lieu-nhom1.json); ca N0 so lại bằng mã mới:
+ * dữ liệu cũ chưa dùng tính năng mới thì mọi con số phải giống hệt.
+ *   node tests/so-lieu-moc.js   → ghi lại file mốc (chỉ chạy khi cố ý chụp lại)
+ */
+const fs = require('fs');
+const path = require('path');
+const { startServer, KT } = require('./helpers');
+
+function summarize(db) {
+  const ledger = KT.buildLedger(db);
+  const costLedger = KT.buildCostLedger(db);
+  const out = {
+    tonQuy: ledger.length ? ledger[ledger.length - 1].ton : 0,
+    soDongSo: ledger.length,
+    locSo: KT.filterLedger(ledger, {}),
+    locSoThang8: KT.filterLedger(ledger, { from: '2026-08-01', to: '2026-08-31' }),
+    duAn: KT.projectSummary(db, {}),
+    ncc: KT.supplierSummary(db, {}),
+    phieu: KT.buildVouchers(db, ledger).map((v) => ({ soPhieu: v.soPhieu, loai: v.loai, soTien: v.soTien, soDong: v.soDong, nguoiNhan: v.nguoiNhan, lyDo: v.lyDo })),
+    chiPhi: KT.costSummary(db, {}, costLedger),
+    congNoNCC: KT.supplierDebt(db, {}),
+    congNoCongTrinh: KT.projectDebtSummary(db, {}),
+    giaVatTu: KT.materialStats(db, {}),
+    phieuNhap: KT.costSlips(db, costLedger).map((s) => ({ key: s.key, ngay: s.ngay, maCT: s.maCT, maNCC: s.maNCC, total: s.total, soDong: s.lines.length }))
+  };
+  // qua JSON để Map/Set/undefined so sánh được như nhau
+  return JSON.parse(JSON.stringify(out));
+}
+
+const FILE = path.join(__dirname, 'fixtures', 'moc-so-lieu-nhom1.json');
+const SOURCES = { v1: 'ketoan-v1-goc.json', v2: 'ketoan-v2-hien-tai.json' };
+
+async function capture() {
+  const out = {};
+  for (const [k, f] of Object.entries(SOURCES)) {
+    const srv = await startServer({ seed: path.join(__dirname, 'fixtures', f) });
+    try { out[k] = summarize(await srv.db()); } finally { await srv.stop(); }
+  }
+  return out;
+}
+
+module.exports = { summarize, capture, FILE, SOURCES };
+
+if (require.main === module) {
+  capture().then((o) => {
+    fs.writeFileSync(FILE, JSON.stringify(o));
+    console.log('Đã ghi ' + FILE + ': tồn quỹ v1 ' + o.v1.tonQuy + ', v2 ' + o.v2.tonQuy + ', tổng chi phí v2 ' + o.v2.chiPhi.total);
+  }).catch((e) => { console.error(e); process.exit(1); });
+}

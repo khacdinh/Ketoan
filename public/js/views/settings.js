@@ -1,12 +1,12 @@
 /* Cài đặt: thông tin đơn vị, nhập Excel, xuất/sao lưu/khôi phục, xóa dữ liệu. */
-import { $, esc, money, icon, duo, download, api, toast, showError, confirmDialog, openModal, freshRoot } from '../ui.js';
+import { $, esc, money, icon, duo, download, api, toast, showError, confirmDialog, openModal, freshRoot, busy, LS } from '../ui.js';
 import { S } from '../state.js';
 
 export function renderSettings(root) {
   root = freshRoot(root);
   const s = S.db.settings;
   root.innerHTML =
-    '<div class="grid items-start gap-5 xl:grid-cols-2">' +
+    '<div class="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-2">' +
 
     /* ---- Thông tin in trên phiếu ---- */
     '<section class="sheet" aria-labelledby="h-dv"><div class="sheet-head"><div><h2 id="h-dv" class="sheet-title">Thông tin in trên phiếu và báo cáo</h2>' +
@@ -15,12 +15,11 @@ export function renderSettings(root) {
     f('tenDonVi', 'Tên đơn vị', s.tenDonVi, 'col-span-2 max-sm:col-span-1') +
     f('diaChi', 'Địa chỉ', s.diaChi, 'col-span-2 max-sm:col-span-1') +
     f('giamDoc', 'Giám đốc', s.giamDoc) +
-    f('keToanTruong', 'Kế toán trưởng', s.keToanTruong) +
+    f('keToanTruong', 'Kế toán trưởng (in trên sổ, biên bản)', s.keToanTruong) +
     f('thuQuy', 'Thủ quỹ', s.thuQuy) +
     f('nguoiLap', 'Người lập biểu (in trên sổ)', s.nguoiLap) +
     '<label class="field"><span class="label">Hình thức thanh toán thường dùng</span><select name="hinhThucMacDinh" class="input">' +
     ['Tiền mặt', 'Chuyển khoản'].map((h) => '<option' + (h === s.hinhThucMacDinh ? ' selected' : '') + '>' + h + '</option>').join('') + '</select></label>' +
-    '<label class="check self-end pb-2"><input type="checkbox" name="hienKeToanTruong"' + (s.hienKeToanTruong ? ' checked' : '') + '>In thêm chỗ ký của kế toán trưởng</label>' +
     '<div class="col-span-2 flex justify-end max-sm:col-span-1"><button type="submit" class="btn btn-primary">' + icon('save') + 'Lưu thông tin</button></div>' +
     '</form></section>' +
 
@@ -39,9 +38,11 @@ export function renderSettings(root) {
     '<div class="flex flex-col gap-2 px-5 pb-5">' +
     act('export-full', 'excel', 'Xuất toàn bộ sổ sách ra Excel', 'Đủ các sheet như file gốc: Tổng quan có biểu đồ, Sổ thu chi, Phiếu chi chọn số phiếu để in, các danh mục, Tổng hợp NCC. Giữ nguyên công thức.') +
     act('export-costs', 'crane', 'Xuất chi phí công trình ra Excel', 'Cấu trúc như file ChiPhi_CongTrinh: TONGHOP có biểu đồ, NHATKYCHUNG, CHI_TIET_THEO_NHOM, CONGNO_NCC, SO_QUY, giá vật tư, các danh mục. Giữ công thức SUMIFS, INDEX/MATCH.') +
-    act('backup', 'database', 'Tải bản sao lưu (.json)', 'Một file chứa toàn bộ dữ liệu. Nên cất ra USB hoặc Google Drive định kỳ.') +
-    act('restore', 'history', 'Khôi phục từ file sao lưu', 'Thay toàn bộ dữ liệu hiện tại bằng dữ liệu trong file .json đã tải trước đó.') +
-    '<input type="file" id="restore-file" accept=".json" class="sr-only">' +
+    act('backup-zip', 'database', 'Tải bản sao lưu đầy đủ (.zip)', 'Toàn bộ dữ liệu, chứng từ đính kèm (ảnh, PDF) và nhật ký thay đổi trong một file. Nên cất ra USB hoặc Google Drive định kỳ.') +
+    act('backup', 'database', 'Tải bản sao lưu chỉ dữ liệu (.db)', 'File nhỏ, không kèm ảnh chứng từ.') +
+    act('backup-json', 'database', 'Xuất dữ liệu ra file .json', 'Dùng khi cần quay lại phiên bản phần mềm cũ (lưu bằng JSON) hoặc chuyển dữ liệu sang chương trình khác.') +
+    act('restore', 'history', 'Khôi phục từ file sao lưu', 'Thay toàn bộ dữ liệu hiện tại bằng dữ liệu trong file .zip, .db hoặc .json đã tải trước đó. Chứng từ trong file .zip được chép lại.') +
+    '<input type="file" id="restore-file" accept=".json,.zip,.db" class="sr-only" tabindex="-1" aria-label="Chọn file sao lưu .zip, .db hoặc .json để khôi phục">' +
     '</div></section>' +
 
     /* ---- Sao lưu tự động ---- */
@@ -49,6 +50,13 @@ export function renderSettings(root) {
     '<p class="sheet-note">Tạo định kỳ khi đang làm việc và trước mỗi thao tác lớn: nhập Excel, khôi phục, xóa dữ liệu.</p></div>' +
     '<button type="button" class="btn btn-secondary btn-sm" data-act="backup-now">' + icon('save') + 'Sao lưu ngay</button></div>' +
     '<div id="bk-list" class="max-h-[360px] overflow-auto"><p class="px-5 pb-5 text-ink-3">Đang tải danh sách</p></div></section>' +
+
+    /* ---- Người đang dùng máy này (ghi vào nhật ký thay đổi) ---- */
+    '<section class="sheet" aria-labelledby="h-nd"><div class="sheet-head"><div><h2 id="h-nd" class="sheet-title">Người đang dùng máy này</h2>' +
+    '<p class="sheet-note">Tên này được ghi vào <a class="font-semibold text-pen underline underline-offset-2" href="#/kiem-soat?tab=nhat-ky">nhật ký thay đổi</a> mỗi lần thêm, sửa, xóa. Chỉ lưu trên trình duyệt của máy này; mỗi máy đặt tên riêng. Để trống thì nhật ký ghi “không rõ”.</p></div></div>' +
+    '<form id="nd-form" class="flex flex-wrap items-end gap-3 px-5 pb-5" autocomplete="off"><label class="field min-w-[240px] flex-1"><span class="label">Tên người thao tác</span>' +
+    '<input name="nguoiDung" class="input" maxlength="60" value="' + esc(LS.get('nguoiDung', '')) + '" placeholder="VD: Thúy kế toán"></label>' +
+    '<button type="submit" class="btn btn-secondary">' + icon('save') + 'Lưu tên</button></form></section>' +
 
     /* ---- Xóa dữ liệu ---- */
     '<section class="sheet border-alert/30 xl:col-span-2" aria-labelledby="h-xoa"><div class="sheet-head items-center"><div><h2 id="h-xoa" class="sheet-title">Bắt đầu sổ mới</h2>' +
@@ -63,8 +71,14 @@ export function renderSettings(root) {
     const fm = e.target;
     const data = {};
     ['tenDonVi', 'diaChi', 'giamDoc', 'keToanTruong', 'thuQuy', 'nguoiLap', 'hinhThucMacDinh'].forEach((k) => { data[k] = fm.elements[k].value.trim(); });
-    data.hienKeToanTruong = fm.elements.hienKeToanTruong.checked;
     try { await api('PUT', '/api/settings', data); toast('Đã lưu thông tin in trên phiếu'); } catch (err) { showError(err); }
+  });
+
+  $('#nd-form', root).addEventListener('submit', (e) => {
+    e.preventDefault();
+    const v = e.target.elements.nguoiDung.value.replace(/\s+/g, ' ').trim().slice(0, 60);
+    LS.set('nguoiDung', v);
+    toast(v ? 'Từ giờ nhật ký ghi người thao tác là “' + v + '”' : 'Đã bỏ tên người thao tác');
   });
 
   // ---- nhập Excel ----
@@ -86,6 +100,27 @@ export function renderSettings(root) {
     const file = restoreInput.files[0];
     restoreInput.value = '';
     if (!file) return;
+    if (/\.zip$/i.test(file.name)) {
+      if (!(await confirmDialog({
+        title: 'Khôi phục từ bản sao lưu đầy đủ',
+        html: 'Khôi phục từ <b class="text-ink">' + esc(file.name) + '</b>?<p class="mt-2">Toàn bộ dữ liệu hiện tại sẽ được thay bằng dữ liệu trong file; ảnh chứng từ còn thiếu được chép lại. Phần mềm tự sao lưu dữ liệu hiện tại trước khi thay. Nhật ký thay đổi hiện có được giữ nguyên.</p>',
+        okText: 'Khôi phục', danger: true
+      }))) return;
+      try { const r = await api('POST', '/api/restore-zip', await file.arrayBuffer(), true); toast('Đã khôi phục dữ liệu' + (r.copied ? ', chép lại ' + r.copied + ' file chứng từ' : '')); } catch (err) { showError(err); }
+      return;
+    }
+    if (/\.db$/i.test(file.name)) {
+      if (!(await confirmDialog({
+        title: 'Khôi phục dữ liệu',
+        html: 'Khôi phục từ <b class="text-ink">' + esc(file.name) + '</b>?<p class="mt-2">Toàn bộ dữ liệu hiện tại sẽ được thay thế. Phần mềm kiểm tra file trước, rồi tự sao lưu dữ liệu hiện tại trước khi thay.</p>',
+        okText: 'Khôi phục', danger: true
+      }))) return;
+      try {
+        const r = await api('POST', '/api/restore', await file.arrayBuffer(), true);
+        toast('Đã khôi phục dữ liệu: ' + r.summary.entries + ' dòng sổ, ' + r.summary.costs + ' dòng chi phí');
+      } catch (err) { showError(err); }
+      return;
+    }
     let data;
     try { data = JSON.parse(await file.text()); } catch (e) { return toast('File này không phải bản sao lưu của phần mềm', 'error'); }
     const n = (data.entries || []).length;
@@ -106,6 +141,8 @@ export function renderSettings(root) {
     else if (k === 'export-costs') download('/api/export/costs');
     else if (k === 'reset-costs') openResetCosts();
     else if (k === 'backup') { location.href = '/api/backup'; }
+    else if (k === 'backup-json') { location.href = '/api/backup-json'; }
+    else if (k === 'backup-zip') { location.href = '/api/backup-zip'; toast('Đang đóng gói bản sao lưu đầy đủ, file sẽ nằm trong thư mục Downloads', 'info'); }
     else if (k === 'restore') restoreInput.click();
     else if (k === 'backup-now') {
       try { await api('POST', '/api/backups/now'); toast('Đã tạo bản sao lưu'); loadBackups(root); } catch (err) { showError(err); }
@@ -140,7 +177,9 @@ const REASONS = {
   'truoc-nhap-chi-phi': 'Trước khi nhập Excel chi phí',
   'truoc-gop-chi-phi': 'Trước khi gộp Excel chi phí',
   'truoc-xoa-chi-phi': 'Trước khi xóa dữ liệu chi phí',
-  'truoc-nang-cap-v2': 'Trước khi nâng cấp phần mềm'
+  'truoc-nang-cap-v2': 'Trước khi nâng cấp phần mềm',
+  'truoc-nang-cap-v3': 'Trước khi nâng cấp phần mềm',
+  'truoc-khi-chuyen-sqlite': 'Trước khi chuyển sang SQLite (file .json gốc)'
 };
 
 async function loadBackups(root) {
@@ -151,7 +190,7 @@ async function loadBackups(root) {
     if (!r.backups.length) { el.innerHTML = '<p class="px-5 pb-5 text-ink-3">Chưa có bản sao lưu nào. Bản đầu tiên được tạo khi bạn ghi sổ hoặc bấm “Sao lưu ngay”.</p>'; return; }
     el.innerHTML = '<table class="ledger ledger-compact"><thead><tr><th>Thời điểm</th><th>Lý do</th><th class="num">Dung lượng</th><th><span class="sr-only">Thao tác</span></th></tr></thead><tbody>' +
       r.backups.slice(0, 15).map((b) => {
-        const m = /ketoan-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})-?(.*)\.json$/.exec(b.name) || [];
+        const m = /ketoan-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})-?(.*)\.(?:db|json)$/.exec(b.name) || [];
         const when = m[1] ? m[3] + '/' + m[2] + '/' + m[1] + ' lúc ' + m[4] + ':' + m[5] : b.name;
         return '<tr><td class="whitespace-nowrap tabular-nums">' + esc(when) + '</td><td class="text-ink-2">' + esc(REASONS[m[7]] || m[7] || '') + '</td>' +
           '<td class="num text-ink-2">' + Math.max(1, Math.round(b.size / 1024)) + ' KB</td>' +
@@ -165,7 +204,7 @@ async function loadBackups(root) {
 
 async function previewImport(file, root) {
   const box = $('#imp-preview', root);
-  box.innerHTML = '<p class="mt-3 text-ink-3">Đang đọc file ' + esc(file.name) + '</p>';
+  box.innerHTML = '<p class="mt-3 flex items-center gap-2 text-ink-2" role="status">' + icon('spinner', 'animate-spin text-[18px]') + 'Đang đọc file ' + esc(file.name) + '. File lớn có thể mất vài giây…</p>';
   let buf;
   try {
     buf = await file.arrayBuffer();
@@ -199,14 +238,17 @@ async function previewImport(file, root) {
     const mode = b.dataset.imp;
     if (mode === 'replace' && !(await confirmDialog({
       title: 'Thay toàn bộ dữ liệu',
-      html: 'Dữ liệu hiện có (<b class="text-ink">' + S.db.entries.length + '</b> dòng sổ) sẽ được thay bằng dữ liệu trong file Excel.<p class="mt-2">Phần mềm tự sao lưu dữ liệu cũ trước khi thay.</p>',
+      html: 'Dữ liệu hiện có (<b class="text-ink">' + S.all.entries.length + '</b> dòng sổ) sẽ được thay bằng dữ liệu trong file Excel.<p class="mt-2">Phần mềm tự sao lưu dữ liệu cũ trước khi thay.</p>',
       okText: 'Thay dữ liệu', danger: true
     }))) return;
+    const done = busy(b, 'Đang nhập…');
+    box.querySelectorAll('[data-imp]').forEach((x) => { x.disabled = true; });
     try {
       const r = await api('POST', '/api/import?mode=' + mode, buf, true);
       const a = r.result.added;
       toast('Đã nhập ' + a.entries + ' dòng sổ, ' + a.projects + ' dự án, ' + a.suppliers + ' nhà cung cấp' + (r.result.skipped ? '. Bỏ qua ' + r.result.skipped + ' dòng trùng' : ''));
     } catch (err) { showError(err); }
+    if (b.isConnected) { done(); box.querySelectorAll('[data-imp]').forEach((x) => { x.disabled = false; }); }
   };
 }
 
@@ -218,7 +260,7 @@ function openReset() {
   return openModal({
     title: 'Xóa dữ liệu sổ',
     size: 'small',
-    body: '<p class="leading-relaxed text-ink-2">Thao tác này xóa toàn bộ <b class="text-ink">' + S.db.entries.length + ' dòng sổ thu chi</b>. Một bản sao lưu được tạo ngay trước khi xóa.</p>' +
+    body: '<p class="leading-relaxed text-ink-2">Thao tác này xóa toàn bộ <b class="text-ink">' + S.all.entries.length + ' dòng sổ thu chi</b>. Một bản sao lưu được tạo ngay trước khi xóa.</p>' +
       '<label class="check mt-4"><input type="checkbox" id="rs-keep" checked>Giữ lại danh mục dự án và nhà cung cấp</label>' +
       '<label class="field mt-4"><span class="label">Gõ chữ XOA để xác nhận</span><input id="rs-confirm" class="input" autocomplete="off"></label>',
     footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="no">Hủy</button><button type="button" class="btn btn-danger" data-act="yes" disabled>Xóa dữ liệu sổ</button>',
@@ -282,16 +324,21 @@ function previewCostImport(file, buf, p, box, root) {
     const soQuy = !!(box.querySelector('#imp-soquy') && box.querySelector('#imp-soquy').checked);
     if (mode === 'replace' && !(await confirmDialog({
       title: 'Thay toàn bộ dữ liệu chi phí',
-      html: 'Sổ chi phí hiện có (<b class="text-ink">' + S.db.costs.length + '</b> dòng) và danh mục chi phí sẽ được thay bằng dữ liệu trong file. Sổ thu chi, danh mục dự án và nhà cung cấp được giữ nguyên.' +
+      html: 'Sổ chi phí hiện có (<b class="text-ink">' + S.all.costs.length + '</b> dòng) và danh mục chi phí sẽ được thay bằng dữ liệu trong file. Sổ thu chi, danh mục dự án và nhà cung cấp được giữ nguyên.' +
         '<p class="mt-2">Phần mềm tự sao lưu dữ liệu cũ trước khi thay.</p>',
       okText: 'Thay dữ liệu chi phí', danger: true
     }))) return;
+    const done = busy(b, 'Đang nhập…');
+    box.querySelectorAll('[data-imp]').forEach((x) => { x.disabled = true; });
     try {
       const r = await api('POST', '/api/import?mode=' + mode + (soQuy ? '&soQuy=1' : '') + '&map=' + encodeURIComponent(JSON.stringify(map)), buf, true);
       const a = r.result.added;
       toast('Đã nhập ' + a.costs + ' dòng chi phí, ' + a.materials + ' vật tư, ' + a.items + ' hạng mục' + (a.entries ? ', ' + a.entries + ' dòng sổ thu chi' : '') +
         (r.result.skipped ? '. Bỏ qua ' + r.result.skipped + ' dòng trùng' : ''));
-    } catch (err) { showError(err); }
+    } catch (err) {
+      showError(err);
+      if (b.isConnected) { done(); box.querySelectorAll('[data-imp]').forEach((x) => { x.disabled = false; }); }
+    }
   };
 }
 
@@ -299,7 +346,7 @@ function openResetCosts() {
   return openModal({
     title: 'Xóa dữ liệu chi phí công trình',
     size: 'small',
-    body: '<p class="leading-relaxed text-ink-2">Thao tác này xóa toàn bộ <b class="text-ink">' + S.db.costs.length + ' dòng chi phí</b>. Sổ thu chi không bị ảnh hưởng. Một bản sao lưu được tạo ngay trước khi xóa.</p>' +
+    body: '<p class="leading-relaxed text-ink-2">Thao tác này xóa toàn bộ <b class="text-ink">' + S.all.costs.length + ' dòng chi phí</b>. Sổ thu chi không bị ảnh hưởng. Một bản sao lưu được tạo ngay trước khi xóa.</p>' +
       '<label class="check mt-4"><input type="checkbox" id="rc-keep" checked>Giữ lại vật tư và nhà</label>' +
       '<label class="field mt-4"><span class="label">Gõ chữ XOA để xác nhận</span><input id="rc-confirm" class="input" autocomplete="off"></label>',
     footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="no">Hủy</button><button type="button" class="btn btn-danger" data-act="yes" disabled>Xóa dữ liệu chi phí</button>',

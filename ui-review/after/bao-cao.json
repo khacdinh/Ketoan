@@ -1,0 +1,747 @@
+{
+ "luc": "2026-09-30T21:41:05.862Z",
+ "states": {
+  "trong": {
+   "1366x768": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "_errors": []
+   },
+   "1920x1080": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "_errors": []
+   },
+   "768x1024": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "_errors": []
+   },
+   "390x844": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "_errors": []
+   }
+  },
+  "mau": {
+   "1366x768": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": [],
+     "axe": []
+    },
+    "_errors": []
+   },
+   "1920x1080": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "_errors": []
+   },
+   "768x1024": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "_errors": []
+   },
+   "390x844": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "_errors": []
+   }
+  },
+  "lon": {
+   "1366x768": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "_errors": []
+   },
+   "1920x1080": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "_errors": []
+   },
+   "768x1024": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "_errors": []
+   },
+   "390x844": {
+    "tong-quan": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "so-thu-chi": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "phieu": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "du-an": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "tong-hop-ncc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cai-dat": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-tong-hop": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-nhap": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-so": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-chi-tiet": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-cong-no": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-gia": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "cp-danh-muc": {
+     "overflowX": 0,
+     "errors": []
+    },
+    "_errors": []
+   }
+  }
+ }
+}

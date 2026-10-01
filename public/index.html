@@ -12,23 +12,24 @@
 </head>
 <body>
   <aside class="app-sidebar no-print max-lg:w-16">
-    <div class="flex items-center gap-3 px-5 pt-6 pb-5 max-lg:justify-center max-lg:px-0">
+    <div class="side-brand flex items-center gap-3 px-5 pt-6 pb-5 max-lg:justify-center max-lg:px-0">
       <span class="grid size-9 flex-none place-items-center rounded-lg bg-white/10 text-white" aria-hidden="true">
         <i class="ph-duotone ph-notebook text-[22px]"></i>
       </span>
       <div class="min-w-0 max-lg:hidden">
         <div class="text-[17px] leading-tight font-bold text-white font-stretch-[112%]">Sổ Thu Chi</div>
-        <div id="org-name" class="mt-0.5 text-[11.5px] leading-snug text-[#DDE9E0]/70"></div>
+        <div id="org-name" class="mt-0.5 text-[11.5px] leading-snug text-cover-ink-2"></div>
       </div>
     </div>
     <nav id="nav" aria-label="Chức năng" class="flex-1 overflow-y-auto py-1"></nav>
-    <div class="border-t border-white/10 px-5 py-4 max-lg:hidden">
+    <div class="side-foot border-t border-white/10 px-5 py-4 max-lg:hidden">
       <div id="side-fund"></div>
-      <div id="save-state" class="mt-1 text-[12px] text-[#DDE9E0]/60" aria-live="polite"></div>
+      <div id="save-state" class="mt-1 text-[12px] text-cover-ink-2" aria-live="polite"></div>
     </div>
   </aside>
 
-  <main class="app-main ml-[232px] min-h-screen max-lg:ml-16">
+  <main class="app-main min-h-screen max-lg:ml-16">
+    <div id="offline-root"></div>
     <header class="topbar sticky top-0 z-10 flex flex-wrap items-end gap-x-6 gap-y-3 bg-paper/95 px-8 pt-6 pb-4 backdrop-blur max-md:px-4">
       <div class="min-w-0 flex-1">
         <h1 id="page-title" class="text-[26px] leading-tight font-semibold tracking-[-0.015em] font-stretch-[112%]">Đang tải</h1>
@@ -36,7 +37,7 @@
       </div>
       <div class="no-print flex items-center gap-2">
         <button type="button" class="btn btn-primary" id="btn-new" title="Phím tắt F2">
-          <i class="ph ph-plus" aria-hidden="true"></i>Ghi thu / chi
+          <i class="ph ph-plus" aria-hidden="true"></i>Ghi thu / chi<kbd class="ml-0.5 border-white/30 bg-white/10 text-white/85 max-xl:hidden">F2</kbd>
         </button>
         <button type="button" class="btn btn-secondary" id="btn-export">
           <i class="ph ph-file-xls" aria-hidden="true"></i>Xuất Excel<i class="ph ph-caret-down -mr-1 text-[13px] text-ink-3" aria-hidden="true"></i>
@@ -49,7 +50,7 @@
   </main>
 
   <div id="modal-root"></div>
-  <div id="toast-root" class="fixed right-6 bottom-6 z-[90] flex flex-col items-end gap-2" aria-live="polite"></div>
+  <div id="toast-root" aria-live="polite"></div>
   <div id="print-root"></div>
 
   <script src="js/shared.js"></script>

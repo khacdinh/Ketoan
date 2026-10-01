@@ -1,0 +1,21 @@
+# Dữ liệu sinh ra khi chạy phần mềm (không đưa vào git)
+data/nhat-ky.jsonl
+data/attachments/
+data/*.tmp
+data/*.hong-*
+logs/
+*.zip
+# Dữ liệu SQLite và file sinh ra khi chuyển đổi (không đưa dữ liệu thật vào git)
+data/ketoan.db
+data/ketoan.db-journal
+data/ketoan.db.*
+data/ketoan.json.da-chuyen-sqlite*.bak
+data/migrate-bao-cao.txt
+data/backups/*.db
+data/backups/.*
+data/.dang-*
+# Nhập Excel công trình: file Excel gốc và bảng kê CSV (dữ liệu thật) không đưa vào git
+import-input/
+import-bao-cao/*.csv
+backups/
+attachments/

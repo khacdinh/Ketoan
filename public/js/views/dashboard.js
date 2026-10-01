@@ -1,6 +1,6 @@
 /* Tổng quan: tồn quỹ, nhịp tồn quỹ theo ngày, chi phí theo dự án. */
 import { $, esc, money, fdate, fmtShort, icon, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, equationHtml } from '../ui.js';
-import { S, saveFilter, vouchers } from '../state.js';
+import { S, saveFilter, vouchers, anomalies } from '../state.js';
 import { printView } from '../print.js';
 
 const KT = window.KT;
@@ -38,18 +38,18 @@ export function renderDashboard(root) {
     '<p class="balance mt-2' + (L.tonCuoiKy < 0 ? ' neg' : '') + '">' + money(L.tonCuoiKy) + '<span class="unit">đồng</span></p></div>' +
     '<div class="no-print flex flex-wrap items-center gap-2">' + periodControls(f, 'dash') +
     '<button type="button" class="btn btn-ghost" data-act="print">' + icon('print') + 'In</button>' +
-    '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất báo cáo</button></div>' +
+    '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất Excel</button></div>' +
     '</div>' +
     equationHtml({ dau: L.tonDauKy, thu: L.tongThu, chi: L.tongChi, cuoi: L.tonCuoiKy, dauLabel: f.from ? 'Tồn quỹ ngày ' + fdate(f.from) : 'Tồn quỹ đầu sổ' }) +
     '<div class="sheet px-5 pt-4 pb-3">' +
     '<div class="flex flex-wrap items-baseline justify-between gap-2"><h3 class="sheet-title">Nhịp tồn quỹ theo ngày</h3>' +
-    '<p class="text-[12.5px] text-ink-3">' + esc(KT.describeRange(f.from, f.to)) + '. Rê chuột lên đường để xem từng ngày.</p></div>' +
+    '<p class="text-[12.5px] text-ink-3">' + esc(KT.describeRange(f.from, f.to)) + '<span class="screen-hint">. Rê chuột lên đường để xem từng ngày</span>.</p></div>' +
     '<div class="flow mt-3" id="flow"></div>' +
     '</div>' +
     '</section>' +
 
     /* ---- Dự án + cột phụ ---- */
-    '<div class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">' +
+    '<div class="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">' +
     '<section class="sheet overflow-hidden" aria-labelledby="h-duan">' +
     '<div class="sheet-head"><div><h3 id="h-duan" class="sheet-title">Chi phí theo dự án</h3>' +
     '<p class="sheet-note">Tổng chi trong kỳ so với ngân sách. Bấm một dòng để mở sổ của dự án đó.</p></div>' +
@@ -60,13 +60,31 @@ export function renderDashboard(root) {
     '</section>' +
     '<aside class="flex flex-col gap-5">' +
     costCard(f) +
-    '<section class="sheet" aria-labelledby="h-chuy"><div class="sheet-head pb-2"><h3 id="h-chuy" class="sheet-title">Cần chú ý</h3></div>' + alertsHtml(ps, multiDate) + '</section>' +
+    '<section class="sheet" aria-labelledby="h-chuy"><div class="sheet-head pb-2"><h3 id="h-chuy" class="sheet-title">Cần chú ý</h3></div>' +
+    '<div id="dash-anom" class="px-5" aria-live="polite"></div>' + alertsHtml(ps, multiDate) + '</section>' +
     '<section class="sheet" aria-labelledby="h-gan"><div class="sheet-head pb-2"><h3 id="h-gan" class="sheet-title">Ghi gần đây</h3>' +
     '<a href="#/so-thu-chi" class="btn btn-ghost btn-sm -mt-1 -mr-2 no-print">Mở sổ</a></div>' + recentHtml() + '</section>' +
     '</aside>' +
     '</div>';
 
   bindPeriodControls(root, f, 'dash', () => { saveFilter('dash'); renderDashboard(root); });
+  // Việc cần xử lý (kiểm tra bất thường): tính sau khi vẽ để không làm chậm lúc mở Tổng quan
+  setTimeout(() => {
+    const box = $('#dash-anom', root);
+    if (!box || !box.isConnected) return;
+    const a = anomalies();
+    const nhap = S.drafts.entries.length + new Set(S.drafts.costs.map((c) => c.phieuId)).size;
+    const parts = [];
+    if (a.open) {
+      const top = Object.keys(a.counts).filter((k) => a.counts[k]).sort((x, y) => a.counts[y] - a.counts[x]).slice(0, 3)
+        .map((k) => a.counts[k] + ' ' + KT.ANOMALY_TYPES[k].toLowerCase()).join(', ');
+      parts.push('<a href="#/kiem-soat?tab=can-xu-ly" class="flex gap-3 rounded-lg bg-caution-soft px-3 py-2.5 text-[13.5px] leading-snug text-ink hover:bg-[#FFE8B0]">' +
+        '<span class="mt-0.5 text-[18px] text-caution">' + icon('flag') + '</span><span><b class="font-semibold">' + a.open + ' việc cần xử lý</b><span class="block text-[12.5px] text-ink-2">' + esc(top) + '</span></span></a>');
+    }
+    if (nhap) parts.push('<a href="#/so-thu-chi" class="mt-2 flex gap-3 rounded-lg px-3 py-2 text-[13.5px] text-ink-2 hover:bg-paper"><span class="text-[18px] text-caution">' + icon('draft') + '</span><span>' + nhap + ' phiếu / dòng nháp chưa ghi sổ (chưa tính vào số liệu)</span></a>');
+    box.innerHTML = parts.join('');
+    box.classList.toggle('pb-2', !!parts.length);
+  }, 0);
 
   const flowEl = $('#flow', root);
   drawFlow(flowEl, L, f);

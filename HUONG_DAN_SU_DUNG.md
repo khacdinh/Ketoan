@@ -23,6 +23,11 @@ Muốn có biểu tượng trên Desktop: bấm đúp **`TaoBieuTuongDesktop.bat
 > Lần đầu mở bản mới, phần mềm tự nâng cấp dữ liệu cũ lên phiên bản có phần chi phí công trình
 > và **tự sao lưu bản cũ** trước (bản sao lưu “Trước khi nâng cấp phần mềm” trong Cài đặt).
 
+> **Từ phiên bản lưu bằng SQLite** (cần **Node.js 24.16.0 trở lên** hoặc **26.1.0 trở lên**): lần đầu mở, phần mềm tự chuyển dữ liệu
+> từ `data\ketoan.json` sang `data\ketoan.db`, đối chiếu từng con số (tồn quỹ, tổng thu / chi, từng dự án, từng NCC, chi phí…)
+> rồi mới dùng. Cửa sổ đen báo *“Đã chuyển dữ liệu sang SQLite”*; chi tiết đối chiếu ở `data\migrate-bao-cao.txt`.
+> File cũ được giữ lại (đổi tên thành `ketoan.json.da-chuyen-sqlite.bak`) và có thêm một bản trong `data\backups`. Xem mục 17.
+
 ---
 
 ## 2. Các màn hình (tương ứng với các sheet Excel)
@@ -49,6 +54,9 @@ Nhóm menu **Chi phí công trình** (bên trái, dưới “Tổng hợp NCC”
 | **Giá vật tư** | (mới) | Lịch sử đơn giá từng vật tư theo NCC, giá thấp / cao / gần nhất, biểu đồ giá. |
 | **Danh mục chi phí** | `DM_NHOM`, `DM_HANGMUC`, `DM_VATTU`, `DM_NHA` | Nhóm chi phí, hạng mục, vật tư, nhà / khu. |
 
+Mục **Kiểm soát** (trên “Cài đặt”; con số màu vàng = số việc cần xử lý): **Cần xử lý**, **Kiểm quỹ**, **Khóa sổ**,
+**Nhật ký thay đổi**, **Thùng rác** — xem mục 16.
+
 ---
 
 ## 3. Ghi sổ nhanh
@@ -59,8 +67,10 @@ Nhóm menu **Chi phí công trình** (bên trái, dưới “Tổng hợp NCC”
 - **Số phiếu**: bấm **Số mới** để lấy số kế tiếp trong tháng (VD `PC045/09`). Nhiều dòng dùng chung một số phiếu sẽ được gộp khi in.
 - **Mã dự án / Mã NCC**: gõ mã **hoặc gõ tên** rồi chọn trong danh sách gợi ý. Nếu chưa có, bấm “thêm mới” ngay trong form.
 - Khi chọn nhà cung cấp có chi phí công trình, dưới ô hiện luôn **công nợ còn lại** (theo dự án đang chọn) và nút **Điền số này**.
-- **Số tiền** gõ được: `1.250.000`, `1250000`, `50tr`, `1,5tr`, `300k`, hoặc phép tính `58000+11000` (giống cách ghi công thức trong Excel cũ). Bên dưới hiện luôn số tiền bằng chữ để đối chiếu.
-- **Ctrl + Enter** để lưu. Nút **Lưu & nhập tiếp** giữ lại ngày, số phiếu, dự án, NCC để nhập dòng kế tiếp của cùng phiếu.
+- **Số tiền** gõ được: `1.250.000`, `1250000`, `50tr`, `1,5tr`, `300k`, hoặc phép tính `58000+11000` (giống cách ghi công thức trong Excel cũ). Cách ghi dính như `2tr5` hoặc `1tr250k` bị từ chối (phần mềm không đoán ý) — hãy viết `2,5tr` hoặc `1tr+250k`. Bên dưới hiện luôn số tiền bằng chữ để đối chiếu.
+- Bấm **Ghi sổ** (hoặc **Ctrl + Enter**) để ghi vào sổ; **Esc** để đóng. Nút **Ghi sổ và ghi tiếp** giữ lại ngày, số phiếu, dự án, NCC để ghi dòng kế tiếp của cùng phiếu.
+- Nếu còn thiếu hoặc sai (chưa có nội dung, số tiền không hợp lệ, mã chưa có trong danh mục...), lời nhắc **hiện ngay dưới ô bị sai** và con trỏ nhảy vào ô đó; sửa xong lời nhắc tự mất.
+- Dòng vừa ghi hoặc vừa sửa được **tô vàng** trong sổ vài giây để dễ kiểm tra lại.
 - Bấm đúp vào một dòng trong sổ để sửa.
 
 ---
@@ -72,7 +82,7 @@ Nhóm menu **Chi phí công trình** (bên trái, dưới “Tổng hợp NCC”
    (để trống = tự lấy từ sổ và danh mục). Bấm **Lưu thông tin phiếu** để ghi nhớ.
 3. Bấm **In phiếu (2 liên)** — in ra 1 tờ A4 dọc gồm Liên 1 (lưu) và Liên 2 (giao khách) có đường cắt.
 
-Tên Giám đốc, Thủ quỹ… in dưới chữ ký được đặt trong **Cài đặt & dữ liệu**. Có thể bật thêm ô ký “Kế toán trưởng”.
+Tên Giám đốc, Thủ quỹ… in dưới chữ ký được đặt trong **Cài đặt & dữ liệu**. Phiếu thu/chi chỉ có chỗ ký Giám đốc, người nộp/nhận tiền và Thủ quỹ (không có Kế toán trưởng).
 
 ---
 
@@ -106,12 +116,28 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
 
 ## 7. Sao lưu — dữ liệu nằm ở đâu
 
-- Dữ liệu: `C:\KeToan\data\ketoan.json` (lưu ngay sau mỗi thao tác).
-- Sao lưu tự động: `C:\KeToan\data\backups\` — tự tạo định kỳ và **trước mỗi thao tác lớn** (nâng cấp phần mềm, nhập Excel,
-  khôi phục, xóa). Khôi phục bằng 1 nút trong **Cài đặt & dữ liệu → Bản sao lưu tự động**.
-- Nên định kỳ bấm **Tải bản sao lưu (.json)** và cất ra USB / Google Drive.
+- Dữ liệu: **`C:\KeToan\data\ketoan.db`** (cơ sở dữ liệu SQLite, một file; lưu ngay sau mỗi thao tác, mỗi lần lưu là trọn vẹn
+  hoặc không có gì — mất điện giữa chừng thì lần mở sau tự bỏ phần dở dang).
+  Bản trước đây lưu ở `ketoan.json`; file đó nay là `ketoan.json.da-chuyen-sqlite.bak` (chỉ để dự phòng, phần mềm không dùng nữa).
+- Sao lưu tự động: `C:\KeToan\data\backups\` — file `ketoan-<ngày giờ>-<lý do>.db`, tự tạo định kỳ (tối đa 1 bản / 10 phút khi đang
+  sửa) và **trước mỗi thao tác lớn** (nhập Excel, khôi phục, xóa); giữ 60 bản mới nhất. Các bản `.json` từ trước khi chuyển vẫn nằm
+  đó và vẫn khôi phục được; bản “Trước khi chuyển sang SQLite” không bao giờ bị tự xóa.
+  Khôi phục bằng 1 nút trong **Cài đặt & dữ liệu → Bản sao lưu tự động**.
+- Chứng từ đính kèm (ảnh, PDF): `C:\KeToan\data\attachments\`. Nhật ký thay đổi: `C:\KeToan\data\nhat-ky.jsonl`.
+- Nên định kỳ bấm **Tải bản sao lưu đầy đủ (.zip)** — gồm dữ liệu (cả `ketoan.db` lẫn `ketoan.json`), chứng từ đính kèm và nhật ký —
+  rồi cất ra USB / Google Drive. Nút **Tải bản sao lưu chỉ dữ liệu (.db)** cho file nhỏ, không kèm ảnh; nút **Xuất dữ liệu ra file .json**
+  dùng khi cần quay lại phiên bản cũ (mục 17). **Khôi phục từ file sao lưu** nhận `.zip`, `.db` và `.json`; phần mềm kiểm tra file
+  trước, file hỏng / không phải của phần mềm thì báo lỗi và **giữ nguyên** dữ liệu đang có; file hợp lệ thì tự sao lưu dữ liệu hiện tại
+  rồi mới thay.
+- Không mở `ketoan.db` bằng chương trình khác (DB Browser…) **trong lúc phần mềm đang chạy**. Nếu lỡ sửa, phần mềm phát hiện và báo
+  “dữ liệu vừa bị một chương trình khác thay đổi”, nạp lại dữ liệu mới nhất, không ghi đè.
 
-**Chuyển sang máy khác:** chép cả thư mục `C:\KeToan` sang máy mới (đã cài Node.js) rồi bấm `KhoiDong.bat`.
+**Chuyển sang máy khác:**
+1. Tắt phần mềm (đóng cửa sổ đen) — để `ketoan.db` không đang được ghi.
+2. Chép **cả thư mục** `C:\KeToan` (gồm `data\ketoan.db`, `data\backups`, `data\attachments`, `data\nhat-ky.jsonl`) sang máy mới.
+   Có thể đặt ở thư mục có dấu cách / chữ có dấu (vd `D:\Kế toán\Sổ thu chi`).
+3. Cài Node.js **24.16.0 trở lên** (bản LTS) hoặc **26.1.0 trở lên** trên máy mới, rồi bấm `KhoiDong.bat`.
+   Cách khác: trên máy cũ bấm **Tải bản sao lưu đầy đủ (.zip)**, trên máy mới cài phần mềm rồi **Khôi phục từ file sao lưu**.
 
 ---
 
@@ -120,8 +146,14 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
 | Hiện tượng | Cách xử lý |
 |---|---|
 | Bấm `KhoiDong.bat` báo chưa cài Node.js | Cài Node.js bản LTS tại https://nodejs.org rồi chạy lại. |
-| Trình duyệt báo “Không kết nối được” | Cửa sổ đen đã bị đóng → bấm lại `KhoiDong.bat`. |
+| `KhoiDong.bat` báo Node.js “không dùng được với phần mềm này” | Cần Node.js **24.16.0 trở lên** (dòng 24 LTS) hoặc **26.1.0 trở lên** (dòng 25 và 26.0 không dùng được). Vào https://nodejs.org, tải bản **LTS** (Windows Installer .msi), cài đè lên bản cũ, rồi chạy lại. Dữ liệu không bị ảnh hưởng. |
+| Lần đầu chạy bản SQLite báo **“Chưa chuyển được dữ liệu sang SQLite”** | Phần mềm dừng để an toàn, **`ketoan.json` giữ nguyên, chưa bị sửa**. Mở `data\migrate-bao-cao.txt` xem lý do (dòng “Kết quả”). Nếu là file `ketoan.json` hỏng: lấy bản đúng trong `data\backups` (bản `.json` mới nhất) chép đè thành `data\ketoan.json` rồi chạy lại. Lý do khác: gửi cả thư mục `data` cho người hỗ trợ; trong lúc chờ có thể dùng bản cũ (mục 17). |
+| Cửa sổ đen báo “Có cả ketoan.db và ketoan.json” | Phần mềm dùng `ketoan.db`; `ketoan.json` bên cạnh **không** được tự nhập. Muốn đưa dữ liệu trong file đó vào: **Cài đặt → Khôi phục từ file sao lưu** chọn file đó. |
+| Báo “file dữ liệu đang bị một chương trình khác khóa” | Đóng chương trình đang mở `ketoan.db` (DB Browser, phần mềm mở ở cửa sổ khác, phần mềm sao lưu / diệt virus đang quét) rồi chạy lại. |
+| Báo “Không lưu được dữ liệu… CHƯA được ghi” | Thao tác vừa rồi không được lưu, dữ liệu giữ như trước. Thường do ổ đĩa đầy hoặc file bị khóa: giải phóng ổ đĩa / đóng chương trình đang khóa file rồi làm lại. |
+| Trình duyệt báo “Không kết nối được”, hoặc đầu trang hiện dải đỏ **“Mất kết nối với phần mềm”** | Cửa sổ đen đã bị đóng → bấm lại `KhoiDong.bat`, rồi bấm **Thử lại** trên dải đỏ. Nội dung đang gõ trong hộp thoại vẫn còn, bấm Ghi sổ lại là được. |
 | Nhập nhầm / xóa nhầm | Vào **Cài đặt & dữ liệu → Bản sao lưu tự động**, khôi phục bản trước thời điểm nhầm. |
+| Mở phần mềm báo “file dữ liệu bị hỏng” | Phần mềm tự lấy lại bản sao lưu gần nhất còn đọc được (`.db` hoặc `.json`) và giữ file hỏng với tên `ketoan.db.hong-…` trong thư mục `data`. Nếu báo không có bản sao lưu nào đọc được: đừng xóa gì, chép cả thư mục `data` cho người hỗ trợ. |
 | Cổng 3939 bị phần mềm khác dùng | Phần mềm tự chuyển sang cổng kế tiếp (3940, 3941…) và mở đúng địa chỉ. |
 | Màn hình không thấy chức năng mới | Bấm **Ctrl + F5** trên trình duyệt để tải lại giao diện. |
 
@@ -156,11 +188,14 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
   - Mã chưa có trong danh mục: ô báo đỏ kèm nút **Thêm** để thêm nhanh ngay trong phiếu.
 - **Phím tắt**: **Enter** sang ô kế tiếp (Mã VT → Diễn giải → Số lượng → Đơn giá → dòng sau), **↑ ↓** đổi dòng,
   **Ctrl + Delete** xóa dòng, **Ctrl + Enter** lưu phiếu. Gõ vào dòng cuối là tự thêm dòng mới.
-- **Lưu**: giống macro `GhiPhieuNhap` — các dòng được ghi vào Sổ chi phí, phần hàng và số phiếu được xóa trắng,
+- **Ghi vào sổ chi phí**: giống macro `GhiPhieuNhap` — các dòng được ghi vào Sổ chi phí, phần hàng và số phiếu được xóa trắng,
   đầu phiếu giữ lại để nhập chuyến tiếp theo. Phiếu đang nhập dở được giữ lại nếu lỡ chuyển sang màn hình khác.
 - **Phiếu đã nhập** (cuối trang): tìm, **sửa**, **nhân bản**, **xóa** cả phiếu.
 - Phần mềm **không cho lưu** khi: thiếu ngày / công trình / NCC / hạng mục, mã không có trong danh mục,
-  số lượng ≤ 0, đơn giá âm, nhà không thuộc công trình đã chọn.
+  số lượng ≤ 0, đơn giá âm, nhà không thuộc công trình đã chọn. Lỗi ở đầu phiếu hiện ngay dưới ô; lỗi ở dòng hàng tô đỏ ô đó và báo “Dòng n: …”.
+- **Cảnh báo giá lệch**: nếu đơn giá gõ vào cao hơn 1,5 lần hoặc thấp hơn 2/3 giá lần mua gần nhất của vật tư đó, ô đơn giá
+  chuyển màu vàng kèm dòng “Cao hơn …% giá lần trước” (rê chuột để xem giá và ngày lần trước). Đây chỉ là nhắc kiểm tra
+  (hay gặp khi gõ thừa/thiếu số 0), vẫn lưu được bình thường.
 
 ---
 
@@ -192,7 +227,7 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
     đổi ở ô chọn phạm vi để xem mọi NCC.
   - Bấm một NCC để xem các phiếu chi phí và các lần trả tiền; nút **Trả tiền / Ghi phiếu chi** mở sẵn form ghi chi
     trong Sổ thu chi với đúng NCC, dự án và số còn nợ.
-- **Giá vật tư**: danh sách vật tư đã mua (số lần, giá gần nhất, mức dao động); chọn một vật tư để xem lịch sử đơn giá
+- **Giá vật tư**: danh sách vật tư đã mua (số lần, giá gần nhất, cột **Chênh giá** = giá cao nhất so với giá thấp nhất, rê chuột để xem hai mức giá); chọn một vật tư để xem lịch sử đơn giá
   từng lần mua theo NCC, chênh lệch so với lần trước, biểu đồ giá.
 
 ---
@@ -253,4 +288,162 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
   `costExporter.js` cho chi phí công trình), `public/` (giao diện; `views/cost-*.js` cho chi phí công trình),
   `public/js/shared.js` (công thức tính dùng chung: tồn quỹ, tổng hợp, gộp phiếu, đọc số tiền bằng chữ, thành tiền,
   tổng hợp chi phí, công nợ, giá vật tư).
-- Dữ liệu `data/ketoan.json` phiên bản (schema) 2. Bản phần mềm cũ hơn không đọc được phần chi phí.
+- Dữ liệu lưu bằng SQLite có sẵn trong Node.js (`node:sqlite`, không cần cài thêm thư viện): `data/ketoan.db`, lược đồ phiên bản 4
+  (`PRAGMA user_version`). Phiên bản 3 là `data/ketoan.json` (thêm thùng rác, trạng thái nháp, khóa sổ, cảnh báo đã bỏ qua, kiểm quỹ,
+  chứng từ đính kèm); phiên bản 4 chỉ đổi cách lưu, hình dạng dữ liệu giữ nguyên. Thiết kế chi tiết: `docs/THIET_KE_SQLITE.md`.
+- Cần Node.js ≥ 24.16.0 (dòng 24) hoặc ≥ 26.1.0: bản cũ hơn có lỗi cắt chữ tại ký tự NUL khi ghi vào SQLite.
+- Nhật ký thay đổi ở `data/nhat-ky.jsonl` (mỗi dòng một thao tác, chỉ ghi thêm), chứng từ ở `data/attachments/`.
+
+---
+
+## 16. Kiểm soát sổ sách — số liệu luôn đúng, mọi thay đổi đều truy vết được
+
+### 16.1 Ai đang dùng máy (ghi vào nhật ký)
+Cài đặt → **Người đang dùng máy này**: gõ tên (VD “Thúy kế toán”) rồi **Lưu tên**. Từ đó mọi thêm, sửa, xóa trên máy này
+được ghi kèm tên. Mỗi máy đặt tên riêng; không đặt thì nhật ký ghi “không rõ”.
+
+### 16.2 Nhật ký thay đổi
+Kiểm soát → **Nhật ký thay đổi**: mọi lần thêm / sửa / xóa dòng sổ, phiếu nhập, dòng chi phí, danh mục, cài đặt, nhập Excel,
+khôi phục, khóa / mở khóa sổ, kiểm quỹ, đính kèm, bỏ qua cảnh báo… kèm thời điểm, người thao tác, giá trị **trước và sau**.
+- Lọc theo ngày, loại thao tác, loại dữ liệu, số bản ghi, từ khóa (gõ không dấu cũng tìm được, gõ số tiền cũng được).
+- Bấm một dòng để xem trường nào đổi (chữ đỏ gạch = trước, chữ xanh = sau). Bấm **số bản ghi** để xem toàn bộ lịch sử của bản ghi đó.
+- Trong form sửa dòng sổ có nút **Lịch sử**; khi sửa phiếu nhập có nút **Lịch sử phiếu**.
+- Dữ liệu từ trước khi nâng cấp không có lịch sử: nhật ký bắt đầu bằng một mục “Khởi tạo từ dữ liệu cũ”.
+
+### 16.3 Xóa và Thùng rác
+Bấm Xóa ở bất cứ đâu (dòng sổ, phiếu nhập, dòng chi phí, dự án, NCC, hạng mục, vật tư, nhà, biên bản kiểm quỹ, chứng từ) đều
+**chỉ chuyển vào Thùng rác**: không còn tính vào sổ, báo cáo, tồn quỹ, công nợ, file Excel xuất ra.
+- Kiểm soát → **Thùng rác** → **Khôi phục** để đưa về nguyên như cũ (giữ đúng số thứ tự, chứng từ đính kèm đi theo).
+- Khôi phục bị từ chối nếu mã danh mục đã bị tạo lại, hoặc bản ghi dùng một danh mục đã xóa (phần mềm báo rõ cần khôi phục gì trước),
+  hoặc thuộc tháng đã khóa sổ.
+- **Xóa vĩnh viễn** (từng mục, hoặc “Xóa vĩnh viễn tất cả” phải gõ XOA) — có ghi nhật ký. File chứng từ khi xóa vĩnh viễn được chuyển
+  sang `data/attachments/_da-xoa/` chứ không mất hẳn (để các bản sao lưu cũ vẫn mở được).
+- Riêng “Xóa toàn bộ dữ liệu sổ / chi phí” ở Cài đặt vẫn là xóa hẳn (đã có bản sao lưu tự động ngay trước khi xóa) và bị chặn nếu
+  còn tháng đã khóa sổ.
+
+### 16.4 Phiếu Nháp
+Khi chưa chắc (chờ hóa đơn, chờ duyệt), bấm **Lưu nháp** thay cho Ghi sổ (form Ghi thu / chi và Phiếu nhập chi phí).
+- Dòng / phiếu **Nháp** hiện trong sổ với nhãn vàng “Nháp”, **không** tính vào tồn quỹ, tổng thu chi, báo cáo, công nợ, file Excel.
+- Khi đã có dòng nháp, sổ có thêm bộ lọc **Mọi trạng thái / Đã ghi sổ / Nháp**.
+- Ghi sổ: bấm dấu ✓ trên dòng nháp, hoặc mở ra rồi bấm **Ghi sổ**. Dữ liệu cũ đều là “Đã ghi sổ”.
+- Nháp để quá 7 ngày (chỉnh được) sẽ hiện trong “Cần xử lý”.
+
+### 16.5 Khóa sổ theo tháng
+Kiểm soát → **Khóa sổ**: bảng từng tháng (số dòng, thu, chi, chi phí, số dòng nháp). Đối chiếu xong tháng nào thì **Khóa** tháng đó
+(hoặc chọn “Khóa sổ đến hết tháng …” để khóa nhiều tháng một lần).
+- Tháng đã khóa: không thêm / sửa / xóa / khôi phục / ghi sổ nháp được dòng nào; trong sổ các dòng đó có hình ổ khóa, mở ra chỉ xem.
+  Nhập Excel sẽ **bỏ qua** các dòng thuộc tháng đã khóa (có cảnh báo); chế độ “thay toàn bộ” vẫn giữ nguyên dữ liệu các tháng đã khóa.
+- Tháng còn dòng Nháp thì không khóa được (ghi sổ hoặc xóa nháp trước).
+- Cần sửa: bấm **Mở khóa**, **bắt buộc ghi lý do** — được lưu vào nhật ký. Sửa xong nhớ khóa lại.
+
+### 16.6 Cần xử lý (kiểm tra bất thường)
+Phần mềm tự rà soát và đếm số việc (con số vàng trên menu “Kiểm soát” và ô đầu mục “Cần chú ý” ở Tổng quan):
+- **Nghi trùng**: hai dòng chi phí cùng ngày, NCC, vật tư, thành tiền; hai dòng sổ cùng ngày, NCC (hoặc nội dung), số tiền.
+- **Đơn giá lệch nhiều so với giá thường mua** cùng vật tư, cùng NCC (mặc định lệch quá 30%, chỉnh được). Mã chung “XX-…” không so.
+- **Ngày bất thường**: ở tương lai, trước năm 2000, hoặc khác xa các dòng nhập liền trước / liền sau (hay gặp khi gõ nhầm năm).
+- **Vật tư chưa xác định** (mã XX-CHUAXACDINH) hoặc vật tư đang dùng mà chưa gán hạng mục.
+- **Thiếu hạng mục** hoặc mã NCC / dự án / công trình chưa có trong danh mục.
+- **Phiếu nháp để lâu** chưa ghi sổ; **số tiền âm hoặc bằng 0**; **kiểm quỹ có chênh lệch**.
+
+Mỗi cảnh báo có nút **Mở để sửa** (mở đúng dòng / phiếu), **Xem trong sổ** (với nghi trùng) và **Bỏ qua** (khi đúng thật, có thể ghi chú;
+có lưu nhật ký, không nhắc lại; muốn xem lại tick “Hiện cả cảnh báo đã bỏ qua” rồi **Theo dõi lại**).
+
+### 16.7 Kiểm quỹ (đối chiếu tồn quỹ)
+Kiểm soát → **Kiểm quỹ**: chọn ngày, đếm tiền trong két, nhập **Số tiền thực tế** (hoặc mở “Bảng kê số tờ theo mệnh giá” để phần mềm
+tự cộng). Phần mềm hiện ngay **tồn quỹ theo sổ** (đến hết ngày đó, không tính nháp) và **chênh lệch thừa / thiếu**.
+- **Lưu biên bản kiểm quỹ** → có trong bảng “Các lần kiểm quỹ”; nút máy in để **in biên bản kiểm kê quỹ** (A4, có chỗ ký),
+  nút Excel để xuất biên bản.
+- Chênh lệch khác 0 được đưa vào “Cần xử lý” cho tới khi tìm ra nguyên nhân (sửa sổ cho khớp, hoặc Bỏ qua kèm lý do).
+- Nếu sổ bị sửa sau ngày kiểm quỹ, cột “Theo sổ hiện nay” chuyển màu để biết số theo sổ đã khác lúc kiểm.
+
+### 16.8 Đính kèm chứng từ
+Mở một dòng sổ thu chi (sửa), một dòng chi phí, hoặc một phiếu nhập đã lưu → khung **Chứng từ đính kèm** → **Đính kèm ảnh / PDF**
+(chọn được nhiều file; chụp hóa đơn bằng điện thoại rồi chép vào máy cũng được).
+- Nhận ảnh JPG, PNG, WEBP hoặc PDF, tối đa 10 MB mỗi file. Bấm tên file để xem (ảnh hiện ngay, PDF mở tab mới), nút tải về, nút xóa.
+- Dòng có chứng từ hiện **kẹp giấy kèm số lượng** trong sổ; bấm vào để xem nhanh.
+- Chứng từ nằm trong `data/attachments/`, có trong **bản sao lưu đầy đủ (.zip)**; xóa dòng thì chứng từ vào thùng rác cùng dòng đó.
+
+---
+
+## 17. Dữ liệu SQLite — chuyển đổi, kiểm tra, quay lại bản cũ
+
+### 17.1 Lần đầu chạy bản SQLite
+1. **Trước khi chạy**: chép cả thư mục `C:\KeToan\data` ra một chỗ khác (USB / thư mục khác) — để chắc chắn tuyệt đối.
+2. Cài Node.js 24.16.0 trở lên (hoặc 26.1.0 trở lên), bấm `KhoiDong.bat`.
+3. Phần mềm tự chuyển `ketoan.json` → `ketoan.db` (vài giây; dữ liệu rất lớn có thể tới 5–10 giây). Nếu đối chiếu lệch dù 1 đồng thì
+   **không chuyển**, dừng lại và giữ nguyên `ketoan.json`.
+4. Kiểm tra: mở **Tổng quan** — tồn quỹ phải đúng như trước khi nâng cấp; mở `data\migrate-bao-cao.txt` — mọi dòng đều “khớp”, mục
+   “Dữ liệu bất thường” liệt kê những chỗ đáng xem lại (mã mồ côi, số dạng chữ…; phần mềm giữ nguyên chúng, không tự sửa).
+5. Chạy lại các lần sau: không chuyển lần hai, không nhân đôi dữ liệu.
+
+### 17.2 Quay lại phiên bản cũ (lưu bằng JSON) — kế hoạch dự phòng
+Dùng khi bản SQLite gặp sự cố mà chưa kịp sửa. **Không mất dữ liệu đã nhập sau khi chuyển**, miễn là làm đủ bước 1:
+1. Đang ở bản SQLite: vào **Cài đặt & dữ liệu → Xuất dữ liệu ra file .json** (file `DuLieu_SoThuChi_<ngày giờ>.json` vào thư mục
+   Downloads). File này chứa **toàn bộ** dữ liệu hiện tại (kể cả mọi thứ nhập sau khi chuyển sang SQLite, thùng rác, khóa sổ, kiểm quỹ),
+   cùng dạng với `ketoan.json` cũ. Nên bấm thêm **Tải bản sao lưu đầy đủ (.zip)** (có cả chứng từ và nhật ký) và **Xuất toàn bộ sổ sách
+   ra Excel** để có thêm bản đối chiếu.
+   - Nếu phần mềm không mở được nữa: lấy bản `.db` mới nhất trong `data\backups` (hoặc chính `data\ketoan.db`) đưa người hỗ trợ xuất ra
+     `.json` bằng bản SQLite trên máy khác (Khôi phục file `.db` → Xuất dữ liệu ra file .json). Không có máy nào chạy được thì dùng
+     `ketoan.json.da-chuyen-sqlite.bak` (dữ liệu lúc chuyển đổi) và nhập bù phần phát sinh sau đó từ file Excel đã xuất.
+2. Tắt phần mềm. Lấy lại mã phiên bản cũ (người hỗ trợ: `git switch feature/truy-vet-chinh-xac`, hoặc giải nén bản phần mềm cũ).
+3. Trong thư mục `data`: **đổi tên** `ketoan.db` thành `ketoan.db.tam-ngung` (đừng xóa), rồi chép file `.json` ở bước 1 vào và đặt tên
+   là `ketoan.json`. (Không có file bước 1 thì đổi tên `ketoan.json.da-chuyen-sqlite.bak` thành `ketoan.json` — dữ liệu lúc chuyển đổi.)
+4. Bấm `KhoiDong.bat` của bản cũ (bản cũ chạy được với Node.js 18 trở lên). Kiểm tra tồn quỹ ở Tổng quan.
+   Bản sao lưu `.zip` mới vẫn khôi phục được ở bản cũ (bản cũ đọc phần `ketoan.json` trong đó).
+5. Khi muốn dùng lại bản SQLite: đổi tên / xóa `ketoan.db.tam-ngung`, để `ketoan.json` trong thư mục `data`, chạy bản SQLite — phần
+   mềm chuyển đổi lại từ đầu (có sao lưu và đối chiếu như lần đầu).
+
+### 17.3 Người hỗ trợ: kiểm tra bằng công cụ
+- `node tests/doi-chieu-sqlite.js --goc <thư mục mã bản JSON> data\ketoan.json.da-chuyen-sqlite.bak` chạy song song bản cũ và bản
+  mới trên cùng dữ liệu (thư mục tạm, không đụng `data`), so từng bản ghi, mọi con số báo cáo và từng ô của mọi file Excel xuất ra.
+- `ketoan.db` mở được bằng DB Browser for SQLite (khi phần mềm đã tắt): mỗi danh sách là một bảng, tên cột trùng tên trường; cột `vt` là
+  thứ tự, cột `khac` (JSON) giữ những giá trị bất thường; bảng `meta` chứa cài đặt và bộ đếm id.
+
+---
+
+## 18. Nhập các file Excel công trình (ChiPhi_CongTrinh_*.xlsm) bằng công cụ dòng lệnh
+
+Dùng khi cần đưa **nhiều file Excel công trình** (mỗi file một công trình: sổ chi phí NHATKYCHUNG, sổ quỹ SO_QUY, các danh mục) vào phần
+mềm một lần, có làm sạch dữ liệu và báo cáo đầy đủ. Công cụ **không sửa, không xóa** dữ liệu đang có, chỉ thêm; chạy lại không nhân đôi.
+
+### 18.1 Chuẩn bị
+1. **Tắt phần mềm** (đóng cửa sổ đen). Đóng Excel (công cụ từ chối khi file đang mở trong Excel).
+2. Chép cả thư mục `C:\KeToan\data` ra chỗ khác để chắc chắn (công cụ cũng tự sao lưu `.db` trước khi ghi).
+3. Đặt các file `.xlsm` vào thư mục `C:\KeToan\import-input\`. Nếu có cả bản cũ và bản "Copy of …" của cùng một file, công cụ chỉ nhập
+   bản "Copy of …"; bản cũ dùng để so sánh.
+4. Mở cửa sổ lệnh tại `C:\KeToan` (trong thư mục, gõ `cmd` vào thanh địa chỉ rồi Enter).
+
+### 18.2 Chạy thử (dry-run) — không ghi gì
+```
+node scripts\import-excel-chiphi.js --dry-run
+```
+Đọc báo cáo `import-bao-cao\DRY_RUN.md` (mở bằng Notepad hoặc VS Code) và các bảng `import-bao-cao\*.csv` (mở bằng Excel):
+- mục 1: số dòng đọc / sẽ nhập / bỏ qua của từng file, tổng tiền so với **số kỳ vọng tính độc lập từ ô nguồn** (phải "khớp");
+- mục 4: **các việc cần bạn quyết định** (công trình / NCC nghi trùng, dòng thiếu NCC, khoản sổ quỹ nghi đã có…);
+- mục 5 + `van-de.csv`: **mọi dòng bị sửa / suy ra / bỏ qua**, kèm tên file, sheet, số dòng gốc để mở Excel kiểm.
+Có thể chạy `node scripts\so-ky-vong-excel.js` để xem riêng các số kỳ vọng (tổng tiền, số dòng) của từng file.
+
+### 18.3 Nhập thật (apply)
+```
+node scripts\import-excel-chiphi.js --apply --nguoi "Tên của bạn"
+```
+- Tự sao lưu dữ liệu hiện tại thành `data\backups\ketoan-…-truoc-import-excel.db`.
+- Ghi trong **một giao dịch**; trước khi chốt, đọc lại và đối chiếu: dữ liệu cũ không đổi, tổng tiền từng file khớp số kỳ vọng, không có
+  dòng mồ côi. Lệch dù 1 đồng thì hủy toàn bộ, dữ liệu giữ nguyên.
+- Cuối cùng in **mã lần nhập** (vd `IMP-20261001-101500`) và báo cáo `import-bao-cao\APPLY_<mã>.md`. Ghi lại mã này.
+- Chạy `--apply` lần nữa với cùng file: báo "Không có gì mới để nhập". Bổ sung dòng mới vào file Excel rồi chạy lại: chỉ dòng mới được thêm.
+- Sổ quỹ (SO_QUY): khoản **đã có trong Sổ thu chi** (cùng số tiền, ngày lệch ≤ 3 ngày, cùng NCC hoặc số phiếu) không nhập lại; khoản chưa
+  có được nhập **dạng Nháp** — không tính vào tồn quỹ / công nợ cho tới khi bạn kiểm tra và bấm **Ghi sổ** (hoặc xóa nếu không thuộc quỹ).
+  Muốn ghi sổ luôn: thêm `--so-quy ghi-so`; không nhập sổ quỹ: `--so-quy bo-qua`.
+
+### 18.4 Gỡ một lần nhập (rollback)
+```
+node scripts\import-excel-chiphi.js --rollback IMP-20261001-101500
+```
+Mọi dòng chi phí / sổ thu chi của lần nhập đó chuyển vào **Thùng rác** (khôi phục được); công trình, nhà, NCC, vật tư, hạng mục do lần nhập
+tạo ra được gỡ nếu không còn dòng nào dùng. Tự sao lưu trước (`truoc-rollback-import`). Dòng nào bạn **đã sửa trong phần mềm** sau khi
+nhập (phần mềm lưu lại thành dòng mới) thì không gỡ tự động — công cụ báo số lượng để bạn kiểm tra tay. Sau rollback có thể nhập lại.
+
+### 18.5 Tùy chọn khác
+`--input <thư mục>` (nơi để file Excel), `--data <thư mục>` (thư mục dữ liệu), `--report <thư mục>` (nơi ghi báo cáo),
+`--help`. Công cụ chạy được cả khi thư mục dữ liệu mới chỉ có `ketoan.json` (lần `--apply` đầu sẽ chuyển sang SQLite như khi mở phần mềm).

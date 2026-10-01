@@ -1,5 +1,5 @@
 /* Danh mục chi phí công trình: nhóm CP, hạng mục, vật tư, nhà / khu (DM_NHOM, DM_HANGMUC, DM_VATTU, DM_NHA). */
-import { $, esc, money, icon, api, toast, showError, confirmDialog, openModal, freshRoot, debounce, highlight, download } from '../ui.js';
+import { $, esc, money, icon, api, toast, showError, confirmDialog, openModal, freshRoot, debounce, highlight, download, fieldError, busy } from '../ui.js';
 import { S, saveFilter, groupName, itemByCode, costProjects, selectOptions } from '../state.js';
 
 const KT = window.KT;
@@ -46,17 +46,17 @@ function catalogForm(o) {
         if (o.transform) o.transform(data);
         for (const fd of o.fields) {
           if (fd.required && !data[fd.name]) {
-            toast('Nhập ' + fd.label.toLowerCase(), 'error');
-            f.elements[fd.name].focus();
+            fieldError(f.elements[fd.name], (fd.type === 'select' ? 'Chọn ' : 'Nhập ') + fd.label.toLowerCase());
             return;
           }
         }
+        const done = busy(el.querySelector('[data-act=save]'), 'Đang lưu…');
         try {
           const r = isEdit ? await api('PUT', o.endpoint + '/' + v.id, data) : await api('POST', o.endpoint, data);
           toast((isEdit ? 'Đã lưu ' : 'Đã thêm ') + data.ma + (r.renamed ? ', cập nhật mã trên ' + r.renamed + ' chỗ đang dùng' : ''));
           h.close();
           if (o.onSaved) o.onSaved(Object.assign({}, data, { ma: r.ma || data.ma }));
-        } catch (err) { showError(err); }
+        } catch (err) { done(); showError(err); }
       };
       el.addEventListener('click', (ev) => {
         const a = ev.target.closest('[data-act]');
@@ -98,7 +98,7 @@ export function openGroupForm(g, onSaved) {
 
 export function openItemForm(it, onSaved) {
   const isEdit = !!(it && it.id);
-  const used = isEdit ? S.db.costs.filter((c) => KT.keyOf(c.maHM) === KT.keyOf(it.ma)).length : 0;
+  const used = isEdit ? S.all.costs.filter((c) => KT.keyOf(c.maHM) === KT.keyOf(it.ma)).length : 0;
   return catalogForm({
     title: isEdit ? 'Sửa hạng mục' : 'Thêm hạng mục chi phí',
     endpoint: '/api/cost-items',
@@ -116,7 +116,7 @@ export function openItemForm(it, onSaved) {
 export function openMaterialForm(m, onSaved) {
   const isEdit = !!(m && m.id);
   const it = m && m.maHM ? itemByCode(m.maHM) : null;
-  const used = isEdit ? S.db.costs.filter((c) => KT.keyOf(c.maVT) === KT.keyOf(m.ma)).length : 0;
+  const used = isEdit ? S.all.costs.filter((c) => KT.keyOf(c.maVT) === KT.keyOf(m.ma)).length : 0;
   return catalogForm({
     title: isEdit ? 'Sửa vật tư ' + m.ma : 'Thêm vật tư',
     endpoint: '/api/materials',
@@ -138,7 +138,7 @@ export function openMaterialForm(m, onSaved) {
 
 export function openHouseForm(h, onSaved) {
   const isEdit = !!(h && h.id);
-  const used = isEdit ? S.db.costs.filter((c) => KT.keyOf(c.maNha) === KT.keyOf(h.ma)).length : 0;
+  const used = isEdit ? S.all.costs.filter((c) => KT.keyOf(c.maNha) === KT.keyOf(h.ma)).length : 0;
   return catalogForm({
     title: isEdit ? 'Sửa nhà / khu ' + h.ma : 'Thêm nhà / khu',
     endpoint: '/api/houses',
@@ -189,7 +189,7 @@ export function renderCostCatalogs(root) {
   if (!TABS.some((t) => t[0] === f.tab)) f.tab = 'hang-muc';
   root.innerHTML =
     '<div class="no-print flex flex-wrap items-center gap-2">' +
-    '<div class="seg" role="tablist" aria-label="Loại danh mục">' + TABS.map(([k, l]) =>
+    '<div class="seg" role="radiogroup" aria-label="Loại danh mục">' + TABS.map(([k, l]) =>
       '<label class="seg-item"><input type="radio" name="dm-tab" value="' + k + '"' + (f.tab === k ? ' checked' : '') + '><span>' + l + '</span></label>').join('') + '</div>' +
     '<label class="search min-w-[240px]">' + icon('search') + '<input id="dm-q" type="search" class="input" placeholder="Tìm mã, tên" value="' + esc(f.q) + '" aria-label="Tìm trong danh mục"></label>' +
     '<span class="flex-1"></span>' +
@@ -287,8 +287,8 @@ export function renderCostCatalogs(root) {
       saveFilter('cpGia');
       location.hash = '#/cp-gia';
     } else if (act === 'del' && x) {
-      if (!(await confirmDialog({ title: 'Xóa khỏi danh mục', html: 'Xóa <b class="text-ink">' + esc(x.ma) + '</b>, ' + esc(x.ten) + '?', okText: 'Xóa', danger: true }))) return;
-      try { await api('DELETE', endpoint() + '/' + x.id); toast('Đã xóa ' + x.ma); } catch (err) { showError(err); }
+      if (!(await confirmDialog({ trash: true, title: 'Xóa khỏi danh mục', html: 'Xóa <b class="text-ink">' + esc(x.ma) + '</b>, ' + esc(x.ten) + '?', okText: 'Xóa', danger: true }))) return;
+      try { await api('DELETE', endpoint() + '/' + x.id); toast('Đã xóa ' + x.ma + ', chuyển vào Thùng rác'); } catch (err) { showError(err); }
     }
   });
   root.addEventListener('dblclick', (e) => {
