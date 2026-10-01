@@ -5,3 +5,12 @@ data/*.tmp
 data/*.hong-*
 logs/
 *.zip
+# Dữ liệu SQLite và file sinh ra khi chuyển đổi (không đưa dữ liệu thật vào git)
+data/ketoan.db
+data/ketoan.db-journal
+data/ketoan.db.*
+data/ketoan.json.da-chuyen-sqlite*.bak
+data/migrate-bao-cao.txt
+data/backups/*.db
+data/backups/.*
+data/.dang-*

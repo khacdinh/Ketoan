@@ -3,14 +3,21 @@
  * Sổ Thu Chi — máy chủ chạy trên máy tính của bạn (chỉ nghe trên 127.0.0.1).
  * Chạy: node server.js   (hoặc bấm đúp KhoiDong.bat)
  */
-// Kiểm tra phiên bản Node trước khi nạp các thư viện khác (báo lỗi dễ hiểu thay vì lỗi cú pháp khó đọc)
-const MIN_NODE = 18;
-if (Number(process.versions.node.split('.')[0]) < MIN_NODE) {
-  console.error('');
-  console.error('  Phiên bản Node.js trên máy là ' + process.versions.node + ' — quá cũ.');
-  console.error('  Phần mềm cần Node.js ' + MIN_NODE + ' trở lên. Hãy cài bản LTS mới tại https://nodejs.org rồi chạy lại.');
-  console.error('');
-  process.exit(1);
+// Kiểm tra phiên bản Node trước khi nạp các thư viện khác (báo lỗi dễ hiểu thay vì lỗi khó đọc).
+// Dữ liệu lưu bằng SQLite có sẵn trong Node (node:sqlite): cần Node 24.16.0 trở lên (dòng 24) hoặc 26.1.0 trở lên —
+// bản cũ hơn có lỗi cắt mất phần chữ sau ký tự NUL khi ghi vào SQLite. (Dòng 25 và 26.0 không được hỗ trợ.)
+const { nodeOk, NODE_YEU_CAU } = require('./lib/node-version');
+if (!nodeOk(process.versions.node)) {
+  if (process.env.KETOAN_CHO_NODE_CU === '1') {
+    console.warn('  CẢNH BÁO: Node.js ' + process.versions.node + ' thấp hơn yêu cầu (' + NODE_YEU_CAU + '). Chỉ chạy vì đặt KETOAN_CHO_NODE_CU=1 (dùng để kiểm thử).');
+  } else {
+    console.error('');
+    console.error('  Phiên bản Node.js trên máy là ' + process.versions.node + ' — không dùng được.');
+    console.error('  Phần mềm cần Node.js ' + NODE_YEU_CAU + '.');
+    console.error('  Hãy tải bản "LTS" mới tại https://nodejs.org (chọn Windows Installer .msi), cài đặt, rồi chạy lại.');
+    console.error('');
+    process.exit(1);
+  }
 }
 
 const http = require('http');
@@ -32,6 +39,7 @@ const createCashCountApi = require('./lib/cashCountApi');
 const createAttachApi = require('./lib/attachApi');
 const JSZip = require('jszip');
 const { dataSummary } = require('./lib/store');
+const { looksLikeSqlite } = require('./lib/db');
 
 const APP_ID = 'so-thu-chi-ke-toan';
 const VERSION = require('./package.json').version;
@@ -479,13 +487,19 @@ async function handleApi(req, res, url) {
   }
 
   /* ----- Sao lưu / khôi phục ----- */
+  // Bản sao lưu chỉ dữ liệu: file .db (SQLite) nhất quán
   if (p === '/api/backup' && m === 'GET') {
-    return attachment(res, Buffer.from(JSON.stringify(store.db, null, 1), 'utf8'), 'SaoLuu_SoThuChi_' + stampNow() + '.json', 'application/json');
+    return attachment(res, store.snapshotBuffer(), 'SaoLuu_SoThuChi_' + stampNow() + '.db', 'application/vnd.sqlite3');
   }
-  // Bản sao lưu đầy đủ (.zip): dữ liệu + chứng từ đính kèm + nhật ký thay đổi
+  // Xuất toàn bộ dữ liệu ra .json (cùng dạng ketoan.json cũ: bản phần mềm trước khi chuyển sang SQLite mở được)
+  if (p === '/api/backup-json' && m === 'GET') {
+    return attachment(res, Buffer.from(store.exportJson(), 'utf8'), 'DuLieu_SoThuChi_' + stampNow() + '.json', 'application/json');
+  }
+  // Bản sao lưu đầy đủ (.zip): dữ liệu (.db và .json) + chứng từ đính kèm + nhật ký thay đổi
   if (p === '/api/backup-zip' && m === 'GET') {
     const zip = new JSZip();
-    zip.file('ketoan.json', JSON.stringify(store.db, null, 1));
+    zip.file('ketoan.db', store.snapshotBuffer());
+    zip.file('ketoan.json', store.exportJson());
     if (fs.existsSync(store.log.file)) zip.file('nhat-ky.jsonl', fs.readFileSync(store.log.file));
     const metas = store.db.attachments.concat(...store.db.trash.map((t) => (t.kind === 'attachments' ? t.records : t.attachments || [])));
     let n = 0;
@@ -498,10 +512,16 @@ async function handleApi(req, res, url) {
     const buf = await readBody(req, 1024 * 1024 * 1024);
     let zip;
     try { zip = await JSZip.loadAsync(buf); } catch (e) { throw new HttpError(400, 'File không phải bản sao lưu .zip của phần mềm'); }
+    // zip của bản SQLite có ketoan.db (ưu tiên) và ketoan.json; zip của bản cũ chỉ có ketoan.json
+    const dbf = zip.file('ketoan.db');
     const jf = zip.file('ketoan.json');
-    if (!jf) throw new HttpError(400, 'File .zip không có ketoan.json');
+    if (!dbf && !jf) throw new HttpError(400, 'File .zip không có ketoan.db hay ketoan.json');
     let data;
-    try { data = JSON.parse((await jf.async('string')).replace(/^\uFEFF/, '')); } catch (e) { throw new HttpError(400, 'ketoan.json trong file .zip bị hỏng'); }
+    if (dbf) {
+      try { data = store.readDbBuffer(await dbf.async('nodebuffer')); } catch (e) { throw new HttpError(400, 'ketoan.db trong file .zip không dùng được: ' + e.message); }
+    } else {
+      try { data = JSON.parse((await jf.async('string')).replace(/^\uFEFF/, '')); } catch (e) { throw new HttpError(400, 'ketoan.json trong file .zip bị hỏng'); }
+    }
     if (!data || typeof data !== 'object' || !Array.isArray(data.entries) || !Array.isArray(data.projects) || !Array.isArray(data.suppliers)) throw new HttpError(400, 'File sao lưu không hợp lệ (thiếu entries/projects/suppliers)');
     checkDbShape(data);
     let copied = 0;
@@ -531,20 +551,31 @@ async function handleApi(req, res, url) {
     const b = await readJson(req);
     let data;
     try { data = store.readBackup(String(b.name || '')); } catch (e) { throw new HttpError(e.code === 'ENOENT' ? 404 : 400, e.code === 'ENOENT' ? 'Không tìm thấy bản sao lưu này' : 'Không đọc được bản sao lưu: ' + e.message); }
+    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new HttpError(400, 'Không đọc được bản sao lưu: nội dung không hợp lệ');
     checkDbShape(data);
     trace.log(req, 'khoi-phuc-sao-luu', 'data', String(b.name), null, null, { label: 'Khôi phục bản sao lưu tự động ' + String(b.name), note: 'Dữ liệu sau khôi phục: ' + dataSummary(data) });
     const bk = store.replaceAll(data, 'truoc-khoi-phuc');
     return ok(res, { backup: bk });
   }
+  // Khôi phục từ file tải lên: .db (SQLite, gửi nguyên file) hoặc .json (bản cũ / file xuất .json)
   if (p === '/api/restore' && m === 'POST') {
-    const data = await readJson(req);
-    if (!data || !Array.isArray(data.entries) || !Array.isArray(data.projects) || !Array.isArray(data.suppliers)) {
+    const buf = await readBody(req, 512 * 1024 * 1024);
+    let data;
+    let kind = 'json';
+    if (looksLikeSqlite(buf)) {
+      kind = 'db';
+      try { data = store.readDbBuffer(buf); } catch (e) { throw new HttpError(400, e.message); }
+    } else {
+      if (buf.length > 50 * 1024 * 1024) throw new HttpError(413, 'Dữ liệu gửi lên quá lớn (tối đa 50 MB)');
+      try { data = JSON.parse(buf.toString('utf8').replace(/^\uFEFF/, '')); } catch (e) { throw new HttpError(400, 'File không phải bản sao lưu của phần mềm (không đọc được .db hay .json)'); }
+    }
+    if (!data || typeof data !== 'object' || !Array.isArray(data.entries) || !Array.isArray(data.projects) || !Array.isArray(data.suppliers)) {
       throw new HttpError(400, 'File sao lưu không hợp lệ (thiếu entries/projects/suppliers)');
     }
     checkDbShape(data);
-    trace.log(req, 'khoi-phuc-sao-luu', 'data', '', null, null, { label: 'Khôi phục từ file sao lưu tải lên', note: 'Dữ liệu sau khôi phục: ' + dataSummary(data) });
+    trace.log(req, 'khoi-phuc-sao-luu', 'data', '', null, null, { label: 'Khôi phục từ file sao lưu tải lên (.' + kind + ')', note: 'Dữ liệu sau khôi phục: ' + dataSummary(data) });
     const bk = store.replaceAll(data, 'truoc-khoi-phuc');
-    return ok(res, { backup: bk });
+    return ok(res, { backup: bk, summary: { entries: data.entries.length, projects: data.projects.length, suppliers: data.suppliers.length, costs: (data.costs || []).length } });
   }
   if (p === '/api/reset' && m === 'POST') {
     const b = await readJson(req);
@@ -717,5 +748,11 @@ function listen(port, attempt) {
     openBrowser(link);
   });
 }
+
+// Tắt phần mềm (Ctrl+C, đóng cửa sổ, lệnh dừng): đóng file dữ liệu gọn gàng. Mọi lần ghi đều trọn một giao dịch nên
+// kể cả khi bị tắt ngang, lần mở sau SQLite tự hoàn tác phần dở dang.
+['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK'].forEach((sig) => {
+  try { process.on(sig, () => { try { store.close(); } catch (e) { /* đã đóng */ } process.exit(0); }); } catch (e) { /* hệ điều hành không có tín hiệu này */ }
+});
 
 listen(BASE_PORT, 0);
