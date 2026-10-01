@@ -243,6 +243,9 @@
 .ph.ph-upload-simple:before {
   content: "\e4c0";
 }
+.ph.ph-user-circle:before {
+  content: "\e4c4";
+}
 .ph.ph-warning:before {
   content: "\e4e0";
 }
@@ -840,6 +843,14 @@
 }
 .ph-duotone.ph-upload-simple:after {
   content: "\e4c1";
+  margin-left: -1em;
+}
+.ph-duotone.ph-user-circle:before {
+  content: "\e4c4";
+  opacity: 0.2;
+}
+.ph-duotone.ph-user-circle:after {
+  content: "\e4c5";
   margin-left: -1em;
 }
 .ph-duotone.ph-warning:before {

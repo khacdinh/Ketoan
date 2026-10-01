@@ -122,7 +122,8 @@ const ICONS = {
   undo: 'ph-arrow-counter-clockwise',
   swap: 'ph-arrows-left-right',
   split: 'ph-git-fork',
-  dupes: 'ph-intersect'
+  dupes: 'ph-intersect',
+  user: 'ph-user-circle'
 };
 const DUO = {
   dashboard: 'ph-chart-line-up',
@@ -152,7 +153,8 @@ const DUO = {
   undo: 'ph-arrow-counter-clockwise',
   swap: 'ph-arrows-left-right',
   split: 'ph-git-fork',
-  dupes: 'ph-intersect'
+  dupes: 'ph-intersect',
+  user: 'ph-user-circle'
 };
 
 export function icon(name, cls) {
