@@ -14,3 +14,8 @@ data/migrate-bao-cao.txt
 data/backups/*.db
 data/backups/.*
 data/.dang-*
+# Nhập Excel công trình: file Excel gốc và bảng kê CSV (dữ liệu thật) không đưa vào git
+import-input/
+import-bao-cao/*.csv
+backups/
+attachments/
