@@ -88,7 +88,7 @@ function renderShell() {
       { sep: true },
       { icon: 'crane', label: 'Chi phí công trình', hint: 'Đủ các sheet như file ChiPhi_CongTrinh: TONGHOP, NHATKYCHUNG, CHI_TIET_THEO_NHOM, CONGNO_NCC... giữ công thức', action: () => download('/api/export/costs') },
       { icon: 'rows', label: 'Sổ chi phí', hint: 'Theo bộ lọc đang chọn ở màn hình Sổ chi phí', action: () => download('/api/export/cost-ledger?' + ['from', 'to', 'ct', 'nha', 'nhom', 'hm', 'loai', 'ncc', 'vt', 'q'].filter((k) => S.filters.cpSo[k]).map((k) => k + '=' + encodeURIComponent(S.filters.cpSo[k])).join('&')) },
-      { icon: 'scales', label: 'Công nợ nhà cung cấp', hint: S.filters.cpCn.ct ? 'Công trình ' + S.filters.cpCn.ct : 'Tất cả công trình', action: () => download('/api/export/cost-debt?' + (S.filters.cpCn.ct ? 'ct=' + encodeURIComponent(S.filters.cpCn.ct) : '')) }
+      { icon: 'scales', label: 'Công nợ nhà cung cấp', hint: S.filters.cpCn.ct ? 'Công trình ' + S.filters.cpCn.ct : 'Tất cả công trình', action: () => { const c = S.filters.cpCn; download('/api/export/cost-debt?' + [c.ct ? 'ct=' + encodeURIComponent(c.ct) : ''].concat((c.nccs || []).map((x) => 'ncc=' + encodeURIComponent(x)), [c.tt ? 'tt=' + c.tt : '', c.to ? 'to=' + c.to : '']).filter(Boolean).join('&')); } }
     ];
   });
   $('#btn-new').addEventListener('click', () => openEntryForm(null));

@@ -189,6 +189,21 @@
   .search > i { @apply pointer-events-none absolute left-2.5 text-[16px] text-ink-3; }
   .search > .input { @apply pl-8; }
 
+  /* Ô chọn gõ tìm (combo.js): danh sách gợi ý tự vẽ, so khớp không phân biệt hoa thường và dấu */
+  .combo-wrap { @apply relative inline-block min-w-0 align-middle; }
+  .field .combo-wrap { @apply block w-full; }
+  .combo-list {
+    @apply absolute top-full left-0 z-50 mt-1 max-h-72 min-w-full w-max max-w-[min(440px,90vw)] overflow-auto rounded-md border border-rule-2 bg-sheet py-1 text-[13.5px] shadow-[0_6px_20px_rgb(23_42_78/0.16)];
+  }
+  .combo-opt { @apply flex cursor-pointer items-baseline gap-2 px-3 py-1.5 text-ink; }
+  .combo-opt b { @apply font-semibold whitespace-nowrap; }
+  .combo-opt span { @apply text-ink-2; }
+  .combo-opt.active, .combo-opt:hover { @apply bg-pen-soft; }
+  .combo-empty { @apply px-3 py-2 text-ink-3; }
+  /* Các mục đang lọc (chọn nhiều) */
+  .filter-chip { @apply inline-flex items-center gap-1 rounded-full bg-pen-soft py-0.5 pr-1 pl-2.5 text-[13px] font-medium text-ink; }
+  .filter-chip button { @apply grid size-5 cursor-pointer place-items-center rounded-full text-[13px] text-ink-2 hover:bg-ink/10 hover:text-ink; }
+
   /* Ô ngày dd/mm/yyyy */
   .date-field { @apply relative inline-flex items-center; }
   .date-field .date-text { @apply w-[134px] pr-9 tabular-nums; }

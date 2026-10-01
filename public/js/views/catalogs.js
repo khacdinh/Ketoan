@@ -4,6 +4,7 @@ import { S, saveFilter } from '../state.js';
 import { openProjectForm, openSupplierForm } from '../forms.js';
 import { statusChip } from './dashboard.js';
 import { printView } from '../print.js';
+import { comboHtml, bindCombo } from '../combo.js';
 
 const KT = window.KT;
 
@@ -172,9 +173,14 @@ export function renderSuppliers(root) {
 export function renderSupplierReport(root) {
   root = freshRoot(root);
   const f = refreshPeriod(S.filters.thncc);
+  if (!Array.isArray(f.nccs)) f.nccs = [];
+  // ô lọc NCC chọn nhiều (gõ mã hoặc tên, gợi ý không phân biệt dấu)
+  const cbNcc = { id: 'th-ncc', list: S.db.suppliers.map((x) => ({ ma: x.ma, ten: x.ten, sub: x.loai })), value: '', multi: true, noun: 'nhà cung cấp',
+    exclude: new Set(f.nccs.map(KT.keyOf)), placeholder: f.nccs.length ? 'Thêm NCC: gõ mã hoặc tên' : 'Lọc NCC: gõ mã hoặc tên', label: 'Lọc theo nhà cung cấp (chọn được nhiều)', cls: 'w-[240px] max-sm:w-full' };
+  const nccNames = () => f.nccs.map((m) => { const x = S.db.suppliers.find((s) => KT.keyOf(s.ma) === KT.keyOf(m)); return x ? x.ten : m; });
   root.innerHTML =
     '<div class="print-only" id="print-head"></div>' +
-    '<div class="no-print flex flex-wrap items-center gap-2">' + periodControls(f, 'th') +
+    '<div class="no-print flex flex-wrap items-center gap-2">' + periodControls(f, 'th') + comboHtml(cbNcc) +
     '<label class="check ml-1"><input type="checkbox" id="th-only"' + (f.chiCoPhatSinh ? ' checked' : '') + '>Chỉ nhà cung cấp có phát sinh</label>' +
     '<span class="flex-1"></span>' +
     '<label class="sr-only" for="th-sort">Sắp xếp</label><select id="th-sort" class="input w-auto"><option value="amount"' + (f.sort === 'amount' ? ' selected' : '') + '>Số tiền lớn trước</option>' +
@@ -182,6 +188,9 @@ export function renderSupplierReport(root) {
     '<button type="button" class="btn btn-ghost" data-act="print">' + icon('print') + 'In</button>' +
     '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất Excel</button>' +
     '</div>' +
+    (f.nccs.length ? '<div class="no-print flex flex-wrap items-center gap-1.5" id="th-chips"><span class="text-[13px] text-ink-2">Đang lọc:</span>' +
+      f.nccs.map((m, i) => '<span class="filter-chip" data-ma="' + esc(m) + '"><span><b>' + esc(m) + '</b> – ' + esc(nccNames()[i]) + '</span><button type="button" data-act="rm-ncc" aria-label="Bỏ lọc ' + esc(m) + '">' + icon('x') + '</button></span>').join('') +
+      '<button type="button" class="btn btn-ghost btn-sm" data-act="clear-ncc">' + icon('eraser') + 'Xóa lọc</button></div>' : '') +
     '<section class="sheet overflow-hidden">' +
     '<div class="overflow-x-auto"><table class="ledger">' +
     '<thead><tr><th>Nhà cung cấp, đối tượng</th><th>Loại đối tượng</th><th class="num money w-[30%]">Đã thanh toán</th><th class="num">Tỉ trọng</th><th class="num money">Đã thu</th><th class="num">Số dòng</th><th>Lần gần nhất</th></tr></thead>' +
@@ -189,7 +198,10 @@ export function renderSupplierReport(root) {
 
   const draw = () => {
     const ss = KT.supplierSummary(S.db, f);
-    const rows = f.chiCoPhatSinh ? ss.rows.filter((r) => r.soDong > 0) : ss.rows.slice();
+    const only = f.nccs.length ? new Set(f.nccs.map(KT.keyOf)) : null;
+    const rows = (f.chiCoPhatSinh ? ss.rows.filter((r) => r.soDong > 0) : ss.rows.slice()).filter((r) => !only || only.has(KT.keyOf(r.ma)));
+    // đang lọc NCC: tổng cuối bảng = tổng các dòng đang hiện
+    if (only) ss.total = rows.reduce((t, r) => ({ chi: t.chi + r.chi, thu: t.thu + r.thu, soDong: t.soDong + r.soDong }), { chi: 0, thu: 0, soDong: 0 });
     if (f.sort === 'amount') rows.sort((a, b) => b.chi - a.chi || b.soDong - a.soDong);
     if (f.sort === 'name') rows.sort((a, b) => a.ten.localeCompare(b.ten, 'vi'));
     const total = ss.total.chi || 1;
@@ -202,15 +214,20 @@ export function renderSupplierReport(root) {
       '<td class="num text-ink-2">' + ((r.chi / total) * 100).toFixed(1).replace('.', ',') + '%</td>' +
       '<td class="num money thu">' + (r.thu ? money(r.thu) : '') + '</td><td class="num">' + r.soDong + '</td>' +
       '<td class="whitespace-nowrap text-ink-2">' + (r.last ? fdate(r.last) : '') + '</td></tr>').join('')
-      : '<tr><td colspan="7" class="empty">Không có phát sinh trong kỳ này.</td></tr>';
+      : '<tr><td colspan="7" class="empty">' + (only ? 'Không có nhà cung cấp nào khớp bộ lọc.' : 'Không có phát sinh trong kỳ này.') + '</td></tr>';
     $('#th-foot', root).innerHTML = '<tr><td colspan="2">Tổng cộng</td><td class="num money"><span class="dbl">' + money(ss.total.chi) + '</span></td><td></td>' +
       '<td class="num money thu">' + money(ss.total.thu) + '</td><td class="num">' + ss.total.soDong + '</td><td></td></tr>' +
-      (ss.khongNCC.soDong ? '<tr class="sub-total clickable" data-ma="__none__" tabindex="0"><td colspan="2">Chưa gán nhà cung cấp</td><td class="num money">' + money(ss.khongNCC.chi) + '</td><td></td>' +
+      (ss.khongNCC.soDong && !only ? '<tr class="sub-total clickable" data-ma="__none__" tabindex="0"><td colspan="2">Chưa gán nhà cung cấp</td><td class="num money">' + money(ss.khongNCC.chi) + '</td><td></td>' +
         '<td class="num money">' + money(ss.khongNCC.thu) + '</td><td class="num">' + ss.khongNCC.soDong + '</td><td></td></tr>' : '');
   };
 
   bindPeriodControls(root, f, 'th', () => { saveFilter('thncc'); renderSupplierReport(root); });
   $('#th-only', root).addEventListener('change', (e) => { f.chiCoPhatSinh = e.target.checked; saveFilter('thncc'); draw(); });
+  bindCombo($('#th-ncc', root), cbNcc, (v) => {
+    if (!f.nccs.some((x) => KT.keyOf(x) === KT.keyOf(v))) f.nccs.push(v);
+    saveFilter('thncc'); renderSupplierReport(root);
+    const el = document.getElementById('th-ncc'); if (el) el.focus();
+  });
   $('#th-sort', root).addEventListener('change', (e) => { f.sort = e.target.value; saveFilter('thncc'); draw(); });
   const open = (ma) => {
     Object.assign(S.filters.so, { duAn: '', ncc: ma, loai: '', q: '', period: f.period, from: f.from, to: f.to });
@@ -220,9 +237,15 @@ export function renderSupplierReport(root) {
   root.addEventListener('click', (e) => {
     const a = e.target.closest('[data-act]');
     if (a) {
-      const q = ['from', 'to'].filter((k) => f[k]).map((k) => k + '=' + f[k]).concat(f.chiCoPhatSinh ? ['chiCoPhatSinh=1'] : []).join('&');
+      if (a.dataset.act === 'rm-ncc' || a.dataset.act === 'clear-ncc') {
+        f.nccs = a.dataset.act === 'clear-ncc' ? [] : f.nccs.filter((x) => x !== a.closest('[data-ma]').dataset.ma);
+        saveFilter('thncc'); renderSupplierReport(root);
+        const el = document.getElementById('th-ncc'); if (el) el.focus();
+        return;
+      }
+      const q = ['from', 'to'].filter((k) => f[k]).map((k) => k + '=' + f[k]).concat(f.chiCoPhatSinh ? ['chiCoPhatSinh=1'] : [], f.nccs.map((x) => 'nccs=' + encodeURIComponent(x))).join('&');
       if (a.dataset.act === 'export') download('/api/export/suppliers?' + q);
-      if (a.dataset.act === 'print') printView('TỔNG HỢP THANH TOÁN THEO NHÀ CUNG CẤP', KT.describeRange(f.from, f.to), S.db.settings);
+      if (a.dataset.act === 'print') printView('TỔNG HỢP THANH TOÁN THEO NHÀ CUNG CẤP', KT.describeRange(f.from, f.to) + (f.nccs.length ? '. NCC: ' + nccNames().join(', ') : ''), S.db.settings);
       return;
     }
     const tr = e.target.closest('tr[data-ma]');

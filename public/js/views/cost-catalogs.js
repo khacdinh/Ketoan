@@ -1,7 +1,7 @@
 /* Danh mục chi phí công trình: nhóm CP, hạng mục, vật tư, nhà / khu (DM_NHOM, DM_HANGMUC, DM_VATTU, DM_NHA). */
 import { $, esc, money, icon, api, toast, showError, confirmDialog, openModal, freshRoot, debounce, highlight, download, fieldError, busy } from '../ui.js';
 import { S, saveFilter, groupName, itemByCode, costProjects, selectOptions } from '../state.js';
-import { comboHtml, comboResolve } from '../combo.js';
+import { comboHtml, comboResolve, bindCombo } from '../combo.js';
 
 const KT = window.KT;
 
@@ -12,6 +12,7 @@ const KT = window.KT;
 function catalogForm(o) {
   const isEdit = !!(o.values && o.values.id);
   const v = o.values || {};
+  const combos = {};
   const field = (f) => {
     const val = v[f.name] == null ? '' : v[f.name];
     const cls = 'field' + (f.wide ? ' col-span-2 max-sm:col-span-1' : '');
@@ -21,7 +22,8 @@ function catalogForm(o) {
     }
     let input;
     if (f.type === 'combo') {
-      input = comboHtml(Object.assign({ name: f.name, value: val, type: 'text', placeholder: f.placeholder }, f.combo));
+      combos[f.name] = Object.assign({ name: f.name, value: val, type: 'text', placeholder: f.placeholder, quiet: true }, f.combo);
+      input = comboHtml(combos[f.name]);
     } else if (f.type === 'select') {
       input = '<select name="' + f.name + '" class="input">' + f.options.map(([ov, ol]) => '<option value="' + esc(ov) + '"' + (KT.keyOf(ov) === KT.keyOf(val) ? ' selected' : '') + '>' + esc(ol) + '</option>').join('') + '</select>';
     } else if (f.type === 'textarea') {
@@ -40,6 +42,7 @@ function catalogForm(o) {
       '<button type="button" class="btn btn-primary" data-act="save">' + (isEdit ? 'Lưu thay đổi' : esc(o.addText || 'Thêm vào danh mục')) + '</button>',
     onMount(el, h) {
       const f = el.querySelector('form');
+      Object.keys(combos).forEach((k) => bindCombo(f.elements[k], combos[k], null));
       if (o.onMount) o.onMount(f, el);
       const save = async () => {
         const data = {};

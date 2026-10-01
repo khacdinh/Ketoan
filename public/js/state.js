@@ -19,7 +19,7 @@ export const S = {
     cpSo: LS.get('filter.cpSo', { period: 'tat-ca', from: '', to: '', ct: '', nha: '', nhom: '', hm: '', loai: '', ncc: '', vt: '', q: '' }),
     cpTh: LS.get('filter.cpTh', { period: 'tat-ca', from: '', to: '', ct: '', nha: '' }),
     cpCt: LS.get('filter.cpCt', { period: 'tat-ca', from: '', to: '', ct: '', nha: '', loai: '', ncc: '', level: 3 }),
-    cpCn: LS.get('filter.cpCn', { ct: '', ncc: '', to: '', pham: 'ct', sort: 'conLai' }),
+    cpCn: LS.get('filter.cpCn', { ct: '', nccs: [], tt: '', to: '', pham: 'ct', sort: 'conLai' }),
     cpGia: LS.get('filter.cpGia', { q: '', ncc: '', hm: '', vt: '' }),
     cpDm: LS.get('filter.cpDm', { tab: 'hang-muc', q: '' })
   },

@@ -111,7 +111,7 @@ export function renderCostDashboard(root) {
     if (t) {
       if (t.dataset.tile === 'loai') goLedger({ ct: f.ct, nha: f.nha, loai: t.dataset.loai, period: f.period, from: f.from, to: f.to });
       else {
-        Object.assign(S.filters.cpCn, { ct: f.ct, ncc: '', to: f.to, pham: 'ct' });
+        Object.assign(S.filters.cpCn, { ct: f.ct, nccs: [], tt: '', to: f.to, pham: 'ct' });
         saveFilter('cpCn');
         location.hash = '#/cp-cong-no';
       }
@@ -327,50 +327,64 @@ export function renderCostDetail(root) {
 export function renderDebt(root) {
   root = freshRoot(root);
   const f = S.filters.cpCn;
-  const d = KT.supplierDebt(S.db, { ct: f.ct, to: f.to, ncc: f.ncc });
+  // bộ lọc NCC chọn nhiều (bản trước lưu một mã ở f.ncc)
+  if (!Array.isArray(f.nccs)) f.nccs = f.ncc ? [f.ncc] : [];
+  delete f.ncc;
+  const nccs = f.nccs;
+  const d = KT.supplierDebt(S.db, { ct: f.ct, to: f.to, ncc: nccs });
   if (!f.pham) f.pham = 'ct';
-  // lọc theo một NCC: luôn hiện NCC đó, không xét phạm vi
-  let rows = f.ncc ? d.rows.slice() : f.pham === 'ct' ? d.rows.filter((r) => r.lienQuan) : f.pham === 'active' ? d.rows.filter((r) => r.soDongCP || r.soDongTT) : d.rows.slice();
+  // lọc theo NCC: luôn hiện các NCC đã chọn, không xét phạm vi; rồi lọc nhanh theo tình trạng
+  let rows = nccs.length ? d.rows.slice() : f.pham === 'ct' ? d.rows.filter((r) => r.lienQuan) : f.pham === 'active' ? d.rows.filter((r) => r.soDongCP || r.soDongTT) : d.rows.slice();
+  rows = rows.filter((r) => !f.tt || (f.tt === 'no' ? r.conLai > 0 : f.tt === 'du' ? r.conLai < 0 : r.conLai !== 0));
   const tot = d.sumRows(rows);
   if (f.sort === 'conLai') rows.sort((a, b) => b.conLai - a.conLai);
   else if (f.sort === 'phatSinh') rows.sort((a, b) => b.phatSinh - a.phatSinh);
   else if (f.sort === 'name') rows.sort((a, b) => a.ten.localeCompare(b.ten, 'vi'));
-  const sel = f.ncc || LS.get('cp.cn.sel', '');
-  const theoCT = KT.projectDebtSummary(S.db, { to: f.to, all: !!f.allCT, ncc: f.ncc });
-  const ncc = f.ncc ? supplierByCode(f.ncc) : null;
-  const nccLabel = f.ncc ? 'NCC ' + f.ncc + (ncc ? ' ' + ncc.ten : '') : '';
+  const sel = nccs.length === 1 ? nccs[0] : LS.get('cp.cn.sel', '');
+  const theoCT = KT.projectDebtSummary(S.db, { to: f.to, all: !!f.allCT, ncc: nccs });
+  const nccLabel = debtFilterLabel(nccs, '');
+  const filtered = nccs.length || f.tt;
   // NCC có phát sinh chi phí lên đầu gợi ý; mã lạ chỉ có trong sổ vẫn lọc được
   const used = new Set(S.db.costs.map((c) => KT.keyOf(c.maNCC)));
   const cbCt = ctCombo('cn-ct', f.ct);
-  const cbNcc = Object.assign(nccCombo('cn-ncc', S.db.suppliers.filter((x) => used.has(KT.keyOf(x.ma))).concat(S.db.suppliers.filter((x) => !used.has(KT.keyOf(x.ma)))), f.ncc, 'w-[250px] max-sm:w-full'),
-    { placeholder: 'Lọc NCC: gõ mã hoặc tên', accept: unknownNcc });
+  const cbNcc = Object.assign(nccCombo('cn-ncc', S.db.suppliers.filter((x) => used.has(KT.keyOf(x.ma))).concat(S.db.suppliers.filter((x) => !used.has(KT.keyOf(x.ma)))), '', 'w-[250px] max-sm:w-full'),
+    { placeholder: nccs.length ? 'Thêm NCC: gõ mã hoặc tên' : 'Lọc NCC: gõ mã hoặc tên', label: 'Lọc theo nhà cung cấp (chọn được nhiều)', accept: unknownNcc, multi: true,
+      exclude: new Set(nccs.map(KT.keyOf)) });
+  const TT = [['', 'Mọi tình trạng'], ['no', 'Chỉ NCC còn nợ'], ['du', 'Chỉ NCC ứng dư'], ['an', 'Ẩn NCC đã tất toán']];
 
   root.innerHTML =
     '<div class="print-only" id="print-head"></div>' +
     '<div class="no-print flex flex-wrap items-center gap-2">' +
     comboHtml(cbCt) + comboHtml(cbNcc) +
     '<span class="flex items-center gap-2 text-[13.5px] text-ink-2"><span aria-hidden="true">Đến ngày</span>' + dateField({ id: 'cn-to', value: f.to || '', label: 'Tính công nợ đến ngày' }) + '</span>' +
-    '<select id="cn-pham" class="input w-auto" aria-label="Phạm vi nhà cung cấp"' + (f.ncc ? ' disabled title="Đang lọc một nhà cung cấp"' : '') + '>' + [['ct', 'NCC liên quan công trình'], ['active', 'Mọi NCC có phát sinh'], ['all', 'Tất cả NCC trong danh mục']].map(([v, l]) =>
+    '<select id="cn-tt" class="input w-auto" aria-label="Lọc theo tình trạng công nợ">' + TT.map(([v, l]) => '<option value="' + v + '"' + ((f.tt || '') === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
+    '<select id="cn-pham" class="input w-auto" aria-label="Phạm vi nhà cung cấp"' + (nccs.length ? ' disabled title="Đang lọc theo nhà cung cấp"' : '') + '>' + [['ct', 'NCC liên quan công trình'], ['active', 'Mọi NCC có phát sinh'], ['all', 'Tất cả NCC trong danh mục']].map(([v, l]) =>
       '<option value="' + v + '"' + (f.pham === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
     '<span class="flex-1"></span>' +
     '<select id="cn-sort" class="input w-auto" aria-label="Sắp xếp">' + [['conLai', 'Còn nợ nhiều trước'], ['phatSinh', 'Chi phí lớn trước'], ['name', 'Theo tên A đến Z'], ['catalog', 'Theo danh mục']].map(([v, l]) =>
       '<option value="' + v + '"' + (f.sort === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
     '<button type="button" class="btn btn-ghost" data-act="print">' + icon('print') + 'In</button>' +
     '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất Excel</button></div>' +
-    '<section class="sheet overflow-hidden" aria-labelledby="h-theo-ct"><div class="sheet-head pb-1"><div><h3 id="h-theo-ct" class="sheet-title">Tổng hợp nợ và đã thanh toán theo công trình' + (f.ncc ? ' · ' + esc(nccLabel) : '') + '</h3>' +
+    (filtered ? '<div class="no-print flex flex-wrap items-center gap-1.5" id="cn-chips" aria-label="Bộ lọc đang áp dụng"><span class="text-[13px] text-ink-2">Đang lọc:</span>' +
+      nccs.map((m) => { const x = supplierByCode(m); return '<span class="filter-chip" data-ma="' + esc(m) + '"><span><b>' + esc(m) + '</b>' + (x ? ' – ' + esc(x.ten) : '') + '</span>' +
+        '<button type="button" data-act="rm-ncc" aria-label="Bỏ lọc ' + esc(m) + '" title="Bỏ NCC này khỏi bộ lọc">' + icon('x') + '</button></span>'; }).join('') +
+      (f.tt ? '<span class="filter-chip"><span>' + esc(TT.find((t) => t[0] === f.tt)[1]) + '</span><button type="button" data-act="rm-tt" aria-label="Bỏ lọc tình trạng">' + icon('x') + '</button></span>' : '') +
+      '<button type="button" class="btn btn-ghost btn-sm" data-act="clear-ncc" id="cn-clear">' + icon('eraser') + 'Xóa lọc</button></div>' : '') +
+    '<section class="sheet overflow-hidden" aria-labelledby="h-theo-ct"><div class="sheet-head pb-1"><div><h3 id="h-theo-ct" class="sheet-title">Tổng hợp nợ và đã thanh toán theo công trình' + (nccs.length ? ' · ' + esc(nccLabel) : '') + '</h3>' +
     '<p class="sheet-note screen-hint">Bấm một công trình để xem công nợ từng nhà cung cấp của công trình đó' + (f.to ? ', tính đến ngày ' + fdate(f.to) : '') + '.' +
     (f.ct ? ' <a href="#" class="font-semibold text-pen underline underline-offset-2" data-act="all-ct">Xem tất cả công trình</a>' : '') +
-    (f.ncc ? ' <a href="#" class="font-semibold text-pen underline underline-offset-2" data-act="all-ncc">Xem tất cả nhà cung cấp</a>' : '') + '</p></div>' +
+    (nccs.length ? ' <a href="#" class="font-semibold text-pen underline underline-offset-2" data-act="all-ncc">Xem tất cả nhà cung cấp</a>' : '') + '</p></div>' +
     '<label class="check no-print"><input type="checkbox" id="cn-allct"' + (f.allCT ? ' checked' : '') + '>Hiện cả dự án chưa nhập chi phí</label></div>' +
     projectDebtHtml(theoCT, f.ct) + '</section>' +
-    '<h3 class="mt-1 text-[15px] font-semibold">Công nợ theo nhà cung cấp · ' + esc(ctLabel(f.ct)) + (f.ncc ? ' · ' + esc(nccLabel) : '') + '</h3>' +
+    '<h3 class="mt-1 text-[15px] font-semibold" id="cn-title">Công nợ theo nhà cung cấp · ' + esc(ctLabel(f.ct)) + (nccs.length ? ' · ' + esc(nccLabel) : '') +
+    ' <span class="text-[13px] font-normal text-ink-2" id="cn-count">(' + rows.length + ' nhà cung cấp)</span></h3>' +
     '<div class="equation"><div class="eq-cell"><span class="eq-label">Chi phí phát sinh</span><span class="eq-value">' + money(tot.phatSinh) + '</span></div><span class="eq-op">−</span>' +
     '<div class="eq-cell"><span class="eq-label">Đã trả, đã ứng</span><span class="eq-value">' + money(tot.daTra) + '</span></div><span class="eq-op">=</span>' +
     '<div class="eq-cell"><span class="eq-label">Chênh lệch</span><span class="eq-value' + (tot.conLai > 0 ? ' neg' : '') + '">' + money(tot.conLai) + '</span></div><span class="eq-sep"></span>' +
     '<div class="eq-cell"><span class="eq-label">Tổng còn nợ</span><span class="eq-value text-alert">' + money(tot.conNo) + '</span></div>' +
     '<div class="eq-cell"><span class="eq-label">Tổng ứng dư</span><span class="eq-value text-caution">' + money(tot.ungDu) + '</span></div></div>' +
     '<p class="text-[13px] text-ink-3">Chi phí phát sinh lấy từ sổ chi phí (khối lượng đã nhận). Đã trả lấy từ sổ thu chi: tổng chi trừ tổng thu của cùng mã NCC' + (f.ct ? ' và cùng mã dự án ' + esc(f.ct) : '') + '. Hai sổ không sửa dữ liệu của nhau. ' +
-    (f.pham === 'ct' && !f.ncc ? '“Liên quan công trình” = NCC có chi phí công trình, hoặc có khoản trả gắn với công trình đang có chi phí.' : '') + '</p>' +
+    (f.pham === 'ct' && !nccs.length ? '“Liên quan công trình” = NCC có chi phí công trình, hoặc có khoản trả gắn với công trình đang có chi phí.' : '') + '</p>' +
     '<div class="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">' +
     '<section class="sheet overflow-hidden"><div class="overflow-x-auto"><table class="ledger">' +
     '<thead><tr><th>Nhà cung cấp</th><th>Loại</th><th class="num money">Chi phí phát sinh</th><th class="num money">Đã trả / đã ứng</th><th class="num money">Còn lại</th><th>Tình trạng</th><th class="no-print"></th></tr></thead><tbody>' +
@@ -380,7 +394,8 @@ export function renderDebt(root) {
       '<td class="num money font-semibold' + (r.conLai > 0 ? ' neg' : '') + '">' + money(r.conLai) + '</td>' +
       '<td>' + debtChip(r) + '</td>' +
       '<td class="actions no-print">' + (r.conLai > 0 && r.inCatalog ? '<button type="button" class="btn btn-ghost btn-sm" data-act="pay" title="Ghi phiếu chi trả nhà cung cấp này trong sổ thu chi">' + icon('handCoins') + 'Trả tiền</button>' : '') + '</td></tr>').join('')
-      : '<tr><td colspan="7" class="empty">Không có công nợ nào.</td></tr>') +
+      : '<tr><td colspan="7" class="empty">' + (filtered ? 'Không có nhà cung cấp nào khớp bộ lọc (' + esc(debtFilterLabel(nccs, f.tt)) + '). <a href="#" class="font-semibold text-pen underline underline-offset-2" data-act="clear-ncc">Xóa lọc</a>'
+        : 'Không có công nợ nào.') + '</td></tr>') +
     '</tbody><tfoot><tr><td colspan="2">Tổng cộng</td><td class="num money">' + money(tot.phatSinh) + '</td><td class="num money">' + money(tot.daTra) + '</td><td class="num money"><span class="dbl">' + money(tot.conLai) + '</span></td><td colspan="2"></td></tr></tfoot></table></div></section>' +
     '<aside class="sheet no-print xl:sticky xl:top-[104px]" id="cn-detail"></aside></div>';
 
@@ -407,11 +422,13 @@ export function renderDebt(root) {
 
   bindCombo($('#cn-ct', root), cbCt, (v) => { f.ct = v; saveFilter('cpCn'); renderDebt(root); });
   bindCombo($('#cn-ncc', root), cbNcc, (v) => {
-    f.ncc = v;
-    if (v) LS.set('cp.cn.sel', v);
+    if (!nccs.some((x) => KT.keyOf(x) === KT.keyOf(v))) nccs.push(v);
+    LS.set('cp.cn.sel', v);
     saveFilter('cpCn');
     renderDebt(root);
+    refocusNcc(); // chọn tiếp NCC khác ngay
   });
+  $('#cn-tt', root).addEventListener('change', (e) => { f.tt = e.target.value; saveFilter('cpCn'); renderDebt(root); });
   $('#cn-to', root).addEventListener('change', (e) => { f.to = e.target.value; saveFilter('cpCn'); renderDebt(root); });
   $('#cn-pham', root).addEventListener('change', (e) => { f.pham = e.target.value; saveFilter('cpCn'); renderDebt(root); });
   $('#cn-sort', root).addEventListener('change', (e) => { f.sort = e.target.value; saveFilter('cpCn'); renderDebt(root); });
@@ -428,9 +445,13 @@ export function renderDebt(root) {
       const row = a.closest('tr[data-ma]');
       const ma = row ? row.dataset.ma : ($('#cn-detail', root).dataset.ma || '');
       if (act === 'all-ct') { e.preventDefault(); f.ct = ''; saveFilter('cpCn'); renderDebt(root); return; }
-      if (act === 'all-ncc') { e.preventDefault(); f.ncc = ''; saveFilter('cpCn'); renderDebt(root); return; }
-      if (act === 'export') download('/api/export/cost-debt?' + [f.ct ? 'ct=' + encodeURIComponent(f.ct) : '', f.ncc ? 'ncc=' + encodeURIComponent(f.ncc) : '', f.to ? 'to=' + f.to : ''].filter(Boolean).join('&'));
-      else if (act === 'print') printView('CÔNG NỢ NHÀ CUNG CẤP', ctLabel(f.ct) + (f.ncc ? '. ' + nccLabel : '') + (f.to ? '. Đến ngày ' + fdate(f.to) : ''), S.db.settings);
+      if (act === 'all-ncc') { e.preventDefault(); f.nccs = []; saveFilter('cpCn'); renderDebt(root); return; }
+      if (act === 'clear-ncc') { e.preventDefault(); f.nccs = []; f.tt = ''; saveFilter('cpCn'); renderDebt(root); refocusNcc(); return; }
+      if (act === 'rm-ncc') { f.nccs = nccs.filter((x) => x !== a.closest('[data-ma]').dataset.ma); saveFilter('cpCn'); renderDebt(root); refocusNcc(); return; }
+      if (act === 'rm-tt') { f.tt = ''; saveFilter('cpCn'); renderDebt(root); return; }
+      if (act === 'export') download('/api/export/cost-debt?' + [f.ct ? 'ct=' + encodeURIComponent(f.ct) : ''].concat(nccs.map((x) => 'ncc=' + encodeURIComponent(x)),
+        [f.tt ? 'tt=' + f.tt : '', f.to ? 'to=' + f.to : '']).filter(Boolean).join('&'));
+      else if (act === 'print') printView('CÔNG NỢ NHÀ CUNG CẤP', ctLabel(f.ct) + (filtered ? '. ' + debtFilterLabel(nccs, f.tt) : '') + (f.to ? '. Đến ngày ' + fdate(f.to) : ''), S.db.settings);
       else if (act === 'pay') pay(ma);
       else if (act === 'to-ledger') goLedger({ ncc: ma, ct: f.ct });
       else if (act === 'to-cash') {
@@ -459,6 +480,16 @@ export function renderDebt(root) {
     if (tr && e.key === 'Enter') tr.click();
   });
   drawDetail(sel);
+}
+
+// Mô tả bộ lọc công nợ để ghi lên đầu bản in / file Excel: "NCC: Xuân Trang, Sông Hàn. Chỉ NCC còn nợ"
+// sau khi vẽ lại màn hình: đưa tiêu điểm về ô lọc NCC để chọn tiếp bằng bàn phím
+function refocusNcc() { const el = document.getElementById('cn-ncc'); if (el) el.focus(); }
+
+export function debtFilterLabel(nccs, tt) {
+  const names = (nccs || []).map((m) => { const x = supplierByCode(m); return x ? x.ten : m; });
+  const t = { no: 'Chỉ NCC còn nợ', du: 'Chỉ NCC ứng dư', an: 'Ẩn NCC đã tất toán' }[tt] || '';
+  return [names.length ? 'NCC: ' + names.join(', ') : '', t].filter(Boolean).join('. ');
 }
 
 // Mã NCC lạ (không có trong danh mục) nhưng có trong sổ chi phí / sổ thu chi: vẫn cho lọc

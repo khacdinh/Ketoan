@@ -608,7 +608,8 @@ async function handleApi(req, res, url) {
       ncc: q.get('ncc') || '',
       loai: q.get('loai') || '',
       q: q.get('q') || '',
-      chiCoPhatSinh: q.get('chiCoPhatSinh') === '1'
+      chiCoPhatSinh: q.get('chiCoPhatSinh') === '1',
+      nccs: q.getAll('nccs').map((x) => String(x).trim()).filter(Boolean).slice(0, 500)
     };
     switch (seg[2]) {
       case 'full':
@@ -629,7 +630,7 @@ async function handleApi(req, res, url) {
         return attachment(res, await runExport('cost', 'buildCostLedgerWorkbook', [db, cf]), 'SoChiPhi' + rangeSuffix(f) + '.xlsx', XLSX_TYPE);
       }
       case 'cost-debt': {
-        return attachment(res, await runExport('cost', 'buildDebtWorkbook', [db, { ct: q.get('ct') || '', ncc: q.get('ncc') || '', to: f.to }]), 'CongNoNCC_' + stampNow() + '.xlsx', XLSX_TYPE);
+        return attachment(res, await runExport('cost', 'buildDebtWorkbook', [db, { ct: q.get('ct') || '', ncc: q.getAll('ncc').map((x) => String(x).trim()).filter(Boolean).slice(0, 500), tt: ['no', 'du', 'an'].includes(q.get('tt')) ? q.get('tt') : '', to: f.to }]), 'CongNoNCC_' + stampNow() + '.xlsx', XLSX_TYPE);
       }
       case 'cash-count': {
         const buf = await cashCountApi.buildWorkbook(store.db, q.get('id'));
