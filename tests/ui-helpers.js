@@ -20,6 +20,7 @@ async function openPage(srv, hash, opts) {
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
   page.on('request', (r) => { if (!/^(http:\/\/127\.0\.0\.1|http:\/\/localhost|data:|blob:)/.test(r.url())) external.push(r.url()); });
+  if (opts.clock) await page.clock.install(); // đồng hồ giả của trình duyệt (tua nhanh thời gian bằng page.clock.fastForward)
   await page.goto(srv.base + '/' + (hash || ''));
   await page.waitForFunction(() => document.querySelector('#view') && document.querySelector('#view').innerText.trim().length > 10, null, { timeout: 30000 });
   return { browser, page, errors, external };

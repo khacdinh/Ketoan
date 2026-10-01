@@ -1,5 +1,5 @@
 /* Khung ứng dụng: điều hướng, thanh trên cùng, tải dữ liệu. */
-import { $, esc, api, onDatabase, showError, duo, attachMenu, download, hasOpenModal } from './ui.js';
+import { $, esc, api, onDatabase, showError, duo, attachMenu, download, hasOpenModal, dangCheDangNhap } from './ui.js';
 import { S, setDb, onChange, vouchers, anomalies } from './state.js';
 import { openEntryForm } from './forms.js';
 import { renderDashboard } from './views/dashboard.js';
@@ -190,7 +190,7 @@ document.addEventListener('dblclick', (e) => {
 }, true);
 
 document.addEventListener('keydown', (e) => {
-  if (hasOpenModal()) return;
+  if (hasOpenModal() || dangCheDangNhap()) return;
   if (!coQuyen('ghi') && (e.key === 'F2' || e.key === 'F3' || (e.altKey && (e.key === 'n' || e.key === 'N')))) { e.preventDefault(); return; }
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
   if (e.key === 'F3') {

@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startServer, readStored } = require('./helpers');
 const { SKIP, openPage, settle } = require('./ui-helpers');
-const { batDangNhap, taoVaDangNhap, MK_CHU } = require('./auth-helpers');
+const { batDangNhap, taoVaDangNhap, MK_CHU, dongHo } = require('./auth-helpers');
 
 function seed() {
   return {
@@ -27,6 +27,13 @@ async function dangNhapUI(page, ten, mk) {
   await page.press('#dn-form [name=mk]', 'Enter');
   await page.waitForSelector('#user-root .user-box');
   await settle(page);
+}
+// Mở form ghi thu / chi bằng F2 rồi bấm vào ô Nội dung như người dùng: form tự đặt con trỏ vào ô ngày sau 30–40 ms nếu chưa ai
+// chạm vào — gõ ngay (page.fill) có thể bị con trỏ kéo sang ô ngày giữa chừng
+async function moFormGhi(page) {
+  await page.keyboard.press('F2');
+  await page.waitForSelector('.modal [name=noiDung]');
+  await page.click('.modal [name=noiDung]');
 }
 const hien = (page, sel) => page.$$eval(sel, (els) => els.filter((e) => e.offsetParent !== null || getComputedStyle(e).position === 'fixed').length);
 
@@ -78,8 +85,7 @@ test('U1 vai trò ở giao diện: Chỉ xem không thấy nút thêm / sửa / 
     assert.equal(await page.locator('[data-act=restore], [data-act=reset], [data-act=auth-tat]').count(), 0);
     assert.equal(await page.locator('[data-act=backup-zip]').count(), 1, 'Kế toán tạo sao lưu được');
     // Kế toán ghi một dòng bằng form
-    await page.keyboard.press('F2');
-    await page.waitForSelector('.modal [name=noiDung]');
+    await moFormGhi(page);
     await page.fill('.modal [name=noiDung]', 'kế toán ghi');
     await page.fill('.modal [name=chi]', '5000');
     await page.keyboard.press('Control+Enter');
@@ -141,6 +147,64 @@ test('U2 màn Người dùng (Chủ): thêm người dùng (họ tên chứa mã
     assert.match(await page.$eval('#user-root', (e) => e.innerText), /<img src=x/, 'tên ở góc trên cũng hiện nguyên văn');
     assert.equal(await page.$$eval('#user-root img', (x) => x.length), 0);
     assert.equal(dialog, false);
+    assert.deepEqual(loiThat(errors), []);
+  } finally { await browser.close(); await srv.stop(); }
+});
+
+test('U3 hết phiên không mất dữ liệu: 2 phút trước khi hết hiện cảnh báo + nút "Tiếp tục làm việc" (gia hạn được); hết phiên giữa lúc đang gõ phiếu → hộp đăng nhập lại đè lên, Esc không đóng form, đăng nhập xong lưu đúng nội dung đã gõ; bấm lưu khi phiên đã hết → đăng nhập lại rồi tự gửi tiếp, không ghi trùng', { skip: SKIP, timeout: 240000 }, async () => {
+  const dh = dongHo();
+  const srv = await startServer({ seed: seed(), env: dh.env });
+  const { cookie } = await batDangNhap(srv);
+  const kt = await taoVaDangNhap(srv, cookie, 'ketoan1', 'ke-toan', 'kế toán mật khẩu 1');
+  const { browser, page, errors } = await openPage(srv, '#/so-thu-chi', { clock: true });
+  const PHUT = 60000;
+  try {
+    await dangNhapUI(page, 'ketoan1', 'kế toán mật khẩu 1');
+    await page.waitForSelector('#view tr[data-id]');
+    assert.equal(await page.locator('#phien-bar').count(), 0, 'chưa đến lúc cảnh báo');
+    // đang gõ dở một dòng
+    await moFormGhi(page);
+    await page.fill('.modal [name=noiDung]', 'đang gõ dở khi hết phiên');
+    await page.fill('.modal [name=chi]', '7000');
+    // 58 phút không thao tác (60 phút mới hết): cảnh báo, đếm ngược, nằm trên hộp thoại đang mở
+    await page.clock.fastForward(58 * PHUT);
+    await page.waitForSelector('#phien-bar[data-loai=cho]');
+    assert.match(await page.$eval('#phien-bar', (e) => e.innerText), /Phiên đăng nhập sẽ hết sau [12]:\d\d/);
+    await page.click('#phien-bar [data-act=tiep-tuc]');
+    await page.waitForSelector('#phien-bar', { state: 'detached' });
+    assert.equal(await page.locator('.modal [name=noiDung]').inputValue(), 'đang gõ dở khi hết phiên',
+      'form vẫn còn — số hộp thoại: ' + (await page.locator('.modal').count()) + ', dòng đã ghi: ' + JSON.stringify(readStored(srv.dataDir).entries.map((x) => x.noiDung)));
+    // không thao tác tiếp 61 phút (cả máy chủ và trình duyệt): hết phiên thật
+    dh.tien(61 * PHUT);
+    await page.clock.fastForward(61 * PHUT);
+    await page.waitForSelector('#auth-root .auth-screen.lai #dn-form');
+    assert.match(await page.$eval('#auth-root', (e) => e.innerText), /Dữ liệu bạn đang nhập vẫn còn nguyên/);
+    await page.press('#dn-form [name=mk]', 'Escape');
+    assert.equal(await page.locator('.modal [name=noiDung]').count(), 1, 'Esc trên hộp đăng nhập lại không đóng form bên dưới');
+    assert.equal(await page.locator('.modal [name=noiDung]').inputValue(), 'đang gõ dở khi hết phiên');
+    assert.equal(await page.locator('#dn-form [name=ten]').inputValue(), 'ketoan1', 'điền sẵn tên');
+    await page.fill('#dn-form [name=mk]', 'kế toán mật khẩu 1');
+    await page.press('#dn-form [name=mk]', 'Enter');
+    await page.waitForSelector('#auth-root .auth-screen', { state: 'detached' });
+    await page.click('.modal [data-act=save]');
+    await page.waitForFunction(() => !document.querySelector('.modal'));
+    let rows = readStored(srv.dataDir).entries.filter((x) => x.noiDung === 'đang gõ dở khi hết phiên');
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].chi, 7000);
+    assert.equal(rows[0].nguoiTao, String(kt.id));
+    // phiên hết mà trình duyệt chưa biết (máy ngủ...): bấm lưu → 401 → đăng nhập lại → tự gửi tiếp đúng một lần
+    await moFormGhi(page);
+    await page.fill('.modal [name=noiDung]', 'lưu khi phiên đã hết');
+    await page.fill('.modal [name=chi]', '8000');
+    dh.tien(61 * PHUT);
+    await page.click('.modal [data-act=save]');
+    await page.waitForSelector('#auth-root .auth-screen.lai #dn-form');
+    await page.fill('#dn-form [name=mk]', 'kế toán mật khẩu 1');
+    await page.press('#dn-form [name=mk]', 'Enter');
+    await page.waitForFunction(() => !document.querySelector('.modal') && !document.querySelector('#auth-root .auth-screen'));
+    rows = readStored(srv.dataDir).entries.filter((x) => x.noiDung === 'lưu khi phiên đã hết');
+    assert.equal(rows.length, 1, 'ghi đúng một lần');
+    assert.equal(rows[0].chi, 8000);
     assert.deepEqual(loiThat(errors), []);
   } finally { await browser.close(); await srv.stop(); }
 });

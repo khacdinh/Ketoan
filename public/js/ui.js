@@ -165,6 +165,13 @@ export function duo(name, cls) {
 }
 
 /* ---------------- Gọi máy chủ ---------------- */
+// Máy chủ (đăng nhập bật) gửi kèm "X-Phien-Con-Lai: <ms đến khi hết vì không thao tác>,<ms đến giới hạn tối đa>" → auth.js báo trước khi hết phiên
+let onPhienFn = null;
+export function onPhien(fn) { onPhienFn = fn; }
+export function baoPhien(res) {
+  const h = res && res.headers && res.headers.get('X-Phien-Con-Lai');
+  if (h && onPhienFn) { try { onPhienFn(h); } catch (e) { /* bỏ qua */ } }
+}
 let onDb = null;
 export function onDatabase(fn) { onDb = fn; }
 
@@ -196,6 +203,7 @@ export async function api(method, url, body, isRaw, extraHeaders, _lan) {
     throw new Error('Không kết nối được phần mềm. Kiểm tra cửa sổ KhoiDong.bat còn mở không.');
   }
   setOffline(false);
+  baoPhien(res);
   let data;
   try { data = await res.json(); } catch (e) { throw new Error('Máy chủ trả về dữ liệu không hợp lệ (mã ' + res.status + ')'); }
   if ((res.status === 401 || res.status === 403) && !_lan && await canDangNhap(res, data, url)) return api(method, url, body, isRaw, extraHeaders, 1);
@@ -235,6 +243,7 @@ export async function download(url, _lan) {
   let res;
   try { res = await fetch(url); } catch (e) { setOffline(true); toast('Không kết nối được phần mềm. Kiểm tra cửa sổ KhoiDong.bat còn mở không.', 'error'); return; }
   setOffline(false);
+  baoPhien(res);
   const ct = res.headers.get('Content-Type') || '';
   if (!res.ok || /json/.test(ct)) {
     let data = {};
@@ -371,7 +380,11 @@ export function openModal(opts) {
   return handle;
 }
 
+// Màn đăng nhập / đăng nhập lại đang che màn hình: phím tắt không được chạm vào hộp thoại bên dưới (Esc không đóng form đang nhập dở)
+export const dangCheDangNhap = () => !!document.querySelector('#auth-root .auth-screen');
+
 document.addEventListener('keydown', (e) => {
+  if (dangCheDangNhap()) return;
   if (e.key === 'Escape' && openModals.length) {
     e.preventDefault();
     openModals[openModals.length - 1].close();

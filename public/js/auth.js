@@ -3,7 +3,7 @@
  * - Hết phiên giữa chừng: hộp đăng nhập lại hiện NGAY trên màn hình đang dùng (dữ liệu đang gõ còn nguyên), đăng nhập xong thì
  *   gửi tiếp đúng thao tác đang dở (ui.js api() thử lại).
  * - Khung tên người đăng nhập + vai trò + Đăng xuất ở góc trên. */
-import { $, esc, icon, toast, openModal, busy, attachMenu, onAuthNeeded } from './ui.js';
+import { $, esc, icon, toast, openModal, busy, attachMenu, onAuthNeeded, onPhien } from './ui.js';
 
 export const A = { bat: false, nguoiDung: null, quyen: new Set(), tenNguoi: {}, phien: null, cauHinh: {}, vaiTro: {}, coTaiKhoan: false, nhanLuc: 0 };
 
@@ -20,6 +20,7 @@ function apDung(d) {
   A.vaiTro = d.vaiTro || {};
   A.coTaiKhoan = !!d.coTaiKhoan;
   A.nhanLuc = Date.now();
+  if (A.phien) datMoc(A.phien.conLaiCho, A.phien.conLaiToiDa); else H.cho = H.toiDa = 0;
   document.body.dataset.vai = A.bat && A.nguoiDung ? A.nguoiDung.vaiTro : '';
   veUserBox();
   nghe.forEach((f) => { try { f(A); } catch (e) { /* bỏ qua */ } });
@@ -350,5 +351,74 @@ onAuthNeeded(async (status, data) => {
   if (status === 403 && data && data.code === 'PHAI_DOI_MAT_KHAU') { await doiMatKhauBatBuoc(); return true; }
   return false;
 });
+
+/* ---------------- báo trước khi hết phiên (2 phút), nút "Tiếp tục làm việc" ----------------
+ * Mốc hết phiên tính theo đồng hồ máy này từ số mili-giây còn lại máy chủ gửi kèm mỗi trả lời (X-Phien-Con-Lai) hoặc trong trạng thái.
+ * Hết phiên: hộp đăng nhập lại hiện đè lên màn hình — form đang nhập dở vẫn còn nguyên, đăng nhập xong lưu tiếp được. */
+const BAO_TRUOC = 2 * 60000;
+const H = { cho: 0, toiDa: 0 };
+function datMoc(cho, toiDa) {
+  const t = Date.now();
+  if (Number.isFinite(Number(cho)) && Number.isFinite(Number(toiDa))) { H.cho = t + Number(cho); H.toiDa = t + Number(toiDa); }
+}
+onPhien((h) => { const v = String(h).split(','); if (A.bat && A.nguoiDung) datMoc(v[0], v[1]); });
+
+const demNguoc = (ms) => { const g = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(g / 60) + ':' + String(g % 60).padStart(2, '0'); };
+function anCanhBao() { const b = document.getElementById('phien-bar'); if (b) b.remove(); }
+function hienCanhBao(con, toiDa) {
+  let b = document.getElementById('phien-bar');
+  if (!b || b.dataset.loai !== (toiDa ? 'toi-da' : 'cho')) {
+    if (b) b.remove();
+    b = document.createElement('div');
+    b.id = 'phien-bar';
+    b.className = 'phien-bar no-print';
+    b.dataset.loai = toiDa ? 'toi-da' : 'cho';
+    b.setAttribute('role', 'alert');
+    b.innerHTML = icon('warnTri', 'text-[18px] text-caution') +
+      (toiDa
+        ? '<span class="flex-1">Phiên đăng nhập sắp đến giới hạn tối đa (' + esc(String((A.cauHinh && A.cauHinh.gioToiDa) || 12)) + ' giờ), còn <b data-dem aria-hidden="true"></b>. ' +
+          'Hãy lưu việc đang làm; sau đó đăng nhập lại (dữ liệu đang gõ vẫn được giữ).</span>' +
+          '<button type="button" class="btn btn-secondary" data-act="dang-nhap-lai">Đăng nhập lại ngay</button>'
+        : '<span class="flex-1">Phiên đăng nhập sẽ hết sau <b data-dem aria-hidden="true"></b> vì không thao tác.</span>' +
+          '<button type="button" class="btn btn-primary" data-act="tiep-tuc">' + icon('check') + 'Tiếp tục làm việc</button>');
+    document.body.appendChild(b);
+    const tt = b.querySelector('[data-act=tiep-tuc]');
+    if (tt) tt.addEventListener('click', () => giaHan(tt));
+    const dl = b.querySelector('[data-act=dang-nhap-lai]');
+    if (dl) dl.addEventListener('click', () => { anCanhBao(); H.cho = H.toiDa = 0; dangNhap({ lai: true, thongBao: 'Đăng nhập lại để bắt đầu phiên mới.' }); });
+  }
+  b.querySelector('[data-dem]').textContent = demNguoc(con);
+}
+async function giaHan(btn) {
+  const done = busy(btn, 'Đang gia hạn…');
+  try {
+    const d = await goi('POST', '/api/auth/gia-han', {});
+    if (d.phien) datMoc(d.phien.conLaiCho, d.phien.conLaiToiDa);
+    anCanhBao();
+    toast('Đã gia hạn phiên làm việc');
+  } catch (e) {
+    done();
+    if (e.status === 401) { anCanhBao(); H.cho = H.toiDa = 0; await dangNhap({ lai: true }); } else toast(e.message, 'error');
+  }
+}
+let dangHoi = false;
+async function kiemPhien() {
+  if (!A.bat || !A.nguoiDung || !H.cho || dangMo || dangHoi) { if (!dangMo) anCanhBao(); return; }
+  const con = Math.min(H.cho, H.toiDa) - Date.now();
+  if (con > BAO_TRUOC) { anCanhBao(); return; }
+  if (con > 0) { hienCanhBao(con, H.toiDa <= H.cho); return; }
+  anCanhBao();
+  // Đến mốc: hỏi lại máy chủ (cửa sổ khác có thể vừa gia hạn phiên) rồi mới bắt đăng nhập lại
+  dangHoi = true;
+  try {
+    const d = await goi('GET', '/api/auth/toi');
+    if (d.phien) { datMoc(d.phien.conLaiCho, d.phien.conLaiToiDa); return; }
+  } catch (e) {
+    if (!e.status) return; // mất kết nối: thử lại ở nhịp sau
+  } finally { dangHoi = false; }
+  H.cho = H.toiDa = 0;
+  await dangNhap({ lai: true });
+}
+setInterval(kiemPhien, 1000);
 
 export { goi as goiAuth };

@@ -354,6 +354,9 @@
   /* ---------------- Đăng nhập ---------------- */
   .auth-screen { @apply fixed inset-0 z-[70] grid place-items-center overflow-auto bg-cover p-6; }
   .auth-screen.lai { @apply bg-[#0E1B30]/55; }
+  /* báo sắp hết phiên: nằm trên hộp thoại đang mở (z 50), dưới màn đăng nhập lại (z 70) */
+  .phien-bar { @apply fixed top-3 left-1/2 z-[60] flex w-[min(640px,calc(100vw-32px))] -translate-x-1/2 flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-caution/40 bg-caution-soft px-4 py-2.5 text-[13.5px] text-ink shadow-[0_16px_40px_rgb(14_27_48/0.18)]; }
+  .phien-bar b { @apply font-semibold tabular-nums; }
   .auth-card { @apply w-full max-w-[400px] rounded-2xl bg-sheet p-7 shadow-[0_24px_64px_rgb(14_27_48/0.35)]; }
   .auth-card h1 { @apply text-[22px] font-semibold; font-stretch: 110%; }
   .auth-brand { @apply mb-5 flex items-center gap-3; }

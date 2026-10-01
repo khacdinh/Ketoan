@@ -741,7 +741,7 @@ const server = http.createServer(async (req, res) => {
       const host = req.headers.host;
       if (host && !/^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i.test(host)) throw new HttpError(403, 'Không được phép');
       // Đăng nhập bật: phiên, chống giả mạo yêu cầu, quyền theo lib/quyen.js (mặc định từ chối). Tắt: không làm gì.
-      auth.xacThuc(req, url);
+      auth.xacThuc(req, url, res);
       await auth.als.run({ nguoiDung: req.nguoiDung || null }, () => handleApi(req, res, url));
     } else {
       serveStatic(req, res, url);
