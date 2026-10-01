@@ -868,3 +868,63 @@ test('M14 tắt ngang (kill -9) khi đang gộp mã ở nhiều thời điểm: 
   assert.equal(ketQua.truoc + ketQua.sau, diem.length);
   assert.ok(ketQua.sau >= 1, 'có ít nhất một lần tắt sau khi đã gộp xong (kiểm được nhánh "đã gộp")');
 });
+
+/* ============================== Nâng cấp lược đồ 4 → 5 ============================== */
+
+test('M0 nâng cấp lược đồ 4 → 5: file lược đồ 4 mở bằng bản mới → tự sao lưu nguyên trạng, thêm bảng / cột, mọi số liệu báo cáo giữ nguyên, nhật ký ghi lại; mở lại không nâng cấp lần nữa (chạy lại không sao); khôi phục bản sao lưu lược đồ 4 được', async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const { DatabaseSync } = require('node:sqlite');
+  const { SqliteDb } = require('../lib/db');
+  const { summarize } = require('./so-lieu-moc');
+  // 1. dựng file lược đồ 4 đúng như bản trước: tạo bằng mã hiện tại rồi bỏ các bảng / cột của lược đồ 5
+  const srv0 = await startServer({ seed: path.join(__dirname, 'fixtures', 'ketoan-v2-hien-tai.json') });
+  await srv0.stop();
+  const dir = srv0.dataDir;
+  const file = path.join(dir, 'ketoan.db');
+  const c = new DatabaseSync(file);
+  ['extPayments', 'aliases', 'mergeLog', 'ignoredDupes'].forEach((t) => c.exec('DROP TABLE "' + t + '"'));
+  ['projects', 'suppliers', 'costItems', 'materials', 'houses'].forEach((t) => c.exec('ALTER TABLE "' + t + '" DROP COLUMN "gopVao"'));
+  c.exec('PRAGMA user_version = 4');
+  c.close();
+  fs.readdirSync(path.join(dir, 'backups')).forEach((f) => fs.unlinkSync(path.join(dir, 'backups', f)));
+  const v4 = readStored(dir);
+  assert.equal(v4.schema, 4);
+  const so4 = summarize(v4);
+  // 2. mở bằng bản mới
+  const srv = await startServer({ data: dir });
+  try {
+    assert.match(srv.log, /nâng cấp dữ liệu lên lược đồ 5/i);
+    const db = readStored(dir);
+    assert.equal(db.schema, 5);
+    assert.deepEqual(db.extPayments, []); assert.deepEqual(db.aliases, []); assert.deepEqual(db.mergeLog, []);
+    assert.deepEqual(summarize(db), so4, 'mọi số liệu báo cáo giữ nguyên sau nâng cấp');
+    ['projects', 'suppliers', 'entries', 'costs', 'costItems', 'materials', 'houses'].forEach((k) => assert.deepEqual(db[k], v4[k], 'bảng ' + k + ' giữ nguyên'));
+    const bks = fs.readdirSync(path.join(dir, 'backups')).filter((f) => /truoc-nang-cap-luoc-do-5/.test(f));
+    assert.equal(bks.length, 1, 'có đúng một bản sao lưu trước nâng cấp');
+    const bk = require('./helpers').readBackupFile(path.join(dir, 'backups', bks[0]));
+    assert.deepEqual(summarize(bk), so4, 'bản sao lưu là dữ liệu lược đồ 4 nguyên trạng');
+    const audit = (await srv.ok('GET', '/api/audit?limit=20')).items;
+    assert.ok(audit.some((e) => e.action === 'nang-cap'), 'nhật ký có dòng nâng cấp');
+    // dùng được tính năng mới ngay (rồi hoàn tác để các bước sau so với dữ liệu gốc)
+    const g = await merge(srv, { loai: 'ncc', nguon: [v4.suppliers[1].ma], dich: v4.suppliers[0].ma });
+    assert.equal(g.status, 200, JSON.stringify(g.json));
+    assert.equal((await srv.call('POST', '/api/merge/' + g.json.merge.id + '/undo')).status, 200);
+  } finally { await srv.stop(); }
+  // 3. mở lại: không nâng cấp lần nữa, không thêm bản sao lưu nâng cấp
+  const srv2 = await startServer({ data: dir });
+  try {
+    assert.doesNotMatch(srv2.log, /nâng cấp dữ liệu lên lược đồ/i);
+    assert.equal(fs.readdirSync(path.join(dir, 'backups')).filter((f) => /truoc-nang-cap-luoc-do-5/.test(f)).length, 1);
+    // 4. khôi phục bản sao lưu lược đồ 4 (trước nâng cấp): dữ liệu về như lúc đó, file vẫn lược đồ 5
+    const name = fs.readdirSync(path.join(dir, 'backups')).find((f) => /truoc-nang-cap-luoc-do-5/.test(f));
+    await srv2.ok('POST', '/api/backups/restore', { name });
+    const back = readStored(dir);
+    assert.equal(back.schema, 5);
+    assert.deepEqual(summarize(back), so4);
+    assert.deepEqual(back.suppliers, v4.suppliers);
+  } finally { await srv2.stop(); }
+  // 5. gọi migrate() trên file đã ở lược đồ 5: không làm gì
+  const s = new SqliteDb(file);
+  try { assert.deepEqual(s.migrate(), []); assert.equal(s.version, 5); } finally { s.close(); }
+});
