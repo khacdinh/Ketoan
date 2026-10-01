@@ -1,5 +1,19 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Nhập Excel công trình (01/10/2026, nhánh `feature/import-excel-cong-trinh`)
+
+### Thêm
+- **`scripts/import-excel-chiphi.js`**: nhập nhiều file `ChiPhi_CongTrinh_*.xlsm` (NHATKYCHUNG → dòng chi phí theo phiếu, SO_QUY → sổ thu
+  chi, DM_* → danh mục gộp hợp nhất) với `--dry-run` (không ghi gì, báo cáo), `--apply` (sao lưu `truoc-import-excel`, một giao dịch, đối
+  chiếu trước khi chốt), `--rollback <mã lần nhập>` (vào Thùng rác). Dấu vân tay từng dòng nguồn → chạy lại không nhân đôi. Làm sạch theo
+  quy tắc: dòng khoán (chỉ có Thành tiền), mã CT / mã nhà thiếu hoặc sai, Loại CP suy ra, NCC khác hoa / thường, hạng mục trùng mã khác
+  nghĩa, số phiếu giả / chữ thường, ngày hoán đổi, nhà mẫu thừa, khoản sổ quỹ đã có trong Sổ thu chi… Mọi chỗ sửa / suy ra / bỏ qua đều có
+  trong báo cáo kèm số dòng gốc.
+- **`scripts/so-ky-vong-excel.js`**: tính số kỳ vọng (số dòng, tổng tiền, sổ quỹ) thẳng từ XML của file Excel, độc lập với ExcelJS và với
+  công cụ nhập — dùng để đối chiếu.
+- `lib/importCongTrinh.js` (lõi), `Store.commitChecked()` (ghi trạng thái mới trong một giao dịch, kiểm tra trên dữ liệu đọc lại trước
+  khi COMMIT), kiểm thử `tests/i-import-excel.test.js`, hướng dẫn mục 18, báo cáo `import-bao-cao/BAO_CAO_IMPORT.md`.
+
 ## Lưu dữ liệu bằng SQLite (01/10/2026, nhánh `feature/chuyen-sqlite`)
 
 Chỉ đổi **cách lưu dữ liệu**: không thêm tính năng nghiệp vụ, không đổi cách tính. Đối chiếu với bản JSON trên dữ liệu thật: mọi bản ghi,

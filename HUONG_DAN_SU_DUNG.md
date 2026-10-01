@@ -398,3 +398,52 @@ Dùng khi bản SQLite gặp sự cố mà chưa kịp sửa. **Không mất d�
   mới trên cùng dữ liệu (thư mục tạm, không đụng `data`), so từng bản ghi, mọi con số báo cáo và từng ô của mọi file Excel xuất ra.
 - `ketoan.db` mở được bằng DB Browser for SQLite (khi phần mềm đã tắt): mỗi danh sách là một bảng, tên cột trùng tên trường; cột `vt` là
   thứ tự, cột `khac` (JSON) giữ những giá trị bất thường; bảng `meta` chứa cài đặt và bộ đếm id.
+
+---
+
+## 18. Nhập các file Excel công trình (ChiPhi_CongTrinh_*.xlsm) bằng công cụ dòng lệnh
+
+Dùng khi cần đưa **nhiều file Excel công trình** (mỗi file một công trình: sổ chi phí NHATKYCHUNG, sổ quỹ SO_QUY, các danh mục) vào phần
+mềm một lần, có làm sạch dữ liệu và báo cáo đầy đủ. Công cụ **không sửa, không xóa** dữ liệu đang có, chỉ thêm; chạy lại không nhân đôi.
+
+### 18.1 Chuẩn bị
+1. **Tắt phần mềm** (đóng cửa sổ đen). Đóng Excel (công cụ từ chối khi file đang mở trong Excel).
+2. Chép cả thư mục `C:\KeToan\data` ra chỗ khác để chắc chắn (công cụ cũng tự sao lưu `.db` trước khi ghi).
+3. Đặt các file `.xlsm` vào thư mục `C:\KeToan\import-input\`. Nếu có cả bản cũ và bản "Copy of …" của cùng một file, công cụ chỉ nhập
+   bản "Copy of …"; bản cũ dùng để so sánh.
+4. Mở cửa sổ lệnh tại `C:\KeToan` (trong thư mục, gõ `cmd` vào thanh địa chỉ rồi Enter).
+
+### 18.2 Chạy thử (dry-run) — không ghi gì
+```
+node scripts\import-excel-chiphi.js --dry-run
+```
+Đọc báo cáo `import-bao-cao\DRY_RUN.md` (mở bằng Notepad hoặc VS Code) và các bảng `import-bao-cao\*.csv` (mở bằng Excel):
+- mục 1: số dòng đọc / sẽ nhập / bỏ qua của từng file, tổng tiền so với **số kỳ vọng tính độc lập từ ô nguồn** (phải "khớp");
+- mục 4: **các việc cần bạn quyết định** (công trình / NCC nghi trùng, dòng thiếu NCC, khoản sổ quỹ nghi đã có…);
+- mục 5 + `van-de.csv`: **mọi dòng bị sửa / suy ra / bỏ qua**, kèm tên file, sheet, số dòng gốc để mở Excel kiểm.
+Có thể chạy `node scripts\so-ky-vong-excel.js` để xem riêng các số kỳ vọng (tổng tiền, số dòng) của từng file.
+
+### 18.3 Nhập thật (apply)
+```
+node scripts\import-excel-chiphi.js --apply --nguoi "Tên của bạn"
+```
+- Tự sao lưu dữ liệu hiện tại thành `data\backups\ketoan-…-truoc-import-excel.db`.
+- Ghi trong **một giao dịch**; trước khi chốt, đọc lại và đối chiếu: dữ liệu cũ không đổi, tổng tiền từng file khớp số kỳ vọng, không có
+  dòng mồ côi. Lệch dù 1 đồng thì hủy toàn bộ, dữ liệu giữ nguyên.
+- Cuối cùng in **mã lần nhập** (vd `IMP-20261001-101500`) và báo cáo `import-bao-cao\APPLY_<mã>.md`. Ghi lại mã này.
+- Chạy `--apply` lần nữa với cùng file: báo "Không có gì mới để nhập". Bổ sung dòng mới vào file Excel rồi chạy lại: chỉ dòng mới được thêm.
+- Sổ quỹ (SO_QUY): khoản **đã có trong Sổ thu chi** (cùng số tiền, ngày lệch ≤ 3 ngày, cùng NCC hoặc số phiếu) không nhập lại; khoản chưa
+  có được nhập **dạng Nháp** — không tính vào tồn quỹ / công nợ cho tới khi bạn kiểm tra và bấm **Ghi sổ** (hoặc xóa nếu không thuộc quỹ).
+  Muốn ghi sổ luôn: thêm `--so-quy ghi-so`; không nhập sổ quỹ: `--so-quy bo-qua`.
+
+### 18.4 Gỡ một lần nhập (rollback)
+```
+node scripts\import-excel-chiphi.js --rollback IMP-20261001-101500
+```
+Mọi dòng chi phí / sổ thu chi của lần nhập đó chuyển vào **Thùng rác** (khôi phục được); công trình, nhà, NCC, vật tư, hạng mục do lần nhập
+tạo ra được gỡ nếu không còn dòng nào dùng. Tự sao lưu trước (`truoc-rollback-import`). Dòng nào bạn **đã sửa trong phần mềm** sau khi
+nhập (phần mềm lưu lại thành dòng mới) thì không gỡ tự động — công cụ báo số lượng để bạn kiểm tra tay. Sau rollback có thể nhập lại.
+
+### 18.5 Tùy chọn khác
+`--input <thư mục>` (nơi để file Excel), `--data <thư mục>` (thư mục dữ liệu), `--report <thư mục>` (nơi ghi báo cáo),
+`--help`. Công cụ chạy được cả khi thư mục dữ liệu mới chỉ có `ketoan.json` (lần `--apply` đầu sẽ chuyển sang SQLite như khi mở phần mềm).
