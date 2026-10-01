@@ -697,7 +697,7 @@ test('F6 Công nợ NCC: bảng, tổng, chi tiết từng NCC; Trả tiền →
 });
 
 
-test('F6c Công nợ NCC: lọc theo mã NCC — chỉ còn NCC đó, chi tiết mở sẵn, bảng theo công trình của NCC đó, nhớ bộ lọc; bỏ lọc trở về như cũ', { skip: SKIP, timeout: 180000 }, async () => {
+test('F6c Công nợ NCC: lọc theo NCC bằng ô gõ tìm (mã hoặc tên, gợi ý như form phiếu chi) — chỉ còn NCC đó, chi tiết mở sẵn, bảng theo công trình của NCC đó, nhớ bộ lọc; bỏ lọc trở về như cũ', { skip: SKIP, timeout: 180000 }, async () => {
   const srv = await startServer({ seed: V2 });
   const db = readJsonFile(V2);
   const { browser, page, errors } = await openPage(srv, '#/cp-cong-no');
@@ -706,8 +706,17 @@ test('F6c Công nợ NCC: lọc theo mã NCC — chỉ còn NCC đó, chi tiết
     const nAll = await page.locator('tr[data-ma]').count();
     const r = KT.supplierDebt(db, {}).rows.filter((x) => x.lienQuan && x.inCatalog).sort((a, b) => b.phatSinh - a.phatSinh)[0];
     assert.ok(r, 'dữ liệu mẫu có NCC công trình');
-    await page.selectOption('#cn-ncc', r.ma);
-    await page.waitForFunction((n) => document.querySelectorAll('tr[data-ma]').length === 1, null, { timeout: 5000 });
+    // ô có danh sách gợi ý mã + tên NCC
+    assert.equal(await page.getAttribute('#cn-ncc', 'list'), 'dl-cn-ncc');
+    assert.ok(await page.$eval('#dl-cn-ncc', (d, ma) => [...d.options].some((o) => o.value === ma), r.ma));
+    // gõ tên không có: báo lỗi, không lọc
+    await page.fill('#cn-ncc', 'không có ncc này'); await page.press('#cn-ncc', 'Enter');
+    await page.waitForFunction(() => /Không có nhà cung cấp/.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
+    assert.equal(await page.locator('tr[data-ma]').count(), nAll);
+    // gõ đúng tên (không cần mã) rồi Enter
+    await page.fill('#cn-ncc', r.ten.toUpperCase()); await page.press('#cn-ncc', 'Enter');
+    await page.waitForFunction(() => document.querySelectorAll('tr[data-ma]').length === 1, null, { timeout: 5000 });
+    assert.equal(await page.inputValue('#cn-ncc'), r.ma, 'ô hiện mã NCC sau khi lọc');
     assert.equal(await page.getAttribute('tr[data-ma]', 'data-ma'), r.ma);
     assert.match(await page.$eval('#cn-detail', (e) => e.innerText), new RegExp(r.ten.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'chi tiết NCC mở sẵn');
     assert.ok(await page.$eval('#cn-pham', (e) => e.disabled), 'phạm vi không áp dụng khi lọc một NCC');
@@ -720,7 +729,19 @@ test('F6c Công nợ NCC: lọc theo mã NCC — chỉ còn NCC đó, chi tiết
     await page.waitForSelector('tr[data-ma]');
     assert.equal(await page.inputValue('#cn-ncc'), r.ma);
     assert.equal(await page.locator('tr[data-ma]').count(), 1);
-    // bỏ lọc bằng liên kết
+    // xóa trắng ô rồi Enter: bỏ lọc
+    await page.fill('#cn-ncc', ''); await page.press('#cn-ncc', 'Enter');
+    await page.waitForFunction((n) => document.querySelectorAll('tr[data-ma]').length === n, nAll, { timeout: 5000 });
+    // chọn một dòng trong danh sách gợi ý (trình duyệt gửi insertReplacementText): lọc ngay, không cần Enter
+    await page.$eval('#cn-ncc', (el, ma) => { el.value = ma; el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertReplacementText' })); }, r.ma);
+    await page.waitForFunction(() => document.querySelectorAll('tr[data-ma]').length === 1, null, { timeout: 5000 });
+    await page.fill('#cn-ncc', ''); await page.press('#cn-ncc', 'Enter');
+    await page.waitForFunction((n) => document.querySelectorAll('tr[data-ma]').length === n, nAll, { timeout: 5000 });
+    // gõ từng chữ thì chưa lọc (không làm mất ô đang gõ); gõ mã chữ thường rồi Enter: lọc; bỏ lọc bằng liên kết
+    await page.focus('#cn-ncc'); await page.keyboard.type(r.ma.toLowerCase(), { delay: 10 });
+    assert.equal(await page.locator('tr[data-ma]').count(), nAll);
+    await page.press('#cn-ncc', 'Enter');
+    await page.waitForFunction(() => document.querySelectorAll('tr[data-ma]').length === 1, null, { timeout: 5000 });
     await page.click('[data-act=all-ncc]');
     await page.waitForFunction((n) => document.querySelectorAll('tr[data-ma]').length === n, nAll, { timeout: 5000 });
     assert.equal(await page.inputValue('#cn-ncc'), '');

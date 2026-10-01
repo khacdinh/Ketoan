@@ -1,5 +1,10 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Công nợ NCC: ô lọc NCC gõ tìm (01/10/2026)
+
+- Ô lọc nhà cung cấp đổi từ danh sách chọn sang ô gõ tìm có gợi ý (mã + tên), như ô Nhà cung cấp ở form phiếu chi: chọn gợi ý là lọc
+  ngay; gõ mã (không phân biệt hoa thường) hoặc đúng tên rồi Enter; tên không có thì báo lỗi; xóa trắng rồi Enter để bỏ lọc. Kiểm thử F6c.
+
 ## Công nợ NCC: lọc theo mã NCC (01/10/2026)
 
 - Màn Công nợ NCC có ô chọn nhà cung cấp: chỉ hiện NCC đó (bỏ qua ô phạm vi), chi tiết mở sẵn, bảng theo công trình chỉ còn các

@@ -1,7 +1,7 @@
 /* Báo cáo chi phí công trình: bảng điều khiển (TONGHOP), chi tiết theo nhóm (CHI_TIET_THEO_NHOM),
  * công nợ NCC (CONGNO_NCC), thống kê giá vật tư. */
-import { $, $$, esc, money, fdate, fmtShort, icon, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, debounce, highlight, LS, dateField } from '../ui.js';
-import { S, saveFilter, ctOptions, selectOptions, projectByCode, supplierByCode, materialByCode, itemByCode } from '../state.js';
+import { $, $$, esc, money, fdate, fmtShort, icon, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, debounce, highlight, LS, dateField, toast } from '../ui.js';
+import { S, saveFilter, ctOptions, selectOptions, resolveCode, projectByCode, supplierByCode, materialByCode, itemByCode } from '../state.js';
 import { printView } from '../print.js';
 import { openEntryForm } from '../forms.js';
 
@@ -340,7 +340,8 @@ export function renderDebt(root) {
     '<div class="print-only" id="print-head"></div>' +
     '<div class="no-print flex flex-wrap items-center gap-2">' +
     '<select id="cn-ct" class="input w-auto max-w-[300px]" aria-label="Công trình">' + ctOptions(f.ct) + '</select>' +
-    '<select id="cn-ncc" class="input w-auto max-w-[300px]" aria-label="Nhà cung cấp">' + nccOptions(f.ncc) + '</select>' +
+    '<input id="cn-ncc" type="search" class="input w-[250px] max-sm:w-full" list="dl-cn-ncc" autocomplete="off" value="' + esc(f.ncc || '') + '" placeholder="Lọc NCC: gõ mã hoặc tên" aria-label="Lọc theo nhà cung cấp"' +
+    (ncc ? ' title="' + esc(ncc.ten) + '"' : '') + '>' + nccDatalist() +
     '<span class="flex items-center gap-2 text-[13.5px] text-ink-2"><span aria-hidden="true">Đến ngày</span>' + dateField({ id: 'cn-to', value: f.to || '', label: 'Tính công nợ đến ngày' }) + '</span>' +
     '<select id="cn-pham" class="input w-auto" aria-label="Phạm vi nhà cung cấp"' + (f.ncc ? ' disabled title="Đang lọc một nhà cung cấp"' : '') + '>' + [['ct', 'NCC liên quan công trình'], ['active', 'Mọi NCC có phát sinh'], ['all', 'Tất cả NCC trong danh mục']].map(([v, l]) =>
       '<option value="' + v + '"' + (f.pham === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
@@ -398,12 +399,23 @@ export function renderDebt(root) {
   };
 
   $('#cn-ct', root).addEventListener('change', (e) => { f.ct = e.target.value; saveFilter('cpCn'); renderDebt(root); });
-  $('#cn-ncc', root).addEventListener('change', (e) => {
-    f.ncc = e.target.value;
-    if (f.ncc) LS.set('cp.cn.sel', f.ncc);
+  // Lọc NCC kiểu gõ tìm như ô NCC ở form phiếu chi: chọn trong gợi ý là lọc ngay; gõ xong Enter / rời ô thì tìm theo mã hoặc tên
+  const nccInp = $('#cn-ncc', root);
+  const applyNcc = () => {
+    const t = nccInp.value.trim();
+    const code = t ? findNcc(t) : '';
+    if (t && !code) { toast('Không có nhà cung cấp “' + t + '”. Gõ mã hoặc tên rồi chọn trong danh sách gợi ý.', 'error'); nccInp.value = f.ncc || ''; return; }
+    if (KT.keyOf(code) === KT.keyOf(f.ncc || '')) { nccInp.value = f.ncc || ''; return; }
+    f.ncc = code;
+    if (code) LS.set('cp.cn.sel', code);
     saveFilter('cpCn');
     renderDebt(root);
+  };
+  nccInp.addEventListener('input', (e) => {
+    // chọn một dòng gợi ý (không phải gõ từng chữ) hoặc bấm nút xóa của ô tìm
+    if (!e.inputType || e.inputType === 'insertReplacementText') applyNcc();
   });
+  nccInp.addEventListener('change', applyNcc);
   $('#cn-to', root).addEventListener('change', (e) => { f.to = e.target.value; saveFilter('cpCn'); renderDebt(root); });
   $('#cn-pham', root).addEventListener('change', (e) => { f.pham = e.target.value; saveFilter('cpCn'); renderDebt(root); });
   $('#cn-sort', root).addEventListener('change', (e) => { f.sort = e.target.value; saveFilter('cpCn'); renderDebt(root); });
@@ -453,12 +465,20 @@ export function renderDebt(root) {
   drawDetail(sel);
 }
 
-// Ô lọc nhà cung cấp: NCC có phát sinh chi phí lên đầu, sau đó các NCC còn lại trong danh mục; mã đang lọc mà không có trong danh mục vẫn giữ
-function nccOptions(selected) {
+// Gợi ý cho ô lọc nhà cung cấp: NCC có phát sinh chi phí lên đầu, sau đó các NCC còn lại trong danh mục
+function nccDatalist() {
   const used = new Set(S.db.costs.map((c) => KT.keyOf(c.maNCC)));
   const list = S.db.suppliers.filter((x) => used.has(KT.keyOf(x.ma))).concat(S.db.suppliers.filter((x) => !used.has(KT.keyOf(x.ma))));
-  if (selected && !supplierByCode(selected)) list.unshift({ ma: selected, ten: '(Chưa có trong danh mục)' });
-  return selectOptions(list, selected, { allLabel: 'Tất cả nhà cung cấp' });
+  return '<datalist id="dl-cn-ncc">' + list.map((x) => '<option value="' + esc(x.ma) + '">' + esc(x.ten + (x.loai ? ' · ' + x.loai : '')) + '</option>').join('') + '</datalist>';
+}
+
+// Mã NCC từ chữ đã gõ: mã hoặc đúng tên trong danh mục (như form phiếu chi); mã lạ chỉ có trong sổ cũng được
+function findNcc(t) {
+  const code = resolveCode(S.db.suppliers, t);
+  if (supplierByCode(code)) return code;
+  const k = KT.keyOf(t);
+  const r = S.db.costs.find((c) => KT.keyOf(c.maNCC) === k) || S.db.entries.find((e) => KT.keyOf(e.maNCC) === k);
+  return r ? String(r.maNCC).trim() : '';
 }
 
 /* ---------------- Tổng hợp nợ / đã thanh toán theo công trình ---------------- */
