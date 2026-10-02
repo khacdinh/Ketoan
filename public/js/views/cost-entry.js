@@ -5,9 +5,10 @@ import { S, costDatalists, resolveCode, resolveItem, materialByCode, itemByCode,
 import { openProjectForm, openSupplierForm } from '../forms.js';
 import { openItemForm, openMaterialForm, openHouseForm } from './cost-catalogs.js';
 import { openHistory } from './control.js';
-import { attachBlock, bindAttach } from '../attach.js';
+import { attachBlock, bindAttach, pendingBlock, bindPending, pendingFiles, clearPending, uploadFiles } from '../attach.js';
 
 const KT = window.KT;
+const PENDING = 'cp-moi'; // khóa danh sách file chờ của phiếu mới đang lập
 const ENTER_COLS = ['maVT', 'dienGiai', 'soLuong', 'donGia', 'thanhTien'];
 const has = (v) => String(v == null ? '' : v).trim() !== '';
 
@@ -140,7 +141,8 @@ export function renderCostEntry(root) {
     (editingPosted || lockedSlip ? '' : '<button type="button" class="btn btn-secondary" data-act="save-draft" title="Lưu để làm tiếp; phiếu Nháp chưa tính vào chi phí, công nợ">' + icon('draft') + 'Lưu nháp</button>') +
     (lockedSlip ? '' : '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon('save') + (editingPosted ? 'Lưu thay đổi' : st.nhap ? 'Ghi sổ' : 'Ghi vào sổ chi phí') + '</button>') +
     '</div></section>' +
-    '<section class="sheet px-5 pb-4 no-print" aria-label="Chứng từ của phiếu">' + attachBlock('slips', editing ? Number(st.phieuId) : 0, { readonly: lockedSlip, newText: 'Ghi (hoặc lưu nháp) phiếu trước, rồi mở lại phiếu ở danh sách “Phiếu đã nhập” để đính kèm ảnh phiếu giao hàng, hóa đơn.' }) + '</section>' +
+    // phiếu mới: chọn ảnh / tài liệu ngay, tự tải lên khi lưu phiếu; phiếu đã lưu: đính kèm thẳng
+    '<section class="sheet px-5 pb-4 no-print" aria-label="Chứng từ của phiếu">' + (editing ? attachBlock('slips', Number(st.phieuId), { readonly: lockedSlip }) : pendingBlock(PENDING)) + '</section>' +
     recentHtml(params.phieu || '');
 
   const form = $('#cp-head', root);
@@ -508,6 +510,13 @@ export function renderCostEntry(root) {
     const done = busy(root.querySelector(asDraft ? '[data-act=save-draft]' : '[data-act=save]'), editing || asDraft ? 'Đang lưu…' : 'Đang ghi…');
     try {
       const r = editing ? await api('PUT', '/api/cost-slips/' + st.phieuId, payload) : await api('POST', '/api/cost-slips', payload);
+      // chứng từ đã chọn khi lập phiếu mới: tải lên gắn vào phiếu vừa lưu
+      const cho = editing ? [] : pendingFiles(PENDING);
+      if (cho.length && r.phieuId) {
+        const n = await uploadFiles('slips', r.phieuId, cho);
+        clearPending(PENDING);
+        if (n) toast('Đã đính kèm ' + n + ' / ' + cho.length + ' file vào phiếu');
+      }
       toast(asDraft ? 'Đã lưu nháp ' + r.count + ' dòng, tổng ' + money(r.total) + ' đ (chưa ghi sổ, chưa tính vào chi phí)'
         : (editing && !st.nhap ? 'Đã lưu phiếu: ' : 'Đã ghi ') + r.count + ' dòng, tổng ' + money(r.total) + ' đ vào sổ chi phí');
       LS.set('cp.lastHeader', { ngay: h.ngay, maCT: ct.ma, maNha: nha ? nha.ma : '', maNCC: ncc.ma, hm: h.hm });
@@ -588,6 +597,7 @@ export function renderCostEntry(root) {
   });
   bindRecent(root);
   bindAttach(root);
+  bindPending(root);
 
   refreshHeaderHints();
   refreshVtList();

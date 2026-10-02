@@ -1,5 +1,20 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Chuyển dòng khoán cũ sang “theo khoản”; đính kèm ảnh / tài liệu khi lập phiếu nhập (02/10/2026)
+
+- **Dòng khoán lưu kiểu cũ** (Số lượng 1 × Đơn giá = Thành tiền, do bản trước tự gán): Sổ chi phí hiện thông báo “Có N dòng…” →
+  **Xem và chuyển**: danh sách các dòng (đã chọn sẵn tất cả; nút “Bỏ chọn dòng có mã vật tư” để giữ lại các lần mua thật đúng 1 đơn vị),
+  bấm **Chuyển** → Số lượng, Đơn giá để trống, Thành tiền giữ nguyên. Sao lưu `truoc-chuyen-theo-khoan` trước khi đổi, bỏ qua tháng đã
+  khóa sổ, ghi nhật ký từng dòng. Khi đăng nhập bật: chỉ Chủ (quyền mới “sửa hàng loạt dữ liệu cũ”).
+- **Nhập dữ liệu cũ**: nhập file Excel chi phí (trong phần mềm và công cụ dòng lệnh) thì dòng Số lượng 1 × Đơn giá = Thành tiền tự nhập
+  thành dòng theo khoản (bước xem trước có cảnh báo số dòng). Gộp file cũ vào dữ liệu — dù dữ liệu đã chuyển hay chưa — không nhân đôi.
+  Khôi phục bản sao lưu thì giữ nguyên như lúc sao lưu (dùng nút chuyển ở Sổ chi phí nếu cần).
+- **Phiếu nhập chi phí mới**: chọn ảnh / tài liệu ngay khi lập phiếu; file tự tải lên và gắn vào phiếu khi bấm Ghi phiếu / Lưu nháp.
+- **Chứng từ đính kèm** nhận thêm Word (.docx, .doc) và Excel (.xlsx, .xls), nhận theo nội dung file, từ chối file có macro; Word / Excel
+  luôn tải về (không mở trong trình duyệt).
+- Kiểm thử mới DK2, DK3 (`tests/d-chi-phi-theo-khoan.test.js`), TL1, TL2 (`tests/n6-dinh-kem-tai-lieu.test.js`); E4 so sánh theo dạng
+  đã chuyển.
+
 ## Đổi tên thành "Kế Toán Công Trình", thêm logo công ty Điền Thủy (02/10/2026)
 
 - Tên phần mềm hiển thị đổi từ “Sổ Thu Chi” thành **Kế Toán Công Trình**: tiêu đề tab trình duyệt, thanh bên, màn đăng nhập, trang in
