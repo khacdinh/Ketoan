@@ -9,7 +9,10 @@
 - **Nhập dữ liệu cũ**: nhập file Excel chi phí (trong phần mềm và công cụ dòng lệnh) thì dòng Số lượng 1 × Đơn giá = Thành tiền tự nhập
   thành dòng theo khoản (bước xem trước có cảnh báo số dòng). Gộp file cũ vào dữ liệu — dù dữ liệu đã chuyển hay chưa — không nhân đôi.
   Khôi phục bản sao lưu thì giữ nguyên như lúc sao lưu (dùng nút chuyển ở Sổ chi phí nếu cần).
-- **Phiếu nhập chi phí mới**: chọn ảnh / tài liệu ngay khi lập phiếu; file tự tải lên và gắn vào phiếu khi bấm Ghi phiếu / Lưu nháp.
+- **Phiếu nhập chi phí mới** và **Ghi thu / chi (dòng mới)**: chọn ảnh / tài liệu ngay khi lập; file tự tải lên và gắn vào phiếu / dòng
+  khi bấm Ghi phiếu / Ghi sổ / Lưu nháp (không còn phải lưu rồi mở lại mới đính kèm được).
+- Sửa lỗi: bấm Sửa phiếu nhập, bấm × xóa một dòng (chưa lưu) rồi bấm Sửa lại đúng phiếu đó thì không mở lại được — nay luôn mở phiếu như
+  đã lưu (hỏi trước khi bỏ thay đổi chưa lưu); quay lại phiếu đang sửa dở có thông báo và nút **Mở lại bản đã lưu**.
 - **Chứng từ đính kèm** nhận thêm Word (.docx, .doc) và Excel (.xlsx, .xls), nhận theo nội dung file, từ chối file có macro; Word / Excel
   luôn tải về (không mở trong trình duyệt).
 - Kiểm thử mới DK2, DK3 (`tests/d-chi-phi-theo-khoan.test.js`), TL1, TL2 (`tests/n6-dinh-kem-tai-lieu.test.js`); E4 so sánh theo dạng

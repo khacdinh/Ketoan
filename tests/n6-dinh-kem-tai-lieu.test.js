@@ -115,3 +115,30 @@ test('TL2 phiếu nhập MỚI: chọn ảnh + Excel trước khi lưu (bỏ b�
     } finally { await browser.close(); }
   } finally { await srv.stop(); }
 });
+
+test('TL3 Ghi thu / chi (dòng mới): chọn ảnh trước khi ghi → Ghi sổ → ảnh gắn vào dòng vừa ghi; "Ghi sổ và ghi tiếp" làm trống danh sách chờ', { skip: SKIP, timeout: 180000 }, async () => {
+  const srv = await startServer({});
+  const dir = tmpDir('tl3');
+  const f1 = path.join(dir, 'hoa don 1.png'); fs.writeFileSync(f1, PNG);
+  const f2 = path.join(dir, 'bang ke.xlsx'); fs.writeFileSync(f2, await xlsx());
+  try {
+    const { browser, page, errors } = await openPage(srv, '#/so-thu-chi');
+    try {
+      await page.keyboard.press('F2');
+      await page.waitForSelector('.modal [data-att-pending-input]', { state: 'attached' });
+      await page.click('.modal [name=noiDung]');
+      await page.fill('.modal [name=noiDung]', 'Mua vật tư lẻ');
+      await page.fill('.modal [name=chi]', '250000');
+      await page.setInputFiles('.modal [data-att-pending-input]', [f1, f2]);
+      await page.waitForFunction(() => document.querySelectorAll('.modal [data-att-pending] .att-item').length === 2);
+      await page.click('.modal [data-act=save-next]');
+      await page.waitForFunction(() => /Đã đính kèm 2 \/ 2 file/.test(document.querySelector('#toast-root').textContent), null, { timeout: 10000 });
+      await page.waitForFunction(() => document.querySelectorAll('.modal [data-att-pending] .att-item').length === 0);
+      const st = readStored(srv.dataDir);
+      const e = st.entries.find((x) => x.noiDung === 'Mua vật tư lẻ');
+      assert.ok(e);
+      assert.deepEqual(st.attachments.filter((a) => a.owner === 'entries' && a.ownerId === e.id).map((a) => a.name).sort(), ['bang ke.xlsx', 'hoa don 1.png']);
+      assert.deepEqual(errors, []);
+    } finally { await browser.close(); }
+  } finally { await srv.stop(); }
+});

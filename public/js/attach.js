@@ -64,12 +64,12 @@ export function attachBlock(owner, ownerId, opts) {
 const choLuu = new Map(); // khóa → [File] (giữ trong bộ nhớ trang; tải lại trang thì mất)
 export function pendingFiles(key) { return choLuu.get(key) || []; }
 export function clearPending(key) { choLuu.delete(key); }
-export function pendingBlock(key) {
+export function pendingBlock(key, khiLuu) {
   return '<div class="att-box" data-att-pending="' + esc(key) + '">' +
     '<div class="flex flex-wrap items-center gap-2"><span class="label">Chứng từ đính kèm</span><span class="flex-1"></span>' +
     '<label class="btn btn-secondary btn-sm cursor-pointer">' + icon('paperclip') + 'Đính kèm ảnh / tài liệu<input type="file" class="sr-only" accept="' + ACCEPT + '" multiple data-att-pending-input></label></div>' +
     '<ul class="att-list" aria-live="polite"></ul>' +
-    '<p class="text-[12px] text-ink-3">' + LOAI_HIEN + '. File được tải lên ngay khi bấm Ghi phiếu (hoặc Lưu nháp). Chưa lưu phiếu mà tải lại trang thì phải chọn lại file.</p></div>';
+    '<p class="text-[12px] text-ink-3">' + LOAI_HIEN + '. File được tải lên ngay khi bấm ' + esc(khiLuu || 'Ghi phiếu (hoặc Lưu nháp)') + '. Chưa lưu mà tải lại trang thì phải chọn lại file.</p></div>';
 }
 function drawPending(box) {
   const key = box.dataset.attPending;

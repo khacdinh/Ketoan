@@ -402,8 +402,8 @@ Mở một dòng sổ thu chi (sửa), một dòng chi phí, hoặc một phiế
 (chọn được nhiều file; chụp hóa đơn bằng điện thoại rồi chép vào máy cũng được).
 - Nhận ảnh JPG, PNG, WEBP, PDF, Word (.docx, .doc) và Excel (.xlsx, .xls), tối đa 10 MB mỗi file (file Word / Excel có macro không
   được nhận). Bấm tên file để xem (ảnh hiện ngay, PDF mở tab mới, Word / Excel tải về để mở bằng Word / Excel), nút tải về, nút xóa.
-- **Phiếu nhập chi phí mới**: có thể chọn ảnh / tài liệu ngay khi đang lập phiếu (khung **Chứng từ đính kèm** dưới bảng dòng hàng,
-  bỏ bớt bằng nút ×). File được tải lên và gắn vào phiếu ngay khi bấm **Ghi phiếu** (hoặc **Lưu nháp**). Chưa lưu phiếu mà tải lại
+- **Phiếu nhập chi phí mới** và **Ghi thu / chi** (dòng mới): có thể chọn ảnh / tài liệu ngay khi đang lập (khung **Chứng từ đính kèm** dưới bảng dòng hàng,
+  bỏ bớt bằng nút ×). File được tải lên và gắn vào phiếu / dòng ngay khi bấm **Ghi phiếu** / **Ghi sổ** (hoặc **Lưu nháp**). Chưa lưu phiếu mà tải lại
   trang thì phải chọn lại file.
 - Dòng có chứng từ hiện **kẹp giấy kèm số lượng** trong sổ; bấm vào để xem nhanh.
 - Chứng từ nằm trong `data/attachments/`, có trong **bản sao lưu đầy đủ (.zip)**; xóa dòng thì chứng từ vào thùng rác cùng dòng đó.
