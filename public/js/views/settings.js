@@ -326,6 +326,8 @@ function previewCostImport(file, buf, p, box, root) {
       '<span class="block text-[12.5px] text-ink-3">Chỉ chọn khi các khoản trả tiền này CHƯA được ghi trong Sổ thu chi của phần mềm, nếu không sẽ bị tính trùng tồn quỹ và công nợ. Dòng trùng hoàn toàn được bỏ qua.</span></span></label>' : '') +
     (st.traNgoaiQuy && st.traNgoaiQuy.soKhoan ? '<p class="mt-3 text-[13px] text-ink-2">' + icon('bank', 'mr-1 align-[-3px] text-pen') + 'Sheet TRA_NGOAI_QUY: ' + st.traNgoaiQuy.soKhoan + ' khoản trả NCC từ nguồn khác (' + money(st.traNgoaiQuy.tong) + ' đ), ' +
       (st.traNgoaiQuy.moi ? st.traNgoaiQuy.moi + ' khoản mới sẽ được thêm' : 'đều đã có') + '. Khoản trùng hoàn toàn được bỏ qua; không vào Sổ thu chi.</p>' : '') +
+    (st.soDuDauKy && st.soDuDauKy.soKhoan ? '<p class="mt-3 text-[13px] text-ink-2">' + icon('scales', 'mr-1 align-[-3px] text-pen') + 'Sheet SO_DU_DAU_NCC: ' + st.soDuDauKy.soKhoan + ' số dư đầu kỳ công nợ NCC (tổng ' + money(st.soDuDauKy.tong) + ' đ), ' +
+      (st.soDuDauKy.moi ? st.soDuDauKy.moi + ' khoản mới sẽ được thêm' : 'đều đã có') + '. Khoản trùng hoàn toàn được bỏ qua.</p>' : '') +
     (p.warnings.length ? '<details class="mt-3 text-[13px]"><summary class="cursor-pointer font-semibold text-caution">' + p.warnings.length + ' điều cần biết khi đọc file</summary>' +
       '<ul class="mt-2 max-h-48 list-disc overflow-auto pl-5 text-ink-2">' + p.warnings.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul></details>' : '') +
     '<div class="mt-4 flex flex-wrap items-center gap-2">' +
@@ -352,7 +354,7 @@ function previewCostImport(file, buf, p, box, root) {
     try {
       const r = await api('POST', '/api/import?mode=' + mode + (soQuy ? '&soQuy=1' : '') + '&map=' + encodeURIComponent(JSON.stringify(map)) + '&ten=' + encodeURIComponent(file.name), buf, true);
       const a = r.result.added;
-      toast('Đã nhập ' + a.costs + ' dòng chi phí, ' + a.materials + ' vật tư, ' + a.items + ' hạng mục' + (a.entries ? ', ' + a.entries + ' dòng sổ thu chi' : '') + (a.extPayments ? ', ' + a.extPayments + ' khoản trả ngoài quỹ' : '') +
+      toast('Đã nhập ' + a.costs + ' dòng chi phí, ' + a.materials + ' vật tư, ' + a.items + ' hạng mục' + (a.entries ? ', ' + a.entries + ' dòng sổ thu chi' : '') + (a.extPayments ? ', ' + a.extPayments + ' khoản trả ngoài quỹ' : '') + (a.soDuDauKy ? ', ' + a.soDuDauKy + ' số dư đầu kỳ NCC' : '') +
         (r.result.skipped ? '. Bỏ qua ' + r.result.skipped + ' dòng trùng' : ''));
     } catch (err) {
       showError(err);

@@ -1,5 +1,20 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Công nợ nhà cung cấp theo kỳ: Đầu kỳ, Phát sinh, Thanh toán, Cuối kỳ; nhập số dư đầu kỳ (02/10/2026)
+
+- **Số dư đầu kỳ NCC** (mới): nhập công nợ có từ trước khi ghi sổ — theo NCC, có thể ghi công trình; “còn nợ” hoặc “đã ứng trước”;
+  ngày tính; ghi chú. Nhập ở Tổng hợp NCC (nút **Đầu kỳ**, **Số dư đầu kỳ**) hoặc khung chi tiết của Công nợ NCC. Sửa / xóa (Thùng rác),
+  khóa sổ, nhật ký, đổi mã / gộp mã như các dữ liệu khác. Lưu trong bảng mới `soDuDauKy` (lược đồ dữ liệu **7**; lần đầu mở bản mới
+  phần mềm tự sao lưu `truoc-nang-cap-luoc-do-7` rồi thêm bảng, dữ liệu cũ giữ nguyên).
+- **Tổng hợp NCC** (sổ thu chi) thay cột “Đã thanh toán” bằng bảng công nợ theo kỳ: **Đầu kỳ + Phát sinh trong kỳ − Thanh toán trong kỳ
+  = Cuối kỳ** cho từng mã NCC, có dòng phương trình tổng, tổng còn nợ / ứng dư, sắp xếp theo còn nợ cuối kỳ. Xuất Excel `Tong_Hop_NCC` cùng 4 cột.
+- **Công nợ NCC**: thêm cột **Đầu kỳ** (Còn lại = Đầu kỳ + Chi phí phát sinh − Đã trả), mục “Số dư đầu kỳ” trong khung chi tiết; bảng theo
+  công trình ghi “đầu kỳ …” dưới chi phí phát sinh, % đã thanh toán tính trên đầu kỳ + phát sinh.
+- **Excel**: file Chi phí công trình có sheet **SO_DU_DAU_NCC** (khi có dữ liệu); `CONGNO_NCC` thêm cột C “Số dư đầu kỳ” (công thức SUMIFS
+  sheet đó; các cột sau dời sang phải một cột); nhập lại file thì số dư đầu kỳ được nhập theo, khoản trùng bỏ qua. File Công nợ thêm cột
+  “Số dư đầu kỳ” và sheet `So_Du_Dau_Ky`.
+- Cửa sổ dòng lệnh khi chạy phần mềm ghi tên mới “KẾ TOÁN CÔNG TRÌNH”.
+
 ## Biểu tượng Desktop mang tên và logo mới (02/10/2026)
 
 - `TaoBieuTuongDesktop.bat` tạo biểu tượng **Kế Toán Công Trình** với logo Điền Thủy (`public/img/bieu-tuong.ico`, nền trắng bo góc để rõ

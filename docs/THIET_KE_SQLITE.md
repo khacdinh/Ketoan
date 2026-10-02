@@ -192,6 +192,10 @@ lệch tổng hợp theo mã) — mã trùng được liệt kê trong báo cáo
   (`AUTH_SQL`, `CREATE TABLE IF NOT EXISTS`) nằm trong cùng file nhưng **ngoài** `TABLES` / kho trong bộ nhớ: không đi vào `/api/db`,
   file xuất, `readDbFile`; khôi phục không ghi đè; file sao lưu tải về bị xóa trắng bốn bảng này rồi `VACUUM`. Sao lưu trước khi nâng
   cấp `truoc-nang-cap-luoc-do-6` (giữ mãi). Chi tiết: `BAO_CAO_DANG_NHAP.md`.
+- **Lược đồ 7 (số dư đầu kỳ công nợ NCC — 02/10/2026)**: `DB_VERSION = 7`. Bảng mới `soDuDauKy(ngay, maNCC, maDuAn, soTien INTEGER,
+  ghiChu, createdAt, updatedAt, by, nguoiTao, nguoiSua)` (`since: 7`; `soTien` có dấu: dương = còn nợ NCC, âm = đã ứng trước). Thuộc
+  `TABLES` / kho trong bộ nhớ như `extPayments` (có trong `/api/db`, sao lưu, khôi phục). Sao lưu trước khi nâng cấp
+  `truoc-nang-cap-luoc-do-7` (giữ mãi); `migrate()` tạo bảng trong một giao dịch.
 
 ### 2.5 Thiết lập kết nối
 

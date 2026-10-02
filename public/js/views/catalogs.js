@@ -6,6 +6,7 @@ import { statusChip } from './dashboard.js';
 import { printView } from '../print.js';
 import { comboHtml, bindCombo } from '../combo.js';
 import { mergeToolbarHtml, bindMergeUI, pickHead, pickCell, mergedRecords, mergedChip } from '../merge.js';
+import { openSoDuDauList } from '../sodudau.js';
 
 const KT = window.KT;
 
@@ -187,47 +188,65 @@ export function renderSupplierReport(root) {
   const cbNcc = { id: 'th-ncc', list: S.db.suppliers.map((x) => ({ ma: x.ma, ten: x.ten, sub: x.loai })), value: '', multi: true, noun: 'nhà cung cấp',
     exclude: new Set(f.nccs.map(KT.keyOf)), placeholder: f.nccs.length ? 'Thêm NCC: gõ mã hoặc tên' : 'Lọc NCC: gõ mã hoặc tên', label: 'Lọc theo nhà cung cấp (chọn được nhiều)', cls: 'w-[240px] max-sm:w-full' };
   const nccNames = () => f.nccs.map((m) => { const x = S.db.suppliers.find((s) => KT.keyOf(s.ma) === KT.keyOf(m)); return x ? x.ten : m; });
+  const SORTS = [['cuoiKy', 'Còn nợ cuối kỳ nhiều trước'], ['amount', 'Thanh toán lớn trước'], ['phatSinh', 'Phát sinh lớn trước'], ['catalog', 'Theo thứ tự danh mục'], ['name', 'Theo tên A đến Z']];
+  const soDK = (S.all.soDuDauKy || []).length;
   root.innerHTML =
     '<div class="print-only" id="print-head"></div>' +
     '<div class="no-print flex flex-wrap items-center gap-2">' + periodControls(f, 'th') + comboHtml(cbNcc) +
-    '<label class="check ml-1"><input type="checkbox" id="th-only"' + (f.chiCoPhatSinh ? ' checked' : '') + '>Chỉ nhà cung cấp có phát sinh</label>' +
+    '<label class="check ml-1"><input type="checkbox" id="th-only"' + (f.chiCoPhatSinh ? ' checked' : '') + '>Chỉ nhà cung cấp có số liệu</label>' +
     '<span class="flex-1"></span>' +
-    '<label class="sr-only" for="th-sort">Sắp xếp</label><select id="th-sort" class="input w-auto"><option value="amount"' + (f.sort === 'amount' ? ' selected' : '') + '>Số tiền lớn trước</option>' +
-    '<option value="catalog"' + (f.sort === 'catalog' ? ' selected' : '') + '>Theo thứ tự danh mục</option><option value="name"' + (f.sort === 'name' ? ' selected' : '') + '>Theo tên A đến Z</option></select>' +
+    '<label class="sr-only" for="th-sort">Sắp xếp</label><select id="th-sort" class="input w-auto">' + SORTS.map(([v, l]) => '<option value="' + v + '"' + (f.sort === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
+    '<button type="button" class="btn btn-ghost" data-act="dk-list" title="Xem, sửa các số dư đầu kỳ đã nhập">' + icon('scales') + 'Số dư đầu kỳ' + (soDK ? ' (' + soDK + ')' : '') + '</button>' +
     '<button type="button" class="btn btn-ghost" data-act="print">' + icon('print') + 'In</button>' +
     '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất Excel</button>' +
     '</div>' +
     (f.nccs.length ? '<div class="no-print flex flex-wrap items-center gap-1.5" id="th-chips"><span class="text-[13px] text-ink-2">Đang lọc:</span>' +
       f.nccs.map((m, i) => '<span class="filter-chip" data-ma="' + esc(m) + '"><span><b>' + esc(m) + '</b> – ' + esc(nccNames()[i]) + '</span><button type="button" data-act="rm-ncc" aria-label="Bỏ lọc ' + esc(m) + '">' + icon('x') + '</button></span>').join('') +
       '<button type="button" class="btn btn-ghost btn-sm" data-act="clear-ncc">' + icon('eraser') + 'Xóa lọc</button></div>' : '') +
+    '<div class="equation" id="th-eq"></div>' +
+    '<p class="text-[13px] text-ink-3">Đầu kỳ = số dư đầu kỳ nhập tay + chi phí trừ thanh toán trước ngày đầu kỳ. Phát sinh = chi phí trong sổ chi phí công trình. ' +
+    'Thanh toán = sổ thu chi (chi trừ thu lại của cùng mã NCC) cộng khoản trả từ nguồn khác, ngoài quỹ. Cuối kỳ = Đầu kỳ + Phát sinh − Thanh toán (dương = còn nợ, âm = ứng dư). ' +
+    '<span class="no-print">Công nợ có từ trước khi dùng phần mềm: bấm <b class="font-medium text-ink-2">Đầu kỳ</b> ở dòng nhà cung cấp để nhập.</span></p>' +
     '<section class="sheet overflow-hidden">' +
     '<div class="overflow-x-auto"><table class="ledger">' +
-    '<thead><tr><th>Nhà cung cấp, đối tượng</th><th>Loại đối tượng</th><th class="num money w-[30%]">Đã thanh toán</th><th class="num">Tỉ trọng</th><th class="num money">Đã thu</th><th class="num">Số dòng</th><th>Lần gần nhất</th></tr></thead>' +
+    '<thead><tr><th>Nhà cung cấp, đối tượng</th><th>Loại đối tượng</th><th class="num money">Đầu kỳ</th><th class="num money">Phát sinh trong kỳ</th><th class="num money">Thanh toán trong kỳ</th>' +
+    '<th class="num money">Cuối kỳ</th><th>Lần gần nhất</th><th class="no-print"><span class="sr-only">Thao tác</span></th></tr></thead>' +
     '<tbody id="th-body"></tbody><tfoot id="th-foot"></tfoot></table></div></section>';
 
+  const so = (n, cls) => '<span class="' + (cls || '') + '">' + (n ? money(n) : '<span class="text-ink-3">0</span>') + '</span>';
+  const sub = (txt) => '<div class="sub">' + txt + '</div>';
   const draw = () => {
-    const ss = KT.supplierSummary(S.db, f);
+    const kq = KT.supplierPeriod(S.db, { from: f.from, to: f.to, ncc: f.nccs.length ? f.nccs : null });
     const only = f.nccs.length ? new Set(f.nccs.map(KT.keyOf)) : null;
-    const rows = (f.chiCoPhatSinh ? ss.rows.filter((r) => r.soDong > 0) : ss.rows.slice()).filter((r) => !only || only.has(KT.keyOf(r.ma)));
-    // đang lọc NCC: tổng cuối bảng = tổng các dòng đang hiện
-    if (only) ss.total = rows.reduce((t, r) => ({ chi: t.chi + r.chi, thu: t.thu + r.thu, soDong: t.soDong + r.soDong }), { chi: 0, thu: 0, soDong: 0 });
-    if (f.sort === 'amount') rows.sort((a, b) => b.chi - a.chi || b.soDong - a.soDong);
+    const rows = (f.chiCoPhatSinh && !only ? kq.rows.filter((r) => r.coSoLieu) : kq.rows.slice());
+    const t = kq.sumRows(rows);
+    if (f.sort === 'cuoiKy') rows.sort((a, b) => b.cuoiKy - a.cuoiKy);
+    if (f.sort === 'amount') rows.sort((a, b) => b.thanhToan - a.thanhToan || b.soDongTT - a.soDongTT);
+    if (f.sort === 'phatSinh') rows.sort((a, b) => b.phatSinh - a.phatSinh);
     if (f.sort === 'name') rows.sort((a, b) => a.ten.localeCompare(b.ten, 'vi'));
-    const total = ss.total.chi || 1;
-    const max = Math.max.apply(null, rows.map((r) => r.chi).concat([1]));
+    $('#th-eq', root).innerHTML =
+      '<div class="eq-cell"><span class="eq-label">Đầu kỳ' + (f.from ? ' (' + fdate(f.from) + ')' : '') + '</span><span class="eq-value">' + money(t.dauKy) + '</span></div><span class="eq-op">+</span>' +
+      '<div class="eq-cell"><span class="eq-label">Phát sinh trong kỳ</span><span class="eq-value">' + money(t.phatSinh) + '</span></div><span class="eq-op">−</span>' +
+      '<div class="eq-cell"><span class="eq-label">Thanh toán trong kỳ</span><span class="eq-value">' + money(t.thanhToan) + '</span></div><span class="eq-op">=</span>' +
+      '<div class="eq-cell"><span class="eq-label">Cuối kỳ' + (f.to ? ' (' + fdate(f.to) + ')' : '') + '</span><span class="eq-value' + (t.cuoiKy > 0 ? ' neg' : '') + '">' + money(t.cuoiKy) + '</span></div><span class="eq-sep"></span>' +
+      '<div class="eq-cell"><span class="eq-label">Tổng còn nợ</span><span class="eq-value text-alert">' + money(t.conNo) + '</span></div>' +
+      '<div class="eq-cell"><span class="eq-label">Tổng ứng dư</span><span class="eq-value text-caution">' + money(t.ungDu) + '</span></div>';
     $('#th-body', root).innerHTML = rows.length ? rows.map((r) =>
-      '<tr class="clickable" data-ma="' + esc(r.ma) + '" tabindex="0" aria-label="Mở sổ của ' + esc(r.ten) + '">' +
+      '<tr class="clickable" data-ma="' + esc(r.ma) + '" tabindex="0" aria-label="Mở sổ thu chi của ' + esc(r.ten) + '">' +
       '<td><div class="code">' + esc(r.ma) + '</div><div class="sub">' + esc(r.ten) + '</div></td>' +
       '<td class="text-ink-2">' + esc(r.loai || '') + '</td>' +
-      '<td class="num money"><div class="font-semibold">' + money(r.chi) + '</div><div class="mbar" aria-hidden="true"><span class="mbar-fill" style="width:' + Math.max(r.chi ? 0.5 : 0, (r.chi / max) * 100).toFixed(2) + '%"></span></div></td>' +
-      '<td class="num text-ink-2">' + ((r.chi / total) * 100).toFixed(1).replace('.', ',') + '%</td>' +
-      '<td class="num money thu">' + (r.thu ? money(r.thu) : '') + '</td><td class="num">' + r.soDong + '</td>' +
-      '<td class="whitespace-nowrap text-ink-2">' + (r.last ? fdate(r.last) : '') + '</td></tr>').join('')
-      : '<tr><td colspan="7" class="empty">' + (only ? 'Không có nhà cung cấp nào khớp bộ lọc.' : 'Không có phát sinh trong kỳ này.') + '</td></tr>';
-    $('#th-foot', root).innerHTML = '<tr><td colspan="2">Tổng cộng</td><td class="num money"><span class="dbl">' + money(ss.total.chi) + '</span></td><td></td>' +
-      '<td class="num money thu">' + money(ss.total.thu) + '</td><td class="num">' + ss.total.soDong + '</td><td></td></tr>' +
-      (ss.khongNCC.soDong && !only ? '<tr class="sub-total clickable" data-ma="__none__" tabindex="0"><td colspan="2">Chưa gán nhà cung cấp</td><td class="num money">' + money(ss.khongNCC.chi) + '</td><td></td>' +
-        '<td class="num money">' + money(ss.khongNCC.thu) + '</td><td class="num">' + ss.khongNCC.soDong + '</td><td></td></tr>' : '');
+      '<td class="num money">' + so(r.dauKy) + (r.nhapDauKy && r.nhapDauKy !== r.dauKy ? sub('gồm nhập tay ' + money(r.nhapDauKy)) : '') + '</td>' +
+      '<td class="num money">' + so(r.phatSinh) + '</td>' +
+      '<td class="num money">' + so(r.thanhToan, 'font-semibold') + (r.daThu ? sub('đã thu lại ' + money(r.daThu)) : '') + (r.traNgoai ? sub('ngoài quỹ ' + money(r.traNgoai)) : '') + '</td>' +
+      '<td class="num money font-semibold' + (r.cuoiKy > 0 ? ' neg' : '') + '">' + money(r.cuoiKy) + (r.cuoiKy < 0 ? sub('ứng dư') : '') + '</td>' +
+      '<td class="whitespace-nowrap text-ink-2">' + (r.last ? fdate(r.last) : '') + '</td>' +
+      '<td class="actions no-print">' + (r.inCatalog ? '<button type="button" class="btn btn-ghost btn-sm" data-act="dk-row" title="Nhập / xem số dư đầu kỳ của nhà cung cấp này">' + icon('plus') + 'Đầu kỳ' + (r.soDongDK ? ' (' + r.soDongDK + ')' : '') + '</button>' : '') + '</td></tr>').join('')
+      : '<tr><td colspan="8" class="empty">' + (only ? 'Không có nhà cung cấp nào khớp bộ lọc.' : 'Không có số liệu trong kỳ này.') + '</td></tr>';
+    const kh = KT.supplierSummary(S.db, f).khongNCC;
+    $('#th-foot', root).innerHTML = '<tr><td colspan="2">Tổng cộng</td><td class="num money">' + money(t.dauKy) + '</td><td class="num money">' + money(t.phatSinh) + '</td>' +
+      '<td class="num money">' + money(t.thanhToan) + '</td><td class="num money"><span class="dbl">' + money(t.cuoiKy) + '</span></td><td colspan="2"></td></tr>' +
+      (kh.soDong && !only ? '<tr class="sub-total clickable" data-ma="__none__" tabindex="0" title="Các dòng sổ thu chi trong kỳ không ghi mã NCC (không tính vào công nợ)"><td colspan="4">Chi, thu không ghi nhà cung cấp (' + kh.soDong + ' dòng)</td>' +
+        '<td class="num money">' + money(kh.chi - kh.thu) + '</td><td colspan="3"></td></tr>' : '');
   };
 
   bindPeriodControls(root, f, 'th', () => { saveFilter('thncc'); renderSupplierReport(root); });
@@ -254,7 +273,9 @@ export function renderSupplierReport(root) {
       }
       const q = ['from', 'to'].filter((k) => f[k]).map((k) => k + '=' + f[k]).concat(f.chiCoPhatSinh ? ['chiCoPhatSinh=1'] : [], f.nccs.map((x) => 'nccs=' + encodeURIComponent(x))).join('&');
       if (a.dataset.act === 'export') download('/api/export/suppliers?' + q);
-      if (a.dataset.act === 'print') printView('TỔNG HỢP THANH TOÁN THEO NHÀ CUNG CẤP', KT.describeRange(f.from, f.to) + (f.nccs.length ? '. NCC: ' + nccNames().join(', ') : ''), S.db.settings);
+      if (a.dataset.act === 'dk-list') openSoDuDauList();
+      if (a.dataset.act === 'dk-row') openSoDuDauList(a.closest('tr[data-ma]').dataset.ma);
+      if (a.dataset.act === 'print') printView('TỔNG HỢP CÔNG NỢ THEO NHÀ CUNG CẤP', KT.describeRange(f.from, f.to) + (f.nccs.length ? '. NCC: ' + nccNames().join(', ') : ''), S.db.settings);
       return;
     }
     const tr = e.target.closest('tr[data-ma]');

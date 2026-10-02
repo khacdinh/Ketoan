@@ -24,14 +24,14 @@ const ROUTES = {
   'phieu': { title: 'Phiếu thu, phiếu chi', sub: 'Các dòng cùng số phiếu được gộp lại để in 2 liên', icon: 'receipt', render: renderVouchers },
   'du-an': { title: 'Dự án', sub: 'Mã dự án và ngân sách phê duyệt', icon: 'hardhat', render: renderProjects },
   'ncc': { title: 'Nhà cung cấp và đối tượng', sub: 'Nhà cung cấp, thầu phụ, nhân viên, người nhận tiền', icon: 'contacts', render: renderSuppliers },
-  'tong-hop-ncc': { title: 'Tổng hợp theo nhà cung cấp', sub: 'Đã thanh toán bao nhiêu cho từng nhà cung cấp', icon: 'bars', render: renderSupplierReport },
+  'tong-hop-ncc': { title: 'Tổng hợp theo nhà cung cấp', sub: 'Đầu kỳ, phát sinh, thanh toán, cuối kỳ của từng nhà cung cấp', icon: 'bars', render: renderSupplierReport },
   'cai-dat': { title: 'Cài đặt và dữ liệu', sub: 'Thông tin in trên phiếu, nhập và xuất Excel, sao lưu', icon: 'gear', render: renderSettings },
   // Chi phí công trình
   'cp-tong-hop': { title: 'Chi phí công trình', sub: 'Tổng chi phí theo loại, nhóm, hạng mục và theo tháng', icon: 'crane', render: renderCostDashboard },
   'cp-nhap': { title: 'Phiếu nhập chi phí', sub: 'Khai báo đầu phiếu một lần, nhập nhiều dòng (số lượng × đơn giá, hoặc chỉ thành tiền)', icon: 'notePencil', render: renderCostEntry },
   'cp-so': { title: 'Sổ chi phí', sub: 'Nhật ký chung các dòng chi phí công trình', icon: 'table', render: renderCostLedger },
   'cp-chi-tiet': { title: 'Chi tiết chi phí theo nhóm', sub: 'Nhóm, hạng mục, từng dòng; bung hoặc thu gọn 3 cấp', icon: 'tree', render: renderCostDetail },
-  'cp-cong-no': { title: 'Công nợ nhà cung cấp', sub: 'Chi phí phát sinh trừ số đã trả trong sổ thu chi', icon: 'scales', render: renderDebt },
+  'cp-cong-no': { title: 'Công nợ nhà cung cấp', sub: 'Số dư đầu kỳ cộng chi phí phát sinh, trừ số đã trả', icon: 'scales', render: renderDebt },
   'cp-gia': { title: 'Giá vật tư', sub: 'Lịch sử đơn giá theo vật tư và nhà cung cấp', icon: 'tag', render: renderPrices },
   'cp-danh-muc': { title: 'Danh mục chi phí', sub: 'Nhóm chi phí, hạng mục, vật tư, nhà và khu', icon: 'squares', render: renderCostCatalogs },
   // Kiểm soát sổ sách (nhóm độ chính xác và truy vết)

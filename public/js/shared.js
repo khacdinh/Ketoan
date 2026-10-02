@@ -861,9 +861,19 @@
     function get(ma) {
       const k = keyOf(ma);
       let a = acc.get(k);
-      if (!a) { a = { ma: String(ma).trim(), phatSinh: 0, daTra: 0, daTraNgoai: 0, soDongCP: 0, soDongTT: 0, soDongNgoai: 0, soDongTTCT: 0, last: '' }; acc.set(k, a); }
+      if (!a) { a = { ma: String(ma).trim(), dauKy: 0, phatSinh: 0, daTra: 0, daTraNgoai: 0, soDongCP: 0, soDongTT: 0, soDongNgoai: 0, soDongTTCT: 0, soDongDK: 0, last: '' }; acc.set(k, a); }
       return a;
     }
+    // Số dư đầu kỳ nhập tay (công nợ có từ trước khi dùng phần mềm): dương = còn nợ NCC, âm = đã ứng trước
+    (db.soDuDauKy || []).forEach(function (p) {
+      if (!p.maNCC) return;
+      if (only && !only.has(keyOf(p.maNCC))) return;
+      if (f.ct && keyOf(p.maDuAn) !== keyOf(f.ct)) return;
+      if (f.to && p.ngay > f.to) return;
+      const a = get(p.maNCC);
+      a.dauKy += p.soTien || 0;
+      a.soDongDK++;
+    });
     (db.costs || []).forEach(function (c) {
       if (!c.maNCC) return;
       if (only && !only.has(keyOf(c.maNCC))) return;
@@ -902,14 +912,14 @@
     const rows = [];
     const seen = new Set();
     function push(ma, s, a) {
-      a = a || { phatSinh: 0, daTra: 0, daTraNgoai: 0, soDongCP: 0, soDongTT: 0, soDongNgoai: 0, soDongTTCT: 0, last: '' };
-      const conLai = a.phatSinh - a.daTra;
+      a = a || { dauKy: 0, phatSinh: 0, daTra: 0, daTraNgoai: 0, soDongCP: 0, soDongTT: 0, soDongNgoai: 0, soDongTTCT: 0, soDongDK: 0, last: '' };
+      const conLai = a.dauKy + a.phatSinh - a.daTra;
       rows.push({
         id: s ? s.id : undefined, ma: ma, ten: s ? s.ten : '(Chưa có trong danh mục)', loai: s ? (s.loai || '') : '',
-        phatSinh: a.phatSinh, daTra: a.daTra, daTraNgoai: a.daTraNgoai, daTraQuy: a.daTra - a.daTraNgoai, conLai: conLai, soDongCP: a.soDongCP, soDongTT: a.soDongTT,
-        soDongNgoai: a.soDongNgoai, last: a.last,
-        // có chi phí công trình, hoặc có khoản trả/ứng gắn với công trình đang có chi phí (vd. ứng trước cho thầu)
-        lienQuan: a.soDongCP > 0 || a.soDongTTCT > 0,
+        dauKy: a.dauKy, phatSinh: a.phatSinh, daTra: a.daTra, daTraNgoai: a.daTraNgoai, daTraQuy: a.daTra - a.daTraNgoai, conLai: conLai, soDongCP: a.soDongCP, soDongTT: a.soDongTT,
+        soDongNgoai: a.soDongNgoai, soDongDK: a.soDongDK, last: a.last,
+        // có chi phí công trình, có số dư đầu kỳ, hoặc có khoản trả/ứng gắn với công trình đang có chi phí (vd. ứng trước cho thầu)
+        lienQuan: a.soDongCP > 0 || a.soDongTTCT > 0 || a.soDongDK > 0,
         status: conLai > 0 ? 'no' : conLai < 0 ? 'du' : 'ok', inCatalog: !!s
       });
     }
@@ -924,10 +934,10 @@
     const list = only ? rows.filter(function (r) { return only.has(keyOf(r.ma)); }) : rows;
     const sumRows = function (list) {
       return list.reduce(function (t, r) {
-        t.phatSinh += r.phatSinh; t.daTra += r.daTra; t.daTraNgoai += r.daTraNgoai; t.conLai += r.conLai;
+        t.dauKy += r.dauKy; t.phatSinh += r.phatSinh; t.daTra += r.daTra; t.daTraNgoai += r.daTraNgoai; t.conLai += r.conLai;
         if (r.conLai > 0) t.conNo += r.conLai; else t.ungDu -= r.conLai;
         return t;
-      }, { phatSinh: 0, daTra: 0, daTraNgoai: 0, conLai: 0, conNo: 0, ungDu: 0 });
+      }, { dauKy: 0, phatSinh: 0, daTra: 0, daTraNgoai: 0, conLai: 0, conNo: 0, ungDu: 0 });
     };
     // total: chỉ các NCC liên quan công trình (dùng cho báo cáo); totalAll: mọi mã NCC
     return { rows: list, total: sumRows(only ? list : list.filter(function (r) { return r.lienQuan; })), totalAll: sumRows(list), sumRows: sumRows };
@@ -936,7 +946,86 @@
   function debtOf(db, maNCC, ct) {
     if (!maNCC) return null;
     const r = supplierDebt(db, { ct: ct }).rows.find(function (x) { return keyOf(x.ma) === keyOf(maNCC); });
-    return r && (r.soDongCP || r.soDongTT) ? r : null;
+    return r && (r.soDongCP || r.soDongTT || r.soDongDK) ? r : null;
+  }
+
+  // Công nợ NCC theo kỳ [f.from, f.to]: Đầu kỳ + Phát sinh trong kỳ − Thanh toán trong kỳ = Cuối kỳ.
+  //   Đầu kỳ = số dư đầu kỳ nhập tay (ngày không sau f.to) + chi phí trước f.from − thanh toán trước f.from
+  //   Phát sinh = chi phí (sổ chi phí) trong kỳ; Thanh toán = sổ thu chi (chi − thu) + trả ngoài quỹ trong kỳ.
+  // f: { from, to, ct, ncc }. Cuối kỳ luôn bằng "Còn lại" của supplierDebt(db, { ct, to, ncc }).
+  function supplierPeriod(db, f) {
+    f = f || {};
+    const only = nccSetOf(f.ncc);
+    const acc = new Map();
+    function get(ma) {
+      const k = keyOf(ma);
+      let a = acc.get(k);
+      if (!a) { a = { ma: String(ma).trim(), dauKy: 0, nhapDauKy: 0, phatSinh: 0, thanhToan: 0, daChi: 0, daThu: 0, traNgoai: 0, soDongCP: 0, soDongTT: 0, soDongDK: 0, coTruoc: false, last: '' }; acc.set(k, a); }
+      return a;
+    }
+    function pick(x, ctField) {
+      if (!x.maNCC) return false;
+      if (only && !only.has(keyOf(x.maNCC))) return false;
+      if (f.ct && keyOf(x[ctField]) !== keyOf(f.ct)) return false;
+      return !(f.to && x.ngay > f.to);
+    }
+    const truoc = function (ngay) { return !!f.from && ngay < f.from; };
+    (db.soDuDauKy || []).forEach(function (p) {
+      if (!pick(p, 'maDuAn')) return;
+      const a = get(p.maNCC);
+      a.dauKy += p.soTien || 0;
+      a.nhapDauKy += p.soTien || 0;
+      a.soDongDK++;
+    });
+    (db.costs || []).forEach(function (c) {
+      if (!pick(c, 'maCT')) return;
+      const a = get(c.maNCC);
+      if (truoc(c.ngay)) { a.dauKy += c.thanhTien || 0; a.coTruoc = true; return; }
+      a.phatSinh += c.thanhTien || 0;
+      a.soDongCP++;
+      if (c.ngay > a.last) a.last = c.ngay;
+    });
+    function pay(x, chi, thu, ngoai) {
+      const a = get(x.maNCC);
+      if (truoc(x.ngay)) { a.dauKy -= chi - thu; a.coTruoc = true; return; }
+      a.thanhToan += chi - thu;
+      a.daChi += ngoai ? 0 : chi;
+      a.daThu += thu;
+      a.traNgoai += ngoai ? chi : 0;
+      a.soDongTT++;
+      if (x.ngay > a.last) a.last = x.ngay;
+    }
+    (db.entries || []).forEach(function (e) { if (pick(e, 'maDuAn')) pay(e, e.chi || 0, e.thu || 0, false); });
+    (db.extPayments || []).forEach(function (p) { if (pick(p, 'maDuAn')) pay(p, p.soTien || 0, 0, true); });
+    const rows = [];
+    const seen = new Set();
+    function push(ma, s, a) {
+      a = a || get(ma);
+      const cuoiKy = a.dauKy + a.phatSinh - a.thanhToan;
+      rows.push({
+        id: s ? s.id : undefined, ma: ma, ten: s ? s.ten : '(Chưa có trong danh mục)', loai: s ? (s.loai || '') : '', sdt: s ? s.sdt : '', inCatalog: !!s,
+        dauKy: a.dauKy, nhapDauKy: a.nhapDauKy, phatSinh: a.phatSinh, thanhToan: a.thanhToan, daChi: a.daChi, daThu: a.daThu, traNgoai: a.traNgoai, cuoiKy: cuoiKy,
+        soDongCP: a.soDongCP, soDongTT: a.soDongTT, soDongDK: a.soDongDK, last: a.last,
+        // có số liệu: có đầu kỳ (nhập tay hoặc từ trước kỳ) hoặc có phát sinh / thanh toán trong kỳ
+        coSoLieu: a.soDongDK > 0 || a.coTruoc || a.soDongCP > 0 || a.soDongTT > 0,
+        status: cuoiKy > 0 ? 'no' : cuoiKy < 0 ? 'du' : 'ok'
+      });
+    }
+    (db.suppliers || []).forEach(function (s) {
+      const k = keyOf(s.ma);
+      if (seen.has(k) || (only && !only.has(k))) return;
+      seen.add(k);
+      push(s.ma, s, acc.get(k));
+    });
+    acc.forEach(function (a, k) { if (!seen.has(k)) push(a.ma, null, a); });
+    const sumRows = function (list) {
+      return list.reduce(function (t, r) {
+        ['dauKy', 'phatSinh', 'thanhToan', 'daChi', 'daThu', 'traNgoai', 'cuoiKy', 'soDongCP', 'soDongTT'].forEach(function (key) { t[key] += r[key]; });
+        if (r.cuoiKy > 0) t.conNo += r.cuoiKy; else t.ungDu -= r.cuoiKy;
+        return t;
+      }, { dauKy: 0, phatSinh: 0, thanhToan: 0, daChi: 0, daThu: 0, traNgoai: 0, cuoiKy: 0, soDongCP: 0, soDongTT: 0, conNo: 0, ungDu: 0 });
+    };
+    return { rows: rows, total: sumRows(rows), sumRows: sumRows };
   }
 
   // Tổng hợp theo công trình: chi phí phát sinh, đã trả NCC, còn nợ / ứng dư (cộng theo từng NCC của công trình),
@@ -948,6 +1037,8 @@
     const onlyNcc = nccSetOf(f.ncc);
     const coChiPhi = new Set();
     (db.costs || []).forEach(function (c) { if (c.maCT && (!f.to || c.ngay <= f.to)) coChiPhi.add(keyOf(c.maCT)); });
+    // công trình có số dư đầu kỳ NCC: công nợ có nghĩa như công trình có chi phí
+    (db.soDuDauKy || []).forEach(function (p) { if (p.maDuAn && (!f.to || p.ngay <= f.to)) coChiPhi.add(keyOf(p.maDuAn)); });
     const coThuChi = new Set();
     (db.entries || []).forEach(function (e) { if (e.maDuAn && (!f.to || e.ngay <= f.to)) coThuChi.add(keyOf(e.maDuAn)); });
     (db.extPayments || []).forEach(function (e) { if (e.maDuAn && (!f.to || e.ngay <= f.to)) coThuChi.add(keyOf(e.maDuAn)); });
@@ -964,7 +1055,7 @@
       const coCP = coChiPhi.has(k);
       if (!coCP && !(f.all && coThuChi.has(k))) return;
       const d = supplierDebt(db, { ct: p.ma, to: f.to, ncc: f.ncc });
-      if (onlyNcc && !d.rows.some(function (r) { return r.soDongCP || r.soDongTT; })) return;
+      if (onlyNcc && !d.rows.some(function (r) { return r.soDongCP || r.soDongTT || r.soDongDK; })) return;
       const t = d.totalAll;
       let chiKhac = 0;
       let thuCT = 0;
@@ -976,19 +1067,19 @@
       // Dự án chưa nhập chi phí: chỉ có số đã trả; không tính nợ / ứng dư (sẽ ra "ứng dư" toàn bộ, sai ý nghĩa)
       rows.push({
         ma: p.ma, ten: p.ten, trangThai: p.trangThai, inCatalog: p.inCatalog, coChiPhi: coCP,
-        phatSinh: t.phatSinh, daTra: t.daTra, conNo: coCP ? t.conNo : 0, ungDu: coCP ? t.ungDu : 0, conLai: coCP ? t.conLai : 0, chiKhac: chiKhac,
-        tiLeDaTra: t.phatSinh > 0 ? t.daTra / t.phatSinh : null,
+        dauKy: t.dauKy, phatSinh: t.phatSinh, daTra: t.daTra, conNo: coCP ? t.conNo : 0, ungDu: coCP ? t.ungDu : 0, conLai: coCP ? t.conLai : 0, chiKhac: chiKhac,
+        tiLeDaTra: t.dauKy + t.phatSinh > 0 ? t.daTra / (t.dauKy + t.phatSinh) : null,
         soNCCNo: coCP ? d.rows.filter(function (r) { return r.conLai > 0; }).length : 0,
         soNCCDu: coCP ? d.rows.filter(function (r) { return r.conLai < 0; }).length : 0
       });
     });
     const total = rows.reduce(function (s, r) {
-      ['phatSinh', 'daTra', 'conNo', 'ungDu', 'conLai', 'chiKhac', 'soNCCNo', 'soNCCDu'].forEach(function (key) { s[key] += r[key]; });
+      ['dauKy', 'phatSinh', 'daTra', 'conNo', 'ungDu', 'conLai', 'chiKhac', 'soNCCNo', 'soNCCDu'].forEach(function (key) { s[key] += r[key]; });
       if (r.coChiPhi) s.daTraCoChiPhi += r.daTra;
       return s;
-    }, { phatSinh: 0, daTra: 0, daTraCoChiPhi: 0, conNo: 0, ungDu: 0, conLai: 0, chiKhac: 0, soNCCNo: 0, soNCCDu: 0 });
+    }, { dauKy: 0, phatSinh: 0, daTra: 0, daTraCoChiPhi: 0, conNo: 0, ungDu: 0, conLai: 0, chiKhac: 0, soNCCNo: 0, soNCCDu: 0 });
     // % đã thanh toán chỉ tính trên các công trình đã nhập chi phí
-    total.tiLeDaTra = total.phatSinh > 0 ? total.daTraCoChiPhi / total.phatSinh : null;
+    total.tiLeDaTra = total.dauKy + total.phatSinh > 0 ? total.daTraCoChiPhi / (total.dauKy + total.phatSinh) : null;
     // khoản trả cho NCC có chi phí công trình nhưng không ghi mã dự án -> không tính được vào công trình nào
     const nccCP = new Set();
     (db.costs || []).forEach(function (c) { if (c.maNCC) nccCP.add(keyOf(c.maNCC)); });
@@ -1451,6 +1542,7 @@
     costSummary: costSummary,
     supplierDebt: supplierDebt,
     debtOf: debtOf,
+    supplierPeriod: supplierPeriod,
     projectDebtSummary: projectDebtSummary,
     materialStats: materialStats,
     priceHistory: priceHistory,
