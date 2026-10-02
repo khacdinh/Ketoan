@@ -238,7 +238,7 @@ test('K8 nâng cấp lược đồ 5 → 6: tự sao lưu, thêm bảng / cột,
   await srv0.stop();
   const dir = srv0.dataDir;
   const c = new DatabaseSync(path.join(dir, 'ketoan.db'));
-  ['nguoiDung', 'phienDangNhap', 'suKienBaoMat', 'cauHinhDangNhap'].forEach((t) => c.exec('DROP TABLE "' + t + '"'));
+  ['nguoiDung', 'phienDangNhap', 'suKienBaoMat', 'cauHinhDangNhap', 'soDuDauKy'].forEach((t) => c.exec('DROP TABLE "' + t + '"')); // soDuDauKy: lược đồ 7
   ['projects', 'suppliers', 'entries', 'costGroups', 'costItems', 'materials', 'houses', 'costs', 'cashCounts', 'extPayments'].forEach((t) => {
     c.exec('ALTER TABLE "' + t + '" DROP COLUMN "nguoiTao"'); c.exec('ALTER TABLE "' + t + '" DROP COLUMN "nguoiSua"');
   });
@@ -249,12 +249,13 @@ test('K8 nâng cấp lược đồ 5 → 6: tự sao lưu, thêm bảng / cột,
   assert.equal(v5.schema, 5);
   const srv = await startServer({ data: dir });
   try {
-    assert.match(srv.log, /lược đồ 6/);
+    const { DB_VERSION } = require('../lib/db');
+    assert.match(srv.log, new RegExp('lược đồ ' + DB_VERSION));
     const db = readStored(dir);
-    assert.equal(db.schema, 6);
+    assert.equal(db.schema, DB_VERSION);
     ['projects', 'suppliers', 'entries', 'costs', 'costItems', 'materials', 'houses'].forEach((k) => assert.deepEqual(db[k], v5[k], k));
     assert.ok(db.entries.every((e) => e.nguoiTao === undefined), 'dữ liệu cũ: không có người tạo (hiển thị "Dữ liệu cũ")');
-    assert.equal(fs.readdirSync(path.join(dir, 'backups')).filter((f) => /truoc-nang-cap-luoc-do-6/.test(f)).length, 1);
+    assert.equal(fs.readdirSync(path.join(dir, 'backups')).filter((f) => new RegExp('truoc-nang-cap-luoc-do-' + DB_VERSION).test(f)).length, 1);
     assert.equal((await srv.call('GET', '/api/auth/trang-thai')).json.bat, false);
     assert.equal((await srv.call('GET', '/api/db')).status, 200);
   } finally { await srv.stop(); }

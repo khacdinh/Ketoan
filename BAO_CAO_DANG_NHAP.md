@@ -140,6 +140,9 @@ Bảy bước làm theo đúng thứ tự yêu cầu, mỗi bước một (vài)
 | POST | `/api/ext-payments` | ghi | Chủ, Kế toán |
 | PUT | `/api/ext-payments/:x` | ghi | Chủ, Kế toán |
 | DELETE | `/api/ext-payments/:x` | ghi | Chủ, Kế toán |
+| POST | `/api/so-du-dau` | ghi | Chủ, Kế toán |
+| PUT | `/api/so-du-dau/:x` | ghi | Chủ, Kế toán |
+| DELETE | `/api/so-du-dau/:x` | ghi | Chủ, Kế toán |
 | POST | `/api/cost-groups` | ghi | Chủ, Kế toán |
 | PUT | `/api/cost-groups/:x` | ghi | Chủ, Kế toán |
 | DELETE | `/api/cost-groups/:x` | ghi | Chủ, Kế toán |

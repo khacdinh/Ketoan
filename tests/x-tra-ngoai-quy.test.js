@@ -206,7 +206,7 @@ test('X4 Excel: file chi phí có sheet TRA_NGOAI_QUY, công nợ NCC / theo cô
       const ma = X.cellVal(rw.getCell(1));
       const d = KT.supplierDebt(db, {}).rows.find((r) => r.ma === ma);
       if (!d) return;
-      const c = rw.getCell(4);
+      const c = rw.getCell(5); // cột E: Đã trả (C = Số dư đầu kỳ, D = Chi phí phát sinh)
       assert.match(c.formula || '', /TRA_NGOAI_QUY/, 'công thức Đã trả có cộng TRA_NGOAI_QUY');
       assert.equal(X.cellVal(c), d.daTra);
       found++;
@@ -243,7 +243,7 @@ test('X4 Excel: file chi phí có sheet TRA_NGOAI_QUY, công nợ NCC / theo cô
     assert.ok(!vals.some((v) => v.includes('Chủ nhà trả trực tiếp')), 'chỉ khoản của NCC đang lọc');
     const cnw = wd.getWorksheet('Cong_No_NCC');
     const rowA = [];
-    cnw.eachRow((rw) => { if (X.cellVal(rw.getCell(2)) === 'NCC_A') rowA.push(X.cellVal(rw.getCell(6))); });
+    cnw.eachRow((rw) => { if (X.cellVal(rw.getCell(2)) === 'NCC_A') rowA.push(X.cellVal(rw.getCell(7))); }); // cột G: Đã trả
     assert.deepEqual(rowA, [KT.supplierDebt(db, {}).rows.find((x) => x.ma === 'NCC_A').daTra]);
   } finally { await srv.stop(); await srv2.stop(); }
 });
@@ -289,6 +289,7 @@ test('X5 giao diện Công nợ NCC: nút "Nguồn khác" → form điền sẵn
     await page.fill('#xp-form [name=soTien]', '10tr');
     await page.click('.modal [data-act=save]');
     await page.waitForFunction(() => !document.querySelector('#xp-form'));
+    await page.waitForFunction(() => /Đã sửa khoản trả 10\.000\.000/.test(document.querySelector('#toast-root').textContent)); // đã lưu xong mới đọc file
     db = readStored(srv.dataDir);
     assert.equal(db.extPayments[0].soTien, 10000000);
     assert.equal(row(db, 'NCC_B').conLai, 3000000);

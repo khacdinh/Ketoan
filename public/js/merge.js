@@ -13,7 +13,7 @@ export const LOAI = {
   nha: { list: 'houses', ten: 'nhà / khu', Ten: 'Nhà / khu', sub: (x) => x.maCT },
   da: { list: 'projects', ten: 'dự án / công trình', Ten: 'Dự án / công trình', sub: () => '' }
 };
-const COUNT_LABEL = { entries: 'dòng sổ thu chi', costs: 'dòng chi phí', materials: 'vật tư dùng làm hạng mục hay dùng', houses: 'nhà / khu', extPayments: 'khoản trả NCC ngoài quỹ' };
+const COUNT_LABEL = { entries: 'dòng sổ thu chi', costs: 'dòng chi phí', materials: 'vật tư dùng làm hạng mục hay dùng', houses: 'nhà / khu', extPayments: 'khoản trả NCC ngoài quỹ', soDuDauKy: 'số dư đầu kỳ NCC' };
 const XAC_NHAN = { dvt: 'Tôi xác nhận: ĐVT khác nhau, số lượng giữ nguyên', khoan: 'Tôi xác nhận gộp mã khoản / chung với vật tư thường', ten: 'Tôi xác nhận hai hạng mục CÙNG NGHĨA' };
 
 const countsText = (c, trash) => {

@@ -581,7 +581,11 @@ test('E3.4 các file xuất khác mở được bằng exceljs và có số li�
     const ps = KT.projectSummary(db);
     assert.ok(x.nums.has(ps.total.chi), 'tổng chi dự án');
     x = await scan('/api/export/suppliers');
-    assert.ok(x.nums.has(KT.supplierSummary(db).total.chi), 'tổng chi NCC');
+    // Tổng hợp NCC theo kỳ: tổng Thanh toán = chi − thu của mọi dòng sổ có mã NCC (+ trả ngoài quỹ), tổng Phát sinh = chi phí có mã NCC
+    const tt = db.entries.filter((e) => e.maNCC).reduce((t, e) => t + (e.chi || 0) - (e.thu || 0), 0) + (db.extPayments || []).reduce((t, p) => t + p.soTien, 0);
+    const psNCC = db.costs.filter((c) => c.maNCC).reduce((t, c) => t + c.thanhTien, 0);
+    assert.ok(x.nums.has(tt), 'tổng thanh toán NCC ' + tt);
+    assert.ok(x.nums.has(psNCC - tt), 'tổng cuối kỳ NCC ' + (psNCC - tt));
     x = await scan('/api/export/cost-ledger');
     assert.ok(x.nums.has(EXCEL.tong), 'tổng sổ chi phí');
     x = await scan('/api/export/cost-ledger?loai=' + encodeURIComponent('Vật tư'));

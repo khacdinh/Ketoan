@@ -13,7 +13,7 @@ export const S = {
   filters: {
     so: LS.get('filter.so', { period: 'tat-ca', from: '', to: '', duAn: '', ncc: '', loai: '', q: '' }),
     dash: LS.get('filter.dash', { period: 'tat-ca', from: '', to: '' }),
-    thncc: LS.get('filter.thncc', { period: 'tat-ca', from: '', to: '', chiCoPhatSinh: true, sort: 'amount' }),
+    thncc: LS.get('filter.thncc', { period: 'tat-ca', from: '', to: '', chiCoPhatSinh: true, sort: 'cuoiKy' }),
     phieu: LS.get('filter.phieu', { q: '', loai: '' }),
     // Chi phí công trình
     cpSo: LS.get('filter.cpSo', { period: 'tat-ca', from: '', to: '', ct: '', nha: '', nhom: '', hm: '', loai: '', ncc: '', vt: '', q: '' }),

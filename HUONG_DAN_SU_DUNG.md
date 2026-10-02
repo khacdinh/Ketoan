@@ -41,7 +41,7 @@ Muốn có biểu tượng trên Desktop: bấm đúp **`TaoBieuTuongDesktop.bat
 | **Phiếu thu / chi** | `Phieu_Chi` | Các dòng cùng **số phiếu** được gộp thành 1 phiếu (tổng tiền, lý do, người nhận, số tiền bằng chữ). Xem trước và **in 2 liên trên 1 tờ A4**, xuất Excel. Số phiếu bắt đầu bằng **PT** là phiếu thu, **PC** là phiếu chi. |
 | **Danh mục dự án** | `Danh_Muc_Du_An`, `DM_CONGTRINH` | Mã, tên, ngân sách, trạng thái, ngày khởi công, địa chỉ; xem đã chi, còn lại. Mỗi **công trình** trong phần chi phí chính là một dự án ở đây. |
 | **Danh mục NCC / đối tượng** | `Danh_Muc_NCC`, `DM_NCC` | Mã, tên, loại (Vật tư / Nhân công / Dịch vụ...), SĐT, địa chỉ (địa chỉ được in tự động lên phiếu). Dùng chung cho cả sổ thu chi và chi phí công trình. |
-| **Tổng hợp theo NCC** | `Tong_Hop_NCC` | Tổng thanh toán, số giao dịch, tỉ trọng cho từng NCC theo kỳ. Bấm vào dòng để xem sổ chi tiết. |
+| **Tổng hợp theo NCC** | `Tong_Hop_NCC` | Công nợ từng NCC theo kỳ: **Đầu kỳ + Phát sinh trong kỳ − Thanh toán trong kỳ = Cuối kỳ** (xem mục 12). Nút **Đầu kỳ** ở mỗi dòng để nhập số dư đầu kỳ. Bấm vào dòng để xem sổ chi tiết. |
 | **Cài đặt & dữ liệu** | — | Tên đơn vị, địa chỉ, tên Giám đốc / Kế toán trưởng / Thủ quỹ (in trên phiếu); nhập Excel (file thu chi hoặc file chi phí); xuất Excel; sao lưu / khôi phục. |
 
 Nhóm menu **Chi phí công trình** (bên trái, dưới “Tổng hợp NCC”):
@@ -240,7 +240,27 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
   còn nợ. Bấm một công trình để xem công nợ từng NCC của công trình đó; bấm lần nữa để bỏ lọc. Đánh dấu “Hiện cả dự án
   chưa nhập chi phí” để xem thêm số đã trả NCC của các dự án khác. Nếu có khoản trả cho NCC công trình mà chưa ghi mã
   dự án, phần mềm nhắc ngay dưới bảng.
-- **Công nợ NCC** = Chi phí phát sinh (Sổ chi phí) − Đã trả (Sổ thu chi: tổng **chi** trừ tổng **thu** của cùng
+- **Số dư đầu kỳ nhà cung cấp** — công nợ đã có **trước khi ghi sổ trong phần mềm** (vd còn nợ từ năm trước theo biên bản đối
+  chiếu, hoặc đã ứng trước cho thợ). Nhập ở màn **Tổng hợp NCC** (nút **Đầu kỳ** ở dòng NCC, hoặc nút **Số dư đầu kỳ** trên thanh công
+  cụ để xem tất cả) hoặc ở khung chi tiết NCC của màn **Công nợ NCC** (nút **Nhập số dư đầu kỳ**). Mỗi khoản gồm:
+  - **Nhà cung cấp**, **Công trình** (để trống nếu nợ chung nhiều công trình; ghi công trình thì công nợ theo công trình đúng);
+  - **Số dư là**: “Mình còn nợ nhà cung cấp” hoặc “Mình đã ứng trước / trả dư (NCC đang giữ tiền)”, và **Số tiền**;
+  - **Tính đến đầu ngày**: thường là ngày bắt đầu ghi sổ trong phần mềm (phần mềm gợi ý ngày sớm nhất có trong sổ). Báo cáo đến ngày
+    trước ngày này thì chưa tính khoản này;
+  - **Ghi chú** (vd số biên bản đối chiếu).
+  Một NCC có thể có nhiều khoản (vd mỗi công trình một khoản). Số dư đầu kỳ **không** phải chi phí phát sinh, không vào Sổ thu chi,
+  không đổi tồn quỹ; sửa / xóa được (xóa thì vào Thùng rác), tôn trọng khóa sổ, ghi nhật ký, đi theo khi đổi mã / gộp mã NCC, công trình.
+- **Tổng hợp NCC theo kỳ**: chọn kỳ (tháng này, quý, năm, tùy chọn từ ngày – đến ngày) ở màn Tổng hợp NCC; mỗi NCC một dòng:
+  - **Đầu kỳ** = số dư đầu kỳ nhập tay + chi phí trước ngày đầu kỳ − thanh toán trước ngày đầu kỳ (dòng nhỏ “gồm nhập tay …” nếu có);
+  - **Phát sinh trong kỳ** = chi phí trong Sổ chi phí công trình trong kỳ;
+  - **Thanh toán trong kỳ** = Sổ thu chi (chi trừ thu lại của cùng Mã NCC) + khoản trả từ nguồn khác, ngoài quỹ (dòng nhỏ “đã thu lại …”,
+    “ngoài quỹ …”);
+  - **Cuối kỳ** = Đầu kỳ + Phát sinh − Thanh toán: dương = **còn nợ** (chữ đỏ), âm = **ứng dư**. Cuối kỳ luôn bằng “Còn lại” của
+    màn Công nợ NCC tính đến ngày cuối kỳ.
+  Dòng phương trình trên đầu bảng cộng cả kỳ, kèm tổng còn nợ và tổng ứng dư. Sắp xếp theo còn nợ cuối kỳ, thanh toán, phát sinh, danh
+  mục hoặc tên. Đánh dấu “Chỉ nhà cung cấp có số liệu” để ẩn NCC không có đầu kỳ / phát sinh / thanh toán. **In** và **Xuất Excel**
+  (sheet `Tong_Hop_NCC` có 4 cột Số dư đầu kỳ, Phát sinh trong kỳ, Thanh toán trong kỳ, Số dư cuối kỳ) đúng theo kỳ và bộ lọc.
+- **Công nợ NCC** = Số dư đầu kỳ (nhập tay) + Chi phí phát sinh (Sổ chi phí) − Đã trả (Sổ thu chi: tổng **chi** trừ tổng **thu** của cùng
   Mã NCC; cộng các khoản **trả từ nguồn khác, ngoài quỹ** — xem dưới). Chọn công trình thì chỉ tính các dòng cùng Mã dự án. Hai sổ **không sửa dữ liệu của nhau**.
   - Còn nợ: phát sinh > đã trả. Ứng dư: đã trả nhiều hơn khối lượng đã ghi (thường do chưa nhập khối lượng nghiệm thu).
   - Mặc định chỉ hiện **NCC liên quan công trình** (có chi phí, hoặc có khoản trả gắn với công trình đang có chi phí);

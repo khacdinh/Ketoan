@@ -6,6 +6,7 @@ import { printView } from '../print.js';
 import { comboHtml, bindCombo } from '../combo.js';
 import { openEntryForm } from '../forms.js';
 import { openExtPayForm, deleteExtPay } from '../extpay.js';
+import { openSoDuDauForm, deleteSoDuDau } from '../sodudau.js';
 
 const KT = window.KT;
 const HEAVY_ROWS = 1500;
@@ -379,18 +380,20 @@ export function renderDebt(root) {
     projectDebtHtml(theoCT, f.ct) + '</section>' +
     '<h3 class="mt-1 text-[15px] font-semibold" id="cn-title">Công nợ theo nhà cung cấp · ' + esc(ctLabel(f.ct)) + (nccs.length ? ' · ' + esc(nccLabel) : '') +
     ' <span class="text-[13px] font-normal text-ink-2" id="cn-count">(' + rows.length + ' nhà cung cấp)</span></h3>' +
-    '<div class="equation"><div class="eq-cell"><span class="eq-label">Chi phí phát sinh</span><span class="eq-value">' + money(tot.phatSinh) + '</span></div><span class="eq-op">−</span>' +
+    '<div class="equation"><div class="eq-cell"><span class="eq-label">Số dư đầu kỳ</span><span class="eq-value">' + money(tot.dauKy) + '</span></div><span class="eq-op">+</span>' +
+    '<div class="eq-cell"><span class="eq-label">Chi phí phát sinh</span><span class="eq-value">' + money(tot.phatSinh) + '</span></div><span class="eq-op">−</span>' +
     '<div class="eq-cell"><span class="eq-label">Đã trả, đã ứng</span><span class="eq-value">' + money(tot.daTra) + '</span></div><span class="eq-op">=</span>' +
     '<div class="eq-cell"><span class="eq-label">Chênh lệch</span><span class="eq-value' + (tot.conLai > 0 ? ' neg' : '') + '">' + money(tot.conLai) + '</span></div><span class="eq-sep"></span>' +
     '<div class="eq-cell"><span class="eq-label">Tổng còn nợ</span><span class="eq-value text-alert">' + money(tot.conNo) + '</span></div>' +
     '<div class="eq-cell"><span class="eq-label">Tổng ứng dư</span><span class="eq-value text-caution">' + money(tot.ungDu) + '</span></div></div>' +
-    '<p class="text-[13px] text-ink-3">Chi phí phát sinh lấy từ sổ chi phí (khối lượng đã nhận). Đã trả = sổ thu chi (tổng chi trừ tổng thu của cùng mã NCC' + (f.ct ? ' và cùng mã dự án ' + esc(f.ct) : '') + ') cộng các khoản trả từ nguồn khác, ngoài quỹ' + (tot.daTraNgoai ? ' (' + money(tot.daTraNgoai) + ' đ)' : '') + '. Hai sổ không sửa dữ liệu của nhau. ' +
+    '<p class="text-[13px] text-ink-3">Số dư đầu kỳ = công nợ có từ trước khi ghi sổ, nhập tay (nút <b class="font-medium text-ink-2">Đầu kỳ</b> ở chi tiết nhà cung cấp). Chi phí phát sinh lấy từ sổ chi phí (khối lượng đã nhận). Đã trả = sổ thu chi (tổng chi trừ tổng thu của cùng mã NCC' + (f.ct ? ' và cùng mã dự án ' + esc(f.ct) : '') + ') cộng các khoản trả từ nguồn khác, ngoài quỹ' + (tot.daTraNgoai ? ' (' + money(tot.daTraNgoai) + ' đ)' : '') + '. Hai sổ không sửa dữ liệu của nhau. ' +
     (f.pham === 'ct' && !nccs.length ? '“Liên quan công trình” = NCC có chi phí công trình, hoặc có khoản trả gắn với công trình đang có chi phí.' : '') + '</p>' +
     '<div class="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">' +
     '<section class="sheet overflow-hidden"><div class="overflow-x-auto"><table class="ledger">' +
-    '<thead><tr><th>Nhà cung cấp</th><th>Loại</th><th class="num money">Chi phí phát sinh</th><th class="num money">Đã trả / đã ứng</th><th class="num money">Còn lại</th><th>Tình trạng</th><th class="no-print"></th></tr></thead><tbody>' +
+    '<thead><tr><th>Nhà cung cấp</th><th class="num money">Đầu kỳ</th><th class="num money">Chi phí phát sinh</th><th class="num money">Đã trả / đã ứng</th><th class="num money">Còn lại</th><th>Tình trạng</th><th class="no-print"></th></tr></thead><tbody>' +
     (rows.length ? rows.map((r) => '<tr class="clickable' + (KT.keyOf(r.ma) === KT.keyOf(sel) ? ' is-active' : '') + '" data-ma="' + esc(r.ma) + '" tabindex="0">' +
-      '<td><div class="code">' + esc(r.ma) + '</div><div class="sub">' + esc(r.ten) + '</div></td><td class="text-ink-2">' + esc(r.loai) + '</td>' +
+      '<td><div class="code">' + esc(r.ma) + '</div><div class="sub">' + esc(r.ten) + (r.loai ? ' · ' + esc(r.loai) : '') + '</div></td>' +
+      '<td class="num money">' + (r.dauKy ? money(r.dauKy) : '<span class="text-ink-3">0</span>') + '</td>' +
       '<td class="num money">' + money(r.phatSinh) + '</td><td class="num money">' + money(r.daTra) + ngoaiQuy(r.daTraNgoai) + '</td>' +
       '<td class="num money font-semibold' + (r.conLai > 0 ? ' neg' : '') + '">' + money(r.conLai) + '</td>' +
       '<td>' + debtChip(r) + '</td>' +
@@ -398,7 +401,7 @@ export function renderDebt(root) {
         '<button type="button" class="btn btn-ghost btn-sm" data-act="xp-add" title="Ghi khoản đã trả nhà cung cấp này bằng nguồn tiền khác, ngoài quỹ (chuyển khoản công ty, chủ nhà trả thẳng…)">' + icon('bank') + 'Nguồn khác</button></div>' : '') + '</td></tr>').join('')
       : '<tr><td colspan="7" class="empty">' + (filtered ? 'Không có nhà cung cấp nào khớp bộ lọc (' + esc(debtFilterLabel(nccs, f.tt)) + '). <a href="#" class="font-semibold text-pen underline underline-offset-2" data-act="clear-ncc">Xóa lọc</a>'
         : 'Không có công nợ nào.') + '</td></tr>') +
-    '</tbody><tfoot><tr><td colspan="2">Tổng cộng</td><td class="num money">' + money(tot.phatSinh) + '</td><td class="num money">' + money(tot.daTra) + ngoaiQuy(tot.daTraNgoai) + '</td><td class="num money"><span class="dbl">' + money(tot.conLai) + '</span></td><td colspan="2"></td></tr></tfoot></table></div></section>' +
+    '</tbody><tfoot><tr><td>Tổng cộng</td><td class="num money">' + money(tot.dauKy) + '</td><td class="num money">' + money(tot.phatSinh) + '</td><td class="num money">' + money(tot.daTra) + ngoaiQuy(tot.daTraNgoai) + '</td><td class="num money"><span class="dbl">' + money(tot.conLai) + '</span></td><td colspan="2"></td></tr></tfoot></table></div></section>' +
     '<aside class="sheet no-print xl:sticky xl:top-[104px]" id="cn-detail"></aside></div>';
 
   const drawDetail = (ma) => {
@@ -411,8 +414,18 @@ export function renderDebt(root) {
     const slips = KT.costSlips(Object.assign({}, S.db, { costs }), costs);
     const ext = (S.db.extPayments || []).filter((p) => KT.keyOf(p.maNCC) === KT.keyOf(ma) && (!f.ct || KT.keyOf(p.maDuAn) === KT.keyOf(f.ct)) && (!f.to || p.ngay <= f.to))
       .sort((a, b) => (a.ngay < b.ngay ? -1 : a.ngay > b.ngay ? 1 : a.id - b.id));
+    const dk = (S.all.soDuDauKy || []).filter((p) => KT.keyOf(p.maNCC) === KT.keyOf(ma) && (!f.ct || KT.keyOf(p.maDuAn) === KT.keyOf(f.ct)) && (!f.to || p.ngay <= f.to))
+      .sort((a, b) => (a.ngay < b.ngay ? -1 : a.ngay > b.ngay ? 1 : a.id - b.id));
     el.innerHTML = '<div class="sheet-head"><div><h3 class="sheet-title">' + esc(r.ten) + '</h3><p class="sheet-note">' + esc(r.ma) + (r.loai ? ' · ' + esc(r.loai) : '') + '</p></div>' + debtChip(r) + '</div>' +
-      '<div class="px-5 pb-2"><div class="flex items-baseline justify-between"><h4 class="text-[13px] font-semibold text-ink-2">Chi phí phát sinh (' + costs.length + ' dòng)</h4><b class="tabular-nums">' + money(r.phatSinh) + '</b></div>' +
+      '<div class="px-5 pb-3" id="cn-dk"><div class="flex items-baseline justify-between gap-2"><h4 class="text-[13px] font-semibold text-ink-2">Số dư đầu kỳ (' + dk.length + ')</h4><b class="tabular-nums">' + money(r.dauKy) + '</b></div>' +
+      '<ul class="mt-1 divide-y divide-rule">' + (dk.map((p) => '<li class="flex items-start justify-between gap-2 py-1.5 text-[13px]" data-dk="' + p.id + '"><span class="min-w-0"><span class="tabular-nums text-ink-3">' + fdate(p.ngay) + '</span> ' +
+        (p.soTien < 0 ? 'đã ứng trước' : 'còn nợ') + (p.maDuAn && !f.ct ? ' · ' + esc(p.maDuAn) : '') + (p.ghiChu ? '<span class="block truncate text-ink-3" title="' + esc(p.ghiChu) + '">' + esc(p.ghiChu) + '</span>' : '') + '</span>' +
+        '<span class="flex shrink-0 items-center gap-1"><span class="tabular-nums' + (p.soTien < 0 ? ' text-caution' : '') + '">' + money(p.soTien) + '</span>' +
+        '<button type="button" class="icon-btn" data-act="dk-edit" aria-label="Sửa số dư đầu kỳ ngày ' + fdate(p.ngay) + '" title="Sửa">' + icon('edit') + '</button>' +
+        '<button type="button" class="icon-btn danger" data-act="dk-del" aria-label="Xóa số dư đầu kỳ ngày ' + fdate(p.ngay) + '" title="Xóa (vào Thùng rác)">' + icon('trash') + '</button></span></li>').join('') ||
+        '<li class="py-1.5 text-[13px] text-ink-3">Chưa nhập. Dùng khi còn nợ (hoặc đã ứng trước) từ trước khi ghi sổ trong phần mềm.</li>') + '</ul>' +
+      (r.inCatalog ? '<button type="button" class="btn btn-ghost btn-sm mt-1" data-act="dk-add">' + icon('plus') + 'Nhập số dư đầu kỳ</button>' : '') + '</div>' +
+      '<div class="border-t border-rule px-5 pt-3 pb-2"><div class="flex items-baseline justify-between"><h4 class="text-[13px] font-semibold text-ink-2">Chi phí phát sinh (' + costs.length + ' dòng)</h4><b class="tabular-nums">' + money(r.phatSinh) + '</b></div>' +
       '<ul class="mt-1 max-h-[260px] divide-y divide-rule overflow-auto">' + (slips.map((s) => '<li class="flex justify-between gap-2 py-1.5 text-[13px]"><span class="min-w-0 truncate"><span class="tabular-nums text-ink-3">' + fdate(s.ngay) + '</span> ' + esc(s.hangMuc.join(', ') || s.soPhieu) +
         (s.lines.length > 1 ? ' <span class="pill">' + s.lines.length + ' dòng</span>' : '') + '</span><span class="tabular-nums">' + money(s.total) + '</span></li>').join('') || '<li class="py-2 text-[13px] text-ink-3">Chưa có.</li>') + '</ul></div>' +
       '<div class="border-t border-rule px-5 pt-3 pb-4"><div class="flex items-baseline justify-between"><h4 class="text-[13px] font-semibold text-ink-2">Đã trả trong sổ thu chi (' + pays.length + ' dòng)</h4><b class="tabular-nums">' + money(r.daTraQuy) + '</b></div>' +
@@ -466,6 +479,11 @@ export function renderDebt(root) {
       else if (act === 'print') printView('CÔNG NỢ NHÀ CUNG CẤP', ctLabel(f.ct) + (filtered ? '. ' + debtFilterLabel(nccs, f.tt) : '') + (f.to ? '. Đến ngày ' + fdate(f.to) : ''), S.db.settings);
       else if (act === 'pay') pay(ma);
       else if (act === 'xp-add') { const r = d.rows.find((x) => KT.keyOf(x.ma) === KT.keyOf(ma)); openExtPayForm(null, { maNCC: r ? r.ma : ma, maDuAn: f.ct || '', soTien: r && r.conLai > 0 ? r.conLai : '' }); }
+      else if (act === 'dk-add') openSoDuDauForm(null, { maNCC: ma, maDuAn: f.ct || '' });
+      else if (act === 'dk-edit' || act === 'dk-del') {
+        const rec = (S.all.soDuDauKy || []).find((x) => String(x.id) === a.closest('[data-dk]').dataset.dk);
+        if (rec) { if (act === 'dk-edit') openSoDuDauForm(rec); else deleteSoDuDau(rec); }
+      }
       else if (act === 'xp-edit' || act === 'xp-del') {
         const rec = (S.all.extPayments || []).find((x) => String(x.id) === a.closest('[data-xp]').dataset.xp);
         if (rec) { if (act === 'xp-edit') openExtPayForm(rec); else deleteExtPay(rec); }
@@ -532,7 +550,7 @@ function projectDebtHtml(sum, activeCt) {
   const body = sum.rows.length ? sum.rows.map((r) =>
     '<tr class="clickable' + (activeCt && KT.keyOf(activeCt) === KT.keyOf(r.ma) ? ' is-active' : '') + '" data-ct="' + esc(r.ma) + '" tabindex="0" aria-label="Xem công nợ công trình ' + esc(r.ma) + '">' +
     '<td><div class="code">' + esc(r.ma) + '</div><div class="sub">' + esc(r.ten) + (r.coChiPhi ? '' : ' · chưa nhập chi phí') + '</div></td>' +
-    '<td class="num money font-semibold">' + (r.coChiPhi ? money(r.phatSinh) : dash) + '</td>' +
+    '<td class="num money font-semibold">' + (r.coChiPhi ? money(r.phatSinh) : dash) + (r.dauKy ? '<div class="sub" title="Số dư đầu kỳ nhập tay của các NCC tại công trình này">đầu kỳ ' + money(r.dauKy) + '</div>' : '') + '</td>' +
     '<td class="num money">' + money(r.daTra) + '</td>' +
     '<td class="num">' + pctBar(r) + '</td>' +
     '<td class="num money font-semibold' + (r.conNo ? ' neg' : '') + '">' + (r.coChiPhi ? money(r.conNo) : dash) + (r.soNCCNo ? '<div class="sub">' + r.soNCCNo + ' NCC</div>' : '') + '</td>' +

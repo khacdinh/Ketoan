@@ -40,6 +40,7 @@ const createAttachApi = require('./lib/attachApi');
 const createMergeApi = require('./lib/mergeApi');
 const aliasImport = require('./lib/aliasImport');
 const createExtPayApi = require('./lib/extPayApi');
+const createSoDuDauApi = require('./lib/soDuDauApi');
 const createAuth = require('./lib/auth');
 const JSZip = require('jszip');
 const { dataSummary } = require('./lib/store');
@@ -274,7 +275,7 @@ function usage(field, ma) {
 
 // Bản sao lưu đưa vào phải đúng hình dạng: các danh sách là mảng đối tượng (tránh làm hỏng kho khi file lạ)
 function checkDbShape(d) {
-  ['projects', 'suppliers', 'entries', 'costGroups', 'costItems', 'materials', 'houses', 'costs', 'cashCounts', 'attachments', 'extPayments'].forEach((k) => {
+  ['projects', 'suppliers', 'entries', 'costGroups', 'costItems', 'materials', 'houses', 'costs', 'cashCounts', 'attachments', 'extPayments', 'soDuDauKy'].forEach((k) => {
     if (d[k] === undefined) return;
     if (!Array.isArray(d[k]) || d[k].some((x) => x === null || typeof x !== 'object' || Array.isArray(x))) throw new HttpError(400, 'File sao lưu không hợp lệ: "' + k + '" phải là danh sách các bản ghi');
   });
@@ -291,6 +292,7 @@ const costApi = createCostApi({ store, HttpError, str, money, readJson, ok, send
   renameTargets: (loai, a, b) => mergeApi.renameTargets(loai, a, b) });
 const mergeApi = createMergeApi({ store, HttpError, str, readJson, ok, sendJson, trace, makeItem: (b) => costApi.makeItem(b) });
 const extPayApi = createExtPayApi({ store, HttpError, str, money, readJson, ok, findCode, byId, trace });
+const soDuDauApi = createSoDuDauApi({ store, HttpError, str, money, readJson, ok, findCode, byId, trace });
 const cashCountApi = createCashCountApi({ store, HttpError, str, money, readJson, ok, byId, trace });
 const attachApi = createAttachApi({ store, HttpError, str, sendJson, ok, readBody, trace, send });
 trace.hooks.afterPurge.push((item) => attachApi.retire(item.kind === 'attachments' ? item.records : (item.attachments || [])));
@@ -700,6 +702,7 @@ async function handleApi(req, res, url) {
   if (await attachApi.handle(req, res, url)) return;
   if (await mergeApi.handle(req, res, url)) return;
   if (await extPayApi.handle(req, res, url)) return;
+  if (await soDuDauApi.handle(req, res, url)) return;
   if (await costApi.handle(req, res, url)) return;
 
   throw new HttpError(404, 'Không có chức năng ' + m + ' ' + p);
@@ -795,7 +798,7 @@ function listen(port, attempt) {
   server.listen(port, HOST, () => {
     const link = 'http://localhost:' + port;
     console.log('');
-    console.log('  SỔ THU CHI — phần mềm kế toán');
+    console.log('  KẾ TOÁN CÔNG TRÌNH — phần mềm kế toán');
     console.log('  Đang chạy tại: ' + link);
     console.log('  Dữ liệu lưu ở: ' + store.file);
     console.log('  (Đóng cửa sổ này để tắt phần mềm)');

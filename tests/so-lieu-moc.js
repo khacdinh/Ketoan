@@ -31,7 +31,21 @@ function summarize(db) {
   // qua JSON để Map/Set/undefined so sánh được như nhau
   const o = JSON.parse(JSON.stringify(out));
   if (!(db.extPayments || []).length) boTruongNgoaiQuy(o.congNoNCC);
+  if (!(db.soDuDauKy || []).length) boTruongDauKy(o);
   return o;
+}
+
+// Trường thêm sau mốc (số dư đầu kỳ NCC, lược đồ 7): dữ liệu không có số dư đầu kỳ thì phải là 0; kiểm tra rồi bỏ ra để so với mốc.
+function boTruongDauKy(o) {
+  const bo = (x, ten, keys) => keys.forEach((k) => {
+    if (x[k] === undefined) return;
+    if (x[k] !== 0) throw new Error(ten + ': ' + k + ' phải là 0 khi không có số dư đầu kỳ');
+    delete x[k];
+  });
+  o.congNoNCC.rows.forEach((r) => bo(r, 'Công nợ ' + r.ma, ['dauKy', 'soDongDK']));
+  ['total', 'totalAll'].forEach((k) => { if (o.congNoNCC[k]) bo(o.congNoNCC[k], 'Công nợ ' + k, ['dauKy']); });
+  o.congNoCongTrinh.rows.forEach((r) => bo(r, 'Công nợ công trình ' + r.ma, ['dauKy']));
+  if (o.congNoCongTrinh.total) bo(o.congNoCongTrinh.total, 'Công nợ công trình tổng', ['dauKy']);
 }
 
 // Trường thêm sau mốc (trả NCC từ nguồn khác, ngoài quỹ): dữ liệu không có khoản ngoài quỹ thì phải là 0 và "đã trả quỹ" = "đã trả";
