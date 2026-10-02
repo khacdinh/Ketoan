@@ -653,8 +653,8 @@ test('F6 Công nợ NCC: bảng, tổng, chi tiết từng NCC; Trả tiền →
       assert.match(tds[5], r.status === 'no' ? /Còn nợ/ : r.status === 'du' ? /Ứng dư/ : /Đã tất toán/, r.ma + ' tình trạng');
     }
     const tot = D.sumRows(rows);
-    const foot = await page.locator('tfoot td').allInnerTexts();
-    assert.deepEqual([num(foot[1]), num(foot[2]), num(foot[3])], [tot.phatSinh, tot.daTra, tot.conLai]);
+    const foot = await page.locator('tfoot td').allInnerTexts(); // Tổng cộng | Đầu kỳ | Phát sinh | Đã trả | Còn lại
+    assert.deepEqual([num(foot[1]), num(foot[2]), num(foot[3]), num(foot[4])], [0, tot.phatSinh, tot.daTra, tot.conLai]);
     // chọn NCC còn nợ: chi tiết bên phải
     const debtor = rows.filter((r) => r.conLai > 0).sort((a, b) => b.conLai - a.conLai)[0];
     await page.locator('tr[data-ma="' + debtor.ma + '"]').click();
@@ -704,7 +704,7 @@ test('F6 Công nợ NCC: bảng, tổng, chi tiết từng NCC; Trả tiền →
     const Dct = KT.supplierDebt(db1, { ct: ctCode });
     const tct = Dct.sumRows(Dct.rows.filter((r) => r.lienQuan));
     const foot2 = await page.locator('section:has(tr[data-ma]) tfoot td').allInnerTexts();
-    assert.equal(num(foot2[1]), tct.phatSinh, 'lọc theo công trình: tổng phát sinh');
+    assert.equal(num(foot2[2]), tct.phatSinh, 'lọc theo công trình: tổng phát sinh');
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });
@@ -721,7 +721,7 @@ test('F6c Công nợ NCC: lọc theo một / nhiều NCC (gõ mã hoặc tên, k
     const [r, r2] = ds;
     assert.ok(r && r2, 'dữ liệu mẫu có ít nhất 2 NCC công trình');
     const sumShown = async () => (await page.$$eval('tr[data-ma] td:nth-child(3)', (tds) => tds.map((t) => t.textContent))).reduce((t, x) => t + num(x), 0);
-    const footPS = async () => num(await page.$eval('tr[data-ma]', (tr) => tr.closest('table').querySelector('tfoot td:nth-child(2)').textContent));
+    const footPS = async () => num(await page.$eval('tr[data-ma]', (tr) => tr.closest('table').querySelector('tfoot td:nth-child(3)').textContent)); // cột 2 là Đầu kỳ
     // ô có danh sách gợi ý tự vẽ: gõ tên KHÔNG dấu, chữ thường → gợi ý "mã – tên"
     const plain = KT.normalizeText(r.ten).trim();
     await page.focus('#cn-ncc'); await page.keyboard.type(plain, { delay: 5 });
@@ -877,8 +877,10 @@ test('F6d Tổng hợp NCC (sổ thu chi): lọc nhiều NCC bằng ô gõ tìm,
     }
     assert.equal(await page.locator('#th-body tr[data-ma]').count(), 2);
     assert.equal(await page.locator('#th-chips .filter-chip').count(), 2);
-    const foot = num(await page.$eval('#th-foot td:nth-child(2)', (e) => e.textContent));
-    assert.equal(foot, two[0].chi + two[1].chi, 'tổng cuối bảng = 2 NCC đang lọc');
+    // chân bảng: Tổng cộng | Đầu kỳ | Phát sinh | Thanh toán | Cuối kỳ; Thanh toán = chi − thu của 2 NCC đang lọc
+    const foot = num(await page.$eval('#th-foot td:nth-child(4)', (e) => e.textContent));
+    const ttHai = KT.postedDb(db).entries.filter((e) => two.some((r) => KT.keyOf(r.ma) === KT.keyOf(e.maNCC))).reduce((t, e) => t + (e.chi || 0) - (e.thu || 0), 0);
+    assert.equal(foot, ttHai, 'tổng cuối bảng = 2 NCC đang lọc');
     await page.click('#th-chips [data-act=clear-ncc]'); await settle(page);
     assert.equal(await page.locator('#th-chips').count(), 0);
     assert.deepEqual(errors, []);

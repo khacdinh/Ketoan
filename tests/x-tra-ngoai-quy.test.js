@@ -289,6 +289,7 @@ test('X5 giao diện Công nợ NCC: nút "Nguồn khác" → form điền sẵn
     await page.fill('#xp-form [name=soTien]', '10tr');
     await page.click('.modal [data-act=save]');
     await page.waitForFunction(() => !document.querySelector('#xp-form'));
+    await page.waitForFunction(() => /Đã sửa khoản trả 10\.000\.000/.test(document.querySelector('#toast-root').textContent)); // đã lưu xong mới đọc file
     db = readStored(srv.dataDir);
     assert.equal(db.extPayments[0].soTien, 10000000);
     assert.equal(row(db, 'NCC_B').conLai, 3000000);

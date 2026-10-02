@@ -367,8 +367,12 @@ test('UI8 danh mục dự án / nhà cung cấp: thêm, sửa (đổi mã lan sa
     await page.evaluate(() => { location.hash = '#/tong-hop-ncc'; });
     await page.waitForSelector('#th-body tr');
     const txt = await page.$eval('#view', (e) => e.innerText);
-    const ss = KT.supplierSummary(await srv.db());
-    assert.ok(txt.includes(KT.fmtMoney(ss.total.chi)), 'tổng chi NCC ' + ss.total.chi);
+    // bảng công nợ theo kỳ (toàn bộ thời gian): tổng Thanh toán = chi − thu của các dòng sổ có mã NCC, Cuối kỳ = Phát sinh − Thanh toán
+    const dbx = await srv.db();
+    const tt = dbx.entries.filter((e) => e.maNCC).reduce((t, e) => t + (e.chi || 0) - (e.thu || 0), 0);
+    const ps = dbx.costs.filter((c) => c.maNCC).reduce((t, c) => t + c.thanhTien, 0);
+    assert.ok(txt.includes(KT.fmtMoney(tt)), 'tổng thanh toán NCC ' + tt);
+    assert.ok(txt.includes(KT.fmtMoney(ps - tt)), 'tổng cuối kỳ NCC ' + (ps - tt));
     assert.deepEqual(errors.filter((e) => !/status of 400/.test(e)), []);
   } finally { await browser.close(); await srv.stop(); }
 });
