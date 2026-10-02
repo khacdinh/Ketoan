@@ -1,6 +1,6 @@
 'use strict';
 /*
- * Sổ Thu Chi — máy chủ chạy trên máy tính của bạn (chỉ nghe trên 127.0.0.1).
+ * Kế Toán Công Trình (Sổ Thu Chi) — máy chủ chạy trên máy tính của bạn (chỉ nghe trên 127.0.0.1).
  * Chạy: node server.js   (hoặc bấm đúp KhoiDong.bat)
  */
 // Kiểm tra phiên bản Node trước khi nạp các thư viện khác (báo lỗi dễ hiểu thay vì lỗi khó đọc).

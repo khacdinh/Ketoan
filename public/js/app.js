@@ -122,7 +122,7 @@ function render() {
   });
   $('#page-title').textContent = r.title;
   $('#page-sub').textContent = r.sub;
-  document.title = r.title + ' | Sổ Thu Chi';
+  document.title = r.title + ' | Kế Toán Công Trình';
   const keepScroll = lastRoute === k ? window.scrollY : 0;
   if (!duocMo(k)) {
     $('#view').innerHTML = '<div class="sheet p-6"><p class="font-semibold">Tài khoản của bạn không có quyền mở màn hình này.</p><p class="mt-1 text-ink-2">Hỏi người có vai trò Chủ nếu cần.</p></div>';

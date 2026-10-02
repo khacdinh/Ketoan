@@ -281,18 +281,28 @@ test('F1c phiếu nhập: dòng chỉ có Thành tiền (khoán, không SL / ĐG
     await page.keyboard.press('Control+Enter');
     await page.waitForFunction(() => /Đã ghi 3 dòng/.test(document.querySelector('#toast-root').textContent), null, { timeout: 5000 });
     const got = (await srv.db()).costs.map((c) => [c.dienGiai, c.soLuong, c.donGia, c.thanhTien]);
-    assert.deepEqual(got, [['Khoán nhân công đợt 1', 1, 12000000, 12000000], ['Công phụ', 5, 200000, 1000000], ['Công lẻ', 3, 53333.33, 160000]]);
+    // dòng khoán: SL, ĐG để trống (không tự gán SL 1 × ĐG = Thành tiền)
+    assert.deepEqual(got, [['Khoán nhân công đợt 1', null, null, 12000000], ['Công phụ', 5, 200000, 1000000], ['Công lẻ', 3, 53333.33, 160000]]);
     // sổ chi phí: bấm đúp ô Thành tiền của dòng khoán
     await page.evaluate(() => { location.hash = '#/cp-so'; });
     await page.waitForSelector('#cl-body tr[data-id]');
     const rowOf = (text) => page.locator('#cl-body tr[data-id]', { hasText: text });
+    assert.equal((await rowOf('Khoán nhân công').locator('[data-edit=donGia]').innerText()).trim(), 'theo khoản');
     await rowOf('Khoán nhân công').locator('[data-edit=thanhTien]').dblclick();
     await page.waitForSelector('#cl-body input.inline-cell');
     await page.keyboard.press('Control+A'); await type(page, '12,5tr'); await page.keyboard.press('Enter');
     await page.waitForFunction(() => /Đã lưu/.test(document.querySelector('#toast-root').textContent), null, { timeout: 5000 });
     await settle(page);
     let k = (await srv.db()).costs.find((c) => c.dienGiai === 'Khoán nhân công đợt 1');
-    assert.deepEqual([k.soLuong, k.donGia, k.thanhTien], [1, 12500000, 12500000]);
+    assert.deepEqual([k.soLuong, k.donGia, k.thanhTien], [null, null, 12500000]);
+    // xóa trống ô Số lượng của dòng SL × ĐG → thành dòng khoán, giữ Thành tiền
+    await rowOf('Công lẻ').locator('[data-edit=soLuong]').dblclick();
+    await page.waitForSelector('#cl-body input.inline-cell');
+    await page.keyboard.press('Control+A'); await page.keyboard.press('Delete'); await page.keyboard.press('Enter');
+    await page.waitForFunction(() => /Đã lưu/.test(document.querySelector('#toast-root').textContent), null, { timeout: 5000 });
+    await settle(page);
+    k = (await srv.db()).costs.find((c) => c.dienGiai === 'Công lẻ');
+    assert.deepEqual([k.soLuong, k.donGia, k.thanhTien], [null, null, 160000]);
     // form sửa dòng: xóa Số lượng, Đơn giá, chỉ nhập Thành tiền → dòng thành khoán
     await rowOf('Công phụ').locator('[data-act=edit]').click();
     await page.waitForSelector('#cl-form'); await page.waitForTimeout(200);
@@ -303,7 +313,7 @@ test('F1c phiếu nhập: dòng chỉ có Thành tiền (khoán, không SL / ĐG
     await page.waitForSelector('#cl-form', { state: 'detached' });
     await settle(page);
     k = (await srv.db()).costs.find((c) => c.dienGiai === 'Công phụ');
-    assert.deepEqual([k.soLuong, k.donGia, k.thanhTien], [1, 1100000, 1100000]);
+    assert.deepEqual([k.soLuong, k.donGia, k.thanhTien], [null, null, 1100000]);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });

@@ -118,12 +118,34 @@
   /* số việc cần xử lý trên menu */
   .nav-badge { @apply ml-auto inline-grid h-5 min-w-5 place-items-center rounded-full bg-[#FFD27A] px-1.5 text-[11.5px] font-bold text-[#3D2600] tabular-nums; }
   @media (max-width: 1023px) { .nav-badge { @apply absolute top-0.5 right-1 ml-0 h-4 min-w-4 px-1 text-[10px]; } }
+  /* Logo công ty ở đầu thanh bên: thẻ trắng (chữ xanh đậm của logo không đọc được trên nền xanh bìa sổ); thanh thu gọn: chỉ hình ngôi nhà */
+  .side-brand { @apply px-4 pt-5 pb-4; }
+  .brand-card { @apply flex justify-center rounded-xl bg-white px-3 py-2 shadow-[0_1px_2px_rgb(0_0_0/0.18)]; }
+  .brand-card img { @apply block h-[92px] w-auto; }
+  .brand-row { @apply mt-3 flex items-center gap-3 px-1; }
+  .brand-mark { @apply hidden size-10 flex-none place-items-center rounded-full bg-white p-1; }
+  .brand-mark img { @apply block h-full w-full object-contain; }
+  @media (max-width: 1023px) {
+    .side-brand { @apply px-0; }
+    .brand-card, .brand-text { @apply hidden; }
+    .brand-row { @apply mt-0 justify-center px-0; }
+    .brand-mark { @apply grid; }
+  }
   /* Màn hình thấp (laptop 1366×768): thu gọn khoảng cách để đủ 14 mục + ô tồn quỹ, không phải cuộn */
   @media (max-height: 900px) {
     .side-brand { @apply pt-4 pb-3; }
+    .brand-card { @apply py-1.5; }
+    .brand-card img { @apply h-[72px]; }
     .nav-item { @apply my-px py-[5px]; }
     .nav-sep { @apply my-1.5; }
     .side-foot { @apply py-2.5; }
+  }
+  /* màn rất thấp (1366×768): bỏ thẻ logo lớn, dùng hình ngôi nhà cạnh tên — đặt sau khối 900px để thắng */
+  @media (max-height: 820px) {
+    .side-brand { @apply pt-3 pb-2; }
+    .brand-card { @apply hidden; }
+    .brand-row { @apply mt-0; }
+    .brand-mark { @apply grid size-9; }
   }
 
   /* ---------------- Nút ---------------- */
@@ -375,7 +397,8 @@
   .auth-card { @apply w-full max-w-[400px] rounded-2xl bg-sheet p-7 shadow-[0_24px_64px_rgb(14_27_48/0.35)]; }
   .auth-card h1 { @apply text-[22px] font-semibold; font-stretch: 110%; }
   .auth-brand { @apply mb-5 flex items-center gap-3; }
-  .auth-brand .logo { @apply grid size-10 place-items-center rounded-lg bg-cover text-[22px] text-white; }
+  .auth-brand .logo { @apply grid size-12 flex-none place-items-center rounded-lg bg-white p-1 ring-1 ring-rule; }
+  .auth-brand .logo img { @apply block h-full w-full object-contain; }
   .pw-wrap { @apply relative block; }
   .pw-wrap .input { @apply pr-11; }
   .pw-toggle { @apply absolute top-1/2 right-1.5 grid size-8 -translate-y-1/2 cursor-pointer place-items-center rounded-md text-[18px] text-ink-3 hover:bg-pen-soft hover:text-ink; }

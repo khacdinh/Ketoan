@@ -108,7 +108,7 @@ export function dangNhap(opts) {
     root.appendChild(wrap);
     const veDangNhap = (thongBao) => {
       wrap.innerHTML = '<form class="auth-card" id="dn-form" novalidate autocomplete="on">' +
-        '<div class="auth-brand"><span class="logo">' + icon('notebook') + '</span><div><div class="text-[16px] font-bold">Sổ Thu Chi</div><div class="text-[12.5px] text-ink-3">Phần mềm kế toán</div></div></div>' +
+        '<div class="auth-brand"><span class="logo"><img src="img/logo-dien-thuy-hinh.png" alt=""></span><div><div class="text-[16px] font-bold">Kế Toán Công Trình</div><div class="text-[12.5px] text-ink-3">Phần mềm kế toán</div></div></div>' +
         '<h1 id="dn-tieu-de">' + (opts.lai ? 'Phiên đăng nhập đã hết hạn' : 'Đăng nhập') + '</h1>' +
         (opts.lai ? '<p class="mt-1 text-[13.5px] text-ink-2">Dữ liệu bạn đang nhập vẫn còn nguyên. Đăng nhập lại để lưu tiếp.</p>' : '') +
         (thongBao ? '<p class="mt-2 rounded-md bg-pen-soft px-3 py-2 text-[13px] text-ink-2">' + esc(thongBao) + '</p>' : '') +
@@ -306,7 +306,7 @@ export function hienMaDuPhong(ma, tieuDe) {
         ok.addEventListener('click', () => { h.close(); resolve(); });
         el.querySelector('[data-act=in]').addEventListener('click', () => {
           const root = $('#print-root');
-          root.innerHTML = '<div class="p-10"><h1 class="text-[20px] font-bold">Sổ Thu Chi — mã khôi phục dự phòng</h1><p class="mt-2">Dùng khi quên hết mật khẩu tài khoản Chủ (màn hình đăng nhập → Quên mật khẩu → Dùng mã dự phòng).</p>' +
+          root.innerHTML = '<div class="p-10"><h1 class="text-[20px] font-bold">Kế Toán Công Trình — mã khôi phục dự phòng</h1><p class="mt-2">Dùng khi quên hết mật khẩu tài khoản Chủ (màn hình đăng nhập → Quên mật khẩu → Dùng mã dự phòng).</p>' +
             '<p class="mt-6 font-mono text-[28px] font-bold tracking-wider">' + esc(ma) + '</p><p class="mt-6">Ngày tạo: ' + esc(new Date().toLocaleString('vi-VN')) + '. Cất nơi an toàn.</p></div>';
           document.body.classList.add('printing-doc');
           window.print();

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sổ Thu Chi</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E4636'/%3E%3Cpath d='M9 10.5h14M9 16h14M9 21.5h9' stroke='%23F4F6F1' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <title>Kế Toán Công Trình</title>
+  <link rel="icon" type="image/png" href="img/logo-dien-thuy-hinh.png">
   <link rel="preload" href="vendor/fonts/archivo-vietnamese-standard-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="vendor/fonts/archivo-latin-standard-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="vendor/phosphor/icons.css">
@@ -12,13 +12,16 @@
 </head>
 <body>
   <aside class="app-sidebar no-print max-lg:w-16">
-    <div class="side-brand flex items-center gap-3 px-5 pt-6 pb-5 max-lg:justify-center max-lg:px-0">
-      <span class="grid size-9 flex-none place-items-center rounded-lg bg-white/10 text-white" aria-hidden="true">
-        <i class="ph-duotone ph-notebook text-[22px]"></i>
-      </span>
-      <div class="min-w-0 max-lg:hidden">
-        <div class="text-[17px] leading-tight font-bold text-white font-stretch-[112%]">Sổ Thu Chi</div>
-        <div id="org-name" class="mt-0.5 text-[11.5px] leading-snug text-cover-ink-2"></div>
+    <!-- Logo công ty. Màn cao: logo đầy đủ trên thẻ trắng (chữ xanh đậm của logo không đọc được trên nền xanh bìa sổ).
+         Màn thấp (laptop 1366×768): hình ngôi nhà cạnh tên phần mềm, gọn như cũ để menu không phải cuộn. Thanh thu gọn: chỉ hình. -->
+    <div class="side-brand">
+      <div class="brand-card"><img src="img/logo-dien-thuy.png" alt="Điền Thủy — Architecture &amp; Furniture" width="298" height="295"></div>
+      <div class="brand-row">
+        <span class="brand-mark"><img src="img/logo-dien-thuy-hinh.png" alt="Điền Thủy" width="229" height="215"></span>
+        <div class="brand-text min-w-0">
+          <div class="text-[16px] leading-tight font-bold text-white font-stretch-[110%]">Kế Toán Công Trình</div>
+          <div id="org-name" class="mt-0.5 text-[11.5px] leading-snug text-cover-ink-2"></div>
+        </div>
       </div>
     </div>
     <nav id="nav" aria-label="Chức năng" class="flex-1 overflow-y-auto py-1"></nav>

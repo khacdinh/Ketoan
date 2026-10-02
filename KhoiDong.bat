@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-title So Thu Chi - Phan mem ke toan
+title Ke Toan Cong Trinh - Phan mem ke toan
 cd /d "%~dp0"
 where node >nul 2>nul
 if errorlevel 1 (

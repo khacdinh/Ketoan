@@ -1,4 +1,6 @@
-# SỔ THU CHI — Hướng dẫn sử dụng
+# KẾ TOÁN CÔNG TRÌNH — Hướng dẫn sử dụng
+
+(Tên cũ: Sổ Thu Chi. Logo công ty Điền Thủy hiện ở đầu thanh bên trái và màn hình đăng nhập.)
 
 Phần mềm kế toán gồm hai phần chạy chung một chỗ, **không cần Internet**, dữ liệu lưu trong thư mục `data`:
 

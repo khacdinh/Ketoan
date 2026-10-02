@@ -1,5 +1,14 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Đổi tên thành "Kế Toán Công Trình", thêm logo công ty Điền Thủy (02/10/2026)
+
+- Tên phần mềm hiển thị đổi từ “Sổ Thu Chi” thành **Kế Toán Công Trình**: tiêu đề tab trình duyệt, thanh bên, màn đăng nhập, trang in
+  mã dự phòng, file mã khôi phục, thông tin “người tạo” của file Excel, tiêu đề cửa sổ KhoiDong.bat, lệnh cứu hộ. Tên file tải về
+  (`SoThuChi_….xlsx`, `SaoLuu_SoThuChi_….db`…) giữ nguyên để không lẫn với các bản đã lưu.
+- Logo công ty (đã bỏ nền xám, `public/img/logo-dien-thuy.png`, hình ngôi nhà `logo-dien-thuy-hinh.png`): màn cao hiện logo đầy đủ trên
+  thẻ trắng ở đầu thanh bên; màn thấp (laptop 1366×768) hiện hình ngôi nhà cạnh tên phần mềm để menu không phải cuộn (gọn hơn trước);
+  thanh thu gọn chỉ hiện hình. Màn đăng nhập và biểu tượng tab trình duyệt dùng hình ngôi nhà.
+
 ## Dòng chi phí chỉ có Thành tiền (theo khoản) — không tự gán Số lượng 1 (02/10/2026)
 
 - Phiếu nhập chi phí: dòng chỉ nhập **Thành tiền** (nhân công, phí, hóa đơn bán lẻ nhiều món chỉ ghi tổng) được lưu với **Số lượng
