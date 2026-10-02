@@ -28,7 +28,7 @@ const ROUTES = {
   'cai-dat': { title: 'Cài đặt và dữ liệu', sub: 'Thông tin in trên phiếu, nhập và xuất Excel, sao lưu', icon: 'gear', render: renderSettings },
   // Chi phí công trình
   'cp-tong-hop': { title: 'Chi phí công trình', sub: 'Tổng chi phí theo loại, nhóm, hạng mục và theo tháng', icon: 'crane', render: renderCostDashboard },
-  'cp-nhap': { title: 'Phiếu nhập chi phí', sub: 'Khai báo đầu phiếu một lần, nhập nhiều dòng số lượng × đơn giá', icon: 'notePencil', render: renderCostEntry },
+  'cp-nhap': { title: 'Phiếu nhập chi phí', sub: 'Khai báo đầu phiếu một lần, nhập nhiều dòng (số lượng × đơn giá, hoặc chỉ thành tiền)', icon: 'notePencil', render: renderCostEntry },
   'cp-so': { title: 'Sổ chi phí', sub: 'Nhật ký chung các dòng chi phí công trình', icon: 'table', render: renderCostLedger },
   'cp-chi-tiet': { title: 'Chi tiết chi phí theo nhóm', sub: 'Nhóm, hạng mục, từng dòng; bung hoặc thu gọn 3 cấp', icon: 'tree', render: renderCostDetail },
   'cp-cong-no': { title: 'Công nợ nhà cung cấp', sub: 'Chi phí phát sinh trừ số đã trả trong sổ thu chi', icon: 'scales', render: renderDebt },
@@ -122,7 +122,7 @@ function render() {
   });
   $('#page-title').textContent = r.title;
   $('#page-sub').textContent = r.sub;
-  document.title = r.title + ' | Sổ Thu Chi';
+  document.title = r.title + ' | Kế Toán Công Trình';
   const keepScroll = lastRoute === k ? window.scrollY : 0;
   if (!duocMo(k)) {
     $('#view').innerHTML = '<div class="sheet p-6"><p class="font-semibold">Tài khoản của bạn không có quyền mở màn hình này.</p><p class="mt-1 text-ink-2">Hỏi người có vai trò Chủ nếu cần.</p></div>';

@@ -1,5 +1,45 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Chuyển dòng khoán cũ sang “theo khoản”; đính kèm ảnh / tài liệu khi lập phiếu nhập (02/10/2026)
+
+- **Dòng khoán lưu kiểu cũ** (Số lượng 1 × Đơn giá = Thành tiền, do bản trước tự gán): Sổ chi phí hiện thông báo “Có N dòng…” →
+  **Xem và chuyển**: danh sách các dòng (đã chọn sẵn tất cả; nút “Bỏ chọn dòng có mã vật tư” để giữ lại các lần mua thật đúng 1 đơn vị),
+  bấm **Chuyển** → Số lượng, Đơn giá để trống, Thành tiền giữ nguyên. Sao lưu `truoc-chuyen-theo-khoan` trước khi đổi, bỏ qua tháng đã
+  khóa sổ, ghi nhật ký từng dòng. Khi đăng nhập bật: chỉ Chủ (quyền mới “sửa hàng loạt dữ liệu cũ”).
+- **Nhập dữ liệu cũ**: nhập file Excel chi phí (trong phần mềm và công cụ dòng lệnh) thì dòng Số lượng 1 × Đơn giá = Thành tiền tự nhập
+  thành dòng theo khoản (bước xem trước có cảnh báo số dòng). Gộp file cũ vào dữ liệu — dù dữ liệu đã chuyển hay chưa — không nhân đôi.
+  Khôi phục bản sao lưu thì giữ nguyên như lúc sao lưu (dùng nút chuyển ở Sổ chi phí nếu cần).
+- **Phiếu nhập chi phí mới** và **Ghi thu / chi (dòng mới)**: chọn ảnh / tài liệu ngay khi lập; file tự tải lên và gắn vào phiếu / dòng
+  khi bấm Ghi phiếu / Ghi sổ / Lưu nháp (không còn phải lưu rồi mở lại mới đính kèm được).
+- Sửa lỗi: bấm Sửa phiếu nhập, bấm × xóa một dòng (chưa lưu) rồi bấm Sửa lại đúng phiếu đó thì không mở lại được — nay luôn mở phiếu như
+  đã lưu (hỏi trước khi bỏ thay đổi chưa lưu); quay lại phiếu đang sửa dở có thông báo và nút **Mở lại bản đã lưu**.
+- **Chứng từ đính kèm** nhận thêm Word (.docx, .doc) và Excel (.xlsx, .xls), nhận theo nội dung file, từ chối file có macro; Word / Excel
+  luôn tải về (không mở trong trình duyệt).
+- Kiểm thử mới DK2, DK3 (`tests/d-chi-phi-theo-khoan.test.js`), TL1, TL2 (`tests/n6-dinh-kem-tai-lieu.test.js`); E4 so sánh theo dạng
+  đã chuyển.
+
+## Đổi tên thành "Kế Toán Công Trình", thêm logo công ty Điền Thủy (02/10/2026)
+
+- Tên phần mềm hiển thị đổi từ “Sổ Thu Chi” thành **Kế Toán Công Trình**: tiêu đề tab trình duyệt, thanh bên, màn đăng nhập, trang in
+  mã dự phòng, file mã khôi phục, thông tin “người tạo” của file Excel, tiêu đề cửa sổ KhoiDong.bat, lệnh cứu hộ. Tên file tải về
+  (`SoThuChi_….xlsx`, `SaoLuu_SoThuChi_….db`…) giữ nguyên để không lẫn với các bản đã lưu.
+- Logo công ty (đã bỏ nền xám, `public/img/logo-dien-thuy.png`, hình ngôi nhà `logo-dien-thuy-hinh.png`): màn cao hiện logo đầy đủ trên
+  thẻ trắng ở đầu thanh bên; màn thấp (laptop 1366×768) hiện hình ngôi nhà cạnh tên phần mềm để menu không phải cuộn (gọn hơn trước);
+  thanh thu gọn chỉ hiện hình. Màn đăng nhập và biểu tượng tab trình duyệt dùng hình ngôi nhà.
+
+## Dòng chi phí chỉ có Thành tiền (theo khoản) — không tự gán Số lượng 1 (02/10/2026)
+
+- Phiếu nhập chi phí: dòng chỉ nhập **Thành tiền** (nhân công, phí, hóa đơn bán lẻ nhiều món chỉ ghi tổng) được lưu với **Số lượng
+  và Đơn giá để trống** — trước đây phần mềm tự gán Số lượng 1 × Đơn giá = Thành tiền. Sổ chi phí, báo cáo chi tiết hiện “theo khoản”
+  ở cột Đơn giá; tổng tiền, công nợ, báo cáo không đổi.
+- Thống kê giá vật tư (giá gần nhất, thấp / cao nhất, bình quân), lịch sử giá, gợi ý giá lần trước **bỏ qua** dòng theo khoản; mục
+  “Cần xử lý” không còn coi dòng theo khoản là thiếu số lượng.
+- Sổ chi phí: xóa trống ô Số lượng hoặc Đơn giá (bấm đúp để sửa) thì dòng thành “theo khoản”, giữ nguyên Thành tiền — dùng để sửa các
+  dòng cũ. Dữ liệu cũ KHÔNG tự đổi (không phân biệt được dòng khoán cũ với dòng mua đúng 1 đơn vị).
+- Excel: xuất ghi thẳng Thành tiền (không phải công thức SL × ĐG) cho dòng theo khoản; nhập lại (gộp) không nhân đôi, nhập thay thế giữ
+  nguyên. Nhập file ChiPhi_CongTrinh (trong phần mềm và công cụ dòng lệnh): dòng chỉ có Thành tiền nhập thành dòng theo khoản.
+- Kiểm thử mới `tests/d-chi-phi-theo-khoan.test.js` (DK1); cập nhật D3.4, I2, I7 theo quy tắc mới.
+
 ## Biểu đồ "Nhịp tồn quỹ theo ngày" ở Tổng quan (01/10/2026)
 
 - Hai khung chung trục ngày: trên là tồn quỹ cuối ngày (đường bậc thang, nền chuyển màu; phần âm quỹ tô đỏ nhạt), dưới là **cột thu

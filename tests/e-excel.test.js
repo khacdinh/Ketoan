@@ -214,13 +214,16 @@ async function importBuf(srv, buf, q) {
 
 // Khi xuất, sổ chi phí được sắp theo ngày nên thứ tự nhập (seq) có thể đổi: so sánh theo tập hợp dòng (có đếm số lần)
 const COST_F = ['ngay', 'maCT', 'maNha', 'maHM', 'loaiCP', 'maVT', 'dienGiai', 'soLuong', 'donGia', 'thanhTien', 'maNCC', 'soPhieu', 'ghiChu'];
+// Dòng khoán lưu kiểu cũ (SL 1 × ĐG = Thành tiền) được nhập lại thành dòng theo khoản (SL, ĐG trống): so sánh theo dạng đã chuyển
+const theoKhoan = (c) => (Number(c.soLuong) === 1 && c.donGia != null && Number(c.donGia) === c.thanhTien && c.thanhTien > 0 ? Object.assign({}, c, { soLuong: null, donGia: null }) : c);
+const costLine = (c) => COST_F.map((k) => theoKhoan(c)[k]).join('|');
 function comparableCosts(db) {
-  return db.costs.map((c) => COST_F.map((k) => c[k]).join('|')).sort();
+  return db.costs.map(costLine).sort();
 }
 // Mỗi phiếu = tập các dòng của nó; hai bản giống nhau khi các phiếu giống nhau
 function slipGroups(db) {
   const g = new Map();
-  db.costs.forEach((c) => { if (!g.has(c.phieuId)) g.set(c.phieuId, []); g.get(c.phieuId).push(COST_F.map((k) => c[k]).join('|')); });
+  db.costs.forEach((c) => { if (!g.has(c.phieuId)) g.set(c.phieuId, []); g.get(c.phieuId).push(costLine(c)); });
   return Array.from(g.values()).map((a) => a.sort().join('\n')).sort();
 }
 

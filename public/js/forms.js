@@ -2,7 +2,7 @@
 import { $, esc, api, openModal, toast, showError, bindMoneyInput, money, confirmDialog, icon, dateField, focusInput, fieldError, busy } from './ui.js';
 import { S, datalists, resolveCode, projectByCode, supplierByCode } from './state.js';
 import { openHistory } from './views/control.js';
-import { attachBlock, bindAttach } from './attach.js';
+import { attachBlock, bindAttach, pendingBlock, bindPending, pendingFiles, clearPending, uploadFiles } from './attach.js';
 import { tenNguoi } from './auth.js';
 
 const KT = window.KT;
@@ -16,11 +16,13 @@ export function nguoiThaoTacHtml(r) {
     (r.nguoiSua ? ' · Người sửa gần nhất: <b class="font-medium text-ink-2">' + esc(tenNguoi(r.nguoiSua)) + '</b>' : '') + '</p>';
 }
 
+let soForm = 0;
 let lastUsed = { ngay: '', soPhieu: '', maDuAn: '', maNCC: '', loai: 'chi' };
 
 export function openEntryForm(entry, opts) {
   opts = opts || {};
   const isEdit = !!(entry && entry.id && !opts.duplicate);
+  const choKey = 'so-moi-' + (++soForm); // danh sách file chờ của dòng mới (riêng cho mỗi lần mở form)
   // Dòng Nháp (hoặc dòng mới) được chọn giữa Lưu nháp và Ghi sổ; dòng đã ghi sổ chỉ Lưu thay đổi
   const isDraftRec = isEdit && KT.isDraft(entry);
   const lockedRec = isEdit && KT.isLockedDate(S.all, entry.ngay); // tháng đã khóa sổ: chỉ xem
@@ -57,7 +59,8 @@ export function openEntryForm(entry, opts) {
     'Ô số tiền nhận <b class="font-medium text-ink-2">1.250.000</b>, <b class="font-medium text-ink-2">50tr</b>, <b class="font-medium text-ink-2">300k</b> hoặc phép tính <b class="font-medium text-ink-2">58000+11000</b>. ' +
     'Ghi sổ nhanh bằng <kbd>Ctrl</kbd> + <kbd>Enter</kbd>, đóng bằng <kbd>Esc</kbd>.</p>' +
     (isEdit ? nguoiThaoTacHtml(e) : '') +
-    '</form>' + attachBlock('entries', isEdit ? e.id : 0, { readonly: false, newText: 'Ghi sổ (hoặc lưu nháp) dòng này trước, rồi mở lại để đính kèm ảnh hóa đơn, chứng từ.' });
+    // dòng mới: chọn ảnh / tài liệu ngay, tự tải lên khi ghi sổ (hoặc lưu nháp); dòng đã có: đính kèm thẳng
+    '</form>' + (isEdit ? attachBlock('entries', e.id, { readonly: false }) : pendingBlock(choKey, 'Ghi sổ (hoặc Lưu nháp)'));
 
   const footer =
     (isEdit ? (lockedRec ? '' : '<button type="button" class="btn btn-danger-ghost" data-act="delete">' + icon('trash') + 'Xóa dòng</button>') +
@@ -74,7 +77,8 @@ export function openEntryForm(entry, opts) {
     body,
     footer,
     dismissible: false,
-    onMount(el) { bindEntryForm(el); bindAttach(el); }
+    onMount(el) { bindEntryForm(el); bindAttach(el); bindPending(el); },
+    onClose() { clearPending(choKey); }
   });
 
   function bindEntryForm(el) {
@@ -219,7 +223,17 @@ export function openEntryForm(entry, opts) {
       const done = busy(btn, isEdit || asDraft ? 'Đang lưu…' : 'Đang ghi…');
       try {
         if (isEdit) await api('PUT', '/api/entries/' + e.id, data);
-        else await api('POST', '/api/entries', data);
+        else {
+          const r = await api('POST', '/api/entries', data);
+          const cho = pendingFiles(choKey);
+          if (cho.length && r.id) {
+            const n = await uploadFiles('entries', r.id, cho);
+            clearPending(choKey);
+            if (n) toast('Đã đính kèm ' + n + ' / ' + cho.length + ' file vào dòng vừa ghi');
+            const box = el.querySelector('[data-att-pending]');
+            if (box) { box.outerHTML = pendingBlock(choKey, 'Ghi sổ (hoặc Lưu nháp)'); bindPending(el); }
+          }
+        }
         lastUsed = { ngay: data.ngay, soPhieu: data.soPhieu, maDuAn: data.maDuAn, maNCC: data.maNCC, loai };
         toast(asDraft ? 'Đã lưu nháp (chưa ghi sổ, chưa tính vào tồn quỹ)' : isDraftRec ? 'Đã ghi sổ dòng nháp' : isEdit ? 'Đã lưu thay đổi' : 'Đã ghi sổ ' + (data.chi ? 'khoản chi ' + money(data.chi) : 'khoản thu ' + money(data.thu)) + ' đ');
         if (next) {

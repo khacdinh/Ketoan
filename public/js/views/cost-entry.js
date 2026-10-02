@@ -5,9 +5,10 @@ import { S, costDatalists, resolveCode, resolveItem, materialByCode, itemByCode,
 import { openProjectForm, openSupplierForm } from '../forms.js';
 import { openItemForm, openMaterialForm, openHouseForm } from './cost-catalogs.js';
 import { openHistory } from './control.js';
-import { attachBlock, bindAttach } from '../attach.js';
+import { attachBlock, bindAttach, pendingBlock, bindPending, pendingFiles, clearPending, uploadFiles } from '../attach.js';
 
 const KT = window.KT;
+const PENDING = 'cp-moi'; // khóa danh sách file chờ của phiếu mới đang lập
 const ENTER_COLS = ['maVT', 'dienGiai', 'soLuong', 'donGia', 'thanhTien'];
 const has = (v) => String(v == null ? '' : v).trim() !== '';
 
@@ -30,8 +31,8 @@ function lineAmounts(l) {
   return Object.assign(KT.costFromInput(sl, dg, tt, true), { nhap: { soLuong: sl === null ? '' : sl, donGia: dg === null ? '' : dg, thanhTien: tt === null ? '' : tt } });
 }
 
-function routeParams() {
-  const qs = (location.hash.split('?')[1] || '');
+function routeParams(hash) {
+  const qs = ((hash || location.hash).split('?')[1] || '');
   const p = {};
   qs.split('&').filter(Boolean).forEach((kv) => { const [k, v] = kv.split('='); p[k] = decodeURIComponent(v || ''); });
   return p;
@@ -50,18 +51,23 @@ function lineFromCost(c, headHM) {
   const it = itemByCode(c.maHM);
   const ten = it ? it.ten : c.maHM;
   return {
-    maVT: c.maVT || '', dienGiai: c.dienGiai || '', soLuong: KT.fmtQty(c.soLuong), donGia: money(c.donGia), thanhTien: money(c.thanhTien),
+    maVT: c.maVT || '', dienGiai: c.dienGiai || '', soLuong: KT.fmtQty(c.soLuong), donGia: KT.isKhoan(c) ? '' : money(c.donGia), thanhTien: money(c.thanhTien),
     // ĐG có số lẻ (từ file Excel): ô tiền chỉ hiện số chẵn, nên giữ Thành tiền làm gốc để lưu lại không lệch đồng nào
-    ttTuDong: Number.isInteger(Number(c.donGia)), dgTuDong: !Number.isInteger(Number(c.donGia)),
+    // dòng theo khoản: Thành tiền là số người dùng gõ (không phải SL × ĐG) — không được tự xóa khi sửa ô khác
+    ttTuDong: !KT.isKhoan(c) && Number.isInteger(Number(c.donGia)), dgTuDong: !KT.isKhoan(c) && !Number.isInteger(Number(c.donGia)),
     hm: ten && ten !== headHM ? ten : '', loaiCP: c.loaiCP !== KT.defaultLoaiCP(S.db, c.maVT, c.maHM) ? c.loaiCP : '', goiY: ''
   };
 }
 
-// Dựng trạng thái phiếu theo địa chỉ: mới / sửa phiếu / nhân bản phiếu
-function initialState(params) {
+// Dựng trạng thái phiếu theo địa chỉ: mới / sửa phiếu / nhân bản phiếu. banSaoLuu: bỏ qua bản đang sửa dở, lấy đúng dữ liệu đã lưu
+function stateKey(params) {
   const mode = params.phieu ? 'edit' : params.nhanban ? 'dup' : 'new';
-  const key = mode + ':' + (params.phieu || params.nhanban || '');
-  if (draft && draft.key === key) return draft;
+  return mode + ':' + (params.phieu || params.nhanban || '');
+}
+function initialState(params, banSaoLuu) {
+  const mode = params.phieu ? 'edit' : params.nhanban ? 'dup' : 'new';
+  const key = stateKey(params);
+  if (!banSaoLuu && draft && draft.key === key) return draft;
   if (mode === 'new') {
     const last = LS.get('cp.lastHeader', null);
     return { key, mode, header: Object.assign({ ngay: KT.todayISO(), maCT: '', maNha: '', maNCC: '', soPhieu: '', hm: '' }, last || {}, { soPhieu: '' }), lines: [blankLine()] };
@@ -76,6 +82,23 @@ function initialState(params) {
   header.hm = (itemByCode(topHM) || {}).ten || '';
   if (mode === 'dup') { header.ngay = KT.todayISO(); header.soPhieu = ''; }
   return { key, mode, phieuId: params.phieu || null, nhap: mode === 'edit' && KT.isDraft(lines[0]), header, lines: lines.map((c) => lineFromCost(c, header.hm)).concat([blankLine()]) };
+}
+
+// Phiếu sửa / nhân bản đang có thay đổi chưa lưu (so với dữ liệu đã lưu): vd đã bấm × xóa một dòng
+const noiDung = (st) => JSON.stringify({ h: st.header, l: st.lines.filter((l) => !isBlank(l)).map((l) => [l.maVT, l.dienGiai, l.soLuong, l.donGia, l.thanhTien, l.hm, l.loaiCP]) });
+function coThayDoi(params) {
+  const key = stateKey(params);
+  if (!draft || draft.key !== key || draft.mode === 'new') return false;
+  const goc = initialState(params, true);
+  return goc.mode !== 'missing' && noiDung(goc) !== noiDung(draft);
+}
+// Mở lại phiếu theo dữ liệu đã lưu (bỏ bản đang sửa dở); hỏi trước nếu có thay đổi chưa lưu
+async function moLaiDaLuu(params, hash) {
+  if (coThayDoi(params) && !(await confirmDialog({ title: 'Bỏ thay đổi chưa lưu?', html: 'Phiếu này đang có thay đổi <b class="text-ink">chưa lưu</b> (ví dụ dòng vừa xóa). Bỏ các thay đổi đó và mở lại phiếu như đã lưu?', okText: 'Mở lại bản đã lưu', danger: true }))) return;
+  draft = null;
+  LS.set('cp.draft', null);
+  if (hash && location.hash !== hash) location.hash = hash;
+  else renderCostEntry(document.getElementById('view'));
 }
 
 function saveDraft(st) {
@@ -108,6 +131,9 @@ export function renderCostEntry(root) {
     '<p class="sheet-note">' + (editing ? 'Lưu lại sẽ thay các dòng cũ của phiếu bằng các dòng bên dưới.' : 'Khai báo một lần cho cả phiếu, rồi liệt kê từng mặt hàng ở bảng dưới.') + '</p></div>' +
     (st.mode !== 'new' ? '<a href="#/cp-nhap" class="btn btn-ghost btn-sm" data-act="new">' + icon('plus') + 'Lập phiếu mới</a>' : '') + '</div>' +
     (lockedSlip ? '<p class="form-error mx-5 mb-3" role="note">' + icon('lock') + '<span>' + esc(KT.lockMessage(KT.monthOf(h.ngay), 'sửa')) + '</span></p>' : '') +
+    (st.mode !== 'new' && coThayDoi(params) ? '<div class="mx-5 mb-3 flex flex-wrap items-center gap-3 rounded-lg bg-caution-soft px-3 py-2 text-[13px] text-ink" role="note">' + icon('warnTri', 'text-[16px] text-caution') +
+      '<span class="flex-1">Phiếu đang có thay đổi <b class="font-semibold">chưa lưu</b>. Bấm Lưu để giữ, hoặc mở lại phiếu như đã lưu.</span>' +
+      '<button type="button" class="btn btn-ghost btn-sm" data-act="reload-slip">' + icon('refresh') + 'Mở lại bản đã lưu</button></div>' : '') +
     '<form id="cp-head" class="grid grid-cols-3 gap-x-5 gap-y-3 px-5 pb-4 max-xl:grid-cols-2 max-sm:grid-cols-1" novalidate autocomplete="off">' +
     '<label class="field"><span class="label">Ngày <b class="req">*</b></span>' + dateField({ name: 'ngay', value: h.ngay, required: true, label: 'Ngày' }) + '<span class="hint"></span></label>' +
     headField('maCT', 'Công trình', h.maCT, 'dl-projects', 'Gõ mã hoặc tên công trình', true) +
@@ -120,7 +146,8 @@ export function renderCostEntry(root) {
     '<section class="sheet overflow-hidden" aria-labelledby="h-dong">' +
     '<div class="flex flex-wrap items-center gap-3 border-b border-rule px-4 py-2.5"><h2 id="h-dong" class="sheet-title">Các dòng hàng</h2>' +
     '<span class="text-[12.5px] text-ink-3">' + icon('keyboard', 'mr-1 align-[-3px] text-[15px]') + '<kbd>Enter</kbd> sang ô kế tiếp, <kbd>↑</kbd> <kbd>↓</kbd> đổi dòng (ở ô có danh sách gợi ý thì bấm kèm <kbd>Ctrl</kbd>), <kbd>Ctrl</kbd> + <kbd>Enter</kbd> lưu phiếu. ' +
-    'Số lượng nhận <b class="font-medium text-ink-2">2,5</b> hoặc <b class="font-medium text-ink-2">10+5</b>; đơn giá nhận <b class="font-medium text-ink-2">50tr</b>, <b class="font-medium text-ink-2">300k</b>, <b class="font-medium text-ink-2">1.250.000</b>.</span></div>' +
+    'Số lượng nhận <b class="font-medium text-ink-2">2,5</b> hoặc <b class="font-medium text-ink-2">10+5</b>; đơn giá nhận <b class="font-medium text-ink-2">50tr</b>, <b class="font-medium text-ink-2">300k</b>, <b class="font-medium text-ink-2">1.250.000</b>. ' +
+    'Chi phí không có đơn giá (nhân công, hóa đơn chỉ ghi tổng…): để trống Số lượng, Đơn giá, chỉ nhập <b class="font-medium text-ink-2">Thành tiền</b>.</span></div>' +
     '<div class="scroll-x overflow-x-auto"><table class="ledger grid-entry" id="cp-lines">' +
     '<thead><tr><th class="num w-8">#</th><th class="w-[150px] min-w-[140px]">Mã VT</th><th>Tên vật tư</th><th class="w-[64px]">ĐVT</th><th>Diễn giải / quy cách</th>' +
     '<th class="num w-[100px] min-w-[90px]">Số lượng</th><th class="num w-[130px] min-w-[120px]">Đơn giá</th><th class="num money w-[140px]">Thành tiền</th><th class="w-[170px] min-w-[130px]">Hạng mục riêng</th><th class="w-[172px] min-w-[150px]">Loại CP</th><th class="w-8"><span class="sr-only">Xóa dòng</span></th></tr></thead>' +
@@ -138,7 +165,8 @@ export function renderCostEntry(root) {
     (editingPosted || lockedSlip ? '' : '<button type="button" class="btn btn-secondary" data-act="save-draft" title="Lưu để làm tiếp; phiếu Nháp chưa tính vào chi phí, công nợ">' + icon('draft') + 'Lưu nháp</button>') +
     (lockedSlip ? '' : '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon('save') + (editingPosted ? 'Lưu thay đổi' : st.nhap ? 'Ghi sổ' : 'Ghi vào sổ chi phí') + '</button>') +
     '</div></section>' +
-    '<section class="sheet px-5 pb-4 no-print" aria-label="Chứng từ của phiếu">' + attachBlock('slips', editing ? Number(st.phieuId) : 0, { readonly: lockedSlip, newText: 'Ghi (hoặc lưu nháp) phiếu trước, rồi mở lại phiếu ở danh sách “Phiếu đã nhập” để đính kèm ảnh phiếu giao hàng, hóa đơn.' }) + '</section>' +
+    // phiếu mới: chọn ảnh / tài liệu ngay, tự tải lên khi lưu phiếu; phiếu đã lưu: đính kèm thẳng
+    '<section class="sheet px-5 pb-4 no-print" aria-label="Chứng từ của phiếu">' + (editing ? attachBlock('slips', Number(st.phieuId), { readonly: lockedSlip }) : pendingBlock(PENDING)) + '</section>' +
     recentHtml(params.phieu || '');
 
   const form = $('#cp-head', root);
@@ -506,6 +534,13 @@ export function renderCostEntry(root) {
     const done = busy(root.querySelector(asDraft ? '[data-act=save-draft]' : '[data-act=save]'), editing || asDraft ? 'Đang lưu…' : 'Đang ghi…');
     try {
       const r = editing ? await api('PUT', '/api/cost-slips/' + st.phieuId, payload) : await api('POST', '/api/cost-slips', payload);
+      // chứng từ đã chọn khi lập phiếu mới: tải lên gắn vào phiếu vừa lưu
+      const cho = editing ? [] : pendingFiles(PENDING);
+      if (cho.length && r.phieuId) {
+        const n = await uploadFiles('slips', r.phieuId, cho);
+        clearPending(PENDING);
+        if (n) toast('Đã đính kèm ' + n + ' / ' + cho.length + ' file vào phiếu');
+      }
       toast(asDraft ? 'Đã lưu nháp ' + r.count + ' dòng, tổng ' + money(r.total) + ' đ (chưa ghi sổ, chưa tính vào chi phí)'
         : (editing && !st.nhap ? 'Đã lưu phiếu: ' : 'Đã ghi ') + r.count + ' dòng, tổng ' + money(r.total) + ' đ vào sổ chi phí');
       LS.set('cp.lastHeader', { ngay: h.ngay, maCT: ct.ma, maNha: nha ? nha.ma : '', maNCC: ncc.ma, hm: h.hm });
@@ -546,9 +581,18 @@ export function renderCostEntry(root) {
   });
 
   root.addEventListener('click', async (e) => {
+    // bấm Sửa / Nhân bản phiếu (danh sách phiếu đã nhập, nút trong phiếu): luôn mở phiếu như đã lưu — kể cả khi bấm lại đúng phiếu đang mở
+    const link = e.target.closest('a[href^="#/cp-nhap?phieu="], a[href^="#/cp-nhap?nhanban="]');
+    if (link) {
+      e.preventDefault();
+      const hash = link.getAttribute('href');
+      moLaiDaLuu(routeParams(hash), hash);
+      return;
+    }
     const a = e.target.closest('[data-act]');
     if (!a) return;
     const act = a.dataset.act;
+    if (act === 'reload-slip') { moLaiDaLuu(params); return; }
     if (a.tagName === 'A' && act !== 'new') e.preventDefault();
     // sau khi thêm nhanh vào danh mục: điền mã mới vào ô rồi vẽ lại (dữ liệu vừa tải lại)
     const after = (row, col, apply) => (x) => {
@@ -586,6 +630,7 @@ export function renderCostEntry(root) {
   });
   bindRecent(root);
   bindAttach(root);
+  bindPending(root);
 
   refreshHeaderHints();
   refreshVtList();

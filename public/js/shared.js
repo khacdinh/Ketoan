@@ -561,8 +561,9 @@
     }
   }
 
-  // 5000 -> "5.000"; 2.5 -> "2,5"
+  // 5000 -> "5.000"; 2.5 -> "2,5"; trống (dòng theo khoản không có số lượng) -> ""
   function fmtQty(n) {
+    if (n === null || n === undefined || n === '') return '';
     n = round4(n);
     if (!n) return n === 0 ? '0' : '';
     const neg = n < 0;
@@ -594,7 +595,8 @@
    * - Đủ SL và ĐG: Thành tiền = SL × ĐG. Thành tiền gửi kèm: bỏ qua (như trước nay, máy chủ luôn tự tính), trừ khi kiemKhop = true
    *   (giao diện: người dùng gõ cả ba ô mà lệch nhau thì báo lỗi).
    * - SL + Thành tiền: ĐG = Thành tiền / SL (làm tròn 0,01), chỉ nhận khi SL × ĐG ra đúng Thành tiền.
-   * - Chỉ có Thành tiền: nhập theo khoản, lưu SL 1 × ĐG = Thành tiền (như công cụ nhập Excel), để SL × ĐG = Thành tiền luôn đúng.
+   * - Chỉ có Thành tiền: nhập theo khoản (nhân công, phí… không có đơn giá) — Số lượng và Đơn giá để TRỐNG (null), chỉ lưu Thành tiền.
+   *   Không tự gán SL 1 × ĐG = Thành tiền (đơn giá giả làm sai thống kê giá).
    * Trả về { soLuong, donGia, thanhTien } hoặc { loi, cot } (cot = ô cần sửa). */
   function costFromInput(soLuong, donGia, thanhTien, kiemKhop) {
     function has(v) { return v !== null && v !== undefined && v !== ''; }
@@ -625,7 +627,23 @@
       return { soLuong: sl, donGia: dg, thanhTien: t };
     }
     if (hD) return { loi: 'thiếu Số lượng (hoặc xóa trống Đơn giá để nhập theo khoản)', cot: 'soLuong' };
-    return { soLuong: 1, donGia: t, thanhTien: t };
+    return { soLuong: null, donGia: null, thanhTien: t };
+  }
+
+  // Dòng chi phí theo khoản: không có Số lượng, Đơn giá — chỉ có Thành tiền
+  function isKhoan(c) {
+    const trong = function (v) { return v === null || v === undefined || v === ''; };
+    return !!c && trong(c.soLuong) && trong(c.donGia);
+  }
+  // Dòng khoán lưu theo cách cũ: Số lượng 1 × Đơn giá = Thành tiền (bản trước tự gán khi chỉ nhập Thành tiền; file Excel cũ cũng vậy)
+  function laKhoanCu(c) {
+    if (!c || isKhoan(c) || c.donGia === null || c.donGia === undefined || c.donGia === '') return false;
+    const t = Number(c.thanhTien);
+    return Number(c.soLuong) === 1 && t > 0 && Number(c.donGia) === t;
+  }
+  // Các dòng khoán cũ trong dữ liệu (để chuyển sang theo khoản)
+  function khoanCu(db) {
+    return (db.costs || []).filter(laKhoanCu).sort(compareEntries);
   }
 
   /* Giao diện: tự điền ô còn lại khi gõ SL / ĐG / Thành tiền (giá trị dạng chuỗi trong l). changed = ô vừa sửa.
@@ -749,7 +767,7 @@
       if (f.phieu && String(r.phieuId) !== String(f.phieu)) return false;
       if (q) {
         const hay = normalizeText([r.maCT, r.maNha, r.tenHM, r.tenNhom, r.loaiCP, r.maVT, r.tenVT, r.dienGiai, r.maNCC, r.tenNCC,
-          r.soPhieu, r.ghiChu, fmtMoney(r.thanhTien), fmtMoney(r.donGia)].join(' '));
+          r.soPhieu, r.ghiChu, fmtMoney(r.thanhTien), isKhoan(r) ? 'theo khoản' : fmtMoney(r.donGia)].join(' '));
         if (hay.indexOf(q) < 0) return false;
       }
       return true;
@@ -997,14 +1015,18 @@
       if (f.ncc && keyOf(c.maNCC) !== keyOf(f.ncc)) return;
       const k = keyOf(c.maVT);
       let a = acc.get(k);
-      if (!a) { a = { ma: String(c.maVT).trim(), soLan: 0, tongSL: 0, tongTien: 0, min: Infinity, max: -Infinity, last: 0, lastNgay: '', lastNCC: '', nccs: new Set() }; acc.set(k, a); }
+      if (!a) { a = { ma: String(c.maVT).trim(), soLan: 0, tongSL: 0, tongTien: 0, tienCoGia: 0, min: Infinity, max: -Infinity, last: null, lastNgay: '', lastNCC: '', nccs: new Set() }; acc.set(k, a); }
       a.soLan++;
-      a.tongSL = round4(a.tongSL + (c.soLuong || 0));
       a.tongTien += c.thanhTien || 0;
-      const dg = Number(c.donGia) || 0;
-      if (dg < a.min) a.min = dg;
-      if (dg > a.max) a.max = dg;
-      a.last = dg;
+      // dòng theo khoản không có số lượng / đơn giá: tính vào tổng tiền, không vào thống kê giá
+      if (!isKhoan(c)) {
+        a.tongSL = round4(a.tongSL + (Number(c.soLuong) || 0));
+        a.tienCoGia += c.thanhTien || 0;
+        const dg = Number(c.donGia) || 0;
+        if (dg < a.min) a.min = dg;
+        if (dg > a.max) a.max = dg;
+        a.last = dg;
+      }
       a.lastNgay = c.ngay;
       a.lastNCC = c.maNCC || '';
       if (c.maNCC) a.nccs.add(keyOf(c.maNCC));
@@ -1017,8 +1039,9 @@
       const it = m ? iIdx.get(keyOf(m.maHM)) : null;
       rows.push({
         ma: a.ma, ten: m ? m.ten : '', dvt: m ? (m.dvt || '') : '', maHM: m ? (m.maHM || '') : '', tenHM: it ? it.ten : '',
-        soLan: a.soLan, tongSL: a.tongSL, tongTien: a.tongTien, min: a.min, max: a.max, last: a.last, lastNgay: a.lastNgay, lastNCC: a.lastNCC,
-        binhQuan: a.tongSL ? Math.round(a.tongTien / a.tongSL) : 0, soNCC: a.nccs.size, inCatalog: !!m
+        soLan: a.soLan, tongSL: a.tongSL, tongTien: a.tongTien, min: a.min === Infinity ? null : a.min, max: a.max === -Infinity ? null : a.max,
+        last: a.last, lastNgay: a.lastNgay, lastNCC: a.lastNCC,
+        binhQuan: a.tongSL ? Math.round(a.tienCoGia / a.tongSL) : 0, soNCC: a.nccs.size, inCatalog: !!m
       });
     });
     return rows;
@@ -1028,7 +1051,7 @@
   function priceHistory(db, maVT) {
     const sIdx = indexBy(db.suppliers);
     const prevByNcc = new Map();
-    return (db.costs || []).filter(function (c) { return keyOf(c.maVT) === keyOf(maVT); }).sort(compareEntries).map(function (c) {
+    return (db.costs || []).filter(function (c) { return keyOf(c.maVT) === keyOf(maVT) && !isKhoan(c); }).sort(compareEntries).map(function (c) {
       const k = keyOf(c.maNCC);
       const prev = prevByNcc.get(k);
       prevByNcc.set(k, Number(c.donGia) || 0);
@@ -1047,7 +1070,7 @@
     let best = null;
     let bestSame = null;
     (db.costs || []).forEach(function (c) {
-      if (keyOf(c.maVT) !== keyOf(maVT)) return;
+      if (keyOf(c.maVT) !== keyOf(maVT) || isKhoan(c)) return; // dòng theo khoản không có đơn giá để gợi ý
       if (!best || compareEntries(c, best) > 0) best = c;
       if (maNCC && keyOf(c.maNCC) === keyOf(maNCC) && (!bestSame || compareEntries(c, bestSame) > 0)) bestSame = c;
     });
@@ -1329,9 +1352,9 @@
         chiTiet: (e.noiDung || '') + ' · ngày ' + fmtDate(e.ngay), target: { kind: 'entries', id: e.id } });
     });
     costs.forEach(function (c) {
-      if ((c.thanhTien || 0) > 0 && (c.soLuong || 0) > 0) return;
+      if ((c.thanhTien || 0) > 0 && (isKhoan(c) || (c.soLuong || 0) > 0)) return;
       push({ key: 'tien:c:' + c.id + ':' + c.thanhTien, loai: 'tien', ngay: c.ngay, soTien: c.thanhTien,
-        tieuDe: 'Dòng chi phí ' + ((c.thanhTien || 0) < 0 ? 'có thành tiền âm' : 'có thành tiền bằng 0'), chiTiet: (c.maVT || c.dienGiai || '') + ' · ' + fmtQty(c.soLuong) + ' × ' + fmtMoney(c.donGia),
+        tieuDe: 'Dòng chi phí ' + ((c.thanhTien || 0) < 0 ? 'có thành tiền âm' : 'có thành tiền bằng 0'), chiTiet: (c.maVT || c.dienGiai || '') + ' · ' + (isKhoan(c) ? 'theo khoản' : fmtQty(c.soLuong) + ' × ' + fmtMoney(c.donGia)),
         target: { kind: 'costs', id: c.id, phieuId: c.phieuId } });
     });
 
@@ -1417,6 +1440,9 @@
     aliasIndex: aliasIndex,
     resolveAlias: resolveAlias,
     costFromInput: costFromInput,
+    isKhoan: isKhoan,
+    laKhoanCu: laKhoanCu,
+    khoanCu: khoanCu,
     syncCostInputs: syncCostInputs,
     findCostItem: findCostItem,
     defaultLoaiCP: defaultLoaiCP,

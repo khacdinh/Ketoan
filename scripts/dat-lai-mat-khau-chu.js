@@ -57,7 +57,7 @@ async function hoi(cau, matKhau) {
 
 async function main() {
   console.log('');
-  console.log('  LỆNH CỨU HỘ — đặt lại mật khẩu tài khoản Chủ (Sổ Thu Chi)');
+  console.log('  LỆNH CỨU HỘ — đặt lại mật khẩu tài khoản Chủ (Kế Toán Công Trình)');
   console.log('  Dữ liệu: ' + file);
   console.log('  Ai mở được máy này và thư mục phần mềm thì dùng được lệnh này — đó là chủ ý thiết kế cho phần mềm chạy trên máy.');
   console.log('  Nên tắt phần mềm (đóng cửa sổ KhoiDong.bat) trước khi chạy.');

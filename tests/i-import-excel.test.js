@@ -152,7 +152,7 @@ test('I2 dry-run: không ghi gì; làm sạch đúng quy tắc; tổng tiền kh
   assert.equal(costs.reduce((t, c) => t + c.thanhTien, 0), EXPECT_TOTAL);
   const by = (dong) => p.add.costs.find((x) => x.src.dong === dong).rec;
   // khoán
-  assert.deepEqual([by(3).soLuong, by(3).donGia, by(3).thanhTien], [1, 350000, 350000]);
+  assert.deepEqual([by(3).soLuong, by(3).donGia, by(3).thanhTien], [null, null, 350000], 'khoán: SL, ĐG để trống, không tự gán SL 1');
   assert.match(by(3).ghiChu, /Nhập theo khoản/);
   // gõ đè lệch: giữ số gõ tay 120.000 (SL 2 → ĐG 60.000)
   assert.equal(by(4).thanhTien, 120000);
@@ -307,7 +307,7 @@ test('I7 rollback sau khi người dùng đã sửa phiếu nhập trong phần 
     const c = db.costs.find((x) => x.importRef && x.importRef.lan === r1.lan && x.maVT === 'ST-D10' && x.soLuong === 10);
     const slip = db.costs.filter((x) => x.phieuId === c.phieuId);
     await srv.ok('PUT', '/api/cost-slips/' + c.phieuId, { header: { ngay: c.ngay, maCT: c.maCT, maNha: c.maNha, maNCC: c.maNCC, soPhieu: c.soPhieu, maHM: c.maHM },
-      lines: slip.map((x) => ({ maVT: x.maVT, dienGiai: x.dienGiai, soLuong: x.soLuong, donGia: x.donGia, maHM: x.maHM, loaiCP: x.loaiCP })) });
+      lines: slip.map((x) => ({ maVT: x.maVT, dienGiai: x.dienGiai, soLuong: x.soLuong, donGia: x.donGia, thanhTien: x.thanhTien, maHM: x.maHM, loaiCP: x.loaiCP })) });
   } finally { await srv.stop(); }
   const rb = await run(['--rollback', r1.lan, '--data', data]);
   assert.ok(rb.kept.some((k) => /không còn nguyên/.test(k)), rb.kept.join('; '));
