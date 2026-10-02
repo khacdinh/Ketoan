@@ -18,7 +18,7 @@ Phần mềm kế toán gồm hai phần chạy chung một chỗ, **không cầ
 2. Một cửa sổ đen hiện ra và trình duyệt tự mở trang **http://localhost:3939**.
 3. **Giữ cửa sổ đen mở** trong lúc làm việc. Đóng cửa sổ đó thì phần mềm tắt (dữ liệu đã được lưu sẵn).
 
-Muốn có biểu tượng trên Desktop: bấm đúp **`TaoBieuTuongDesktop.bat`** một lần.
+Muốn có biểu tượng trên Desktop: bấm đúp **`TaoBieuTuongDesktop.bat`** một lần. Trên Desktop sẽ có biểu tượng **Kế Toán Công Trình** (logo Điền Thủy); từ đó bấm đúp biểu tượng này thay cho `KhoiDong.bat`. Biểu tượng cũ tên “So Thu Chi” (nếu có) được tự bỏ. Dời thư mục phần mềm sang chỗ khác thì bấm lại `TaoBieuTuongDesktop.bat` để tạo lại biểu tượng.
 
 > Nếu bấm `KhoiDong.bat` khi phần mềm đang chạy, nó chỉ mở lại trình duyệt, không chạy thêm bản thứ hai.
 
