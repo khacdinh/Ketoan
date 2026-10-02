@@ -17,12 +17,13 @@ function exportQuery(f) {
   return Object.keys(p).filter((k) => p[k]).map((k) => k + '=' + encodeURIComponent(p[k])).join('&');
 }
 
-// Dữ liệu gửi lên máy chủ khi sửa 1 dòng (máy chủ tính lại Thành tiền)
+// Dữ liệu gửi lên máy chủ khi sửa 1 dòng (đủ SL và ĐG: máy chủ tính lại Thành tiền; dòng theo khoản: giữ Thành tiền)
 function payloadOf(c, patch) {
   const it = itemByCode(c.maHM);
   return Object.assign({
     phieuId: c.phieuId, ngay: c.ngay, maCT: c.maCT, maNha: c.maNha || '', maNCC: c.maNCC || '', soPhieu: c.soPhieu || '',
-    maHM: it ? it.ma : c.maHM, loaiCP: c.loaiCP, maVT: c.maVT || '', dienGiai: c.dienGiai || '', soLuong: c.soLuong, donGia: c.donGia, ghiChu: c.ghiChu || ''
+    maHM: it ? it.ma : c.maHM, loaiCP: c.loaiCP, maVT: c.maVT || '', dienGiai: c.dienGiai || '', soLuong: c.soLuong == null ? '' : c.soLuong,
+    donGia: c.donGia == null ? '' : c.donGia, thanhTien: c.thanhTien, ghiChu: c.ghiChu || ''
   }, patch || {});
 }
 
@@ -195,7 +196,7 @@ function rowHtml(r, q) {
     '<td data-edit="maVT">' + (r.maVT ? bad(r.vtHopLe, '<span class="vt-code">' + highlight(r.maVT, q) + '</span>') + '<div class="sub">' + highlight(r.tenVT, q) + '</div>' : '') + '</td>' +
     '<td class="min-w-[140px] max-w-[240px]" data-edit="dienGiai">' + highlight(r.dienGiai, q) + clipHtml('costs', r.id) + clipHtml('slips', r.phieuId) + (r.ghiChu ? '<div class="text-[12.5px] text-ink-3">Ghi chú: ' + highlight(r.ghiChu, q) + '</div>' : '') + '</td>' +
     '<td class="num" data-edit="soLuong">' + KT.fmtQty(r.soLuong) + (r.dvt ? ' <span class="text-[12px] text-ink-3">' + esc(r.dvt) + '</span>' : '') + '</td>' +
-    '<td class="num money" data-edit="donGia">' + highlight(money(r.donGia), q) + '</td>' +
+    '<td class="num money" data-edit="donGia">' + (KT.isKhoan(r) ? '<span class="text-[12.5px] text-ink-3">theo khoản</span>' : highlight(money(r.donGia), q)) + '</td>' +
     '<td class="num money font-semibold" data-edit="thanhTien">' + highlight(money(r.thanhTien), q) + '</td>' +
     '<td data-edit="maNCC"><span class="block max-w-[140px] truncate" title="' + esc(r.maNCC) + '">' + bad(r.nccHopLe, highlight(r.tenNCC || r.maNCC, q)) + '</span>' +
     (r.soPhieu ? '<div class="sub">Phiếu ' + highlight(r.soPhieu, q) + '</div>' : '') + '</td>' +
@@ -226,7 +227,7 @@ function inlineEdit(td) {
     const lists = { maHM: 'dl-hm', maVT: 'dl-vt', maNCC: 'dl-suppliers', maNha: 'dl-nha' };
     if (lists[field]) input.setAttribute('list', lists[field]);
     const it = itemByCode(c.maHM);
-    input.value = field === 'soLuong' ? KT.fmtQty(c.soLuong) : field === 'donGia' || field === 'thanhTien' ? money(c[field]) : field === 'maHM' ? (it ? it.ten : c.maHM) : (c[field] || '');
+    input.value = field === 'soLuong' ? KT.fmtQty(c.soLuong) : field === 'donGia' || field === 'thanhTien' ? (c[field] == null ? '' : money(c[field])) : field === 'maHM' ? (it ? it.ten : c.maHM) : (c[field] || '');
     if (field === 'soLuong' || field === 'donGia' || field === 'thanhTien') input.className = 'text-right';
   }
   input.classList.add('input', 'input-sm', 'inline-cell');
@@ -247,10 +248,15 @@ function inlineEdit(td) {
       patch.maVT = m ? m.ma : '';
     } else if (field === 'maNCC') { const code = resolveCode(S.db.suppliers, v); if (!supplierByCode(code)) return fail('Nhà cung cấp "' + v + '" chưa có trong danh mục'); patch.maNCC = code; }
     else if (field === 'maNha') { const code = v ? resolveCode(S.db.houses, v) : ''; if (code && !houseByCode(code)) return fail('Nhà "' + v + '" chưa có trong danh mục'); patch.maNha = code; }
+    // Xóa trống Số lượng hoặc Đơn giá: thành dòng theo khoản (không có SL, ĐG), giữ nguyên Thành tiền
+    else if ((field === 'soLuong' || field === 'donGia') && !v) {
+      if (KT.isKhoan(c)) { cancel(); return; }
+      patch.soLuong = ''; patch.donGia = ''; patch.thanhTien = c.thanhTien;
+    }
     else if (field === 'soLuong') { const n = KT.parseQty(v); if (isNaN(n) || n <= 0) return fail('Số lượng không hợp lệ'); patch.soLuong = n; }
     else if (field === 'donGia') { const n = KT.parseAmount(v); if (isNaN(n) || n < 0) return fail('Đơn giá không hợp lệ'); patch.donGia = n; }
     else if (field === 'thanhTien') {
-      // Sửa Thành tiền: giữ Số lượng, máy chủ tính lại Đơn giá (dòng theo khoản SL 1 thì ĐG = Thành tiền)
+      // Sửa Thành tiền: giữ Số lượng, máy chủ tính lại Đơn giá (dòng theo khoản: chỉ đổi Thành tiền)
       const n = KT.parseAmount(v);
       if (isNaN(n) || n <= 0) return fail('Thành tiền không hợp lệ');
       const r = KT.costFromInput(c.soLuong, null, n);
@@ -288,7 +294,7 @@ export function openCostLineForm(c) {
     fld('maVT', 'Mã vật tư', c.maVT, 'dl-vt') +
     '<label class="field"><span class="label">Loại CP</span><select name="loaiCP" class="input">' + KT.LOAI_CP.map((l) => '<option' + (l === c.loaiCP ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select></label>' +
     fld('dienGiai', 'Diễn giải / quy cách', c.dienGiai) +
-    fld('soLuong', 'Số lượng', KT.fmtQty(c.soLuong), '', 'text-right') + fld('donGia', 'Đơn giá', money(c.donGia), '', 'text-right') +
+    fld('soLuong', 'Số lượng', KT.fmtQty(c.soLuong), '', 'text-right') + fld('donGia', 'Đơn giá', KT.isKhoan(c) ? '' : money(c.donGia), '', 'text-right') +
     fld('thanhTien', 'Thành tiền *', money(c.thanhTien), '', 'text-right font-semibold') +
     '<p class="col-span-3 -mt-2 text-[12.5px] text-ink-3 max-md:col-span-2 max-sm:col-span-1">Nhập Số lượng và Đơn giá (Thành tiền tự tính), hoặc chỉ nhập Thành tiền cho khoản khoán (để trống Số lượng, Đơn giá).</p>' +
     '<label class="field col-span-3 max-md:col-span-2 max-sm:col-span-1"><span class="label">Ghi chú</span><input name="ghiChu" class="input" value="' + esc(c.ghiChu || '') + '"></label>' +
@@ -306,7 +312,7 @@ export function openCostLineForm(c) {
       const g = (n) => fm.elements[n];
       // Tự điền ô còn lại như ở phiếu nhập; ĐG có số lẻ (từ Excel) thì Thành tiền là gốc
       const so = { soLuong: g('soLuong').value, donGia: g('donGia').value, thanhTien: g('thanhTien').value,
-        ttTuDong: Number.isInteger(Number(c.donGia)), dgTuDong: !Number.isInteger(Number(c.donGia)) };
+        ttTuDong: !KT.isKhoan(c) && Number.isInteger(Number(c.donGia)), dgTuDong: !KT.isKhoan(c) && !Number.isInteger(Number(c.donGia)) };
       fm.addEventListener('input', (e) => {
         const n = e.target.name;
         if (!['soLuong', 'donGia', 'thanhTien'].includes(n)) return;

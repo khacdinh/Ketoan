@@ -1,5 +1,18 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Dòng chi phí chỉ có Thành tiền (theo khoản) — không tự gán Số lượng 1 (02/10/2026)
+
+- Phiếu nhập chi phí: dòng chỉ nhập **Thành tiền** (nhân công, phí, hóa đơn bán lẻ nhiều món chỉ ghi tổng) được lưu với **Số lượng
+  và Đơn giá để trống** — trước đây phần mềm tự gán Số lượng 1 × Đơn giá = Thành tiền. Sổ chi phí, báo cáo chi tiết hiện “theo khoản”
+  ở cột Đơn giá; tổng tiền, công nợ, báo cáo không đổi.
+- Thống kê giá vật tư (giá gần nhất, thấp / cao nhất, bình quân), lịch sử giá, gợi ý giá lần trước **bỏ qua** dòng theo khoản; mục
+  “Cần xử lý” không còn coi dòng theo khoản là thiếu số lượng.
+- Sổ chi phí: xóa trống ô Số lượng hoặc Đơn giá (bấm đúp để sửa) thì dòng thành “theo khoản”, giữ nguyên Thành tiền — dùng để sửa các
+  dòng cũ. Dữ liệu cũ KHÔNG tự đổi (không phân biệt được dòng khoán cũ với dòng mua đúng 1 đơn vị).
+- Excel: xuất ghi thẳng Thành tiền (không phải công thức SL × ĐG) cho dòng theo khoản; nhập lại (gộp) không nhân đôi, nhập thay thế giữ
+  nguyên. Nhập file ChiPhi_CongTrinh (trong phần mềm và công cụ dòng lệnh): dòng chỉ có Thành tiền nhập thành dòng theo khoản.
+- Kiểm thử mới `tests/d-chi-phi-theo-khoan.test.js` (DK1); cập nhật D3.4, I2, I7 theo quy tắc mới.
+
 ## Biểu đồ "Nhịp tồn quỹ theo ngày" ở Tổng quan (01/10/2026)
 
 - Hai khung chung trục ngày: trên là tồn quỹ cuối ngày (đường bậc thang, nền chuyển màu; phần âm quỹ tô đỏ nhạt), dưới là **cột thu

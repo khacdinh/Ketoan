@@ -190,9 +190,11 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
     (chữ xanh nghiêng; nếu NCC này chưa bán thì lấy giá gần nhất của NCC khác). Gõ đè để đổi.
   - Số lượng nhận `2,5` / `2.5` / `1.000` / `10+5` / `3*2,5`. Đơn giá nhận `1.250.000`, `50tr`, `1,5tr`, `300k`, `58000+11000`.
   - Khoản không có mã vật tư (nhân công, phí, thuế): bỏ trống Mã VT, ghi **Diễn giải**.
-  - **Chỉ biết tổng tiền (khoán)**: để trống Số lượng và Đơn giá, gõ thẳng vào ô **Thành tiền** (nhận `12tr`, `12.500.000`…).
-    Dòng được lưu là Số lượng 1 × Đơn giá = Thành tiền, nên mọi báo cáo và file Excel vẫn khớp. Nên dùng cho dòng không có
-    mã vật tư; dòng có mã vật tư mà nhập khoán thì đơn giá đó sẽ được tính vào lịch sử giá của vật tư.
+  - **Chỉ biết tổng tiền (theo khoản)** — nhân công, phí, hoặc hóa đơn bán lẻ nhiều món chỉ muốn ghi tổng: để trống Số lượng
+    và Đơn giá, gõ thẳng vào ô **Thành tiền** (nhận `12tr`, `7.099.000`…), ghi nội dung ở Diễn giải (vd “HĐ điện nước Minh
+    17/8”). Dòng được lưu **đúng như vậy**: Số lượng, Đơn giá để trống (phần mềm KHÔNG tự gán Số lượng 1). Sổ chi phí hiện
+    “theo khoản” ở cột Đơn giá; tổng tiền, công nợ, báo cáo và file Excel tính theo Thành tiền. Dòng theo khoản không được
+    tính vào thống kê / lịch sử / gợi ý đơn giá vật tư (vì không có đơn giá).
   - **Biết số lượng và tổng tiền**: gõ Số lượng và Thành tiền, Đơn giá tự tính (= Thành tiền ÷ Số lượng). Chia không chẵn
     đồng thì ô Đơn giá để trống (chữ “tự tính”), khi lưu phần mềm tính đơn giá tới 2 số lẻ sao cho Số lượng × Đơn giá đúng
     bằng Thành tiền.
@@ -219,7 +221,8 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
 - **Sổ chi phí**: lọc theo kỳ, công trình, nhà, nhóm, hạng mục, loại CP, NCC, vật tư, tìm chữ hoặc số tiền.
   Đầu bảng có tổng và tổng theo từng loại CP.
   - **Bấm đúp** vào ô Diễn giải, Số lượng, Đơn giá, Thành tiền, Hạng mục, Loại CP (nhãn nhỏ dưới hạng mục), Vật tư, NCC, Nhà
-    để **sửa ngay trong bảng** (Enter lưu, Esc bỏ). Sửa Thành tiền thì giữ Số lượng, Đơn giá được tính lại. Nút bút chì mở form sửa đủ các cột; nút nhân bản, xóa ở cuối dòng;
+    để **sửa ngay trong bảng** (Enter lưu, Esc bỏ). Sửa Thành tiền thì giữ Số lượng, Đơn giá được tính lại. **Xóa trống** ô Số lượng hoặc Đơn giá thì dòng thành “theo khoản”
+    (giữ nguyên Thành tiền) — dùng để sửa các dòng cũ đã bị lưu Số lượng 1 × Đơn giá = Thành tiền. Nút bút chì mở form sửa đủ các cột; nút nhân bản, xóa ở cuối dòng;
     nút phiếu mở cả phiếu nhập chứa dòng đó.
   - Đổi ngày / công trình / nhà / NCC / số phiếu của riêng một dòng thì dòng đó tự tách thành phiếu riêng.
 - **Chi tiết theo nhóm**: chọn mức **1** (chỉ tổng nhóm), **2** (thêm cộng hạng mục), **3** (toàn bộ chi tiết);

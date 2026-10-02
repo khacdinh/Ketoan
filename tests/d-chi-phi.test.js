@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { KT, startServer, readJsonFile, orphanErrors } = require('./helpers');
+const { KT, startServer, readJsonFile, readStored, orphanErrors } = require('./helpers');
 const X = require('./excel-helpers');
 
 const V2 = path.join(__dirname, 'fixtures', 'ketoan-v2-hien-tai.json');
@@ -20,7 +20,8 @@ function raw(db, f) {
     (!f.nhom || (itemBy.get(key(c.maHM)) && key(itemBy.get(key(c.maHM)).maNhom) === key(f.nhom))));
   const o = { rows, total: 0, loai: {}, hm: {}, nhom: {}, ncc: {}, thang: {} };
   rows.forEach((c) => {
-    const t = X.thanhTien(c.soLuong, c.donGia);
+    // dòng theo khoản (SL, ĐG trống): tiền là Thành tiền đã lưu; còn lại tính độc lập SL × ĐG
+    const t = c.soLuong == null && c.donGia == null ? c.thanhTien : X.thanhTien(c.soLuong, c.donGia);
     o.total += t;
     o.loai[c.loaiCP] = (o.loai[c.loaiCP] || 0) + t;
     const it = itemBy.get(key(c.maHM));
@@ -291,7 +292,7 @@ test('D3.3 bấm lưu hai lần liên tiếp (gọi đồng thời) không làm 
 
 /* ---------------- D4 sửa / xóa / nhân bản ---------------- */
 
-test('D3.4 nhập Thành tiền không cần SL, ĐG (khoản khoán): lưu SL 1 × ĐG = Thành tiền; SL + Thành tiền tính ĐG; ba ô lệch nhau bị từ chối; sửa dòng theo Thành tiền', async () => {
+test('D3.4 nhập Thành tiền không cần SL, ĐG (khoản khoán, hóa đơn chỉ ghi tổng): SL, ĐG để TRỐNG (không tự gán SL 1 × ĐG = Thành tiền); SL + Thành tiền tính ĐG; ba ô lệch nhau bị từ chối; sửa dòng theo Thành tiền', async () => {
   const srv = await startServer({});
   try {
     const c = await setup(srv);
@@ -303,7 +304,8 @@ test('D3.4 nhập Thành tiền không cần SL, ĐG (khoản khoán): lưu SL 1
       assert.equal(r.status, 200, JSON.stringify(l) + ' ' + JSON.stringify(r.json));
       assert.equal(r.json.total, 12500000);
       const x = last(r);
-      assert.deepEqual([x.soLuong, x.donGia, x.thanhTien], [1, 12500000, 12500000], JSON.stringify(l));
+      assert.deepEqual([x.soLuong, x.donGia, x.thanhTien], [null, null, 12500000], JSON.stringify(l));
+      assert.ok(KT.isKhoan(x));
     }
     // SL + Thành tiền: ĐG = Thành tiền / SL tới 0,01, SL × ĐG ra đúng Thành tiền
     let r = await post([{ soLuong: 4, thanhTien: 1000000 }]);
@@ -325,7 +327,7 @@ test('D3.4 nhập Thành tiền không cần SL, ĐG (khoản khoán): lưu SL 1
     // tổng phiếu trộn dòng SL × ĐG và dòng khoán
     r = await post([{ soLuong: 10, donGia: 95000 }, { thanhTien: 3000000 }]);
     assert.equal(r.json.total, 950000 + 3000000);
-    // sửa một dòng: đổi Thành tiền, giữ SL (máy chủ tính lại ĐG); dòng khoán SL 1 thì ĐG = Thành tiền
+    // sửa một dòng: đổi Thành tiền, giữ SL (máy chủ tính lại ĐG); dòng khoán chỉ đổi Thành tiền, SL / ĐG vẫn trống
     const row = r.json.db.costs.find((x) => x.thanhTien === 950000);
     const put = (rec, patch) => srv.call('PUT', '/api/costs/' + rec.id, Object.assign({ ngay: rec.ngay, maCT: rec.maCT, maNha: rec.maNha, maNCC: rec.maNCC, maHM: rec.maHM, dienGiai: rec.dienGiai, soLuong: rec.soLuong, donGia: rec.donGia }, patch));
     let u = await put(row, { donGia: '', thanhTien: 1000000 });
@@ -335,10 +337,22 @@ test('D3.4 nhập Thành tiền không cần SL, ĐG (khoản khoán): lưu SL 1
     const khoan = u.json.db.costs.find((x) => x.thanhTien === 3000000);
     u = await put(khoan, { donGia: '', thanhTien: 3200000 });
     y = u.json.db.costs.find((x) => x.id === khoan.id);
-    assert.deepEqual([y.soLuong, y.donGia, y.thanhTien], [1, 3200000, 3200000]);
-    // báo cáo tính đúng theo dòng khoán (SL × ĐG = Thành tiền ở mọi dòng)
+    assert.deepEqual([y.soLuong, y.donGia, y.thanhTien], [null, null, 3200000]);
+    // dòng khoán thêm Số lượng (giữ Thành tiền) → tính ĐG; xóa trống SL, ĐG của dòng SL × ĐG → thành dòng khoán, giữ Thành tiền
+    u = await put(y, { soLuong: 4, thanhTien: 3200000 });
+    y = u.json.db.costs.find((x) => x.id === khoan.id);
+    assert.deepEqual([y.soLuong, y.donGia, y.thanhTien], [4, 800000, 3200000]);
+    u = await put(y, { soLuong: '', donGia: '', thanhTien: 3200000 });
+    y = u.json.db.costs.find((x) => x.id === khoan.id);
+    assert.deepEqual([y.soLuong, y.donGia, y.thanhTien], [null, null, 3200000]);
+    // báo cáo tính đúng theo dòng khoán (dòng có SL / ĐG: SL × ĐG = Thành tiền; dòng khoán: chỉ Thành tiền)
     const db = await srv.db();
-    assert.ok(db.costs.every((x) => KT.costAmount(x.soLuong, x.donGia) === x.thanhTien));
+    assert.ok(db.costs.every((x) => KT.isKhoan(x) || KT.costAmount(x.soLuong, x.donGia) === x.thanhTien));
+    // lưu bền: đọc lại từ file vẫn là null (không thành 0)
+    const st = readStored(srv.dataDir).costs.find((x) => x.id === khoan.id);
+    assert.deepEqual([st.soLuong, st.donGia, st.thanhTien], [null, null, 3200000]);
+    // thống kê giá vật tư / gợi ý giá không lấy dòng khoán; không bị báo "Cần xử lý" vì thiếu số lượng
+    assert.ok(!KT.anomalies(db).items.some((a) => a.target && a.target.id === khoan.id), 'dòng khoán không bị coi là bất thường');
     assert.equal(KT.costSummary(db).total, raw(db).total);
   } finally { await srv.stop(); }
 });

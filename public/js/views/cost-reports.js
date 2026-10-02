@@ -282,7 +282,7 @@ export function renderCostDetail(root) {
         html += rows.map((r) => '<tr class="dtl"><td class="whitespace-nowrap pl-14">' + fdate(r.ngay) + '</td>' +
           '<td>' + (r.maVT ? '<span class="font-semibold">' + esc(r.maVT) + '</span><div class="sub">' + esc(r.tenVT) + '</div>' : '') + '</td>' +
           '<td class="wrap-text">' + esc(r.dienGiai) + '</td><td>' + esc(r.tenNCC || r.maNCC) + '</td><td class="text-ink-2">' + esc(r.maNha) + '</td>' +
-          '<td class="num">' + KT.fmtQty(r.soLuong) + '</td><td class="text-ink-2">' + esc(r.dvt) + '</td><td class="num money">' + money(r.donGia) + '</td><td class="num money">' + money(r.thanhTien) + '</td></tr>').join('');
+          '<td class="num">' + KT.fmtQty(r.soLuong) + '</td><td class="text-ink-2">' + esc(r.dvt) + '</td><td class="num money">' + (KT.isKhoan(r) ? '<span class="text-[12.5px] text-ink-3">theo khoản</span>' : money(r.donGia)) + '</td><td class="num money">' + money(r.thanhTien) + '</td></tr>').join('');
       });
     });
     $('#ct-body', root).innerHTML = html || '<tr><td colspan="9" class="empty">Không có chi phí nào khớp bộ lọc.</td></tr>';
@@ -583,7 +583,7 @@ export function renderPrices(root) {
     $('#gia-list', root).innerHTML = stats.length ? stats.map((m) => {
       const spread = m.min > 0 ? (m.max - m.min) / m.min : 0;
       return '<tr class="clickable' + (KT.keyOf(m.ma) === KT.keyOf(f.vt) ? ' is-active' : '') + '" data-vt="' + esc(m.ma) + '" tabindex="0"><td><div class="font-semibold">' + highlight(m.ma, f.q) + '</div><div class="sub">' + highlight(m.ten, f.q) + (m.dvt ? ' · ' + esc(m.dvt) : '') + '</div></td>' +
-        '<td class="num">' + m.soLan + '</td><td class="num money">' + money(m.last) + '</td><td class="num text-[12.5px] ' + (spread > 0.05 ? 'text-caution font-semibold' : 'text-ink-3') + '"' + (m.soLan > 1 && spread ? ' title="Giá cao nhất ' + money(m.max) + ' đ, thấp nhất ' + money(m.min) + ' đ: chênh ' + pct(spread) + '"' : '') + '>' + (m.soLan > 1 ? (spread ? pct(spread) : 'ổn định') : '') + '</td></tr>';
+        '<td class="num">' + m.soLan + '</td><td class="num money">' + (m.last == null ? '<span class="text-ink-3">theo khoản</span>' : money(m.last)) + '</td><td class="num text-[12.5px] ' + (spread > 0.05 ? 'text-caution font-semibold' : 'text-ink-3') + '"' + (m.soLan > 1 && spread ? ' title="Giá cao nhất ' + money(m.max) + ' đ, thấp nhất ' + money(m.min) + ' đ: chênh ' + pct(spread) + '"' : '') + '>' + (m.soLan > 1 ? (spread ? pct(spread) : 'ổn định') : '') + '</td></tr>';
     }).join('') : '<tr><td colspan="4" class="empty">Chưa có vật tư nào được mua.</td></tr>';
   };
 
@@ -591,8 +591,12 @@ export function renderPrices(root) {
     const el = $('#gia-detail', root);
     const m = materialByCode(f.vt);
     const hist = f.vt ? KT.priceHistory(S.db, f.vt).filter((h) => !f.ncc || KT.keyOf(h.maNCC) === KT.keyOf(f.ncc)) : [];
-    if (!hist.length) { el.innerHTML = '<div class="sheet p-10 text-center text-ink-3">Chọn một vật tư ở danh sách bên trái để xem lịch sử đơn giá.</div>'; return; }
     const st = KT.materialStats(S.db, { ncc: f.ncc }).find((x) => KT.keyOf(x.ma) === KT.keyOf(f.vt));
+    if (!hist.length) {
+      el.innerHTML = '<div class="sheet p-10 text-center text-ink-3">' + (st ? esc(f.vt) + ' chỉ có ' + st.soLan + ' dòng nhập theo khoản (không có số lượng, đơn giá), tổng ' + money(st.tongTien) + ' đ — không có lịch sử đơn giá.' :
+        'Chọn một vật tư ở danh sách bên trái để xem lịch sử đơn giá.') + '</div>';
+      return;
+    }
     const byNcc = new Map();
     hist.forEach((h) => { const k = h.maNCC || '(không NCC)'; if (!byNcc.has(k)) byNcc.set(k, []); byNcc.get(k).push(h); });
     const it = m ? itemByCode(m.maHM) : null;

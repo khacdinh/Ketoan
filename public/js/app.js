@@ -28,7 +28,7 @@ const ROUTES = {
   'cai-dat': { title: 'Cài đặt và dữ liệu', sub: 'Thông tin in trên phiếu, nhập và xuất Excel, sao lưu', icon: 'gear', render: renderSettings },
   // Chi phí công trình
   'cp-tong-hop': { title: 'Chi phí công trình', sub: 'Tổng chi phí theo loại, nhóm, hạng mục và theo tháng', icon: 'crane', render: renderCostDashboard },
-  'cp-nhap': { title: 'Phiếu nhập chi phí', sub: 'Khai báo đầu phiếu một lần, nhập nhiều dòng số lượng × đơn giá', icon: 'notePencil', render: renderCostEntry },
+  'cp-nhap': { title: 'Phiếu nhập chi phí', sub: 'Khai báo đầu phiếu một lần, nhập nhiều dòng (số lượng × đơn giá, hoặc chỉ thành tiền)', icon: 'notePencil', render: renderCostEntry },
   'cp-so': { title: 'Sổ chi phí', sub: 'Nhật ký chung các dòng chi phí công trình', icon: 'table', render: renderCostLedger },
   'cp-chi-tiet': { title: 'Chi tiết chi phí theo nhóm', sub: 'Nhóm, hạng mục, từng dòng; bung hoặc thu gọn 3 cấp', icon: 'tree', render: renderCostDetail },
   'cp-cong-no': { title: 'Công nợ nhà cung cấp', sub: 'Chi phí phát sinh trừ số đã trả trong sổ thu chi', icon: 'scales', render: renderDebt },

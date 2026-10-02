@@ -50,9 +50,10 @@ function lineFromCost(c, headHM) {
   const it = itemByCode(c.maHM);
   const ten = it ? it.ten : c.maHM;
   return {
-    maVT: c.maVT || '', dienGiai: c.dienGiai || '', soLuong: KT.fmtQty(c.soLuong), donGia: money(c.donGia), thanhTien: money(c.thanhTien),
+    maVT: c.maVT || '', dienGiai: c.dienGiai || '', soLuong: KT.fmtQty(c.soLuong), donGia: KT.isKhoan(c) ? '' : money(c.donGia), thanhTien: money(c.thanhTien),
     // ĐG có số lẻ (từ file Excel): ô tiền chỉ hiện số chẵn, nên giữ Thành tiền làm gốc để lưu lại không lệch đồng nào
-    ttTuDong: Number.isInteger(Number(c.donGia)), dgTuDong: !Number.isInteger(Number(c.donGia)),
+    // dòng theo khoản: Thành tiền là số người dùng gõ (không phải SL × ĐG) — không được tự xóa khi sửa ô khác
+    ttTuDong: !KT.isKhoan(c) && Number.isInteger(Number(c.donGia)), dgTuDong: !KT.isKhoan(c) && !Number.isInteger(Number(c.donGia)),
     hm: ten && ten !== headHM ? ten : '', loaiCP: c.loaiCP !== KT.defaultLoaiCP(S.db, c.maVT, c.maHM) ? c.loaiCP : '', goiY: ''
   };
 }
@@ -120,7 +121,8 @@ export function renderCostEntry(root) {
     '<section class="sheet overflow-hidden" aria-labelledby="h-dong">' +
     '<div class="flex flex-wrap items-center gap-3 border-b border-rule px-4 py-2.5"><h2 id="h-dong" class="sheet-title">Các dòng hàng</h2>' +
     '<span class="text-[12.5px] text-ink-3">' + icon('keyboard', 'mr-1 align-[-3px] text-[15px]') + '<kbd>Enter</kbd> sang ô kế tiếp, <kbd>↑</kbd> <kbd>↓</kbd> đổi dòng (ở ô có danh sách gợi ý thì bấm kèm <kbd>Ctrl</kbd>), <kbd>Ctrl</kbd> + <kbd>Enter</kbd> lưu phiếu. ' +
-    'Số lượng nhận <b class="font-medium text-ink-2">2,5</b> hoặc <b class="font-medium text-ink-2">10+5</b>; đơn giá nhận <b class="font-medium text-ink-2">50tr</b>, <b class="font-medium text-ink-2">300k</b>, <b class="font-medium text-ink-2">1.250.000</b>.</span></div>' +
+    'Số lượng nhận <b class="font-medium text-ink-2">2,5</b> hoặc <b class="font-medium text-ink-2">10+5</b>; đơn giá nhận <b class="font-medium text-ink-2">50tr</b>, <b class="font-medium text-ink-2">300k</b>, <b class="font-medium text-ink-2">1.250.000</b>. ' +
+    'Chi phí không có đơn giá (nhân công, hóa đơn chỉ ghi tổng…): để trống Số lượng, Đơn giá, chỉ nhập <b class="font-medium text-ink-2">Thành tiền</b>.</span></div>' +
     '<div class="scroll-x overflow-x-auto"><table class="ledger grid-entry" id="cp-lines">' +
     '<thead><tr><th class="num w-8">#</th><th class="w-[150px] min-w-[140px]">Mã VT</th><th>Tên vật tư</th><th class="w-[64px]">ĐVT</th><th>Diễn giải / quy cách</th>' +
     '<th class="num w-[100px] min-w-[90px]">Số lượng</th><th class="num w-[130px] min-w-[120px]">Đơn giá</th><th class="num money w-[140px]">Thành tiền</th><th class="w-[170px] min-w-[130px]">Hạng mục riêng</th><th class="w-[172px] min-w-[150px]">Loại CP</th><th class="w-8"><span class="sr-only">Xóa dòng</span></th></tr></thead>' +
