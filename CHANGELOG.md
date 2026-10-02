@@ -1,5 +1,11 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Biểu tượng Desktop mang tên và logo mới (02/10/2026)
+
+- `TaoBieuTuongDesktop.bat` tạo biểu tượng **Kế Toán Công Trình** với logo Điền Thủy (`public/img/bieu-tuong.ico`, nền trắng bo góc để rõ
+  trên mọi hình nền) thay cho biểu tượng “So Thu Chi” hình mặc định của Windows; biểu tượng cũ trỏ vào đúng thư mục phần mềm được tự bỏ.
+  Phần tạo biểu tượng nằm trong `scripts/tao-bieu-tuong.ps1` (UTF-8 có BOM để giữ đúng chữ có dấu).
+
 ## Chuyển dòng khoán cũ sang “theo khoản”; đính kèm ảnh / tài liệu khi lập phiếu nhập (02/10/2026)
 
 - **Dòng khoán lưu kiểu cũ** (Số lượng 1 × Đơn giá = Thành tiền, do bản trước tự gán): Sổ chi phí hiện thông báo “Có N dòng…” →

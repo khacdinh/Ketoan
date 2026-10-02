@@ -149,6 +149,20 @@ test('A1.1 KhoiDong.bat / TaoBieuTuongDesktop.bat: có kiểm tra Node, báo l�
   assert.ok(fs.existsSync(path.join(ROOT, 'TaoBieuTuongDesktop.bat')));
   const ico = fs.readFileSync(path.join(ROOT, 'TaoBieuTuongDesktop.bat'), 'utf8');
   assert.match(ico, /KhoiDong\.bat/);
+  assert.match(ico, /scripts\\tao-bieu-tuong\.ps1/);
+  assert.match(ico, /-Goc "%~dp0\."/, 'đường dẫn kết thúc bằng \\ làm hỏng dấu ngoặc kép khi truyền cho PowerShell');
+  // script PowerShell: UTF-8 có BOM (Windows PowerShell 5 mới đọc đúng chữ có dấu), dùng logo .ico, tên mới
+  const ps = fs.readFileSync(path.join(ROOT, 'scripts', 'tao-bieu-tuong.ps1'));
+  assert.deepEqual([...ps.subarray(0, 3)], [0xEF, 0xBB, 0xBF]);
+  const psTxt = ps.toString('utf8');
+  assert.match(psTxt, /KhoiDong\.bat/);
+  assert.match(psTxt, /Kế Toán Công Trình/);
+  assert.match(psTxt, /public\\img\\bieu-tuong\.ico/);
+  const icoFile = fs.readFileSync(path.join(ROOT, 'public', 'img', 'bieu-tuong.ico'));
+  assert.deepEqual([...icoFile.subarray(0, 4)], [0, 0, 1, 0], 'bieu-tuong.ico phải là file biểu tượng Windows');
+  const sizes = [];
+  for (let i = 0; i < icoFile.readUInt16LE(4); i++) sizes.push(icoFile[6 + i * 16] || 256);
+  for (const n of [16, 32, 48, 256]) assert.ok(sizes.includes(n), 'thiếu cỡ ' + n + ' px');
 });
 
 test('A1.2 server tự từ chối chạy (thông báo tiếng Việt) khi Node cũ hơn bản tối thiểu', () => {

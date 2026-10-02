@@ -1,10 +1,13 @@
 @echo off
 chcp 65001 >nul
 cd /d "%~dp0"
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$d=[Environment]::GetFolderPath('Desktop'); $s=(New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $d 'So Thu Chi.lnk')); $s.TargetPath=(Join-Path '%~dp0' 'KhoiDong.bat'); $s.WorkingDirectory='%~dp0'; $s.IconLocation=(Join-Path $env:SystemRoot 'System32\shell32.dll')+',43'; $s.Description='So Thu Chi - phan mem ke toan'; $s.Save()"
+rem Tao bieu tuong "Ke Toan Cong Trinh" (logo Dien Thuy) tren Desktop, bam vao la chay KhoiDong.bat.
+rem "%~dp0." (co dau cham): duong dan ket thuc bang \ se lam hong dau ngoac kep khi truyen cho PowerShell.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\tao-bieu-tuong.ps1" -Goc "%~dp0."
 if errorlevel 1 (
   echo   Khong tao duoc bieu tuong. Ban co the bam dup truc tiep KhoiDong.bat.
 ) else (
-  echo   Da tao bieu tuong "So Thu Chi" tren man hinh Desktop.
+  echo   Da tao bieu tuong "Ke Toan Cong Trinh" tren man hinh Desktop.
+  echo   Neu Desktop van hien bieu tuong cu, bam chuot phai len Desktop roi chon Refresh.
 )
 pause
