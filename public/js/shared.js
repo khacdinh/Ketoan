@@ -635,6 +635,16 @@
     const trong = function (v) { return v === null || v === undefined || v === ''; };
     return !!c && trong(c.soLuong) && trong(c.donGia);
   }
+  // Dòng khoán lưu theo cách cũ: Số lượng 1 × Đơn giá = Thành tiền (bản trước tự gán khi chỉ nhập Thành tiền; file Excel cũ cũng vậy)
+  function laKhoanCu(c) {
+    if (!c || isKhoan(c) || c.donGia === null || c.donGia === undefined || c.donGia === '') return false;
+    const t = Number(c.thanhTien);
+    return Number(c.soLuong) === 1 && t > 0 && Number(c.donGia) === t;
+  }
+  // Các dòng khoán cũ trong dữ liệu (để chuyển sang theo khoản)
+  function khoanCu(db) {
+    return (db.costs || []).filter(laKhoanCu).sort(compareEntries);
+  }
 
   /* Giao diện: tự điền ô còn lại khi gõ SL / ĐG / Thành tiền (giá trị dạng chuỗi trong l). changed = ô vừa sửa.
    * l.ttTuDong = Thành tiền là kết quả SL × ĐG; l.dgTuDong = Đơn giá được tính từ Thành tiền người dùng gõ (khi lưu gửi ĐG trống,
@@ -1431,6 +1441,8 @@
     resolveAlias: resolveAlias,
     costFromInput: costFromInput,
     isKhoan: isKhoan,
+    laKhoanCu: laKhoanCu,
+    khoanCu: khoanCu,
     syncCostInputs: syncCostInputs,
     findCostItem: findCostItem,
     defaultLoaiCP: defaultLoaiCP,

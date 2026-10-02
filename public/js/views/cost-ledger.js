@@ -1,6 +1,7 @@
 /* Sổ chi phí công trình (tương đương sheet NHATKYCHUNG): lọc, tìm, sửa trực tiếp, tổng cuối bảng. */
 import { $, esc, money, fdate, icon, highlight, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, debounce, setDateValue,
-  api, toast, showError, confirmDialog, openModal, dateField, focusInput, fieldError } from '../ui.js';
+  api, toast, showError, confirmDialog, openModal, dateField, focusInput, fieldError, busy, LS } from '../ui.js';
+import { coQuyen } from '../auth.js';
 import { S, saveFilter, costProjects, costDatalists, resolveCode, resolveItem, materialByCode, itemByCode, houseByCode, projectByCode, supplierByCode, groupName, allCostLedger } from '../state.js';
 import { printView } from '../print.js';
 import { comboHtml, bindCombo } from '../combo.js';
@@ -61,6 +62,7 @@ export function renderCostLedger(root) {
     '<label class="search min-w-[220px] flex-1">' + icon('search') + '<input id="cl-q" type="search" class="input" placeholder="Tìm diễn giải, vật tư, số phiếu, số tiền" value="' + esc(f.q) + '" aria-label="Tìm trong sổ chi phí"></label>' +
     '<button type="button" class="btn btn-ghost btn-sm" data-act="clear" id="cl-clear">' + icon('eraser') + 'Bỏ lọc</button>' +
     '</div>' +
+    khoanCuBanner() +
     '<div id="cl-summary"></div>' +
     '<section class="sheet overflow-hidden">' +
     '<div class="no-print flex flex-wrap items-center gap-3 border-b border-rule px-4 py-2.5">' +
@@ -83,6 +85,11 @@ export function renderCostLedger(root) {
     setDateValue($('#cl-to', root), f.to || '', true);
   };
   bindPeriodControls(root, f, 'cl', () => { saveFilter('cpSo'); syncInputs(); draw(); });
+  const kc = $('#khoan-cu', root);
+  if (kc) {
+    kc.querySelector('[data-act=khoan-cu-xem]').addEventListener('click', moChuyenKhoan);
+    kc.querySelector('[data-act=khoan-cu-an]').addEventListener('click', () => { LS.set('anKhoanCu', KT.khoanCu(S.all).length); kc.remove(); });
+  }
   const pick = (key, redraw) => (v) => {
     f[key] = v;
     if (key === 'ct') f.nha = '';
@@ -139,6 +146,75 @@ export function renderCostLedger(root) {
     if (c) openCostLineForm(c);
   });
   draw();
+}
+
+/* ---------- Dòng khoán lưu theo cách cũ (Số lượng 1 × Đơn giá = Thành tiền) → chuyển sang theo khoản ---------- */
+function khoanCuBanner() {
+  if (!coQuyen('sua-hang-loat')) return '';
+  const n = KT.khoanCu(S.all).length;
+  if (!n || Number(LS.get('anKhoanCu', 0)) >= n) return '';
+  return '<div id="khoan-cu" class="no-print flex flex-wrap items-center gap-3 rounded-lg bg-pen-soft px-4 py-2.5 text-[13.5px] text-ink">' +
+    icon('info', 'text-[18px] text-pen') + '<span class="min-w-[240px] flex-1">Có <b class="font-semibold">' + n + ' dòng</b> chỉ có Thành tiền nhưng đang lưu kiểu cũ ' +
+    '<b class="font-semibold">Số lượng 1 × Đơn giá = Thành tiền</b>. Có thể chuyển sang “theo khoản” (Số lượng, Đơn giá để trống, giữ nguyên Thành tiền).</span>' +
+    '<button type="button" class="btn btn-primary btn-sm" data-act="khoan-cu-xem">Xem và chuyển</button>' +
+    '<button type="button" class="btn btn-ghost btn-sm" data-act="khoan-cu-an">Ẩn</button></div>';
+}
+
+function moChuyenKhoan() {
+  const rows = KT.khoanCu(S.all);
+  const led = new Map(allCostLedger().map((r) => [r.id, r]));
+  const khoa = KT.lockedMonths(S.all);
+  const coVT = (c) => !!c.maVT && !/^xx-/i.test(String(c.maVT).trim());
+  const m = openModal({
+    title: 'Chuyển dòng cũ sang “theo khoản”',
+    size: 'wide',
+    body: '<p class="text-[13.5px] leading-relaxed text-ink-2">Các dòng dưới đây đang lưu <b class="font-semibold text-ink">Số lượng 1 × Đơn giá = Thành tiền</b> — thường là dòng khoán ' +
+      '(nhân công, phí, tiền xe…) mà bản trước tự gán số lượng 1. Dòng được chọn sẽ để trống Số lượng, Đơn giá; <b class="font-semibold text-ink">Thành tiền, tổng tiền, công nợ không đổi</b>. ' +
+      'Bỏ chọn những dòng mua thật đúng 1 đơn vị (ví dụ 1 m³ bê tông). Phần mềm sao lưu trước khi chuyển.</p>' +
+      '<div class="mt-3 flex flex-wrap items-center gap-2"><button type="button" class="btn btn-ghost btn-sm" data-act="chon-het">Chọn tất cả</button>' +
+      '<button type="button" class="btn btn-ghost btn-sm" data-act="bo-vt">Bỏ chọn dòng có mã vật tư</button><span class="flex-1"></span>' +
+      '<span class="text-[13px] text-ink-2" id="kc-dem" aria-live="polite"></span></div>' +
+      '<div class="mt-2 max-h-[52vh] overflow-auto rounded-lg border border-rule"><table class="ledger ledger-compact"><thead><tr>' +
+      '<th class="w-8"><input type="checkbox" id="kc-all" aria-label="Chọn tất cả" checked></th><th>Ngày</th><th>Công trình</th><th>Vật tư / diễn giải</th><th>Loại CP</th><th class="num money">Thành tiền</th></tr></thead><tbody>' +
+      rows.map((c) => {
+        const r = led.get(c.id) || c;
+        const locked = khoa.has(KT.monthOf(c.ngay));
+        return '<tr' + (locked ? ' class="text-ink-3"' : '') + '><td><input type="checkbox" data-kc="' + c.id + '"' + (locked ? ' disabled title="Tháng đã khóa sổ"' : ' checked') + ' aria-label="Chọn dòng ngày ' + esc(fdate(c.ngay)) + '"></td>' +
+          '<td class="whitespace-nowrap">' + fdate(c.ngay) + (locked ? ' <span class="text-[12px]">(đã khóa sổ)</span>' : '') + '</td><td class="code">' + esc(c.maCT) + '</td>' +
+          '<td>' + (c.maVT ? '<span class="font-semibold">' + esc(c.maVT) + '</span> ' + esc(r.tenVT || '') : '') + (c.dienGiai ? '<div class="sub">' + esc(c.dienGiai) + '</div>' : '') + '</td>' +
+          '<td>' + esc(c.loaiCP || '') + '</td><td class="num money">' + money(c.thanhTien) + '</td></tr>';
+      }).join('') + '</tbody></table></div>',
+    footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="no">Hủy</button><button type="button" class="btn btn-primary" data-act="yes">Chuyển</button>'
+  });
+  const boxes = () => Array.from(m.el.querySelectorAll('[data-kc]:not(:disabled)'));
+  const dem = () => {
+    const n = boxes().filter((b) => b.checked).length;
+    m.el.querySelector('#kc-dem').textContent = 'Đã chọn ' + n + ' / ' + rows.length + ' dòng';
+    m.el.querySelector('[data-act=yes]').textContent = 'Chuyển ' + n + ' dòng';
+    m.el.querySelector('[data-act=yes]').disabled = !n;
+    m.el.querySelector('#kc-all').checked = n === boxes().length;
+  };
+  m.el.addEventListener('change', (e) => {
+    if (e.target.id === 'kc-all') boxes().forEach((b) => { b.checked = e.target.checked; });
+    dem();
+  });
+  m.el.querySelector('[data-act=chon-het]').addEventListener('click', () => { boxes().forEach((b) => { b.checked = true; }); dem(); });
+  m.el.querySelector('[data-act=bo-vt]').addEventListener('click', () => {
+    const byId = new Map(rows.map((c) => [String(c.id), c]));
+    boxes().forEach((b) => { if (coVT(byId.get(b.dataset.kc))) b.checked = false; });
+    dem();
+  });
+  m.el.querySelector('[data-act=no]').addEventListener('click', () => m.close());
+  m.el.querySelector('[data-act=yes]').addEventListener('click', async (e) => {
+    const ids = boxes().filter((b) => b.checked).map((b) => Number(b.dataset.kc));
+    const done = busy(e.currentTarget, 'Đang chuyển…');
+    try {
+      const r = await api('POST', '/api/costs/theo-khoan', { ids });
+      m.close();
+      toast('Đã chuyển ' + r.doi + ' dòng sang theo khoản' + (r.boQuaKhoa ? ' (bỏ qua ' + r.boQuaKhoa + ' dòng ở tháng đã khóa sổ)' : ''));
+    } catch (err) { done(); showError(err); }
+  });
+  dem();
 }
 
 function drawRows(root, f) {
