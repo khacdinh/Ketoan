@@ -102,6 +102,7 @@ const ICONS = {
   calculator: 'ph-calculator',
   notePencil: 'ph-note-pencil',
   caretRight: 'ph-caret-right',
+  caretLeft: 'ph-chevron-left',
   link: 'ph-arrow-square-out',
   coins: 'ph-coins',
   handCoins: 'ph-hand-coins',
@@ -161,8 +162,32 @@ export function icon(name, cls) {
   return '<i class="ph ' + (ICONS[name] || ICONS.dot) + (cls ? ' ' + cls : '') + '" aria-hidden="true"></i>';
 }
 export function duo(name, cls) {
-  return '<i class="ph-duotone ' + (DUO[name] || DUO.notebook) + (cls ? ' ' + cls : '') + '" aria-hidden="true"></i>';
+  return '<i class="ph ' + (DUO[name] || DUO.notebook) + (cls ? ' ' + cls : '') + '" aria-hidden="true"></i>';
 }
+
+/* ---------------- Mật độ bảng Gọn / Thoáng (lưu theo trình duyệt của người dùng) ---------------- */
+export function datMau(v) { document.body.dataset.density = v === 'thoang' ? 'thoang' : 'gon'; LS.set('density', document.body.dataset.density); }
+export const mauHienTai = () => document.body.dataset.density || 'gon';
+export function densityToggle() {
+  const cur = mauHienTai();
+  return '<div class="seg seg-sm density" role="radiogroup" aria-label="Mật độ bảng">' + [['gon', 'Gọn'], ['thoang', 'Thoáng']].map(([v, l]) =>
+    '<label class="seg-item"><input type="radio" name="density" value="' + v + '"' + (cur === v ? ' checked' : '') + '><span>' + l + '</span></label>').join('') + '</div>';
+}
+export function bindDensity(root) {
+  root.querySelectorAll('input[name=density]').forEach((r) => r.addEventListener('change', () => { datMau(r.value); document.querySelectorAll('input[name=density]').forEach((x) => { x.checked = x.value === r.value; }); }));
+}
+// Nút cấp trang (bên phải tiêu đề). Màn hình nào muốn nút riêng thì gọi setPageActions(html, (act, el, ev) => …); app.js trả về mặc định (Xuất Excel ▾) mỗi lần đổi màn hình.
+export function setPageActions(html, onClick, giuXuatExcel) {
+  const slot = document.getElementById('page-actions-view');
+  if (!slot) return;
+  slot.innerHTML = html || '';
+  slot.onclick = html && onClick ? (e) => { const a = e.target.closest('[data-act]'); if (a) onClick(a.dataset.act, a, e); } : null;
+  const ex = document.getElementById('btn-export');
+  if (ex) ex.hidden = !!html && !giuXuatExcel;
+}
+
+// Nhãn nhỏ cạnh tiêu đề trang (vd "Phiếu mới · chưa lưu", "Kỳ 09/2026 đang mở"); app.js xóa mỗi lần đổi màn hình
+export function setPageTags(html) { const el = document.getElementById('page-tags'); if (el) el.innerHTML = html || ''; }
 
 /* ---------------- Gọi máy chủ ---------------- */
 // Máy chủ (đăng nhập bật) gửi kèm "X-Phien-Con-Lai: <ms đến khi hết vì không thao tác>,<ms đến giới hạn tối đa>" → auth.js báo trước khi hết phiên
@@ -484,57 +509,93 @@ export function bindMoneyInput(input, hintEl) {
   return () => KT.parseAmount(input.value);
 }
 
-/* ---------------- Hộp chọn kỳ báo cáo ---------------- */
+/* ---------------- Chọn kỳ thống nhất: Tháng | Quý | Năm | Khoảng ngày | Toàn bộ + mũi tên ‹ › + nhãn kỳ ---------------- */
 export const PERIODS = [
-  ['tat-ca', 'Toàn bộ thời gian'],
-  ['thang-nay', 'Tháng này'],
-  ['thang-truoc', 'Tháng trước'],
-  ['quy-nay', 'Quý này'],
-  ['nam-nay', 'Năm nay'],
-  ['tuy-chon', 'Tùy chọn ngày']
+  ['thang', 'Tháng'],
+  ['quy', 'Quý'],
+  ['nam', 'Năm'],
+  ['khoang', 'Khoảng ngày'],
+  ['tat-ca', 'Toàn bộ']
 ];
 
-export function periodControls(state, idPrefix) {
-  return '<div class="flex flex-wrap items-center gap-2">' +
-    '<label class="sr-only" for="' + idPrefix + '-period">Kỳ báo cáo</label>' +
-    '<select id="' + idPrefix + '-period" class="input w-auto min-w-[170px]">' +
-    PERIODS.map(([v, l]) => '<option value="' + v + '"' + (state.period === v ? ' selected' : '') + '>' + l + '</option>').join('') +
-    '</select>' +
-    dateField({ id: idPrefix + '-from', value: state.from, label: 'Từ ngày' }) +
-    '<span class="text-ink-3" aria-hidden="true">đến</span>' +
-    dateField({ id: idPrefix + '-to', value: state.to, label: 'Đến ngày' }) +
-    '</div>';
-}
-
-export function bindPeriodControls(root, state, idPrefix, onChange) {
-  const sel = $('#' + idPrefix + '-period', root);
-  const from = $('#' + idPrefix + '-from', root);
-  const to = $('#' + idPrefix + '-to', root);
-  sel.addEventListener('change', () => {
-    state.period = sel.value;
-    if (sel.value !== 'tuy-chon') {
-      const r = KT.periodRange(sel.value);
-      state.from = r.from;
-      state.to = r.to;
-    }
-    onChange();
-  });
-  [from, to].forEach((el) => el.addEventListener('change', () => {
-    state.period = 'tuy-chon';
-    state.from = from.value;
-    state.to = to.value;
-    onChange();
-  }));
-}
-
-// Làm mới kỳ tương đối (tháng này...) mỗi lần mở để không bị "kẹt" ở tháng cũ
+// Bộ lọc đã lưu từ phiên bản cũ ("tháng này", "quý này"…) → kỳ mới; kỳ "hiện tại" (rel) tự chuyển sang tháng / quý / năm đang diễn ra
 export function refreshPeriod(state) {
-  if (state.period && state.period !== 'tuy-chon') {
-    const r = KT.periodRange(state.period);
+  const legacy = { 'thang-nay': 'thang', 'thang-truoc': 'thang', 'quy-nay': 'quy', 'nam-nay': 'nam', 'tuy-chon': 'khoang' };
+  const p = state.period;
+  if (legacy[p]) {
+    if (p === 'thang-truoc') { const r = KT.periodRange(p); state.from = r.from; state.to = r.to; state.rel = false; }
+    else if (p !== 'tuy-chon') state.rel = true;
+    state.period = legacy[p];
+  }
+  if (state.rel && (state.period === 'thang' || state.period === 'quy' || state.period === 'nam')) {
+    const r = KT.periodUnit(state.period, KT.todayISO());
     state.from = r.from;
     state.to = r.to;
   }
   return state;
+}
+
+export function periodControls(state, idPrefix) {
+  refreshPeriod(state);
+  const k = state.period || 'tat-ca';
+  return '<div class="period flex flex-wrap items-center gap-2" id="' + idPrefix + '-pc">' +
+    '<div class="seg" role="radiogroup" aria-label="Kỳ báo cáo">' +
+    PERIODS.map(([v, l]) => '<label class="seg-item"><input type="radio" name="' + idPrefix + '-pk" value="' + v + '"' + (k === v ? ' checked' : '') + '><span>' + l + '</span></label>').join('') + '</div>' +
+    '<div class="period-nav" id="' + idPrefix + '-pn"><button type="button" class="icon-btn" data-pn="-1" aria-label="Kỳ trước" title="Kỳ trước">' + icon('caretLeft') + '</button>' +
+    '<div class="period-lbl" aria-live="polite"><b id="' + idPrefix + '-pt"></b><span id="' + idPrefix + '-ps"></span></div>' +
+    '<button type="button" class="icon-btn" data-pn="1" aria-label="Kỳ sau" title="Kỳ sau">' + icon('caretRight') + '</button></div>' +
+    '<div class="flex items-center gap-2" id="' + idPrefix + '-range">' +
+    dateField({ id: idPrefix + '-from', value: state.from, label: 'Từ ngày' }) +
+    '<span class="text-ink-3" aria-hidden="true">đến</span>' +
+    dateField({ id: idPrefix + '-to', value: state.to, label: 'Đến ngày' }) + '</div></div>';
+}
+
+// Vẽ lại phần nhìn thấy theo state (chọn nút kỳ, nhãn, ô ngày); gọi sau khi bộ lọc đổi từ nơi khác (nút Bỏ lọc, mở từ màn khác)
+export function syncPeriodControls(root, state, idPrefix) {
+  const pc = $('#' + idPrefix + '-pc', root);
+  if (!pc) return;
+  refreshPeriod(state);
+  const k = state.period || 'tat-ca';
+  pc.querySelectorAll('input[type=radio]').forEach((r) => { r.checked = r.value === k; });
+  const nav = k === 'thang' || k === 'quy' || k === 'nam';
+  $('#' + idPrefix + '-pn', root).hidden = !nav;
+  $('#' + idPrefix + '-range', root).hidden = k !== 'khoang';
+  const lb = KT.periodLabel(k, state.from, state.to);
+  $('#' + idPrefix + '-pt', root).textContent = lb.title;
+  $('#' + idPrefix + '-ps', root).textContent = lb.sub;
+  setDateValue($('#' + idPrefix + '-from', root), state.from || '', true);
+  setDateValue($('#' + idPrefix + '-to', root), state.to || '', true);
+}
+
+export function bindPeriodControls(root, state, idPrefix, onChange) {
+  const from = $('#' + idPrefix + '-from', root);
+  const to = $('#' + idPrefix + '-to', root);
+  const done = () => { syncPeriodControls(root, state, idPrefix); onChange(); };
+  root.querySelectorAll('input[name="' + idPrefix + '-pk"]').forEach((r) => r.addEventListener('change', () => {
+    const kind = r.value;
+    if (kind === 'tat-ca') { Object.assign(state, { period: kind, from: '', to: '', rel: false }); }
+    else if (kind === 'khoang') { Object.assign(state, { period: kind, rel: false }); }
+    else {
+      // đổi giữa tháng / quý / năm: giữ mốc thời gian đang xem; từ "toàn bộ" / "khoảng ngày" thì lấy kỳ hiện tại
+      const cur = state.period === 'thang' || state.period === 'quy' || state.period === 'nam';
+      const rg = KT.periodUnit(kind, cur ? state.from : KT.todayISO());
+      Object.assign(state, { period: kind, from: rg.from, to: rg.to, rel: !cur || state.rel });
+    }
+    done();
+  }));
+  root.querySelectorAll('#' + idPrefix + '-pc [data-pn]').forEach((b) => b.addEventListener('click', () => {
+    const rg = KT.periodShift(state.period, state.from, Number(b.dataset.pn));
+    Object.assign(state, { from: rg.from, to: rg.to, rel: false });
+    done();
+  }));
+  [from, to].forEach((el) => el.addEventListener('change', () => {
+    state.period = 'khoang';
+    state.rel = false;
+    state.from = from.value;
+    state.to = to.value;
+    onChange();
+  }));
+  syncPeriodControls(root, state, idPrefix);
 }
 
 /* ---------------- Đẳng thức sổ quỹ: Tồn đầu kỳ + Thu − Chi = Tồn cuối kỳ ---------------- */

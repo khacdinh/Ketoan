@@ -56,6 +56,35 @@ export function printVoucher(v, settings) {
   setTimeout(() => window.print(), 50);
 }
 
+// In một tài liệu A4 dọc bất kỳ (phiếu nhập chi phí, biên bản đối chiếu công nợ…): html là phần thân, dùng lớp .bb-t cho bảng kê
+export function printHtml(html) {
+  const root = $('#print-root');
+  root.innerHTML = '<div class="vc-page bb">' + html + '</div>';
+  document.body.classList.add('printing-doc');
+  setTimeout(() => window.print(), 50);
+}
+
+// Phiếu nhập chi phí (một chuyến hàng / một hóa đơn): đầu phiếu, bảng dòng hàng, tổng, bằng chữ, chỗ ký
+export function printSlip(slip, lines, settings) {
+  const sl = (c) => (c.soLuong == null || c.soLuong === '' ? '' : KT.fmtQty(c.soLuong));
+  const dg = (c) => (KT.isKhoan(c) ? 'theo khoản' : money(c.donGia));
+  const total = lines.reduce((t, c) => t + (c.thanhTien || 0), 0);
+  printHtml(
+    '<div class="vc-top"><div class="vc-org"><div class="vc-company">' + esc(settings.tenDonVi || '') + '</div><div>' + esc(settings.diaChi || '') + '</div></div>' +
+    '<div class="vc-meta"><div class="vc-so">Số phiếu: ' + esc(slip.soPhieu || '................') + '</div><div>Ngày: ' + esc(KT.fmtDate(slip.ngay)) + '</div></div></div>' +
+    '<div class="vc-title">PHIẾU NHẬP CHI PHÍ CÔNG TRÌNH</div>' +
+    '<div class="vc-date">' + esc(KT.ngayChu(slip.ngay)) + '</div>' +
+    '<p><b>Công trình:</b> ' + esc(slip.maCT) + (slip.tenCT ? ' – ' + esc(slip.tenCT) : '') + (slip.maNha ? ' · Nhà/lô: ' + esc(slip.maNha) : '') + '</p>' +
+    '<p><b>Nhà cung cấp:</b> ' + esc(slip.tenNCC || slip.maNCC || '') + (slip.maNCC ? ' (' + esc(slip.maNCC) + ')' : '') + '</p>' +
+    '<table class="bb-t"><thead><tr><th>STT</th><th>Mã VT</th><th>Tên vật tư / diễn giải</th><th>ĐVT</th><th>Số lượng</th><th>Đơn giá</th><th>Thành tiền</th><th>Hạng mục</th></tr></thead><tbody>' +
+    lines.map((c, i) => '<tr><td class="r">' + (i + 1) + '</td><td>' + esc(c.maVT || '') + '</td><td>' + esc((c.tenVT || '') + (c.tenVT && c.dienGiai ? ' – ' : '') + (c.dienGiai || '')) + '</td><td>' + esc(c.dvt || '') +
+      '</td><td class="r">' + sl(c) + '</td><td class="r">' + dg(c) + '</td><td class="r">' + money(c.thanhTien) + '</td><td>' + esc(c.tenHM || c.maHM || '') + '</td></tr>').join('') +
+    '<tr class="b"><td colspan="6">Cộng ' + lines.length + ' dòng</td><td class="r">' + money(total) + '</td><td></td></tr></tbody></table>' +
+    '<p><b>Bằng chữ:</b> <i>' + esc(KT.docTienBangChu(total)) + '</i></p>' +
+    '<div class="vc-signs" style="grid-template-columns:repeat(3,1fr)">' +
+    [['Người lập phiếu', settings.nguoiLap], ['Kế toán', settings.keToanTruong], ['Giám đốc', settings.giamDoc]].map(([t, n]) => '<div class="vc-sign"><b>' + esc(t) + '</b><i>(Ký, họ tên)</i><span class="vc-name">' + esc(n || '') + '</span></div>').join('') + '</div>');
+}
+
 // In màn hình hiện tại (báo cáo / sổ). Thêm tiêu đề đơn vị + tên báo cáo.
 export function printView(title, subtitle, settings) {
   const head = $('#print-head');

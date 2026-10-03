@@ -1,6 +1,7 @@
 /* Phiếu nhập chi phí (tương đương sheet PHIEU_NHAP + macro GhiPhieuNhap):
  * khai báo đầu phiếu một lần, rồi nhập nhiều dòng Mã VT × Số lượng × Đơn giá (hoặc chỉ Thành tiền cho khoản khoán). */
-import { $, $$, esc, money, fdate, icon, api, toast, showError, confirmDialog, freshRoot, debounce, dateField, highlight, LS, focusInput, fieldError, busy } from '../ui.js';
+import { $, $$, esc, money, fdate, icon, api, toast, showError, confirmDialog, freshRoot, debounce, dateField, highlight, LS, focusInput, fieldError, busy, setPageTags, densityToggle, bindDensity } from '../ui.js';
+import { printSlip } from '../print.js';
 import { S, costDatalists, resolveCode, resolveItem, materialByCode, itemByCode, houseByCode, projectByCode, supplierByCode, groupName, houseListOptions, allCostLedger } from '../state.js';
 import { openProjectForm, openSupplierForm } from '../forms.js';
 import { openItemForm, openMaterialForm, openHouseForm } from './cost-catalogs.js';
@@ -126,44 +127,44 @@ export function renderCostEntry(root) {
 
   root.innerHTML =
     '<div id="cp-dl">' + costDatalists(h.maCT) + '</div>' +
-    '<section class="sheet" aria-labelledby="h-dau">' +
-    '<div class="sheet-head"><div><h2 id="h-dau" class="sheet-title">' + (editing ? (st.nhap ? 'Sửa phiếu nháp (chưa ghi sổ)' : 'Sửa phiếu nhập chi phí') : st.mode === 'dup' ? 'Nhân bản phiếu nhập chi phí' : 'Đầu phiếu') + '</h2>' +
-    '<p class="sheet-note">' + (editing ? 'Lưu lại sẽ thay các dòng cũ của phiếu bằng các dòng bên dưới.' : 'Khai báo một lần cho cả phiếu, rồi liệt kê từng mặt hàng ở bảng dưới.') + '</p></div>' +
-    (st.mode !== 'new' ? '<a href="#/cp-nhap" class="btn btn-ghost btn-sm" data-act="new">' + icon('plus') + 'Lập phiếu mới</a>' : '') + '</div>' +
-    (lockedSlip ? '<p class="form-error mx-5 mb-3" role="note">' + icon('lock') + '<span>' + esc(KT.lockMessage(KT.monthOf(h.ngay), 'sửa')) + '</span></p>' : '') +
-    (st.mode !== 'new' && coThayDoi(params) ? '<div class="mx-5 mb-3 flex flex-wrap items-center gap-3 rounded-lg bg-caution-soft px-3 py-2 text-[13px] text-ink" role="note">' + icon('warnTri', 'text-[16px] text-caution') +
-      '<span class="flex-1">Phiếu đang có thay đổi <b class="font-semibold">chưa lưu</b>. Bấm Lưu để giữ, hoặc mở lại phiếu như đã lưu.</span>' +
+    '<section class="sheet" aria-label="Đầu phiếu">' +
+    (st.mode !== 'new' ? '<div class="flex flex-wrap items-center gap-3 px-4 pt-3"><b class="text-[13px]">' + (editing ? (st.nhap ? 'Sửa phiếu nháp (chưa ghi sổ)' : 'Sửa phiếu nhập chi phí') : 'Nhân bản phiếu nhập chi phí') + '</b>' +
+      '<span class="text-[12.5px] text-ink-3">' + (editing ? 'Lưu lại sẽ thay các dòng cũ của phiếu bằng các dòng bên dưới.' : 'Các dòng được chép từ phiếu gốc; ngày đặt lại là hôm nay.') + '</span><span class="flex-1"></span>' +
+      '<a href="#/cp-nhap" class="btn btn-ghost btn-sm" data-act="new">' + icon('plus') + 'Lập phiếu mới</a></div>' : '') +
+    (lockedSlip ? '<p class="form-error mx-4 mt-3" role="note">' + icon('lock') + '<span>' + esc(KT.lockMessage(KT.monthOf(h.ngay), 'sửa')) + '</span></p>' : '') +
+    (st.mode !== 'new' && coThayDoi(params) ? '<div class="banner mx-4 mt-3 !bg-caution-soft !text-ink" role="note">' + icon('warnTri', 'text-caution') +
+      '<span class="flex-1">Phiếu đang có thay đổi <b class="font-bold">chưa lưu</b>. Bấm Lưu để giữ, hoặc mở lại phiếu như đã lưu.</span>' +
       '<button type="button" class="btn btn-ghost btn-sm" data-act="reload-slip">' + icon('refresh') + 'Mở lại bản đã lưu</button></div>' : '') +
-    '<form id="cp-head" class="grid grid-cols-3 gap-x-5 gap-y-3 px-5 pb-4 max-xl:grid-cols-2 max-sm:grid-cols-1" novalidate autocomplete="off">' +
+    '<form id="cp-head" class="grid grid-cols-1 gap-x-4 gap-y-3 px-4 py-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" novalidate autocomplete="off">' +
     '<label class="field"><span class="label">Ngày <b class="req">*</b></span>' + dateField({ name: 'ngay', value: h.ngay, required: true, label: 'Ngày' }) + '<span class="hint"></span></label>' +
     headField('maCT', 'Công trình', h.maCT, 'dl-projects', 'Gõ mã hoặc tên công trình', true) +
     headField('maNha', 'Nhà / khu', h.maNha, 'dl-nha', 'Để trống = dùng chung', false) +
     headField('maNCC', 'Nhà cung cấp', h.maNCC, 'dl-suppliers', 'Gõ mã hoặc tên', true) +
     '<label class="field"><span class="label">Số phiếu / chuyến</span><input name="soPhieu" class="input" value="' + esc(h.soPhieu) + '" placeholder="Số phiếu giao hàng, số chuyến..."><span class="hint"></span></label>' +
-    headField('hm', 'Hạng mục', h.hm, 'dl-hm', 'Hạng mục mặc định cho cả phiếu', true) +
+    headField('hm', 'Hạng mục mặc định', h.hm, 'dl-hm', 'Hạng mục cho cả phiếu', true) +
     '</form></section>' +
 
     '<section class="sheet overflow-hidden" aria-labelledby="h-dong">' +
-    '<div class="flex flex-wrap items-center gap-3 border-b border-rule px-4 py-2.5"><h2 id="h-dong" class="sheet-title">Các dòng hàng</h2>' +
-    '<span class="text-[12.5px] text-ink-3">' + icon('keyboard', 'mr-1 align-[-3px] text-[15px]') + '<kbd>Enter</kbd> sang ô kế tiếp, <kbd>↑</kbd> <kbd>↓</kbd> đổi dòng (ở ô có danh sách gợi ý thì bấm kèm <kbd>Ctrl</kbd>), <kbd>Ctrl</kbd> + <kbd>Enter</kbd> lưu phiếu. ' +
-    'Số lượng nhận <b class="font-medium text-ink-2">2,5</b> hoặc <b class="font-medium text-ink-2">10+5</b>; đơn giá nhận <b class="font-medium text-ink-2">50tr</b>, <b class="font-medium text-ink-2">300k</b>, <b class="font-medium text-ink-2">1.250.000</b>. ' +
-    'Chi phí không có đơn giá (nhân công, hóa đơn chỉ ghi tổng…): để trống Số lượng, Đơn giá, chỉ nhập <b class="font-medium text-ink-2">Thành tiền</b>.</span></div>' +
+    '<div class="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-rule px-4 py-2"><h2 id="h-dong" class="sheet-title">Các dòng hàng</h2>' +
+    '<span class="min-w-0 flex-1 text-[12px] text-ink-3">Mã VT tự điền tên, ĐVT và giá lần trước · Số lượng nhận <b class="font-medium text-ink-2">2,5</b> hoặc <b class="font-medium text-ink-2">10+5</b> · Đơn giá nhận <b class="font-medium text-ink-2">50tr</b>, <b class="font-medium text-ink-2">300k</b> · ' +
+    'Không có đơn giá (nhân công, hóa đơn chỉ ghi tổng): để trống Số lượng, Đơn giá, chỉ nhập <b class="font-medium text-ink-2">Thành tiền</b>.</span>' + densityToggle() + '</div>' +
     '<div class="scroll-x overflow-x-auto"><table class="ledger grid-entry" id="cp-lines">' +
-    '<thead><tr><th class="num w-8">#</th><th class="w-[150px] min-w-[140px]">Mã VT</th><th>Tên vật tư</th><th class="w-[64px]">ĐVT</th><th>Diễn giải / quy cách</th>' +
-    '<th class="num w-[100px] min-w-[90px]">Số lượng</th><th class="num w-[130px] min-w-[120px]">Đơn giá</th><th class="num money w-[140px]">Thành tiền</th><th class="w-[170px] min-w-[130px]">Hạng mục riêng</th><th class="w-[172px] min-w-[150px]">Loại CP</th><th class="w-8"><span class="sr-only">Xóa dòng</span></th></tr></thead>' +
+    '<thead><tr><th class="num w-8">#</th><th class="w-[120px] min-w-[110px]">Mã vật tư</th><th>Tên vật tư</th><th class="w-[52px]">ĐVT</th><th>Diễn giải / quy cách</th>' +
+    '<th class="num w-[84px] min-w-[76px]">Số lượng</th><th class="num w-[112px] min-w-[100px]">Đơn giá</th><th class="num money w-[124px] min-w-[116px]">Thành tiền</th><th class="w-[130px] min-w-[110px]">Hạng mục riêng</th><th class="w-[124px] min-w-[110px]">Loại CP</th><th class="w-[56px]"><span class="sr-only">Nhân bản, xóa dòng</span></th></tr></thead>' +
     '<tbody id="cp-body"></tbody>' +
     '<tfoot><tr><td colspan="7" class="text-right" id="cp-total-label">Tổng phiếu</td><td class="num money"><span class="dbl" id="cp-total">0</span></td><td colspan="3" class="font-normal text-[12.5px] text-ink-3" id="cp-words"></td></tr></tfoot>' +
     '</table></div>' +
-    '<div class="flex flex-wrap items-center gap-2 border-t border-rule bg-[#F8FAF6] px-4 py-3">' +
-    '<button type="button" class="btn btn-ghost btn-sm" data-act="add-row">' + icon('plus') + 'Thêm dòng</button>' +
-    '<button type="button" class="btn btn-ghost btn-sm" data-act="clear">' + icon('eraser') + 'Xóa trắng các dòng</button>' +
+    '<div class="flex flex-wrap items-center gap-2 border-t border-rule px-4 py-2.5">' +
+    '<button type="button" class="btn btn-secondary btn-sm" data-act="add-row">' + icon('plus') + 'Thêm dòng</button>' +
+    '<button type="button" class="btn btn-secondary btn-sm" data-act="dup-row" title="Nhân bản dòng đang chọn (Ctrl D)">' + icon('copy') + 'Nhân bản dòng <kbd>Ctrl D</kbd></button>' +
+    '<button type="button" class="btn btn-secondary btn-sm" data-act="clear">' + icon('eraser') + 'Xóa trắng các dòng</button>' +
     (editing ? (lockedSlip ? '' : '<button type="button" class="btn btn-danger-ghost btn-sm" data-act="del-slip">' + icon('trash') + 'Xóa phiếu</button>') +
       '<a class="btn btn-ghost btn-sm" href="#/cp-nhap?nhanban=' + esc(st.phieuId) + '">' + icon('copy') + 'Nhân bản phiếu</a>' +
       '<button type="button" class="btn btn-ghost btn-sm" data-act="history">' + icon('history') + 'Lịch sử phiếu</button>' : '') +
     '<span class="flex-1"></span>' +
-    '<span class="text-[13px] text-ink-2" id="cp-summary"></span>' +
-    (editingPosted || lockedSlip ? '' : '<button type="button" class="btn btn-secondary" data-act="save-draft" title="Lưu để làm tiếp; phiếu Nháp chưa tính vào chi phí, công nợ">' + icon('draft') + 'Lưu nháp</button>') +
-    (lockedSlip ? '' : '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon('save') + (editingPosted ? 'Lưu thay đổi' : st.nhap ? 'Ghi sổ' : 'Ghi vào sổ chi phí') + '</button>') +
+    '<span class="text-[12.5px] text-ink-2" id="cp-summary" role="status"></span>' +
+    (editingPosted || lockedSlip ? '' : '<button type="button" class="btn btn-secondary" data-act="save-draft" title="Lưu để làm tiếp; phiếu Nháp chưa tính vào chi phí, công nợ (Ctrl S)">' + icon('draft') + 'Lưu nháp <kbd>Ctrl S</kbd></button>') +
+    (lockedSlip ? '' : '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon('save') + (editingPosted ? 'Lưu thay đổi' : st.nhap ? 'Ghi sổ' : 'Ghi vào sổ chi phí') + '<kbd>Ctrl Enter</kbd></button>') +
     '</div></section>' +
     // phiếu mới: chọn ảnh / tài liệu ngay, tự tải lên khi lưu phiếu; phiếu đã lưu: đính kèm thẳng
     '<section class="sheet px-5 pb-4 no-print" aria-label="Chứng từ của phiếu">' + (editing ? attachBlock('slips', Number(st.phieuId), { readonly: lockedSlip }) : pendingBlock(PENDING)) + '</section>' +
@@ -171,11 +172,22 @@ export function renderCostEntry(root) {
 
   const form = $('#cp-head', root);
   const body = $('#cp-body', root);
+  bindDensity(root);
+  // nhãn cạnh tiêu đề: tình trạng phiếu + kỳ của ngày phiếu (đang mở / đã khóa)
+  const refreshTags = () => {
+    const mo = KT.monthOf(h.ngay);
+    const kho = KT.isISODate(h.ngay) && KT.isLockedDate(S.all, h.ngay);
+    setPageTags('<span class="tag tag-neutral">' + (st.mode === 'edit' ? (st.nhap ? 'Phiếu nháp' : 'Sửa phiếu') : st.mode === 'dup' ? 'Nhân bản phiếu' : 'Phiếu mới · chưa lưu') + '</span>' +
+      (KT.isISODate(h.ngay) ? '<span class="chip ' + (kho ? 'chip-idle' : 'chip-ok') + '">' + icon(kho ? 'lock' : 'check') + 'Kỳ ' + esc(String(mo).slice(5, 7) + '/' + String(mo).slice(0, 4)) + (kho ? ' đã khóa' : ' đang mở') + '</span>' : ''));
+  };
+  refreshTags();
   const get = (n) => form.elements[n];
 
   /* ---------- đầu phiếu ---------- */
   function readHeader() {
+    const ngayCu = h.ngay;
     h.ngay = get('ngay').value;
+    if (h.ngay !== ngayCu) refreshTags();
     h.maCT = get('maCT').value.trim();
     h.maNha = get('maNha').value.trim();
     h.maNCC = get('maNCC').value.trim();
@@ -271,7 +283,9 @@ export function renderCostEntry(root) {
       '<td>' + cell('thanhTien', l.thanhTien || '', 'text-right tabular-nums font-semibold', ' inputmode="decimal" aria-label="Thành tiền dòng ' + (i + 1) + '"') + '</td>' +
       '<td>' + cell('hm', l.hm, '', ' list="dl-hm" placeholder="theo đầu phiếu" aria-label="Hạng mục riêng dòng ' + (i + 1) + '"') + '</td>' +
       '<td><select class="cell" data-col="loaiCP" data-row="' + i + '" aria-label="Loại chi phí dòng ' + (i + 1) + '"></select></td>' +
-      '<td class="actions"><button type="button" class="icon-btn danger" data-act="del-row" tabindex="-1" title="Xóa dòng" aria-label="Xóa dòng ' + (i + 1) + '">' + icon('x') + '</button></td></tr>';
+      '<td class="actions"><button type="button" class="icon-btn" data-act="dup-row" tabindex="-1" title="Nhân bản dòng (Ctrl D)" aria-label="Nhân bản dòng ' + (i + 1) + '">' + icon('copy') + '</button>' +
+      '<button type="button" class="icon-btn danger" data-act="del-row" tabindex="-1" title="Xóa dòng" aria-label="Xóa dòng ' + (i + 1) + '">' + icon('x') + '</button></td></tr>' +
+      '<tr class="row-msg" data-msg="' + i + '" hidden><td></td><td colspan="10"></td></tr>';
   }
 
   function drawRows() {
@@ -326,36 +340,69 @@ export function renderCostEntry(root) {
     dgInp.classList.toggle('suggested', !!l.goiY);
     dgInp.placeholder = l.dgTuDong && has(l.soLuong) && has(l.thanhTien) ? 'tự tính' : '';
     // cảnh báo (không chặn) khi đơn giá lệch nhiều so với lần mua gần nhất: hay gặp khi gõ thừa/thiếu số 0
-    const warn = !l.goiY && m && !isNaN(dg) && dg > 0 ? priceWarn(m.ma, dg) : '';
+    const info = !l.goiY && m && !isNaN(dg) && dg > 0 ? priceWarn(m.ma, dg) : null;
+    const warn = info && l.giuGia !== l.donGia ? info : null;
     dgInp.classList.toggle('warn', !!warn);
-    dgInp.title = l.goiY || warn;
+    dgInp.title = l.goiY || (info ? info.text : '');
     let pw = dgInp.parentNode.querySelector('.price-warn');
-    if (warn && !pw) { pw = document.createElement('span'); pw.className = 'price-warn'; dgInp.parentNode.appendChild(pw); }
-    if (pw) { if (warn) pw.textContent = warn.split(' · ')[0]; else pw.remove(); }
+    const lp = m ? KT.lastPrice(S.db, m.ma, resolveCode(S.db.suppliers, h.maNCC)) : null;
+    const hint = lp && lp.donGia > 0 && !KT.isKhoan({ soLuong: sl, donGia: dg }) ? 'lần trước ' + money(lp.donGia) : '';
+    if (hint && !pw) { pw = document.createElement('span'); pw.className = 'price-warn'; dgInp.parentNode.appendChild(pw); }
+    if (pw) { if (hint) { pw.textContent = hint; pw.classList.toggle('is-warn', !!warn); } else pw.remove(); }
+    // dòng báo ngay dưới dòng hàng: Lỗi (đỏ) hoặc Cảnh báo (vàng, kèm nút Dùng / Giữ) — luôn có biểu tượng + chữ
+    const err = !!code && !m;
+    tr.classList.toggle('has-err', err);
+    tr.classList.toggle('has-warn', !err && !!warn);
+    const msg = body.querySelector('tr[data-msg="' + i + '"]');
+    if (msg) {
+      msg.className = 'row-msg ' + (err ? 'is-err' : 'is-warn');
+      let html = '';
+      if (err) html = icon('x') + '<b>Lỗi – thiếu mã vật tư.</b> Gõ mã hoặc tên rồi chọn trong danh sách, hoặc <a href="#" class="font-bold text-pen underline underline-offset-2" data-act="add-vt" data-row="' + i + '">thêm vật tư mới “' + esc(code) + '”</a>. Chưa sửa thì chưa ghi sổ được.';
+      else if (warn) html = icon('warnTri') + '<b>Cảnh báo – đơn giá ' + (warn.pct > 0 ? 'cao hơn ' : 'thấp hơn ') + Math.abs(warn.pct).toLocaleString('vi-VN') + '%</b> so với giá lần mua gần nhất ' + money(warn.lp.donGia) + ' (' + fdate(warn.lp.ngay) + ', ' + esc(warn.lp.cungNCC ? 'cùng nhà cung cấp' : 'NCC ' + warn.lp.maNCC) + '). Kiểm tra lại; nếu đúng thì giữ nguyên. ' +
+        '<button type="button" class="btn btn-secondary btn-sm" data-act="use-price" data-row="' + i + '">Dùng ' + money(warn.lp.donGia) + '</button>' +
+        '<button type="button" class="btn btn-ghost btn-sm" data-act="keep-price" data-row="' + i + '">Giữ ' + money(dg) + '</button>';
+      const key = html;
+      if (msg.dataset.src !== key) { msg.children[1].innerHTML = html; msg.dataset.src = key; }
+      msg.hidden = !html;
+    }
   }
 
+  // Trả { pct, lp, text } nếu đơn giá lệch ≥ 50% so với lần mua gần nhất, không thì null
   function priceWarn(maVT, dg) {
     const lp = KT.lastPrice(S.db, maVT, resolveCode(S.db.suppliers, h.maNCC));
-    if (!lp || !(lp.donGia > 0)) return '';
+    if (!lp || !(lp.donGia > 0)) return null;
     const r = dg / lp.donGia;
-    if (r < 1.5 && r > 1 / 1.5) return '';
+    if (r < 1.5 && r > 1 / 1.5) return null;
     const pct = Math.round((r - 1) * 100);
-    return (pct > 0 ? 'Cao hơn ' : 'Thấp hơn ') + Math.abs(pct).toLocaleString('vi-VN') + '% giá lần trước · Lần mua ' + fdate(lp.ngay) + ': ' + money(lp.donGia) + ' đ. Kiểm tra lại nếu gõ nhầm.';
+    return { pct, lp, text: (pct > 0 ? 'Cao hơn ' : 'Thấp hơn ') + Math.abs(pct).toLocaleString('vi-VN') + '% giá lần trước · Lần mua ' + fdate(lp.ngay) + ': ' + money(lp.donGia) + ' đ. Kiểm tra lại nếu gõ nhầm.' };
   }
 
   function updateTotals() {
     let total = 0;
     let n = 0;
+    let loi = 0;
+    let canhBao = 0;
     st.lines.forEach((l) => {
       if (isBlank(l)) return;
       n++;
       const r = lineAmounts(l);
-      if (!r.loi) total += r.thanhTien;
+      if (!r.loi) total += r.thanhTien; else loi++;
+      const code = l.maVT.trim();
+      const m = code ? materialByCode(code) : null;
+      if (code && !m) loi++;
+      else if (m && !l.goiY) {
+        const dg = KT.parseAmount(l.donGia);
+        if (!isNaN(dg) && dg > 0 && priceWarn(m.ma, dg) && l.giuGia !== l.donGia) canhBao++;
+      }
     });
     $('#cp-total', root).textContent = money(total);
-    $('#cp-total-label', root).textContent = 'Tổng phiếu (' + n + ' dòng)';
+    $('#cp-total-label', root).textContent = 'Tổng phiếu · ' + n + ' dòng';
     $('#cp-words', root).textContent = total ? KT.docTienBangChu(total) : '';
-    $('#cp-summary', root).textContent = n ? n + ' dòng, ' + money(total) + ' đ' : '';
+    const sum = $('#cp-summary', root);
+    sum.innerHTML = n ? (loi ? '<b class="font-bold text-alert">' + loi + ' lỗi phải sửa</b>' : '') + (loi && canhBao ? ' · ' : '') + (canhBao ? '<b class="font-bold text-caution">' + canhBao + ' cảnh báo</b>' : '') +
+      (loi ? '. Sửa lỗi để ghi sổ.' : canhBao ? '. Cảnh báo không chặn ghi sổ.' : '<span class="text-ink-3">Không có lỗi</span>') : '';
+    const save = $('[data-act=save]', root);
+    if (save) { save.disabled = loi > 0; save.title = loi ? 'Còn ' + loi + ' lỗi phải sửa trước khi ghi sổ' : 'Ctrl + Enter'; }
   }
 
   // Gợi ý đơn giá lần mua gần nhất (ưu tiên cùng nhà cung cấp)
@@ -451,6 +498,7 @@ export function renderCostEntry(root) {
     if (!t.dataset || !t.dataset.col) return;
     const row = Number(t.dataset.row);
     const col = t.dataset.col;
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); t.dispatchEvent(new Event('change', { bubbles: true })); dupRow(row); return; }
     if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
       t.dispatchEvent(new Event('change', { bubbles: true }));
@@ -472,6 +520,19 @@ export function renderCostEntry(root) {
       focusCell(Math.min(row, st.lines.length - 1), col);
     }
   });
+
+  let focusRow = 0;
+  body.addEventListener('focusin', (e) => { if (e.target.dataset && e.target.dataset.row != null) focusRow = Number(e.target.dataset.row); });
+  const lastFocusRow = () => Math.min(focusRow, st.lines.length - 1);
+  // Nhân bản dòng: chép nguyên dòng xuống ngay dưới (không chép cờ cảnh báo đã bỏ qua)
+  function dupRow(i) {
+    const l = st.lines[i];
+    if (!l || isBlank(l)) return;
+    st.lines.splice(i + 1, 0, Object.assign({}, l, { giuGia: '' }));
+    drawRows();
+    saveDraft(st);
+    focusCell(i + 1, 'soLuong');
+  }
 
   function removeRow(i) {
     st.lines.splice(i, 1);
@@ -564,6 +625,12 @@ export function renderCostEntry(root) {
 
   /* ---------- thao tác ---------- */
   root.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 's' || e.key === 'S')) {
+      e.preventDefault();
+      if (e.target.dispatchEvent) e.target.dispatchEvent(new Event('change', { bubbles: true }));
+      if (!editingPosted && !lockedSlip) save(true);
+      return;
+    }
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       if (e.target.dispatchEvent) e.target.dispatchEvent(new Event('change', { bubbles: true }));
@@ -606,6 +673,17 @@ export function renderCostEntry(root) {
     else if (act === 'history') openHistory(st.phieuId);
     else if (act === 'add-row') { st.lines.push(blankLine()); drawRows(); focusCell(st.lines.length - 1, 'maVT'); }
     else if (act === 'del-row') removeRow(Number(a.closest('tr').dataset.row));
+    else if (act === 'dup-row') dupRow(a.dataset.row != null ? Number(a.dataset.row) : lastFocusRow());
+    else if (act === 'use-price' || act === 'keep-price') {
+      const i = Number(a.dataset.row);
+      const l = st.lines[i];
+      if (act === 'use-price') {
+        const m = materialByCode(l.maVT);
+        const lp = m ? KT.lastPrice(S.db, m.ma, resolveCode(S.db.suppliers, h.maNCC)) : null;
+        if (lp) { l.donGia = money(lp.donGia); l.goiY = ''; syncAmounts(i, 'donGia'); const el = body.querySelector('[data-row="' + i + '"][data-col=donGia]'); if (el) el.value = l.donGia; }
+      } else l.giuGia = l.donGia;
+      updateRow(i); updateTotals(); saveDraft(st);
+    }
     else if (act === 'clear') {
       if (st.lines.some((l) => !isBlank(l)) && !(await confirmDialog({ title: 'Xóa trắng các dòng', message: 'Xóa hết các dòng hàng đang nhập (chưa lưu)?', okText: 'Xóa trắng', danger: true }))) return;
       st.lines = [blankLine()];
@@ -682,6 +760,7 @@ function drawRecent(root) {
     '<td class="actions">' + (s.phieuId ?
       '<a class="icon-btn" href="#/cp-nhap?phieu=' + s.phieuId + '" title="Sửa phiếu" aria-label="Sửa phiếu">' + icon('edit') + '</a>' +
       '<a class="icon-btn" href="#/cp-nhap?nhanban=' + s.phieuId + '" title="Nhân bản phiếu" aria-label="Nhân bản phiếu">' + icon('copy') + '</a>' +
+      '<button type="button" class="icon-btn" data-rc="print" title="In phiếu" aria-label="In phiếu">' + icon('print') + '</button>' +
       '<button type="button" class="icon-btn danger" data-rc="del" title="Xóa phiếu" aria-label="Xóa phiếu">' + icon('trash') + '</button>' : '') + '</td></tr>').join('')
     : '<tr><td colspan="8" class="empty">' + (all.length ? 'Không có phiếu nào khớp.' : 'Chưa có phiếu nào. Nhập phiếu đầu tiên ở trên, hoặc nhập từ file Excel trong Cài đặt.') + '</td></tr>';
 }
@@ -691,6 +770,13 @@ function bindRecent(root) {
   if (!q) return;
   q.addEventListener('input', debounce(() => { recentQ = q.value; drawRecent(root); }, 120));
   $('#rc-body', root).addEventListener('click', async (e) => {
+    const pr = e.target.closest('[data-rc=print]');
+    if (pr) {
+      const id = pr.closest('tr').dataset.phieu;
+      const sl = KT.costSlips(S.all, allCostLedger()).find((x) => String(x.phieuId) === String(id));
+      if (sl) printSlip(sl, sl.lines, S.db.settings);
+      return;
+    }
     const b = e.target.closest('[data-rc=del]');
     if (!b) return;
     const id = b.closest('tr').dataset.phieu;

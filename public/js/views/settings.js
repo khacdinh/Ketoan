@@ -25,15 +25,6 @@ export function renderSettings(root) {
       : '<p class="col-span-2 text-[12.5px] text-ink-3 max-sm:col-span-1">' + icon('lock') + ' Chỉ tài khoản Chủ đổi được thông tin này.</p>') +
     '</form></section>' +
 
-    /* ---- Nhập Excel ---- */
-    (!coQuyen('nhap-excel') ? '' : '<section class="sheet" aria-labelledby="h-nhap"><div class="sheet-head"><div><h2 id="h-nhap" class="sheet-title">Nhập dữ liệu từ file Excel</h2>' +
-    '<p class="sheet-note">File “Quản lý thu chi” (So_Thu_Chi_Hang_Ngay, Danh_Muc_Du_An, Danh_Muc_NCC) hoặc file “Chi phí công trình” (NHATKYCHUNG, DM_HANGMUC, DM_VATTU, DM_NHA, SO_QUY), kể cả file xuất từ phần mềm này. Phần mềm tự nhận ra loại file.</p></div></div>' +
-    '<div class="px-5 pb-5"><label class="dropzone" id="imp-drop"><input type="file" id="imp-file" accept=".xlsx,.xlsm" class="sr-only">' +
-    duo('excel', 'text-[34px] text-income') +
-    '<span class="font-semibold text-ink">Chọn file Excel, hoặc kéo thả vào đây</span>' +
-    '<span class="text-[13px] text-ink-3">Phần mềm đọc thử và cho xem trước, chưa thay đổi gì cho đến khi bạn xác nhận.</span></label>' +
-    '<div id="imp-preview"></div></div></section>') +
-
     /* ---- Xuất & sao lưu ---- */
     '<section class="sheet" aria-labelledby="h-xuat"><div class="sheet-head"><div><h2 id="h-xuat" class="sheet-title">Xuất Excel và sao lưu</h2>' +
     '<p class="sheet-note">Dữ liệu tự lưu vào thư mục <b class="font-medium text-ink-2">data</b> của phần mềm sau mỗi thao tác.</p></div></div>' +
@@ -84,19 +75,6 @@ export function renderSettings(root) {
     const v = e.target.elements.nguoiDung.value.replace(/\s+/g, ' ').trim().slice(0, 60);
     LS.set('nguoiDung', v);
     toast(v ? 'Từ giờ nhật ký ghi người thao tác là “' + v + '”' : 'Đã bỏ tên người thao tác');
-  });
-
-  // ---- nhập Excel ----
-  const fileInput = $('#imp-file', root);
-  const drop = $('#imp-drop', root);
-  if (fileInput) fileInput.addEventListener('change', () => { if (fileInput.files[0]) previewImport(fileInput.files[0], root); });
-  if (drop) drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
-  if (drop) drop.addEventListener('dragleave', () => drop.classList.remove('over'));
-  if (drop) drop.addEventListener('drop', (e) => {
-    e.preventDefault();
-    drop.classList.remove('over');
-    const file = e.dataTransfer.files[0];
-    if (file) previewImport(file, root);
   });
 
   // ---- khôi phục ----
@@ -159,6 +137,38 @@ export function renderSettings(root) {
   });
 
   loadBackups(root);
+}
+
+
+function importSection() {
+  return (!coQuyen('nhap-excel') ? '<div class="sheet p-6"><p class="font-semibold">Tài khoản của bạn không có quyền nhập Excel.</p></div>' : '<section class="sheet" aria-labelledby="h-nhap"><div class="sheet-head"><div><h2 id="h-nhap" class="sheet-title">Nhập dữ liệu từ file Excel</h2>' +
+    '<p class="sheet-note">File “Quản lý thu chi” (So_Thu_Chi_Hang_Ngay, Danh_Muc_Du_An, Danh_Muc_NCC) hoặc file “Chi phí công trình” (NHATKYCHUNG, DM_HANGMUC, DM_VATTU, DM_NHA, SO_QUY), kể cả file xuất từ phần mềm này. Phần mềm tự nhận ra loại file.</p></div></div>' +
+    '<div class="px-5 pb-5"><label class="dropzone" id="imp-drop"><input type="file" id="imp-file" accept=".xlsx,.xlsm" class="sr-only">' +
+    icon('excel', 'text-[34px] text-income') +
+    '<span class="font-semibold text-ink">Chọn file Excel, hoặc kéo thả vào đây</span>' +
+    '<span class="text-[13px] text-ink-3">Phần mềm đọc thử và cho xem trước, chưa thay đổi gì cho đến khi bạn xác nhận.</span></label>' +
+    '<div id="imp-preview"></div></div></section>');
+}
+
+function bindImport(root) {
+  const fileInput = $('#imp-file', root);
+  const drop = $('#imp-drop', root);
+  if (fileInput) fileInput.addEventListener('change', () => { if (fileInput.files[0]) previewImport(fileInput.files[0], root); });
+  if (drop) drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+  if (drop) drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  if (drop) drop.addEventListener('drop', (e) => {
+    e.preventDefault();
+    drop.classList.remove('over');
+    const file = e.dataTransfer.files[0];
+    if (file) previewImport(file, root);
+  });
+}
+
+// Màn "Nhập từ Excel" (mục XL ở menu)
+export function renderImportPage(root) {
+  root = freshRoot(root);
+  root.innerHTML = '<div class="max-w-[980px]">' + importSection() + '</div>';
+  bindImport(root);
 }
 
 function f(name, label, value, cls) {

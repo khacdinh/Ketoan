@@ -136,3 +136,47 @@ export function openSoDuDauList(maNCC) {
   onChange(ve);
   return m;
 }
+
+/* ---------------- Màn "Số dư đầu kỳ NCC" (menu Nhập liệu › SD): mọi khoản đã nhập, thêm / sửa / xóa ---------------- */
+import { freshRoot, debounce } from './ui.js';
+
+export function renderOpeningBalances(root) {
+  root = freshRoot(root);
+  const f = S.filters.sd || (S.filters.sd = { q: '' });
+  const ten = (ma) => { const x = S.db.suppliers.find((s) => KT.keyOf(s.ma) === KT.keyOf(ma)); return x ? x.ten : ''; };
+  root.innerHTML =
+    '<div class="no-print flex flex-wrap items-center gap-2"><div class="search min-w-[260px] flex-1 max-w-[420px]">' + icon('search') +
+    '<input id="sd-q" type="search" class="input" placeholder="Tìm nhà cung cấp, công trình, ghi chú" value="' + esc(f.q) + '" aria-label="Tìm số dư đầu kỳ"></div>' +
+    '<span class="flex-1"></span><button type="button" class="btn btn-primary" data-act="dk-add">' + icon('plus') + 'Nhập số dư đầu kỳ</button></div>' +
+    '<p class="banner">' + icon('info') + '<span>Công nợ đã có <b>trước khi ghi sổ trong phần mềm</b>. <b>Dư Có</b> = mình còn phải trả nhà cung cấp, <b>Dư Nợ</b> = mình đã ứng trước / trả dư. Không phải chi phí phát sinh, không vào sổ quỹ, không đổi tồn quỹ.</span></p>' +
+    '<section class="sheet overflow-hidden"><div class="table-scroll overflow-auto"><table class="ledger" id="sd-table"></table></div></section>';
+  const draw = () => {
+    const q = KT.normalizeText(f.q || '');
+    const list = (S.all.soDuDauKy || []).filter((x) => !q || KT.normalizeText([x.maNCC, ten(x.maNCC), x.maDuAn, x.ghiChu].join(' ')).includes(q))
+      .sort((a, b) => KT.keyOf(a.maNCC).localeCompare(KT.keyOf(b.maNCC)) || (a.ngay < b.ngay ? -1 : a.ngay > b.ngay ? 1 : a.id - b.id));
+    const co = list.reduce((t, x) => t + (x.soTien > 0 ? x.soTien : 0), 0);
+    const no = list.reduce((t, x) => t + (x.soTien < 0 ? -x.soTien : 0), 0);
+    $('#sd-table', root).innerHTML = '<thead><tr><th>Tính đến đầu ngày</th><th>Nhà cung cấp</th><th>Công trình</th><th class="num money">Dư Có (còn phải trả)</th><th class="num money">Dư Nợ (đã ứng trước)</th><th>Ghi chú</th><th class="no-print"><span class="sr-only">Thao tác</span></th></tr></thead><tbody>' +
+      (list.map((x) => '<tr data-dk="' + x.id + '"><td class="whitespace-nowrap tabular-nums">' + fdate(x.ngay) + '</td>' +
+        '<td><b class="code">' + esc(x.maNCC) + '</b><div class="sub">' + esc(ten(x.maNCC)) + '</div></td>' +
+        '<td>' + (x.maDuAn ? '<span class="code">' + esc(x.maDuAn) + '</span>' : '<span class="text-ink-3">chung</span>') + '</td>' +
+        '<td class="num money font-bold">' + (x.soTien > 0 ? money(x.soTien) : '') + '</td>' +
+        '<td class="num money font-bold text-caution">' + (x.soTien < 0 ? money(-x.soTien) : '') + '</td>' +
+        '<td class="max-w-[300px] truncate text-ink-2" title="' + esc(x.ghiChu || '') + '">' + esc(x.ghiChu || '') + '</td>' +
+        '<td class="actions no-print"><button type="button" class="icon-btn" data-act="dk-edit" title="Sửa" aria-label="Sửa số dư đầu kỳ của ' + esc(x.maNCC) + '">' + icon('edit') + '</button>' +
+        '<button type="button" class="icon-btn danger" data-act="dk-del" title="Xóa (vào Thùng rác)" aria-label="Xóa số dư đầu kỳ của ' + esc(x.maNCC) + '">' + icon('trash') + '</button></td></tr>').join('') ||
+        '<tr><td colspan="7" class="empty">' + (f.q ? 'Không có khoản nào khớp.' : 'Chưa nhập số dư đầu kỳ nào. Bấm “Nhập số dư đầu kỳ” khi còn nợ (hoặc đã ứng trước) từ trước khi ghi sổ trong phần mềm.') + '</td></tr>') +
+      '</tbody><tfoot><tr><td colspan="3">Cộng · ' + list.length + ' khoản</td><td class="num money">' + money(co) + '</td><td class="num money">' + money(no) + '</td><td colspan="2"></td></tr></tfoot>';
+  };
+  draw();
+  $('#sd-q', root).addEventListener('input', debounce((e) => { f.q = e.target.value; draw(); }, 120));
+  root.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-act]');
+    if (!a) return;
+    if (a.dataset.act === 'dk-add') return openSoDuDauForm(null, {});
+    const tr = a.closest('[data-dk]');
+    const rec = tr ? (S.all.soDuDauKy || []).find((x) => String(x.id) === tr.dataset.dk) : null;
+    if (rec && a.dataset.act === 'dk-edit') openSoDuDauForm(rec);
+    if (rec && a.dataset.act === 'dk-del') deleteSoDuDau(rec);
+  });
+}

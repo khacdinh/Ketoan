@@ -1,6 +1,8 @@
 /* Khung ứng dụng: điều hướng, thanh trên cùng, tải dữ liệu. */
-import { $, esc, api, onDatabase, showError, duo, attachMenu, download, hasOpenModal, dangCheDangNhap } from './ui.js';
-import { S, setDb, onChange, vouchers, anomalies } from './state.js';
+import { $, esc, api, onDatabase, showError, icon, attachMenu, download, hasOpenModal, dangCheDangNhap, LS, datMau, setPageActions } from './ui.js';
+import { S, setDb, onChange, vouchers, anomalies, saveFilter } from './state.js';
+import { veChonCongTrinh, moChonCongTrinh } from './ctpick.js';
+import { moTimKiem } from './search.js';
 import { openEntryForm } from './forms.js';
 import { renderDashboard } from './views/dashboard.js';
 import { renderLedger } from './views/ledger.js';
@@ -14,55 +16,48 @@ import { renderCostCatalogs } from './views/cost-catalogs.js';
 import { renderControl } from './views/control.js';
 import { renderMerge } from './merge.js';
 import { renderUsers } from './views/users.js';
-import { A, napTrangThai, dangNhap, doiMatKhauBatBuoc, coQuyen, onAuthChange } from './auth.js';
+import { renderOpeningBalances } from './sodudau.js';
+import { renderSupplierLedger } from './views/supplier-ledger.js';
+import { renderImportPage } from './views/settings.js';
+import { A, napTrangThai, dangNhap, doiMatKhauBatBuoc, coQuyen, onAuthChange, khoaManHinh } from './auth.js';
 
 const KT = window.KT;
 
 const ROUTES = {
-  'tong-quan': { title: 'Tổng quan', sub: 'Tình hình quỹ tiền mặt và chi phí các công trình', icon: 'dashboard', render: renderDashboard },
-  'so-thu-chi': { title: 'Sổ thu chi', sub: 'Nhật ký thu, chi và tồn quỹ hằng ngày', icon: 'book', render: renderLedger },
-  'phieu': { title: 'Phiếu thu, phiếu chi', sub: 'Các dòng cùng số phiếu được gộp lại để in 2 liên', icon: 'receipt', render: renderVouchers },
-  'du-an': { title: 'Dự án', sub: 'Mã dự án và ngân sách phê duyệt', icon: 'hardhat', render: renderProjects },
-  'ncc': { title: 'Nhà cung cấp và đối tượng', sub: 'Nhà cung cấp, thầu phụ, nhân viên, người nhận tiền', icon: 'contacts', render: renderSuppliers },
-  'tong-hop-ncc': { title: 'Tổng hợp theo nhà cung cấp', sub: 'Đầu kỳ, phát sinh, thanh toán, cuối kỳ của từng nhà cung cấp', icon: 'bars', render: renderSupplierReport },
-  'cai-dat': { title: 'Cài đặt và dữ liệu', sub: 'Thông tin in trên phiếu, nhập và xuất Excel, sao lưu', icon: 'gear', render: renderSettings },
+  'tong-quan': { title: 'Tổng quan', sub: 'Quỹ tiền mặt và chi phí các công trình', render: renderDashboard },
+  'so-thu-chi': { title: 'Sổ quỹ thu chi', sub: 'Nhật ký thu, chi và tồn quỹ hằng ngày. Bấm đúp một dòng để sửa.', render: renderLedger },
+  'phieu': { title: 'Phiếu thu / chi', sub: 'Các dòng sổ quỹ cùng số phiếu được gộp lại để in 2 liên.', render: renderVouchers },
+  'du-an': { title: 'Công trình, dự án', sub: 'Mã công trình và ngân sách phê duyệt', render: renderProjects },
+  'ncc': { title: 'Nhà cung cấp và đối tượng', sub: 'Nhà cung cấp, thầu phụ, nhân viên, người nhận tiền', render: renderSuppliers },
+  'tong-hop-ncc': { title: 'Tổng hợp theo nhà cung cấp', sub: 'Đầu kỳ, phát sinh, thanh toán, cuối kỳ của từng nhà cung cấp', render: renderSupplierReport },
+  'cai-dat': { title: 'Cài đặt và dữ liệu', sub: 'Thông tin in trên phiếu, sao lưu, khôi phục, xóa dữ liệu', render: renderSettings },
+  'nhap-excel': { title: 'Nhập từ Excel', sub: 'Đưa dữ liệu từ file Excel vào sổ (xem trước, rồi mới ghi)', render: renderImportPage },
+  'so-du-dau': { title: 'Số dư đầu kỳ nhà cung cấp', sub: 'Công nợ có từ trước khi ghi sổ trong phần mềm: còn nợ hoặc đã ứng trước', render: renderOpeningBalances },
+  'so-chi-tiet-ncc': { title: 'Sổ chi tiết công nợ', sub: 'Từng chứng từ của một nhà cung cấp, số dư lũy kế', render: renderSupplierLedger },
   // Chi phí công trình
-  'cp-tong-hop': { title: 'Chi phí công trình', sub: 'Tổng chi phí theo loại, nhóm, hạng mục và theo tháng', icon: 'crane', render: renderCostDashboard },
-  'cp-nhap': { title: 'Phiếu nhập chi phí', sub: 'Khai báo đầu phiếu một lần, nhập nhiều dòng (số lượng × đơn giá, hoặc chỉ thành tiền)', icon: 'notePencil', render: renderCostEntry },
-  'cp-so': { title: 'Sổ chi phí', sub: 'Nhật ký chung các dòng chi phí công trình', icon: 'table', render: renderCostLedger },
-  'cp-chi-tiet': { title: 'Chi tiết chi phí theo nhóm', sub: 'Nhóm, hạng mục, từng dòng; bung hoặc thu gọn 3 cấp', icon: 'tree', render: renderCostDetail },
-  'cp-cong-no': { title: 'Công nợ nhà cung cấp', sub: 'Số dư đầu kỳ cộng chi phí phát sinh, trừ số đã trả', icon: 'scales', render: renderDebt },
-  'cp-gia': { title: 'Giá vật tư', sub: 'Lịch sử đơn giá theo vật tư và nhà cung cấp', icon: 'tag', render: renderPrices },
-  'cp-danh-muc': { title: 'Danh mục chi phí', sub: 'Nhóm chi phí, hạng mục, vật tư, nhà và khu', icon: 'squares', render: renderCostCatalogs },
+  'cp-tong-hop': { title: 'Tổng hợp chi phí công trình', sub: 'Tổng chi phí theo loại, nhóm, hạng mục và theo tháng', render: renderCostDashboard },
+  'cp-nhap': { title: 'Phiếu nhập chi phí', sub: 'Khai báo đầu phiếu một lần, nhập nhiều dòng (số lượng × đơn giá, hoặc chỉ thành tiền)', render: renderCostEntry },
+  'cp-so': { title: 'Sổ chi phí', sub: 'Nhật ký chung các dòng chi phí công trình', render: renderCostLedger },
+  'cp-chi-tiet': { title: 'Chi phí theo nhóm', sub: 'Nhóm, hạng mục, từng dòng; bung hoặc thu gọn 3 cấp', render: renderCostDetail },
+  'cp-cong-no': { title: 'Công nợ nhà cung cấp theo kỳ', sub: 'Số dư đầu kỳ + phát sinh − thanh toán = số dư cuối kỳ', render: renderDebt },
+  'cp-gia': { title: 'Giá vật tư', sub: 'Lịch sử đơn giá theo vật tư và nhà cung cấp', render: renderPrices },
+  'cp-danh-muc': { title: 'Danh mục chi phí', sub: 'Nhóm chi phí, hạng mục, vật tư, nhà và khu', render: renderCostCatalogs },
   // Kiểm soát sổ sách (nhóm độ chính xác và truy vết)
-  'kiem-soat': { title: 'Kiểm soát sổ sách', sub: 'Nhật ký thay đổi, thùng rác và các việc cần xử lý để số liệu luôn đúng', icon: 'shield', render: renderControl },
-  'gop-ma': { title: 'Gộp mã', sub: 'Đưa các mã trùng (NCC, vật tư, hạng mục, nhà, dự án) về một mã — có xem trước và hoàn tác', icon: 'merge', render: renderMerge },
-  'nguoi-dung': { title: 'Người dùng', sub: 'Tài khoản, vai trò, mở khóa, đặt lại mật khẩu, sự kiện bảo mật', icon: 'contacts', render: renderUsers }
+  'kiem-soat': { title: 'Kiểm soát sổ sách', sub: 'Nhật ký thay đổi, thùng rác và các việc cần xử lý để số liệu luôn đúng', render: renderControl },
+  'gop-ma': { title: 'Gộp mã', sub: 'Đưa các mã trùng (NCC, vật tư, hạng mục, nhà, dự án) về một mã, có xem trước và hoàn tác', render: renderMerge },
+  'nguoi-dung': { title: 'Người dùng', sub: 'Tài khoản, vai trò, mở khóa, đặt lại mật khẩu, sự kiện bảo mật', render: renderUsers }
 };
-const NAV_LABEL = {
-  'tong-quan': 'Tổng quan',
-  'so-thu-chi': 'Sổ thu chi',
-  'phieu': 'Phiếu thu, chi',
-  'du-an': 'Dự án',
-  'ncc': 'Nhà cung cấp',
-  'tong-hop-ncc': 'Tổng hợp NCC',
-  'cai-dat': 'Cài đặt',
-  'cp-tong-hop': 'Tổng hợp chi phí',
-  'cp-nhap': 'Phiếu nhập chi phí',
-  'cp-so': 'Sổ chi phí',
-  'cp-chi-tiet': 'Chi tiết theo nhóm',
-  'cp-cong-no': 'Công nợ NCC',
-  'cp-gia': 'Giá vật tư',
-  'cp-danh-muc': 'Danh mục chi phí',
-  'kiem-soat': 'Kiểm soát',
-  'gop-ma': 'Gộp mã',
-  'nguoi-dung': 'Người dùng'
-};
-const NAV = [['tong-quan', 'so-thu-chi', 'phieu'], ['du-an', 'ncc', 'tong-hop-ncc'],
-  ['cp-tong-hop', 'cp-nhap', 'cp-so', 'cp-chi-tiet', 'cp-cong-no', 'cp-gia', 'cp-danh-muc'], ['kiem-soat', 'gop-ma', 'nguoi-dung', 'cai-dat']];
-const NAV_HEAD = { 2: 'Chi phí công trình' };
+// Menu: nhóm theo trình tự công việc. Mỗi mục: [đường dẫn, mã 2 chữ, tên, phím tắt]; tab = mở sẵn tab của danh mục chi phí
+const NAV = [
+  { items: [['tong-quan', 'TQ', 'Tổng quan']] },
+  { head: 'Nhập liệu', items: [['cp-nhap', 'PN', 'Phiếu nhập chi phí', 'F2'], ['@ghi-thu-chi', 'TC', 'Ghi thu / chi', 'F3'], ['so-du-dau', 'SD', 'Số dư đầu kỳ NCC'], ['nhap-excel', 'XL', 'Nhập từ Excel']] },
+  { head: 'Sổ sách', items: [['so-thu-chi', 'SQ', 'Sổ quỹ thu chi'], ['phieu', 'PT', 'Phiếu thu / chi'], ['cp-so', 'CP', 'Sổ chi phí'], ['so-chi-tiet-ncc', 'SN', 'Sổ chi tiết NCC']] },
+  { head: 'Báo cáo', items: [['cp-chi-tiet', 'BC', 'Chi phí theo nhóm'], ['cp-tong-hop', 'TH', 'Tổng hợp chi phí'], ['cp-cong-no', 'CN', 'Công nợ NCC theo kỳ'], ['cp-gia', 'GV', 'Giá vật tư']] },
+  { head: 'Danh mục', items: [['du-an', 'CT', 'Công trình, nhà/lô'], ['ncc', 'NC', 'NCC, đối tượng'], ['cp-danh-muc', 'VT', 'Vật tư', '', 'vat-tu'], ['cp-danh-muc', 'HM', 'Hạng mục, nhóm CP', '', 'hang-muc'], ['gop-ma', 'GM', 'Gộp mã']] },
+  { head: 'Hệ thống', items: [['kiem-soat', 'KS', 'Kiểm soát'], ['cai-dat', 'CĐ', 'Cài đặt, sao lưu'], ['nguoi-dung', 'ND', 'Người dùng']] }
+];
 // Màn hình cần quyền riêng (đăng nhập bật). Không có quyền: ẩn khỏi menu, mở bằng đường dẫn thì báo không có quyền.
-const QUYEN_MAN = { 'gop-ma': 'gop-ma', 'cp-nhap': 'ghi', 'nguoi-dung': 'quan-ly-nguoi-dung' };
+const QUYEN_MAN = { 'gop-ma': 'gop-ma', 'cp-nhap': 'ghi', 'nguoi-dung': 'quan-ly-nguoi-dung', 'nhap-excel': 'nhap-excel' };
 const duocMo = (k) => (k !== 'nguoi-dung' || A.bat) && (!QUYEN_MAN[k] || coQuyen(QUYEN_MAN[k]));
 
 function current() {
@@ -72,14 +67,17 @@ function current() {
 
 // Menu bên trái (vẽ lại khi trạng thái đăng nhập / vai trò đổi)
 function veNav() {
-  $('#nav').innerHTML = NAV.map((group, gi) =>
-    (gi ? '<div class="nav-sep" aria-hidden="true"></div>' : '') +
-    (NAV_HEAD[gi] ? '<div class="nav-head max-lg:sr-only">' + esc(NAV_HEAD[gi]) + '</div>' : '') +
-    group.filter(duocMo).map((k) =>
-      '<a href="#/' + k + '" class="nav-item max-lg:ml-2 max-lg:justify-center max-lg:px-0" data-route="' + k + '" title="' + esc(ROUTES[k].title) + '">' +
-      duo(ROUTES[k].icon) + '<span class="max-lg:sr-only">' + esc(NAV_LABEL[k]) + '</span>' +
-      (k === 'kiem-soat' ? '<span class="nav-badge" id="nav-badge" hidden></span>' : '') + '</a>').join('')
-  ).join('');
+  $('#nav').innerHTML = NAV.map((g) => {
+    const items = g.items.filter((it) => it[0].startsWith('@') || duocMo(it[0]));
+    if (!items.length) return '';
+    return '<div class="nav-group">' + (g.head ? '<div class="nav-head">' + esc(g.head) + '</div>' : '') + items.map((it) => {
+      const [k, code, label, key, tab] = it;
+      const act = k.startsWith('@');
+      return '<a href="' + (act ? '#' : '#/' + k) + '" class="nav-item" data-route="' + esc(k) + '"' + (tab ? ' data-tab="' + tab + '"' : '') + ' title="' + esc(label) + (key ? ' (' + key + ')' : '') + '">' +
+        '<span class="nav-code" aria-hidden="true">' + code + '</span><span class="nav-label">' + esc(label) + '</span>' + (key ? '<span class="nav-key" aria-hidden="true">' + key + '</span>' : '') +
+        (k === 'kiem-soat' ? '<span class="nav-badge" id="nav-badge" hidden></span>' : '') + '</a>';
+    }).join('') + '</div>';
+  }).join('');
 }
 
 function renderShell() {
@@ -107,7 +105,27 @@ function renderShell() {
     ];
   });
   $('#btn-new').addEventListener('click', () => openEntryForm(null));
+  $('#btn-phieu').addEventListener('click', () => { location.hash = '#/cp-nhap'; });
+  $('#tb-search').addEventListener('click', moTimKiem);
+  $('#tb-ct').addEventListener('click', moChonCongTrinh);
+  $('#side-toggle').addEventListener('click', doiMenu);
+  $('#nav').addEventListener('click', (e) => {
+    const a = e.target.closest('a.nav-item');
+    if (!a) return;
+    if (a.dataset.route === '@ghi-thu-chi') { e.preventDefault(); openEntryForm(null); return; }
+    if (a.dataset.tab) { S.filters.cpDm.tab = a.dataset.tab; saveFilter('cpDm'); if (current() === 'cp-danh-muc') render(); }
+  });
+  datMau(LS.get('density', 'gon'));
+  thuGonMenu(LS.get('side-thu', false));
 }
+
+function thuGonMenu(on) {
+  document.body.classList.toggle('side-thu', !!on);
+  LS.set('side-thu', !!on);
+  const t = $('#side-toggle');
+  if (t) { t.setAttribute('aria-label', on ? 'Mở rộng menu' : 'Thu gọn menu'); t.querySelector('.label').textContent = on ? 'Mở rộng menu Ctrl B' : 'Thu gọn menu Ctrl B'; }
+}
+function doiMenu() { thuGonMenu(!document.body.classList.contains('side-thu')); }
 
 let lastRoute = null;
 
@@ -116,12 +134,15 @@ function render() {
   const k = current();
   const r = ROUTES[k];
   document.querySelectorAll('.nav-item').forEach((a) => {
-    const on = a.dataset.route === k;
+    const on = a.dataset.route === k && (!a.dataset.tab || a.dataset.tab === S.filters.cpDm.tab || (k === 'cp-danh-muc' && a.dataset.tab === 'vat-tu' && !['vat-tu', 'hang-muc'].includes(S.filters.cpDm.tab)));
     a.classList.toggle('active', on);
     if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   });
   $('#page-title').textContent = r.title;
   $('#page-sub').textContent = r.sub;
+  $('#page-tags').innerHTML = '';
+  setPageActions('');
+  veChonCongTrinh();
   document.title = r.title + ' | Kế Toán Công Trình';
   const keepScroll = lastRoute === k ? window.scrollY : 0;
   if (!duocMo(k)) {
@@ -156,11 +177,9 @@ function updateFooter() {
   const s = S.db.settings;
   $('#org-name').textContent = s.tenDonVi || 'Chưa đặt tên đơn vị';
   const ton = S.ledger.length ? S.ledger[S.ledger.length - 1].ton : 0;
-  $('#side-fund').innerHTML = '<div class="text-[12px] text-cover-ink-2">Tồn quỹ hiện tại</div>' +
-    '<div class="mt-0.5 text-[20px] font-semibold tabular-nums font-stretch-[110%] ' + (ton < 0 ? 'text-[#FFB4AB]' : 'text-white') + '">' +
-    KT.fmtMoney(ton) + '<span class="ml-1 text-[12px] font-medium text-cover-ink-2">đ</span></div>';
+  $('#side-fund').innerHTML = '<div class="fund' + (ton < 0 ? ' neg' : '') + '">' + KT.fmtMoney(ton) + ' đ</div>';
   const t = S.savedAt;
-  $('#save-state').textContent = t ? 'Đã lưu lúc ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') + ', ' + S.db.entries.length + ' dòng sổ' : '';
+  $('#save-state').textContent = t ? 'Đã lưu ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') + ' · ' + S.db.entries.length + ' dòng sổ' : '';
 }
 
 window.addEventListener('hashchange', render);
@@ -191,12 +210,16 @@ document.addEventListener('dblclick', (e) => {
 
 document.addEventListener('keydown', (e) => {
   if (hasOpenModal() || dangCheDangNhap()) return;
+  const ctrl = e.ctrlKey || e.metaKey;
+  if (ctrl && !e.altKey && !e.shiftKey && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); moTimKiem(); return; }
+  if (ctrl && !e.altKey && !e.shiftKey && (e.key === 'b' || e.key === 'B')) { e.preventDefault(); doiMenu(); return; }
+  if (ctrl && !e.altKey && !e.shiftKey && (e.key === 'l' || e.key === 'L')) { e.preventDefault(); if (A.bat && A.nguoiDung) khoaManHinh(); return; }
   if (!coQuyen('ghi') && (e.key === 'F2' || e.key === 'F3' || (e.altKey && (e.key === 'n' || e.key === 'N')))) { e.preventDefault(); return; }
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
-  if (e.key === 'F3') {
+  if (e.key === 'F2') {
     e.preventDefault();
     location.hash = '#/cp-nhap';
-  } else if (e.key === 'F2' || (e.altKey && (e.key === 'n' || e.key === 'N'))) {
+  } else if (e.key === 'F3' || (e.altKey && (e.key === 'n' || e.key === 'N'))) {
     e.preventDefault();
     openEntryForm(null);
   } else if (!typing && e.key === '/' && $('#view input[type=search]')) {
