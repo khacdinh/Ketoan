@@ -8,7 +8,7 @@ const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
 const { KT, startServer, readStored } = require('./helpers');
 const X = require('./excel-helpers');
-const { SKIP, openPage, settle } = require('./ui-helpers');
+const { SKIP, openPage, settle, chonKy } = require('./ui-helpers');
 
 function seed() {
   let id = 1;
@@ -252,25 +252,23 @@ test('Y4 nâng cấp dữ liệu lược đồ 6 → 7: sao lưu trước, thêm
   } finally { await srv.stop(); }
 });
 
-test('Y5 giao diện: Tổng hợp NCC có 4 cột theo kỳ; bấm Đầu kỳ ở dòng NCC → Thêm → nhập "đã ứng trước" → bảng và Công nợ NCC cập nhật đúng', { skip: SKIP, timeout: 180000 }, async () => {
+test('Y5 giao diện: Công nợ NCC theo kỳ có Đầu kỳ / Phát sinh / Thanh toán / Cuối kỳ (Dư Nợ, Dư Có); bấm Số dư đầu kỳ ở dòng NCC → nhập "đã ứng trước" → bảng, trang Số dư đầu kỳ và công nợ toàn kỳ cập nhật đúng', { skip: SKIP, timeout: 180000 }, async () => {
   const srv = await startServer({ seed: seed() });
   try {
-    const { browser, page, errors } = await openPage(srv, '#/tong-hop-ncc');
+    const { browser, page, errors } = await openPage(srv, '#/cp-cong-no');
     try {
-      await page.waitForSelector('#th-body tr[data-ma="NCC_B"]');
+      await page.waitForSelector('#cn-table tr[data-ma="NCC_B"]');
       // kỳ tháng 7/2026
-      const ngay = (id) => page.locator('.date-field:has(#' + id + ') .date-text');
-      await ngay('th-from').fill('01/07/2026'); await ngay('th-from').press('Tab');
-      await page.waitForFunction(() => document.querySelector('#th-from').value === '2026-07-01');
-      await ngay('th-to').fill('31/07/2026'); await ngay('th-to').press('Tab');
-      await page.waitForFunction(() => /01\/07\/2026/.test(document.querySelector('#th-eq').textContent));
-      const cells = async (ma) => page.$$eval('#th-body tr[data-ma="' + ma + '"] td.num', (tds) => tds.map((td) => (td.firstChild ? td.firstChild.textContent : td.textContent).trim()));
-      const fmt = (o) => [o.dauKy, o.phatSinh, o.thanhToan, o.cuoiKy].map((n) => KT.fmtMoney(n));
+      await chonKy(page, 'cn', 'khoang', '01/07/2026', '31/07/2026');
+      await page.waitForFunction(() => /01\/07\/2026/.test(document.querySelector('#view').innerText));
+      // 6 cột số: Dư Nợ / Dư Có đầu kỳ, Phát sinh, Thanh toán, Dư Nợ / Dư Có cuối kỳ (không có số thì hiện "–", không bao giờ hiện số âm)
+      const cells = async (ma) => page.$$eval('#cn-table tr[data-ma="' + ma + '"] td.num', (tds) => tds.slice(0, 6).map((td) => (td.firstChild ? td.firstChild.textContent : td.textContent).trim()));
+      const hien = (n) => (n ? KT.fmtMoney(n) : '–');
+      const fmt = (o) => [o.dauKy < 0 ? hien(-o.dauKy) : '–', o.dauKy > 0 ? hien(o.dauKy) : '–', hien(o.phatSinh), hien(o.thanhToan), o.cuoiKy < 0 ? hien(-o.cuoiKy) : '–', o.cuoiKy > 0 ? hien(o.cuoiKy) : '–'];
       assert.deepEqual(await cells('NCC_A'), fmt(oracle(readStored(srv.dataDir), 'NCC_A', '2026-07-01', '2026-07-31')));
-      // nhập số dư đầu kỳ cho NCC_B: đã ứng trước 3 triệu
-      await page.click('#th-body tr[data-ma="NCC_B"] [data-act=dk-row]');
-      await page.waitForSelector('.modal [data-act=dk-add]');
-      await page.click('.modal [data-act=dk-add]');
+      // nhập số dư đầu kỳ cho NCC_B: đã ứng trước 3 triệu (mở dòng NCC_B rồi bấm "Số dư đầu kỳ")
+      await page.click('#cn-table tr[data-ma="NCC_B"] td');
+      await page.click('#cn-table tr.open-row [data-act=dk-row]');
       await page.waitForSelector('#dk-form');
       assert.equal(await page.inputValue('#dk-form [name=maNCC]'), 'NCC_B', 'điền sẵn NCC của dòng');
       await page.check('#dk-form [name=loai][value=ung]');
@@ -280,16 +278,21 @@ test('Y5 giao diện: Tổng hợp NCC có 4 cột theo kỳ; bấm Đầu kỳ 
       await page.waitForFunction(() => /đã ứng trước 3\.000\.000/.test(document.querySelector('#toast-root').textContent));
       const db = readStored(srv.dataDir);
       assert.deepEqual(db.soDuDauKy.map((x) => [x.maNCC, x.soTien, x.ngay]), [['NCC_B', -3000000, '2026-01-01']]);
-      await page.waitForFunction(() => document.querySelectorAll('#dk-list tr[data-dk]').length === 1);
-      await page.keyboard.press('Escape');
-      await page.waitForFunction(() => /\(1\)/.test(document.querySelector('#th-body tr[data-ma="NCC_B"] [data-act=dk-row]').textContent));
+      await page.waitForFunction(() => !document.querySelector('#dk-form'));
+      await settle(page);
       assert.deepEqual(await cells('NCC_B'), fmt(oracle(db, 'NCC_B', '2026-07-01', '2026-07-31')));
-      // Công nợ NCC: cột Đầu kỳ
+      // trang Số dư đầu kỳ liệt kê khoản vừa nhập, ở cột Dư Nợ (đã ứng trước)
+      await page.evaluate(() => { location.hash = '#/so-du-dau'; });
+      await page.waitForSelector('#sd-table tr[data-dk]');
+      const dong = await page.$$eval('#sd-table tr[data-dk] td', (tds) => tds.map((td) => td.textContent.trim()));
+      assert.ok(dong.some((t) => /NCC_B/.test(t)) && dong.some((t) => t === '3.000.000'), JSON.stringify(dong));
+      // công nợ toàn kỳ: khớp KT.supplierDebt (đầu kỳ nhập tay + phát sinh − đã trả)
       await page.evaluate(() => { location.hash = '#/cp-cong-no'; });
-      await page.waitForSelector('#view tr[data-ma="NCC_B"]');
-      const cn = await page.$$eval('#view tr[data-ma="NCC_B"] td.num', (tds) => tds.slice(0, 4).map((td) => (td.firstChild ? td.firstChild.textContent : td.textContent).trim()));
+      await page.waitForSelector('#cn-table tr[data-ma="NCC_B"]');
+      await chonKy(page, 'cn', 'tat-ca');
+      await page.waitForFunction(() => !/Kỳ/.test(document.querySelector('#cn-chips').innerText));
       const d = KT.supplierDebt(db, {}).rows.find((r) => r.ma === 'NCC_B');
-      assert.deepEqual(cn, [d.dauKy, d.phatSinh, d.daTra, d.conLai].map((n) => KT.fmtMoney(n)));
+      assert.deepEqual(await cells('NCC_B'), fmt({ dauKy: d.dauKy, phatSinh: d.phatSinh, thanhToan: d.daTra, cuoiKy: d.conLai }));
       await settle(page);
       assert.deepEqual(errors, []);
     } finally { await browser.close(); }

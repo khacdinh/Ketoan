@@ -1,6 +1,6 @@
 /* Trả nhà cung cấp từ NGUỒN TIỀN KHÁC (ngoài quỹ tiền mặt): chuyển khoản công ty, chủ nhà trả thẳng, giám đốc trả…
  * Tính vào "Đã trả" của công nợ NCC; không vào sổ thu chi, không đổi tồn quỹ, không cần phiếu chi. */
-import { $, esc, money, icon, api, toast, showError, openModal, dateField, fieldError, busy, confirmDialog } from './ui.js';
+import { $, esc, money, icon, LS, api, toast, showError, openModal, dateField, fieldError, busy, confirmDialog } from './ui.js';
 import { S } from './state.js';
 import { comboHtml, bindCombo, comboResolve } from './combo.js';
 
@@ -15,16 +15,16 @@ export function openExtPayForm(rec, d) {
   const cbN = { name: 'maNCC', list: S.db.suppliers.map((x) => ({ ma: x.ma, ten: x.ten, sub: x.loai })), value: v.maNCC, noun: 'nhà cung cấp', type: 'text', quiet: true, placeholder: 'Gõ mã hoặc tên NCC' };
   const cbP = { name: 'maDuAn', list: S.db.projects.map((x) => ({ ma: x.ma, ten: x.ten })), value: v.maDuAn, noun: 'công trình', type: 'text', quiet: true, placeholder: 'Để trống nếu không gắn công trình' };
   return openModal({
-    title: isEdit ? 'Sửa khoản trả từ nguồn khác' : 'Trả nhà cung cấp từ nguồn khác (ngoài quỹ)',
+    title: isEdit ? 'Sửa khoản trả từ nguồn khác' : 'Trả NCC từ nguồn khác (ngoài quỹ)',
     size: 'wide',
     dismissible: false,
     body: '<p class="mb-3 rounded-md bg-pen-soft px-3 py-2 text-[13px] text-ink-2">' + icon('info', 'mr-1 align-[-3px] text-pen') +
-      'Dùng cho khoản đã trả NCC bằng tiền KHÔNG thuộc quỹ tiền mặt (chuyển khoản công ty, chủ nhà trả thẳng…). Khoản này giảm công nợ nhưng không vào sổ thu chi, không đổi tồn quỹ.</p>' +
+      'Khoản trả bằng tiền <b class="font-semibold text-ink">không thuộc quỹ</b> (chuyển khoản công ty, chủ nhà trả thẳng…). Giảm công nợ, không vào sổ quỹ, không đổi tồn quỹ.</p>' +
       '<form id="xp-form" class="grid grid-cols-2 gap-x-5 gap-y-4 max-sm:grid-cols-1" novalidate autocomplete="off">' +
       '<label class="field"><span class="label">Ngày trả <b class="req">*</b></span>' + dateField({ name: 'ngay', value: v.ngay, required: true, label: 'Ngày trả' }) + '</label>' +
       '<label class="field"><span class="label">Số tiền <b class="req">*</b></span><input name="soTien" class="input money-input" inputmode="decimal" value="' + esc(v.soTien === '' ? '' : money(v.soTien)) + '" placeholder="vd 50tr, 1.250.000">' +
       '<span class="hint" id="xp-chu"></span></label>' +
-      '<div class="field"><span class="label">Nhà cung cấp được trả <b class="req">*</b></span>' + comboHtml(cbN) + '<span class="hint" id="xp-no"></span></div>' +
+      '<div class="field"><span class="label">NCC được trả <b class="req">*</b></span>' + comboHtml(cbN) + '<span class="hint" id="xp-no"></span></div>' +
       '<div class="field"><span class="label">Công trình</span>' + comboHtml(cbP) + '<span class="hint">Ghi công trình để công nợ theo công trình trừ đúng chỗ.</span></div>' +
       '<label class="field"><span class="label">Nguồn tiền <b class="req">*</b></span><input name="nguon" class="input" list="xp-nguon" value="' + esc(v.nguon) + '" placeholder="vd Chuyển khoản công ty">' +
       '<datalist id="xp-nguon">' + used.map((x) => '<option value="' + esc(x) + '">').join('') + '</datalist></label>' +
@@ -44,8 +44,8 @@ export function openExtPayForm(rec, d) {
         const ct = comboResolve(cbP, g('maDuAn').value).value;
         const view = isEdit ? Object.assign({}, S.db, { extPayments: (S.db.extPayments || []).filter((x) => x.id !== rec.id) }) : S.db;
         const r = ncc ? KT.debtOf(view, ncc, ct || '') : null;
-        $('#xp-no', el).innerHTML = r ? 'Công nợ' + (ct ? ' tại ' + esc(ct) : '') + ': ' + (r.conLai > 0 ? 'còn nợ <b class="tabular-nums">' + money(r.conLai) + ' đ</b> <a href="#" data-act="fill" data-v="' + r.conLai + '">Điền số này</a>'
-          : r.conLai < 0 ? 'đã ứng dư ' + money(-r.conLai) + ' đ' : 'đã tất toán') : '';
+        $('#xp-no', el).innerHTML = r ? (r.conLai > 0 ? 'Dư Có (còn phải trả)' + (ct ? ' tại ' + esc(ct) : '') + ' <b class="tabular-nums">' + money(r.conLai) + '</b> · <a href="#" data-act="fill" data-v="' + r.conLai + '">Điền số này</a>'
+          : r.conLai < 0 ? 'Dư Nợ (đã ứng trước) <b class="tabular-nums">' + money(-r.conLai) + '</b>' : 'Đã tất toán') + ' · <a href="#" data-act="so" data-ma="' + esc(ncc) + '">Xem sổ</a>' : '';
       };
       fm.addEventListener('input', hint);
       fm.addEventListener('change', hint);
@@ -72,6 +72,7 @@ export function openExtPayForm(rec, d) {
         const a = e.target.closest('[data-act]');
         if (!a) return;
         if (a.dataset.act === 'fill') { e.preventDefault(); g('soTien').value = money(Number(a.dataset.v)); hint(); g('soTien').focus(); }
+        if (a.dataset.act === 'so') { e.preventDefault(); LS.set('sct.ncc', a.dataset.ma); h.close(); location.hash = '#/so-chi-tiet-ncc'; }
         if (a.dataset.act === 'cancel') h.close();
         if (a.dataset.act === 'save') save();
         if (a.dataset.act === 'del') { h.close(); deleteExtPay(rec); }

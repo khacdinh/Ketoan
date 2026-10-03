@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
 const { KT, startServer, readJsonFile, orphanErrors } = require('./helpers');
-const { SKIP, openPage, settle, num, pick } = require('./ui-helpers');
+const { SKIP, openPage, settle, num, pick, chonCongTrinh, chonKy } = require('./ui-helpers');
 
 const V2 = path.join(__dirname, 'fixtures', 'ketoan-v2-hien-tai.json');
 const key = (s) => String(s || '').trim().toLowerCase();
@@ -413,12 +413,13 @@ test('F3 sổ chi phí: lọc theo kỳ, công trình, nhà, nhóm, hạng mục
       const foot = await page.$eval('#cl-foot', (e) => e.innerText);
       const shownSum = (await page.$$eval('#cl-body tr[data-id] td:nth-child(8)', (tds) => tds.map((t) => t.textContent))).reduce((t, s) => t + num(s), 0);
       const count = await page.$eval('#cl-count', (e) => e.innerText);
-      return { n, footTotal: num(foot.split('\n').pop().replace(/.*Cộng[^\d-]*/, '').split(/\s+/).filter((x) => /\d/.test(x)).pop()), shownSum, count, foot };
+      const ft = await page.$$eval('#cl-foot td.num.money .dbl', (els) => els.map((x) => x.textContent));
+      return { n, footTotal: ft.length ? num(ft[ft.length - 1]) : NaN, shownSum, count, foot };
     };
     const expectFor = (f) => { const r = KT.filterCosts(led, f); return { n: r.rows.length, total: r.total }; };
     const steps = [
-      ['kỳ 6/2026', async () => { await page.selectOption('#cl-period', 'tuy-chon'); await dateBox(page, 'cl-from').fill('1/6/2026'); await dateBox(page, 'cl-from').press('Tab'); await dateBox(page, 'cl-to').fill('30/6/2026'); await dateBox(page, 'cl-to').press('Tab'); }, { from: '2026-06-01', to: '2026-06-30' }],
-      ['+ công trình', async () => { await pick(page, '#cl-ct', db.costs[0].maCT); }, { from: '2026-06-01', to: '2026-06-30', ct: db.costs[0].maCT }],
+      ['kỳ 6/2026', async () => { await chonKy(page, 'cl', 'khoang', '1/6/2026', '30/6/2026'); }, { from: '2026-06-01', to: '2026-06-30' }],
+      ['+ công trình', async () => { await chonCongTrinh(page, db.costs[0].maCT); }, { from: '2026-06-01', to: '2026-06-30', ct: db.costs[0].maCT }],
       ['+ loại Vật tư', async () => { await page.selectOption('#cl-loai', 'Vật tư'); }, { from: '2026-06-01', to: '2026-06-30', ct: db.costs[0].maCT, loai: 'Vật tư' }],
       ['+ NCC', async () => { await pick(page, '#cl-ncc', 'NCC_VuongThinh'); }, { from: '2026-06-01', to: '2026-06-30', ct: db.costs[0].maCT, loai: 'Vật tư', ncc: 'NCC_VuongThinh' }],
       ['+ tìm "cát"', async () => { await page.fill('#cl-q', 'cát'); await page.waitForTimeout(350); }, { from: '2026-06-01', to: '2026-06-30', ct: db.costs[0].maCT, loai: 'Vật tư', ncc: 'NCC_VuongThinh', q: 'cát' }]
@@ -433,21 +434,25 @@ test('F3 sổ chi phí: lọc theo kỳ, công trình, nhà, nhóm, hạng mục
       assert.equal(r.shownSum, e.total, name + ': cộng các dòng đang hiện');
       assert.ok(r.count.includes(String(e.n)), name + ': câu "N dòng khớp" ' + r.count);
     }
-    // bỏ lọc rồi lọc riêng từng tiêu chí
+    // bỏ lọc rồi lọc riêng từng tiêu chí (công trình chọn ở thanh trên)
     await page.click('#cl-clear');
+    await chonCongTrinh(page, '');
     await settle(page);
-    const single = [['#cl-ct', 'ct', db.costs[5].maCT], ['#cl-nha', 'nha', db.costs[5].maNha], ['#cl-nhom', 'nhom', db.costGroups[1].ma], ['#cl-loai', 'loai', 'Nhân công'], ['#cl-ncc', 'ncc', db.costs[9].maNCC], ['#cl-vt', 'vt', db.costs[3].maVT]];
+    const single = [['#tb-ct', 'ct', db.costs[5].maCT], ['#cl-nha', 'nha', db.costs[5].maNha], ['#cl-nhom', 'nhom', db.costGroups[1].ma], ['#cl-loai', 'loai', 'Nhân công'], ['#cl-ncc', 'ncc', db.costs[9].maNCC], ['#cl-vt', 'vt', db.costs[3].maVT]];
     for (const [sel, k, v] of single) {
       await clearFilters(page);
-      await (['#cl-loai'].includes(sel) ? page.selectOption(sel, v) : pick(page, sel, v));
+      await chonCongTrinh(page, '');
+      if (sel === '#cl-nha') await chonCongTrinh(page, db.costs[5].maCT); // ô nhà chỉ gợi ý nhà của công trình đang chọn
+      await (sel === '#tb-ct' ? chonCongTrinh(page, v) : ['#cl-loai'].includes(sel) ? page.selectOption(sel, v) : pick(page, sel, v));
       await settle(page);
-      const e = expectFor({ [k]: v });
+      const e = expectFor(sel === '#cl-nha' ? { ct: db.costs[5].maCT, nha: v } : { [k]: v });
       const r = await read();
       assert.equal(r.n, Math.min(e.n, 500), sel + ' số dòng');
       assert.equal(r.footTotal, e.total, sel + ' tổng');
     }
     // hạng mục (chọn sau khi chọn nhóm)
     await clearFilters(page);
+    await chonCongTrinh(page, '');
     const hmItem = db.costItems.find((i) => db.costs.some((c) => c.maHM === i.ma));
     await pick(page, '#cl-nhom', hmItem.maNhom); await settle(page);
     await pick(page, '#cl-hm', hmItem.ma); await settle(page);
@@ -549,7 +554,7 @@ test('F4 Bảng điều khiển chi phí: số tổng, theo Loại CP, đã tr�
       assert.equal(num(await page.$eval('.balance', (e) => e.firstChild.textContent)), S.total, 'tổng chi phí ' + ct);
       for (const l of KT.LOAI_CP) assert.equal(await tileVal(l), S.byLoai[l], l + ' ' + ct);
       assert.equal(await tileVal('Đã trả nhà cung cấp'), D.total.daTra, 'đã trả ' + ct);
-      assert.equal(await tileVal('Còn nợ nhà cung cấp'), D.total.conNo, 'còn nợ ' + ct);
+      assert.equal(await tileVal('Dư Có (còn phải trả NCC)'), D.total.conNo, 'còn nợ ' + ct);
       // tổng cộng ở chân bảng nhóm = tổng; tổng các dòng nhóm = tổng
       assert.equal(num(await page.$eval('table.tree tfoot td.money', (e) => e.innerText)), S.total, 'chân bảng ' + ct);
       const groupTotals = await page.$$eval('tr[data-group] td.money .font-semibold', (els) => els.map((e) => e.textContent));
@@ -573,7 +578,7 @@ test('F4 Bảng điều khiển chi phí: số tổng, theo Loại CP, đã tr�
     assert.equal(await page.locator('tr[data-item]').count(), nItems, 'Enter bung lại');
     // đổi công trình
     const ct = db.costs[0].maCT;
-    await pick(page, '#th-ct', ct); await settle(page);
+    await chonCongTrinh(page, ct); await settle(page);
     await check(ct);
     // bấm hạng mục → sổ chi phí lọc đúng hạng mục và công trình
     const item = await page.locator('tr[data-item]').first();
@@ -583,7 +588,7 @@ test('F4 Bảng điều khiển chi phí: số tổng, theo Loại CP, đã tr�
     await page.waitForFunction(() => location.hash === '#/cp-so');
     await page.waitForSelector('#cl-body tr, #cl-body td');
     await settle(page);
-    assert.equal(await page.$eval('#cl-ct', (e) => e.value), ct);
+    assert.ok((await page.textContent('#tb-ct-val')).startsWith(ct), 'công trình ở thanh trên');
     assert.equal(await page.$eval('#cl-hm', (e) => e.value), db.costItems.find((i) => i.ma === ma).ten, 'ô hạng mục hiện tên hạng mục');
     assert.equal(await page.locator('#cl-body tr[data-id]').count(), expectN);
     assert.deepEqual(errors, []);
@@ -626,7 +631,7 @@ test('F5 Chi tiết theo nhóm: mức 1 / 2 / 3, cộng hạng mục, tổng nh�
     assert.ok(await page.locator('#ct-body tr.dtl').count() < db.costs.length, 'thu gọn một hạng mục làm bớt dòng chi tiết');
     // lọc
     const ct = db.costs[0].maCT;
-    await pick(page, '#ct-ct', ct); await settle(page);
+    await chonCongTrinh(page, ct); await settle(page);
     const Sf = KT.costSummary(db, { ct }, KT.buildCostLedger(db));
     assert.equal(num(await page.$eval('#ct-foot td:last-child', (e) => e.innerText)), Sf.total);
     await page.selectOption('#ct-loai', 'Nhân công'); await settle(page);
@@ -636,143 +641,152 @@ test('F5 Chi tiết theo nhóm: mức 1 / 2 / 3, cộng hạng mục, tổng nh�
   } finally { await browser.close(); await srv.stop(); }
 });
 
-test('F6 Công nợ NCC: bảng, tổng, chi tiết từng NCC; Trả tiền → phiếu chi điền sẵn → công nợ về 0; công nợ hiện ở form phiếu chi; liên thông với Tổng quan (tồn quỹ)', { skip: SKIP, timeout: 300000 }, async () => {
+test('F6 Công nợ NCC theo kỳ: bảng Đầu kỳ / Phát sinh / Thanh toán / Cuối kỳ (Dư Nợ | Dư Có), tổng; dòng mở rộng; Trả tiền → phiếu chi điền sẵn → tất toán; sổ chi tiết; biên bản; theo công trình; liên thông Tổng quan', { skip: SKIP, timeout: 300000 }, async () => {
   const srv = await startServer({ seed: V2 });
   const db = readJsonFile(V2);
   const { browser, page, errors } = await openPage(srv, '#/cp-cong-no');
   try {
-    await page.waitForSelector('tr[data-ma]');
-    const D = KT.supplierDebt(db, {});
-    const rows = D.rows.filter((r) => r.lienQuan);
-    // hiện đúng NCC liên quan công trình, từng hàng đúng số
-    assert.equal(await page.locator('tr[data-ma]').count(), rows.length);
+    await page.waitForSelector('#cn-table tbody tr[data-ma]');
+    const P = KT.supplierPeriod(KT.postedDb(db), {});
+    const rows = P.rows.filter((r) => r.coSoLieu);
+    // mặc định: toàn bộ thời gian, chỉ NCC có số liệu
+    assert.equal(await page.locator('#cn-table tbody tr[data-ma]').count(), rows.length);
     for (const r of rows) {
-      const tr = page.locator('tr[data-ma="' + r.ma + '"]');
-      const tds = await tr.locator('td').allInnerTexts();
-      assert.equal(num(tds[2]), r.phatSinh, r.ma + ' phát sinh'); assert.equal(num(tds[3]), r.daTra, r.ma + ' đã trả'); assert.equal(num(tds[4]), r.conLai, r.ma + ' còn lại');
-      assert.match(tds[5], r.status === 'no' ? /Còn nợ/ : r.status === 'du' ? /Ứng dư/ : /Đã tất toán/, r.ma + ' tình trạng');
+      const tds = await page.locator('#cn-table tbody tr[data-ma="' + r.ma + '"] td').allInnerTexts();
+      const v = (s) => (/\d/.test(s) ? num(s) : 0);
+      assert.equal(v(tds[3]), r.phatSinh, r.ma + ' phát sinh');
+      assert.equal(v(tds[4].split('\n')[0]), r.thanhToan, r.ma + ' thanh toán');
+      assert.equal(v(tds[6]) - v(tds[5]), r.cuoiKy, r.ma + ' cuối kỳ = Dư Có − Dư Nợ');
+      assert.match(tds[7], r.status === 'no' ? /Còn nợ/ : r.status === 'du' ? /Ứng dư/ : /Đã tất toán/, r.ma + ' tình trạng');
     }
-    const tot = D.sumRows(rows);
-    const foot = await page.locator('tfoot td').allInnerTexts(); // Tổng cộng | Đầu kỳ | Phát sinh | Đã trả | Còn lại
-    assert.deepEqual([num(foot[1]), num(foot[2]), num(foot[3]), num(foot[4])], [0, tot.phatSinh, tot.daTra, tot.conLai]);
-    // chọn NCC còn nợ: chi tiết bên phải
-    const debtor = rows.filter((r) => r.conLai > 0).sort((a, b) => b.conLai - a.conLai)[0];
-    await page.locator('tr[data-ma="' + debtor.ma + '"]').click();
-    await page.waitForSelector('#cn-detail h3');
-    assert.match(await page.$eval('#cn-detail', (e) => e.innerText), new RegExp(debtor.ma));
-    const costs = db.costs.filter((c) => KT.keyOf(c.maNCC) === KT.keyOf(debtor.ma));
-    assert.match(await page.$eval('#cn-detail', (e) => e.innerText), new RegExp('Chi phí phát sinh \\(' + costs.length + ' dòng\\)'));
+    const tot = P.sumRows(rows);
+    const foot = await page.locator('#cn-table tfoot td').allInnerTexts(); // Tổng | DK Nợ | DK Có | PS | TT | CK Nợ | CK Có
+    assert.deepEqual([num(foot[3]), num(foot[4]), num(foot[5]), num(foot[6])], [tot.phatSinh, tot.thanhToan, tot.ungDu, tot.conNo]);
+    // bấm dòng NCC còn nợ: hàng thao tác mở rộng
+    const debtor = rows.filter((r) => r.cuoiKy > 0).sort((a, b) => b.cuoiKy - a.cuoiKy)[0];
+    await page.locator('#cn-table tr[data-ma="' + debtor.ma + '"] td').first().click();
+    await page.waitForSelector('#cn-table tr.open-row [data-act=ledger]');
+    assert.match(await page.$eval('#cn-table tr.open-row', (e) => e.innerText), /Sổ chi tiết[\s\S]*Biên bản đối chiếu[\s\S]*Sổ chi phí của NCC[\s\S]*Ghi phiếu chi/);
+    // biên bản đối chiếu: A4, số dư cuối kỳ đúng
+    await page.click('#cn-table tr.open-row [data-act=bien-ban-row]');
+    await page.waitForSelector('.modal .bb-preview');
+    const bb = await page.$eval('.modal .bb-preview', (e) => e.innerText);
+    assert.match(bb, /BIÊN BẢN ĐỐI CHIẾU CÔNG NỢ/);
+    assert.ok(bb.includes(KT.fmtMoney(debtor.cuoiKy)), 'biên bản ghi số dư cuối kỳ ' + debtor.cuoiKy);
+    await page.keyboard.press('Escape');
     // Trả tiền: phiếu chi điền sẵn NCC và số tiền còn nợ
-    await page.locator('tr[data-ma="' + debtor.ma + '"] [data-act=pay]').click();
+    await page.locator('#cn-table tr[data-ma="' + debtor.ma + '"] [data-act=pay]').first().click();
     await page.waitForSelector('#entry-form');
     await page.waitForTimeout(200);
     assert.equal(await page.inputValue('#entry-form input[name=maNCC]'), debtor.ma);
-    assert.equal(num(await page.inputValue('#entry-form input[name=chi]')), debtor.conLai);
-    const cash0 = KT.filterLedger(KT.buildLedger(db), {});
+    assert.equal(num(await page.inputValue('#entry-form input[name=chi]')), debtor.cuoiKy);
+    const cash0 = KT.filterLedger(KT.buildLedger(KT.postedDb(db)), {});
     await page.keyboard.press('Control+Enter');
     await page.waitForSelector('#entry-form', { state: 'detached', timeout: 6000 });
     await settle(page);
     const db1 = await srv.db();
-    const d1 = KT.supplierDebt(db1, {}).rows.find((r) => r.ma === debtor.ma);
-    assert.equal(d1.conLai, 0, 'trả đúng số còn nợ thì tất toán');
-    assert.match(await page.locator('tr[data-ma="' + debtor.ma + '"]').innerText(), /Đã tất toán/);
-    // tồn quỹ giảm đúng số đã trả
-    const cash1 = KT.filterLedger(KT.buildLedger(db1), {});
-    assert.equal(cash1.tonCuoiKy, cash0.tonCuoiKy - debtor.conLai);
+    const d1 = KT.supplierPeriod(KT.postedDb(db1), {}).rows.find((r) => r.ma === debtor.ma);
+    assert.equal(d1.cuoiKy, 0, 'trả đúng số còn nợ thì tất toán');
+    assert.match(await page.locator('#cn-table tr[data-ma="' + debtor.ma + '"]').innerText(), /Đã tất toán/);
+    const cash1 = KT.filterLedger(KT.buildLedger(KT.postedDb(db1)), {});
+    assert.equal(cash1.tonCuoiKy, cash0.tonCuoiKy - debtor.cuoiKy);
+    // sổ chi tiết công nợ: Enter trên dòng → mở sổ, cuối kỳ khớp
+    const other = rows.find((r) => r.cuoiKy > 0 && r.ma !== debtor.ma);
+    await page.locator('#cn-table tr[data-ma="' + other.ma + '"]').focus();
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => location.hash === '#/so-chi-tiet-ncc');
+    await page.waitForSelector('#sct-body tr');
+    assert.match(await page.textContent('#page-title'), new RegExp(other.ten.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.ok((await page.$eval('#sct-foot', (e) => e.innerText)).includes(KT.fmtMoney(other.cuoiKy)), 'cuối kỳ ở sổ chi tiết = cuối kỳ ở công nợ');
+    const nDocs = KT.costSlips(Object.assign({}, KT.postedDb(db1), { costs: KT.postedDb(db1).costs.filter((c) => c.maNCC === other.ma) })).length;
+    assert.ok(await page.locator('#sct-body tr[data-i].clickable').count() === nDocs, 'mỗi phiếu nhập một dòng');
     await page.evaluate(() => { location.hash = '#/tong-quan'; });
     await page.waitForFunction((v) => document.querySelector('#view').innerText.includes(v), KT.fmtMoney(cash1.tonCuoiKy), { timeout: 5000 });
     // form phiếu chi hiện công nợ của NCC đang chọn
-    const other = rows.find((r) => r.conLai > 0 && r.ma !== debtor.ma);
-    if (other) {
-      await page.keyboard.press('F2');
-      await page.waitForSelector('#entry-form'); await page.waitForTimeout(200);
-      await page.fill('#entry-form input[name=maNCC]', other.ma);
-      await page.locator('#entry-form input[name=maNCC]').dispatchEvent('change');
-      await page.waitForFunction(() => /còn nợ/i.test(document.querySelector('#ncc-hint, #chi-hint').closest('form').innerText), null, { timeout: 4000 });
-      const hintText = await page.$eval('#entry-form', (e) => e.innerText);
-      assert.ok(hintText.includes(KT.fmtMoney(other.conLai)), 'form phiếu chi phải ghi số còn nợ ' + KT.fmtMoney(other.conLai));
-      await page.click('#entry-form [data-act=fill-debt]');
-      assert.equal(num(await page.inputValue('#entry-form input[name=chi]')), other.conLai, '"Điền số này" điền đúng số tiền');
-      await page.keyboard.press('Escape');
-    }
-    // bảng theo công trình: bấm một công trình
+    await page.keyboard.press('F3');
+    await page.waitForSelector('#entry-form'); await page.waitForTimeout(200);
+    await page.fill('#entry-form input[name=maNCC]', other.ma);
+    await page.locator('#entry-form input[name=maNCC]').dispatchEvent('change');
+    await page.waitForFunction(() => /còn nợ/i.test(document.querySelector('#ncc-hint, #chi-hint').closest('form').innerText), null, { timeout: 4000 });
+    assert.ok((await page.$eval('#entry-form', (e) => e.innerText)).includes(KT.fmtMoney(other.cuoiKy)), 'form phiếu chi phải ghi số còn nợ');
+    await page.click('#entry-form [data-act=fill-debt]');
+    assert.equal(num(await page.inputValue('#entry-form input[name=chi]')), other.cuoiKy, '"Điền số này" điền đúng số tiền');
+    await page.keyboard.press('Escape');
+    // theo công trình: bấm một công trình → về bảng theo NCC, công trình chọn ở thanh trên
     await page.evaluate(() => { location.hash = '#/cp-cong-no'; });
+    await page.waitForSelector('#cn-table');
+    await page.click('label:has(input[name=cn-mode][value=ct])');
     await page.waitForSelector('tr[data-ct]');
     const ctCode = await page.locator('tr[data-ct]').first().getAttribute('data-ct');
     await page.locator('tr[data-ct]').first().click();
+    await page.waitForSelector('#cn-table tfoot');
     await settle(page);
-    const Dct = KT.supplierDebt(db1, { ct: ctCode });
-    const tct = Dct.sumRows(Dct.rows.filter((r) => r.lienQuan));
-    const foot2 = await page.locator('section:has(tr[data-ma]) tfoot td').allInnerTexts();
-    assert.equal(num(foot2[2]), tct.phatSinh, 'lọc theo công trình: tổng phát sinh');
+    assert.ok((await page.textContent('#tb-ct-val')).startsWith(ctCode));
+    const tct = KT.supplierPeriod(KT.postedDb(db1), { ct: ctCode });
+    const foot2 = await page.locator('#cn-table tfoot td').allInnerTexts();
+    assert.equal(num(foot2[3]), tct.sumRows(tct.rows.filter((r) => r.coSoLieu)).phatSinh, 'lọc theo công trình: tổng phát sinh');
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });
 
-
 test('F6c Công nợ NCC: lọc theo một / nhiều NCC (gõ mã hoặc tên, không dấu cũng ra gợi ý mã – tên, ↑↓ Enter), chip NCC đang lọc, Xóa lọc, lọc tình trạng; tổng = các dòng đang hiện; nhớ bộ lọc', { skip: SKIP, timeout: 180000 }, async () => {
   const srv = await startServer({ seed: V2 });
   const db = readJsonFile(V2);
+  const posted = KT.postedDb(db);
   const { browser, page, errors } = await openPage(srv, '#/cp-cong-no');
   try {
-    await page.waitForSelector('tr[data-ma]');
-    const nAll = await page.locator('tr[data-ma]').count();
-    const ds = KT.supplierDebt(db, {}).rows.filter((x) => x.lienQuan && x.inCatalog).sort((a, b) => b.phatSinh - a.phatSinh);
+    await page.waitForSelector('#cn-table tbody tr[data-ma]');
+    const nAll = await page.locator('#cn-table tbody tr[data-ma]').count();
+    const ds = KT.supplierPeriod(posted, {}).rows.filter((x) => x.coSoLieu && x.inCatalog).sort((a, b) => b.phatSinh - a.phatSinh);
     const [r, r2] = ds;
     assert.ok(r && r2, 'dữ liệu mẫu có ít nhất 2 NCC công trình');
-    const sumShown = async () => (await page.$$eval('tr[data-ma] td:nth-child(3)', (tds) => tds.map((t) => t.textContent))).reduce((t, x) => t + num(x), 0);
-    const footPS = async () => num(await page.$eval('tr[data-ma]', (tr) => tr.closest('table').querySelector('tfoot td:nth-child(3)').textContent)); // cột 2 là Đầu kỳ
-    // ô có danh sách gợi ý tự vẽ: gõ tên KHÔNG dấu, chữ thường → gợi ý "mã – tên"
-    const plain = KT.normalizeText(r.ten).trim();
-    await page.focus('#cn-ncc'); await page.keyboard.type(plain, { delay: 5 });
+    const sumShown = async () => (await page.$$eval('#cn-table tbody tr[data-ma] td:nth-child(4)', (tds) => tds.map((t) => t.textContent))).reduce((t, x) => t + (/\d/.test(x) ? num(x) : 0), 0);
+    const footPS = async () => num(await page.$eval('#cn-table tfoot td:nth-child(4)', (e) => e.textContent));
+    // gõ tên KHÔNG dấu, chữ thường → gợi ý "mã – tên"
+    await page.focus('#cn-ncc'); await page.keyboard.type(KT.normalizeText(r.ten).trim(), { delay: 5 });
     await page.waitForSelector('#cn-ncc-ds:not([hidden]) .combo-opt');
     const opt = await page.$eval('#cn-ncc-ds .combo-opt', (li) => li.textContent);
     assert.ok(opt.includes(r.ma) && opt.includes(r.ten), 'gợi ý hiện mã – tên: ' + opt);
     assert.equal(await page.getAttribute('#cn-ncc', 'aria-expanded'), 'true');
-    // Enter lấy dòng đang chọn
     await page.keyboard.press('Enter');
-    await page.waitForFunction(() => document.querySelectorAll('tr[data-ma]').length === 1, null, { timeout: 5000 });
-    assert.equal(await page.getAttribute('tr[data-ma]', 'data-ma'), r.ma);
-    assert.match(await page.$eval('#cn-chips', (e) => e.innerText), new RegExp(r.ma));
+    await page.waitForFunction(() => document.querySelectorAll('#cn-table tbody tr[data-ma]').length === 1, null, { timeout: 5000 });
+    assert.equal(await page.getAttribute('#cn-table tbody tr[data-ma]', 'data-ma'), r.ma);
+    assert.match(await page.$eval('#cn-chips', (e) => e.innerText), new RegExp(r.ten.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
     assert.equal(await page.inputValue('#cn-ncc'), '', 'chọn xong ô để trống để chọn thêm');
-    assert.match(await page.$eval('#cn-detail', (e) => e.innerText), new RegExp(r.ten.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'chi tiết NCC mở sẵn');
-    assert.ok(await page.$eval('#cn-pham', (e) => e.disabled), 'phạm vi không áp dụng khi lọc theo NCC');
-    // chọn thêm NCC thứ hai bằng mã chữ thường + ↓ + Enter (tiêu điểm vẫn ở ô sau khi vẽ lại)
-    assert.equal(await page.evaluate(() => document.activeElement.id), 'cn-ncc');
+    // chọn thêm NCC thứ hai bằng mã chữ thường + ↓ ↑ Enter (tiêu điểm vẫn ở ô sau khi vẽ lại)
+    await page.waitForFunction(() => document.activeElement && document.activeElement.id === 'cn-ncc', null, { timeout: 3000 });
     await page.keyboard.type(r2.ma.toLowerCase(), { delay: 5 });
     await page.waitForSelector('#cn-ncc-ds:not([hidden]) .combo-opt');
     await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowUp'); await page.keyboard.press('Enter');
-    await page.waitForFunction(() => document.querySelectorAll('tr[data-ma]').length === 2, null, { timeout: 5000 });
-    const exp2 = KT.supplierDebt(db, { ncc: [r.ma, r2.ma] });
+    await page.waitForFunction(() => document.querySelectorAll('#cn-table tbody tr[data-ma]').length === 2, null, { timeout: 5000 });
+    const exp2 = KT.supplierPeriod(posted, { ncc: [r.ma, r2.ma] });
     assert.equal(await sumShown(), exp2.total.phatSinh, 'tổng chi phí 2 NCC');
     assert.equal(await footPS(), exp2.total.phatSinh, 'tổng cuối bảng = tổng các dòng đang hiện');
-    assert.match(await page.$eval('#cn-count', (e) => e.textContent), /2 nhà cung cấp/);
-    const sum = KT.projectDebtSummary(db, { ncc: [r.ma, r2.ma] });
-    assert.equal(await page.locator('tr[data-ct]').count(), sum.rows.length, 'bảng theo công trình chỉ còn công trình của 2 NCC');
     // gõ tên không có: báo lỗi, giữ bộ lọc
     await page.fill('#cn-ncc', 'không có ncc này'); await page.press('#cn-ncc', 'Enter');
     await page.waitForFunction(() => /Không có nhà cung cấp/.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
-    assert.equal(await page.locator('tr[data-ma]').count(), 2);
-    // lọc nhanh tình trạng: chỉ NCC ứng dư (có thể không còn dòng nào → thông báo trống rõ ràng)
-    await page.selectOption('#cn-tt', 'du'); await settle(page);
-    const du = exp2.rows.filter((x) => x.conLai < 0);
-    assert.equal(await page.locator('tr[data-ma]').count(), du.length);
+    assert.equal(await page.locator('#cn-table tbody tr[data-ma]').count(), 2);
+    // lọc nhanh tình trạng (kèm số lượng từng loại)
+    await page.click('label:has(input[name=cn-tt][value=du])'); await settle(page);
+    const du = exp2.rows.filter((x) => x.cuoiKy < 0);
+    assert.equal(await page.locator('#cn-table tbody tr[data-ma]').count(), du.length);
     if (!du.length) assert.match(await page.$eval('#view', (e) => e.innerText), /Không có nhà cung cấp nào khớp bộ lọc/);
-    await page.selectOption('#cn-tt', 'no'); await settle(page);
-    assert.equal(await page.locator('tr[data-ma]').count(), exp2.rows.filter((x) => x.conLai > 0).length);
+    await page.click('label:has(input[name=cn-tt][value=no])'); await settle(page);
+    assert.equal(await page.locator('#cn-table tbody tr[data-ma]').count(), exp2.rows.filter((x) => x.cuoiKy > 0).length);
     // nhớ bộ lọc khi chuyển màn hình rồi quay lại
     await page.evaluate(() => { location.hash = '#/cp-so'; });
     await page.waitForSelector('#cl-body');
     await page.evaluate(() => { location.hash = '#/cp-cong-no'; });
-    await page.waitForSelector('#cn-chips');
-    assert.equal(await page.locator('#cn-chips .filter-chip').count(), 3, '2 NCC + tình trạng');
+    await page.waitForSelector('#cn-chips .filter-chip');
+    assert.equal(await page.locator('#cn-chips .filter-chip').count(), 2, '2 NCC');
+    assert.ok(await page.isChecked('input[name=cn-tt][value=no]'), 'nhớ lọc tình trạng');
     // bỏ một NCC bằng nút × của chip
-    await page.click('#cn-chips .filter-chip[data-ma="' + r2.ma + '"] button');
-    await page.waitForFunction(() => document.querySelectorAll('#cn-chips .filter-chip[data-ma]').length === 1, null, { timeout: 4000 });
+    await page.click('#cn-chips [data-chip="ncc:' + r2.ma + '"]');
+    await page.waitForFunction(() => document.querySelectorAll('#cn-chips .filter-chip').length === 1, null, { timeout: 4000 });
     // Xóa lọc: trở về như cũ
     await page.click('#cn-clear');
-    await page.waitForFunction((n) => document.querySelectorAll('tr[data-ma]').length === n, nAll, { timeout: 5000 });
-    assert.equal(await page.locator('#cn-chips').count(), 0);
+    await page.waitForFunction((n) => document.querySelectorAll('#cn-table tbody tr[data-ma]').length === n, nAll, { timeout: 5000 });
+    assert.equal(await page.locator('#cn-chips .filter-chip').count(), 0);
     // Esc đóng danh sách gợi ý
     await page.focus('#cn-ncc'); await page.keyboard.press('ArrowDown');
     assert.equal(await page.getAttribute('#cn-ncc', 'aria-expanded'), 'true');
@@ -861,28 +875,28 @@ test('F8 ô lọc gõ tìm thay dropdown: gõ mã / tên / “chưa gán”, ch�
   } finally { await browser.close(); await srv.stop(); }
 });
 
-test('F6d Tổng hợp NCC (sổ thu chi): lọc nhiều NCC bằng ô gõ tìm, tổng = các dòng đang hiện, chip + Xóa lọc', { skip: SKIP, timeout: 120000 }, async () => {
+test('F6d Tổng hợp NCC (đường dẫn cũ #/tong-hop-ncc mở Công nợ NCC theo kỳ): lọc nhiều NCC, tổng Thanh toán = các dòng đang hiện, chip + Xóa lọc', { skip: SKIP, timeout: 120000 }, async () => {
   const srv = await startServer({ seed: V2 });
   const db = readJsonFile(V2);
   const { browser, page, errors } = await openPage(srv, '#/tong-hop-ncc');
   try {
-    await page.waitForSelector('#th-body tr');
-    await page.selectOption('#th-period', 'tat-ca'); await settle(page);
-    const ss = KT.supplierSummary(KT.postedDb(db), {});
-    const two = ss.rows.filter((r) => r.chi > 0).sort((a, b) => b.chi - a.chi).slice(0, 2);
+    await page.waitForSelector('#cn-table tbody tr');
+    await chonKy(page, 'cn', 'tat-ca');
+    const posted = KT.postedDb(db);
+    const two = KT.supplierPeriod(posted, {}).rows.filter((r) => r.thanhToan > 0).sort((a, b) => b.thanhToan - a.thanhToan).slice(0, 2);
     for (const r of two) {
-      await page.focus('#th-ncc'); await page.keyboard.type(KT.normalizeText(r.ten).trim(), { delay: 5 });
-      await page.waitForSelector('#th-ncc-ds:not([hidden]) .combo-opt');
+      await page.focus('#cn-ncc'); await page.keyboard.type(KT.normalizeText(r.ten).trim(), { delay: 5 });
+      await page.waitForSelector('#cn-ncc-ds:not([hidden]) .combo-opt');
       await page.keyboard.press('Enter'); await settle(page);
     }
-    assert.equal(await page.locator('#th-body tr[data-ma]').count(), 2);
-    assert.equal(await page.locator('#th-chips .filter-chip').count(), 2);
-    // chân bảng: Tổng cộng | Đầu kỳ | Phát sinh | Thanh toán | Cuối kỳ; Thanh toán = chi − thu của 2 NCC đang lọc
-    const foot = num(await page.$eval('#th-foot td:nth-child(4)', (e) => e.textContent));
-    const ttHai = KT.postedDb(db).entries.filter((e) => two.some((r) => KT.keyOf(r.ma) === KT.keyOf(e.maNCC))).reduce((t, e) => t + (e.chi || 0) - (e.thu || 0), 0);
-    assert.equal(foot, ttHai, 'tổng cuối bảng = 2 NCC đang lọc');
-    await page.click('#th-chips [data-act=clear-ncc]'); await settle(page);
-    assert.equal(await page.locator('#th-chips').count(), 0);
+    assert.equal(await page.locator('#cn-table tbody tr[data-ma]').count(), 2);
+    assert.equal(await page.locator('#cn-chips .filter-chip').count(), 2);
+    const foot = num(await page.$eval('#cn-table tfoot td:nth-child(5)', (e) => e.textContent));
+    const ttHai = posted.entries.filter((e) => two.some((r) => KT.keyOf(r.ma) === KT.keyOf(e.maNCC))).reduce((t, e) => t + (e.chi || 0) - (e.thu || 0), 0) +
+      (posted.extPayments || []).filter((e) => two.some((r) => KT.keyOf(r.ma) === KT.keyOf(e.maNCC))).reduce((t, e) => t + e.soTien, 0);
+    assert.equal(foot, ttHai, 'tổng thanh toán cuối bảng = 2 NCC đang lọc');
+    await page.click('#cn-clear'); await settle(page);
+    assert.equal(await page.locator('#cn-chips .filter-chip').count(), 0);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });

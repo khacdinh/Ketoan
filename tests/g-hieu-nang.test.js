@@ -9,6 +9,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 const { KT, startServer, makeBigDb, makeDataDir, orphanErrors, readStored } = require('./helpers');
 const X = require('./excel-helpers');
+const { chonCongTrinh } = require('./ui-helpers');
 
 let chromium = null;
 try { chromium = require('playwright').chromium; } catch (e) {
@@ -152,7 +153,7 @@ test('G3 giao diện với 20.000 dòng: mở từng màn hình, lọc, tìm ki�
     const db = await srv.db();
     const ct = db.projects.find((p) => db.costs.some((c) => c.maCT === p.ma)).ma;
     const timeUi = async (name, fn) => { const s = Date.now(); await fn(); record('Giao diện', name, Date.now() - s); };
-    await timeUi('Sổ chi phí: lọc theo công trình', async () => { await page.fill('#cl-ct', ct); await page.press('#cl-ct', 'Enter'); await page.waitForFunction((n) => /khớp bộ lọc/.test(document.querySelector('#cl-count').innerText), ct); });
+    await timeUi('Sổ chi phí: lọc theo công trình (chọn ở thanh trên)', async () => { await chonCongTrinh(page, ct); await page.waitForFunction((n) => /khớp bộ lọc/.test(document.querySelector('#cl-count').innerText), ct); });
     await timeUi('Sổ chi phí: lọc thêm theo loại CP', async () => { await page.selectOption('#cl-loai', 'Vật tư'); await page.waitForTimeout(50); await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))); });
     await timeUi('Sổ chi phí: tìm "xi măng" (gõ)', async () => { await page.fill('#cl-q', 'xi măng'); await page.waitForTimeout(250); await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))); });
     await timeUi('Sổ chi phí: bỏ lọc', async () => { await page.click('#cl-clear'); await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))); });
@@ -161,10 +162,10 @@ test('G3 giao diện với 20.000 dòng: mở từng màn hình, lọc, tìm ki�
     await page.waitForSelector('#ct-body tr');
     const rowsL3 = await page.locator('#ct-body tr').count();
     await timeUi('Chi tiết theo nhóm: chuyển sang mức 3 (toàn bộ ' + rowsL3 + ' dòng DOM)', async () => { await page.check('input[name=ct-level][value="3"]', { force: true }); await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))); });
-    await timeUi('Chi tiết theo nhóm: lọc theo công trình', async () => { await page.fill('#ct-ct', ct); await page.press('#ct-ct', 'Enter'); await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))); });
+    await timeUi('Chi tiết theo nhóm: lọc theo công trình', async () => { await chonCongTrinh(page, ct); });
     // bảng điều khiển: đổi công trình
     await route(page, '#/cp-tong-hop');
-    await timeUi('Bảng điều khiển: đổi công trình', async () => { await page.fill('#th-ct', ct); await page.press('#th-ct', 'Enter'); await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))); });
+    await timeUi('Bảng điều khiển: đổi công trình', async () => { await chonCongTrinh(page, ct); });
     // công nợ: chọn NCC
     await route(page, '#/cp-cong-no');
     await timeUi('Công nợ: bấm một nhà cung cấp', async () => { await page.locator('tr[data-ma]').first().click(); await page.waitForTimeout(50); });

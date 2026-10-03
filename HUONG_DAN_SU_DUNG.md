@@ -1,6 +1,6 @@
 # KẾ TOÁN CÔNG TRÌNH — Hướng dẫn sử dụng
 
-(Tên cũ: Sổ Thu Chi. Logo công ty Điền Thủy hiện ở đầu thanh bên trái và màn hình đăng nhập.)
+(Tên cũ: Sổ Thu Chi. Logo công ty Điền Thủy hiện ở đầu menu bên trái và màn hình đăng nhập. Giao diện mới theo bản thiết kế “Industry”: chữ Barlow, màu xanh thép, khung nét mảnh có dấu + ở góc.)
 
 Phần mềm kế toán gồm hai phần chạy chung một chỗ, **không cần Internet**, dữ liệu lưu trong thư mục `data`:
 
@@ -32,38 +32,66 @@ Muốn có biểu tượng trên Desktop: bấm đúp **`TaoBieuTuongDesktop.bat
 
 ---
 
-## 2. Các màn hình (tương ứng với các sheet Excel)
+## 2. Khung màn hình và các màn hình (tương ứng với các sheet Excel)
+
+**Khung chung** (giống nhau ở mọi màn hình):
+
+- **Menu bên trái** chia theo trình tự công việc: *Tổng quan* · **Nhập liệu** (Phiếu nhập chi phí, Ghi thu / chi, Số dư đầu kỳ NCC, Nhập từ Excel) ·
+  **Sổ sách** (Sổ quỹ thu chi, Phiếu thu / chi, Sổ chi phí, Sổ chi tiết NCC) · **Báo cáo** (Chi phí theo nhóm, Tổng hợp chi phí, Công nợ NCC theo kỳ, Giá vật tư) ·
+  **Danh mục** (Công trình nhà/lô, NCC đối tượng, Vật tư, Hạng mục nhóm CP, Gộp mã) · **Hệ thống** (Kiểm soát, Cài đặt sao lưu, Người dùng). Mỗi mục có biểu tượng riêng; mục Kiểm soát có nhãn số việc cần xử lý (ẩn khi bằng 0).
+  Cuối menu là **tồn quỹ hiện tại**, giờ lưu gần nhất và nút thu gọn. **Ctrl B** thu gọn menu (rộng 248px → 56px) chỉ còn logo và biểu tượng, rê chuột vào biểu tượng để xem tên mục; trạng thái này được nhớ theo từng người dùng.
+- **Thanh trên cùng**: ô **Công trình** (chọn một công trình thì mọi sổ chi phí, báo cáo, công nợ chỉ hiện công trình đó; chọn “Tất cả công trình” để bỏ lọc), ô **Tìm** toàn cục
+  (**Ctrl K**: gõ số phiếu, tên NCC, vật tư, nội dung hoặc số tiền như `45tr`), nút **Nhập phiếu chi phí** (**F2**), nút **Ghi thu / chi** (**F3**), và (khi bật đăng nhập) tên người dùng + nút khóa màn hình (**Ctrl L**).
+  Trên điện thoại, menu bên trái được thay bằng thanh 5 nút ở đáy màn hình (Tổng quan, Sổ quỹ, Ghi, Công nợ, Thêm).
+- **Chọn kỳ** giống nhau ở mọi sổ và báo cáo: **Tháng | Quý | Năm | Khoảng ngày | Toàn bộ**, mũi tên ‹ › để sang kỳ trước / sau, nhãn ghi rõ “Tháng 09/2026 · 01/09 – 30/09/2026”.
+- **Mật độ bảng Gọn / Thoáng** (lưu theo từng máy), dòng tổng luôn hiện ở đáy bảng, nút thao tác ở từng dòng luôn hiện rõ theo thứ tự **Xem → Sửa → Nhân bản → In → Xóa** (xóa luôn ở cuối, màu đỏ, vào Thùng rác).
+- **Phím trên dòng đang chọn** (bấm Tab tới dòng): **Enter** mở / sửa · **Ctrl D** nhân bản · **Delete** xóa · **Ctrl P** in phiếu.
+- Tháng đã **khóa sổ**: nút sửa / xóa của dòng thuộc tháng đó thành ổ khóa; bấm vào thì hiện hộp “Kỳ … đã khóa” giải thích và chỉ đường mở khóa (cần tài khoản Chủ và lý do).
+- **Quy ước công nợ**: **Dư Có = mình còn phải trả NCC**; **Dư Nợ = mình đã ứng trước / trả dư**. Công nợ không bao giờ hiện số âm; số dư lũy kế ghi kèm chữ Có / Nợ (Nợ màu vàng nâu).
+  Nhãn **Còn nợ** là trạng thái bình thường (màu xanh thép, không đỏ); **Ứng dư** màu vàng nâu; **Đã tất toán** màu xanh lá; phiếu / dòng **Nháp** có viền đứt.
 
 | Màn hình | Sheet Excel tương ứng | Làm được gì |
 |---|---|---|
-| **Tổng quan** | `Tong_Quan` | Tồn quỹ, tổng thu, tổng chi theo kỳ; biểu đồ chi phí theo dự án so với ngân sách; cảnh báo vượt ngân sách; bảng tổng hợp chi phí theo dự án; thẻ tóm tắt chi phí công trình. Bấm vào một dự án để xem sổ chi tiết của dự án đó. |
-| **Sổ thu chi hàng ngày** | `So_Thu_Chi_Hang_Ngay` | Ghi / sửa / xóa / nhân bản dòng thu chi. Tồn quỹ tự tính lũy kế. Lọc theo kỳ, dự án, NCC, thu/chi, tìm kiếm. Hiện tồn đầu kỳ, tổng thu, tổng chi, tồn cuối kỳ. |
-| **Phiếu thu / chi** | `Phieu_Chi` | Các dòng cùng **số phiếu** được gộp thành 1 phiếu (tổng tiền, lý do, người nhận, số tiền bằng chữ). Xem trước và **in 2 liên trên 1 tờ A4**, xuất Excel. Số phiếu bắt đầu bằng **PT** là phiếu thu, **PC** là phiếu chi. |
-| **Danh mục dự án** | `Danh_Muc_Du_An`, `DM_CONGTRINH` | Mã, tên, ngân sách, trạng thái, ngày khởi công, địa chỉ; xem đã chi, còn lại. Mỗi **công trình** trong phần chi phí chính là một dự án ở đây. |
-| **Danh mục NCC / đối tượng** | `Danh_Muc_NCC`, `DM_NCC` | Mã, tên, loại (Vật tư / Nhân công / Dịch vụ...), SĐT, địa chỉ (địa chỉ được in tự động lên phiếu). Dùng chung cho cả sổ thu chi và chi phí công trình. |
-| **Tổng hợp theo NCC** | `Tong_Hop_NCC` | Công nợ từng NCC theo kỳ: **Đầu kỳ + Phát sinh trong kỳ − Thanh toán trong kỳ = Cuối kỳ** (xem mục 12). Nút **Đầu kỳ** ở mỗi dòng để nhập số dư đầu kỳ. Bấm vào dòng để xem sổ chi tiết. |
-| **Cài đặt & dữ liệu** | — | Tên đơn vị, địa chỉ, tên Giám đốc / Kế toán trưởng / Thủ quỹ (in trên phiếu); nhập Excel (file thu chi hoặc file chi phí); xuất Excel; sao lưu / khôi phục. |
+| **Tổng quan** | `Tong_Quan` | Đẳng thức tồn quỹ (đầu kỳ + thu − chi = hiện tại), biểu đồ thu / chi theo ngày, chi phí theo dự án so với ngân sách, **Cần chú ý hôm nay** (mỗi mục có nút đi thẳng tới nơi xử lý), ghi gần đây, thẻ chi phí công trình. |
+| **Sổ quỹ thu chi** | `So_Thu_Chi_Hang_Ngay` | Ghi / sửa / xóa / nhân bản / in dòng thu chi. Tồn quỹ tự tính lũy kế. Lọc theo kỳ, dự án, NCC, thu / chi, trạng thái (Nháp), tìm kiếm. Tích chọn nhiều dòng để **Ghi sổ các dòng nháp** hoặc **Xóa** cùng lúc. |
+| **Phiếu thu / chi** | `Phieu_Chi` | Các dòng cùng **số phiếu** được gộp thành 1 phiếu. Danh sách bên trái, xem trước **2 liên trên 1 tờ A4** ở giữa, nội dung in bên phải. **Ctrl P** in. Số phiếu **PT** là phiếu thu, **PC** là phiếu chi. |
+| **Công trình, nhà/lô** | `Danh_Muc_Du_An`, `DM_CONGTRINH` | Mã, tên, ngân sách, trạng thái, ngày khởi công; đã chi, còn lại. Nút **Sổ chi phí** của công trình. Công trình đã có dòng thì nút Xóa mờ đi và chỉ dẫn dùng **Gộp mã**. |
 
-Nhóm menu **Chi phí công trình** (bên trái, dưới “Tổng hợp NCC”):
+**Chọn nhiều dòng ở danh mục** (Công trình, NCC, Vật tư, Hạng mục, Nhà/khu): tích ô đầu dòng, thanh **Đã chọn N** hiện phía trên bảng với nút **Gộp mã N**, **Xóa N** và **Bỏ chọn**. Xóa nhiều chỉ xóa các mã chưa có dòng nào (vào Thùng rác); mã đang dùng được giữ lại và phần mềm nêu rõ mã nào không xóa được.
+
+**Sửa trực tiếp trong Sổ chi phí**: bấm đúp một ô để sửa; **Tab** lưu ô đó rồi sang ô kế tiếp cùng dòng, **Shift+Tab** quay lại ô trước, **Enter** lưu và đóng, **Esc** bỏ. Ô không đổi thì không ghi gì.
+| **NCC, đối tượng** | `Danh_Muc_NCC`, `DM_NCC` | Mã, tên, loại, SĐT, địa chỉ (in tự động lên phiếu). Nút **Sổ chi tiết công nợ** ở mỗi dòng. |
+| **Số dư đầu kỳ NCC** | (mới) | Mọi khoản số dư đầu kỳ đã nhập, cột Dư Có / Dư Nợ; thêm, sửa, xóa. Xem mục 12. |
+| **Nhập từ Excel** | — | Chọn file Excel (thu chi hoặc chi phí), xem trước, rồi mới ghi. |
+| **Cài đặt, sao lưu** | — | Tên đơn vị, địa chỉ, tên Giám đốc / Kế toán trưởng / Thủ quỹ (in trên phiếu); xuất Excel; sao lưu / khôi phục; xóa dữ liệu; đăng nhập và phân quyền. |
+
+Nhóm **Chi phí công trình**:
 
 | Màn hình | Sheet Excel tương ứng | Làm được gì |
 |---|---|---|
-| **Tổng hợp chi phí** | `TONGHOP` | Tổng chi phí; theo loại Vật tư / Nhân công / Dịch vụ-Phí; đã trả, còn nợ NCC; bảng Nhóm → Hạng mục bung / thu gọn; chi phí theo tháng và lũy kế. Lọc theo công trình, nhà, kỳ. |
-| **Phiếu nhập chi phí** | `PHIEU_NHAP` + macro `GhiPhieuNhap` | Khai báo đầu phiếu một lần, nhập nhiều dòng Mã VT × Số lượng × Đơn giá (hoặc chỉ Thành tiền cho khoản khoán), lưu một lần. Sửa / nhân bản / xóa phiếu. Phím **F3**. |
-| **Sổ chi phí** | `NHATKYCHUNG` | Toàn bộ dòng chi phí; lọc theo kỳ, công trình, nhà, nhóm, hạng mục, loại CP, NCC, vật tư; tìm kiếm; sửa trực tiếp trong bảng; tổng cuối bảng. |
-| **Chi tiết theo nhóm** | `CHI_TIET_THEO_NHOM` | Nhóm → Hạng mục → từng dòng, 3 mức hiển thị như nút 1 / 2 / 3 của Excel, có cộng hạng mục và tổng nhóm. |
-| **Công nợ NCC** | `CONGNO_NCC` | Bảng tổng hợp **theo công trình** (chi phí, đã thanh toán, % đã thanh toán, còn nợ, ứng dư), rồi công nợ từng NCC: Chi phí phát sinh − Đã trả (Sổ thu chi + khoản trả từ nguồn khác, ngoài quỹ) = Còn nợ / Ứng dư / Đã tất toán. |
-| **Giá vật tư** | (mới) | Lịch sử đơn giá từng vật tư theo NCC, giá thấp / cao / gần nhất, biểu đồ giá. |
-| **Danh mục chi phí** | `DM_NHOM`, `DM_HANGMUC`, `DM_VATTU`, `DM_NHA` | Nhóm chi phí, hạng mục, vật tư, nhà / khu. |
+| **Tổng hợp chi phí** | `TONGHOP` | Tổng chi phí; theo loại Vật tư / Nhân công / Dịch vụ-Phí; đã trả, còn nợ NCC; bảng Nhóm → Hạng mục bung / thu gọn; chi phí theo tháng và lũy kế. |
+| **Phiếu nhập chi phí** (**F2**) | `PHIEU_NHAP` + macro `GhiPhieuNhap` | Đầu phiếu nhập một lần (Ngày, Công trình, Nhà/lô, NCC, Số phiếu, Hạng mục mặc định), rồi nhập nhiều dòng Mã VT × Số lượng × Đơn giá (hoặc chỉ Thành tiền cho khoản khoán). Dòng có **lỗi** (đỏ, chặn ghi sổ) hoặc **cảnh báo** đơn giá lệch (vàng, có nút “Dùng giá cũ” / “Giữ”). **Ctrl Enter** ghi sổ, **Ctrl S** lưu nháp, **Ctrl D** nhân bản dòng. Danh sách phiếu đã nhập có Sửa / Nhân bản / **In** / Xóa. |
+| **Sổ chi phí** | `NHATKYCHUNG` | Toàn bộ dòng chi phí; lọc theo kỳ, nhà/lô, nhóm, hạng mục, loại CP, NCC, vật tư (ô đang lọc đổi màu, có nhãn “Đang lọc” và nút Xóa lọc); tìm kiếm; sửa trực tiếp trong bảng; dòng tổng cuối bảng, số lượng nhiều đơn vị gom vào nút **“6 ĐVT”**. |
+| **Chi phí theo nhóm** | `CHI_TIET_THEO_NHOM` | Nhóm → Hạng mục → từng dòng, 3 mức hiển thị, **Bung hết / Thu gọn**, nút **Xem trong sổ** ở từng nhóm, hạng mục. |
+| **Công nợ NCC theo kỳ** | `CONGNO_NCC` + `Tong_Hop_NCC` | Gộp “Tổng hợp NCC” và “Công nợ NCC”: theo từng NCC **Số dư đầu kỳ (Dư Nợ | Dư Có) · Phát sinh · Thanh toán · Số dư cuối kỳ (Dư Nợ | Dư Có) · Tình trạng · Giao dịch gần nhất**; bấm nhãn Tất cả / Còn nợ / Ứng dư / Đã tất toán để lọc; bấm một dòng để mở hàng thao tác (Sổ chi tiết, Biên bản đối chiếu, Sổ chi phí / Sổ thu chi của NCC, Số dư đầu kỳ, Trả từ nguồn khác, Ghi phiếu chi). Xem theo công trình bằng nút **Theo công trình**. Đường dẫn cũ “Tổng hợp NCC” cũng mở màn này. |
+| **Sổ chi tiết NCC** | (mới) | Một NCC: số dư đầu kỳ, **từng chứng từ** (mỗi phiếu nhập một dòng, bấm để bung các dòng hàng; khoản chi sổ quỹ và khoản trả ngoài quỹ nền xanh nhạt), số dư lũy kế kèm Có / Nợ, dòng cộng cuối bảng. **Alt ↑ ↓** chuyển NCC khác. Nút **Ghi thanh toán**, **Biên bản đối chiếu**, In sổ. |
+| **Biên bản đối chiếu công nợ** | (mới) | A4 dọc, đen trắng: đầu đơn vị, quốc hiệu, Bên A / Bên B, bảng 4 mục (đầu kỳ + phát sinh − thanh toán = cuối kỳ), bằng chữ, bảng kê chứng từ có lũy kế, điều khoản 07 ngày, chỗ ký. Xem trước rồi bấm **In biên bản**. |
+| **Giá vật tư** | (mới) | Lịch sử đơn giá từng vật tư theo NCC, giá thấp / cao / gần nhất, biểu đồ giá; mỗi dòng có nút mở phiếu nhập, xem trong sổ chi phí, sửa đơn giá. |
+| **Vật tư / Hạng mục, nhóm CP** | `DM_NHOM`, `DM_HANGMUC`, `DM_VATTU`, `DM_NHA` | Danh mục chi phí (cùng một màn, hai mục menu mở sẵn tab Vật tư hoặc tab Hạng mục). |
 
-Mục **Kiểm soát** (trên “Cài đặt”; con số màu vàng = số việc cần xử lý): **Cần xử lý**, **Kiểm quỹ**, **Khóa sổ**,
+Mục **Kiểm soát** (con số màu vàng = số việc cần xử lý): **Cần xử lý**, **Kiểm quỹ**, **Khóa sổ**,
 **Nhật ký thay đổi**, **Thùng rác** — xem mục 16.
+
+> **Phím tắt đổi so với bản trước**: **F2** giờ là *Nhập phiếu chi phí* và **F3** là *Ghi thu / chi* (bản cũ ngược lại). **Alt + N** vẫn mở Ghi thu / chi.
+
+> **Mất kết nối**: nếu cửa sổ đen bị tắt, đầu trang hiện dải đỏ “Phần mềm đã bị tắt, hãy mở lại bằng biểu tượng trên màn hình”, màn hình cũ mờ đi; phần mềm tự thử nối lại mỗi 5 giây.
+> **Chỉ xem**: tài khoản vai trò Chỉ xem thấy dải xám có ổ khóa, các nút thêm / sửa / xóa được ẩn.
 
 ---
 
 ## 3. Ghi sổ nhanh
 
-- Bấm **Ghi thu / chi** (hoặc phím **F2**).
+- Bấm **Ghi thu / chi** (hoặc phím **F3**).
 - Chọn **Chi tiền / Thu tiền / Thu & chi cùng lúc** (loại thứ ba dùng cho các khoản "đã thanh toán trước, thực tế không có thu" như trong file cũ).
 - **Ngày** luôn nhập dạng ngày/tháng/năm: gõ `29/9` là đủ (tự hiểu năm nay), hoặc `29/09/2026`, `290926`. Phím ↑ ↓ để tăng/giảm 1 ngày.
 - **Số phiếu**: bấm **Số mới** để lấy số kế tiếp trong tháng (VD `PC045/09`). Nhiều dòng dùng chung một số phiếu sẽ được gộp khi in.
@@ -114,7 +142,7 @@ File được tải về thư mục **Downloads** của trình duyệt.
 
 ## 6. Nhập dữ liệu từ Excel
 
-**Cài đặt & dữ liệu → Nhập dữ liệu từ file Excel**: chọn file theo mẫu cũ (hoặc file xuất từ phần mềm).
+**Nhập liệu → Nhập từ Excel**: chọn file theo mẫu cũ (hoặc file xuất từ phần mềm).
 Phần mềm tự nhận ra đây là file **sổ thu chi** hay file **chi phí công trình** (mục 14).
 Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng, tổng thu/chi, các lưu ý, rồi bạn chọn:
 
@@ -173,7 +201,7 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
 1. **Danh mục** (làm một lần): mỗi công trình là một **dự án** trong danh mục Dự án (có thêm *Ngày khởi công*,
    *Địa chỉ*, *Trạng thái*). Vào **Danh mục chi phí → Nhà / khu**, thêm các nhà của công trình và một mục
    **“Dùng chung cả công trình”** cho chi phí không tách được về một nhà.
-2. Mỗi chuyến hàng / mỗi hóa đơn: vào **Phiếu nhập chi phí** (phím **F3**), khai báo đầu phiếu rồi nhập từng dòng.
+2. Mỗi chuyến hàng / mỗi hóa đơn: vào **Phiếu nhập chi phí** (phím **F2**), khai báo đầu phiếu rồi nhập từng dòng.
 3. Mỗi lần trả tiền NCC: ghi **phiếu chi** trong **Sổ thu chi** như cũ, nhớ chọn **đúng Mã NCC và Mã dự án** —
    công nợ tự trừ.
 4. Xem **Tổng hợp chi phí**, **Chi tiết theo nhóm**, **Công nợ NCC** bất cứ lúc nào; số liệu luôn tính lại ngay.
@@ -234,46 +262,34 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
 
 ## 12. Công nợ, giá vật tư
 
-- **Nợ và đã thanh toán theo công trình** (đầu màn Công nợ NCC, và cuối màn Tổng hợp chi phí): mỗi công trình một dòng gồm
-  Chi phí phát sinh, **Đã thanh toán NCC**, % đã thanh toán, **Còn nợ NCC** (kèm số NCC còn nợ), Ứng dư NCC và Chi khác
-  (khoản chi có mã dự án nhưng không ghi NCC). Còn nợ và ứng dư cộng theo từng NCC: NCC này ứng dư không bù cho NCC khác
-  còn nợ. Bấm một công trình để xem công nợ từng NCC của công trình đó; bấm lần nữa để bỏ lọc. Đánh dấu “Hiện cả dự án
-  chưa nhập chi phí” để xem thêm số đã trả NCC của các dự án khác. Nếu có khoản trả cho NCC công trình mà chưa ghi mã
+- **Nợ và đã thanh toán theo công trình**: ở màn **Công nợ NCC theo kỳ** bấm nút **Theo công trình** (và cuối màn Tổng hợp chi phí): mỗi công trình một dòng gồm
+  Chi phí phát sinh, **Đã thanh toán NCC**, % đã thanh toán, **Dư Có (còn phải trả)** (kèm số NCC), **Dư Nợ (đã ứng trước)** và Chi khác
+  (khoản chi có mã dự án nhưng không ghi NCC). Dư Có và Dư Nợ cộng theo từng NCC: NCC này ứng trước không bù cho NCC khác
+  còn nợ. Bấm một công trình để chọn công trình đó ở thanh trên và xem công nợ từng NCC của công trình. Nếu có khoản trả cho NCC công trình mà chưa ghi mã
   dự án, phần mềm nhắc ngay dưới bảng.
 - **Số dư đầu kỳ nhà cung cấp** — công nợ đã có **trước khi ghi sổ trong phần mềm** (vd còn nợ từ năm trước theo biên bản đối
-  chiếu, hoặc đã ứng trước cho thợ). Nhập ở màn **Tổng hợp NCC** (nút **Đầu kỳ** ở dòng NCC, hoặc nút **Số dư đầu kỳ** trên thanh công
-  cụ để xem tất cả) hoặc ở khung chi tiết NCC của màn **Công nợ NCC** (nút **Nhập số dư đầu kỳ**). Mỗi khoản gồm:
+  chiếu, hoặc đã ứng trước cho thợ). Nhập ở menu **Nhập liệu → Số dư đầu kỳ NCC** (thấy mọi khoản), nút **Số dư đầu kỳ** ở đầu màn **Công nợ NCC theo kỳ**,
+  hoặc nút **Số dư đầu kỳ** ở hàng thao tác của một NCC; sửa ở nút bút chì ngay trên dòng “Số dư đầu kỳ” của **Sổ chi tiết NCC**. Mỗi khoản gồm:
   - **Nhà cung cấp**, **Công trình** (để trống nếu nợ chung nhiều công trình; ghi công trình thì công nợ theo công trình đúng);
-  - **Số dư là**: “Mình còn nợ nhà cung cấp” hoặc “Mình đã ứng trước / trả dư (NCC đang giữ tiền)”, và **Số tiền**;
+  - **Số dư là**: “Mình còn nợ nhà cung cấp” (Dư Có) hoặc “Mình đã ứng trước / trả dư (NCC đang giữ tiền)” (Dư Nợ), và **Số tiền**;
   - **Tính đến đầu ngày**: thường là ngày bắt đầu ghi sổ trong phần mềm (phần mềm gợi ý ngày sớm nhất có trong sổ). Báo cáo đến ngày
     trước ngày này thì chưa tính khoản này;
   - **Ghi chú** (vd số biên bản đối chiếu).
   Một NCC có thể có nhiều khoản (vd mỗi công trình một khoản). Số dư đầu kỳ **không** phải chi phí phát sinh, không vào Sổ thu chi,
   không đổi tồn quỹ; sửa / xóa được (xóa thì vào Thùng rác), tôn trọng khóa sổ, ghi nhật ký, đi theo khi đổi mã / gộp mã NCC, công trình.
-- **Tổng hợp NCC theo kỳ**: chọn kỳ (tháng này, quý, năm, tùy chọn từ ngày – đến ngày) ở màn Tổng hợp NCC; mỗi NCC một dòng:
-  - **Đầu kỳ** = số dư đầu kỳ nhập tay + chi phí trước ngày đầu kỳ − thanh toán trước ngày đầu kỳ (dòng nhỏ “gồm nhập tay …” nếu có);
-  - **Phát sinh trong kỳ** = chi phí trong Sổ chi phí công trình trong kỳ;
-  - **Thanh toán trong kỳ** = Sổ thu chi (chi trừ thu lại của cùng Mã NCC) + khoản trả từ nguồn khác, ngoài quỹ (dòng nhỏ “đã thu lại …”,
-    “ngoài quỹ …”);
-  - **Cuối kỳ** = Đầu kỳ + Phát sinh − Thanh toán: dương = **còn nợ** (chữ đỏ), âm = **ứng dư**. Cuối kỳ luôn bằng “Còn lại” của
-    màn Công nợ NCC tính đến ngày cuối kỳ.
-  Dòng phương trình trên đầu bảng cộng cả kỳ, kèm tổng còn nợ và tổng ứng dư. Sắp xếp theo còn nợ cuối kỳ, thanh toán, phát sinh, danh
-  mục hoặc tên. Đánh dấu “Chỉ nhà cung cấp có số liệu” để ẩn NCC không có đầu kỳ / phát sinh / thanh toán. **In** và **Xuất Excel**
-  (sheet `Tong_Hop_NCC` có 4 cột Số dư đầu kỳ, Phát sinh trong kỳ, Thanh toán trong kỳ, Số dư cuối kỳ) đúng theo kỳ và bộ lọc.
-- **Công nợ NCC** = Số dư đầu kỳ (nhập tay) + Chi phí phát sinh (Sổ chi phí) − Đã trả (Sổ thu chi: tổng **chi** trừ tổng **thu** của cùng
-  Mã NCC; cộng các khoản **trả từ nguồn khác, ngoài quỹ** — xem dưới). Chọn công trình thì chỉ tính các dòng cùng Mã dự án. Hai sổ **không sửa dữ liệu của nhau**.
-  - Còn nợ: phát sinh > đã trả. Ứng dư: đã trả nhiều hơn khối lượng đã ghi (thường do chưa nhập khối lượng nghiệm thu).
-  - Mặc định chỉ hiện **NCC liên quan công trình** (có chi phí, hoặc có khoản trả gắn với công trình đang có chi phí);
-    đổi ở ô chọn phạm vi để xem mọi NCC.
-  - **Lọc theo NCC** (chọn được **nhiều** NCC): ở ô “Lọc NCC”, gõ mã hoặc tên — có dấu hay không dấu, hoa hay thường đều được —
-    rồi chọn trong danh sách gợi ý dạng “mã – tên” (↑ ↓ để di chuyển, Enter để chọn; NCC có chi phí công trình nằm trên đầu).
-    Mỗi NCC đã chọn hiện thành một **chip** “Đang lọc: …” phía trên bảng; bấm × trên chip để bỏ riêng NCC đó, bấm **Xóa lọc** để bỏ
-    hết. Ô lọc vẫn để trống để chọn tiếp NCC khác ngay. Bảng chỉ còn các NCC đã chọn (bỏ qua ô phạm vi), **Tổng cộng** và dòng
-    phương trình ở trên chỉ cộng các NCC đang hiện; bảng **theo công trình** chỉ còn các công trình các NCC đó có phát sinh / thanh toán.
-    Chọn một NCC thì khung chi tiết mở sẵn. Gõ mã không có trong danh mục thì báo “Không có nhà cung cấp …”.
-  - **Lọc nhanh theo tình trạng**: ô “Mọi tình trạng / Chỉ NCC còn nợ / Chỉ NCC ứng dư / Ẩn NCC đã tất toán”, dùng chung được với lọc NCC.
-  - Bộ lọc (công trình, NCC, đến ngày, tình trạng) được **nhớ** khi chuyển màn hình hoặc mở lại phần mềm. **In** và **Xuất Excel**
-    đúng theo bộ lọc; đầu bản in / file Excel ghi rõ đang lọc NCC nào (vd “NCC: Xuân Trang, Sông Hàn. Chỉ NCC còn nợ”).
+- **Công nợ NCC theo kỳ**: chọn kỳ ở thanh chọn kỳ; mỗi NCC một dòng:
+  - **Số dư đầu kỳ** = số dư đầu kỳ nhập tay + chi phí trước ngày đầu kỳ − thanh toán trước ngày đầu kỳ, hiện ở cột **Dư Nợ (đã ứng trước)** hoặc **Dư Có (còn phải trả)**;
+  - **Phát sinh** = chi phí trong Sổ chi phí công trình trong kỳ;
+  - **Thanh toán** = Sổ thu chi (chi trừ thu lại của cùng Mã NCC) + khoản trả từ nguồn khác, ngoài quỹ (dòng nhỏ “ngoài quỹ …”);
+  - **Số dư cuối kỳ** = Đầu kỳ + Phát sinh − Thanh toán, ở cột Dư Có (còn nợ) hoặc Dư Nợ (ứng dư). Công nợ chỉ có hai trạng thái dương / âm nên **không hiện số âm**.
+  Dòng phương trình trên đầu bảng cộng cả kỳ (đầu kỳ Có / Nợ, phát sinh, thanh toán, cuối kỳ Dư Có và Dư Nợ). Công trình chọn ở thanh trên áp dụng cho cả bảng.
+  Đánh dấu **Chỉ NCC có số liệu** để ẩn NCC không có đầu kỳ / phát sinh / thanh toán. Nút **Tất cả / Còn nợ / Ứng dư / Đã tất toán** (kèm số lượng) lọc nhanh theo tình trạng.
+  **Lọc theo NCC** (chọn được **nhiều** NCC): ở ô “NCC”, gõ mã hoặc tên — có dấu hay không dấu, hoa hay thường đều được — rồi chọn trong danh sách gợi ý
+  dạng “mã – tên” (↑ ↓ để di chuyển, Enter để chọn). Mỗi NCC đã chọn hiện thành một **chip** “Đang lọc: …”; bấm × bỏ riêng NCC đó, **Xóa lọc** bỏ hết.
+  Bộ lọc được **nhớ** khi chuyển màn hình. **In** và **Xuất Excel** (sheet `Tong_Hop_NCC` có 4 cột Số dư đầu kỳ, Phát sinh trong kỳ, Thanh toán trong kỳ, Số dư cuối kỳ) đúng theo kỳ.
+  Cuối kỳ luôn bằng “Còn lại” tính đến ngày cuối kỳ, và bằng số dư cuối ở **Sổ chi tiết NCC**.
+  - **Trả tiền** (ghi phiếu chi trong sổ thu chi, điền sẵn NCC và số còn nợ) và **Nguồn khác** (khoản trả ngoài quỹ) có ngay ở từng dòng còn nợ.
+  - **Sổ chi tiết** (Enter trên dòng): xem từng phiếu nhập, từng khoản thanh toán; **Biên bản đối chiếu** in gửi NCC ký xác nhận.
   - Bấm một NCC để xem các phiếu chi phí và các lần trả tiền; nút **Trả tiền / Ghi phiếu chi** mở sẵn form ghi chi
     trong Sổ thu chi với đúng NCC, dự án và số còn nợ.
   - **Trả từ nguồn khác (ngoài quỹ)** — khi NCC đã được trả bằng tiền KHÔNG thuộc quỹ tiền mặt do thủ quỹ quản lý
@@ -308,7 +324,7 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
 
 ## 14. Nhập / xuất Excel chi phí
 
-- **Nhập**: Cài đặt → Nhập dữ liệu từ file Excel → chọn file `ChiPhi_CongTrinh_*.xlsm` (hoặc file chi phí xuất từ
+- **Nhập**: menu Nhập từ Excel → chọn file `ChiPhi_CongTrinh_*.xlsm` (hoặc file chi phí xuất từ
   phần mềm). Phần mềm đọc NHATKYCHUNG và các DM_* (sheet DUTOAN nếu có sẽ được bỏ qua); **các cột công thức không nhập nguyên văn mà tính lại**
   (Thành tiền = Số lượng × Đơn giá; tên vật tư, nhóm, tên NCC tra từ danh mục). Màn xem trước cho biết:
   - Số dòng, tổng chi phí, tổng theo loại; các cảnh báo (mã VT lạ, hạng mục lạ, dòng thiếu dữ liệu,

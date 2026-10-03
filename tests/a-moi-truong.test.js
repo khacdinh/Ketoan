@@ -84,7 +84,7 @@ test('A2.4 chạy hoàn toàn offline: không có địa chỉ mạng ngoài tro
   });
   assert.deepEqual(bad, [], 'Có tài nguyên tải từ mạng ngoài');
   // font và icon nằm trong public/
-  assert.ok(fs.existsSync(path.join(ROOT, 'public', 'vendor', 'phosphor', 'icons.css')), 'thiếu public/vendor/phosphor/icons.css');
+  assert.ok(fs.existsSync(path.join(ROOT, 'public', 'vendor', 'lucide', 'icons.css')), 'thiếu public/vendor/lucide/icons.css');
   assert.ok(walk(path.join(ROOT, 'public'), []).some((f) => /\.woff2?$/.test(f)), 'không có font cục bộ (.woff2)');
 });
 
@@ -93,7 +93,7 @@ test('A2.5 mọi tệp được index.html và CSS tham chiếu đều tồn t�
   const refs = [];
   html.replace(/(?:src|href)="([^"#]+)"/g, (m, u) => { if (!/^(https?:|data:|mailto:)/.test(u)) refs.push(u); return m; });
   refs.forEach((u) => assert.ok(fs.existsSync(path.join(ROOT, 'public', u.split('?')[0])), 'index.html tham chiếu tệp không có: ' + u));
-  ['css/app.css', 'vendor/phosphor/icons.css'].forEach((c) => {
+  ['css/app.css', 'vendor/lucide/icons.css'].forEach((c) => {
     const file = path.join(ROOT, 'public', c);
     const css = fs.readFileSync(file, 'utf8');
     css.replace(/url\(\s*["']?([^)"']+)["']?\s*\)/g, (m, u) => {

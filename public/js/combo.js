@@ -36,6 +36,11 @@ export function comboHtml(o) {
     '<ul class="combo-list" id="' + esc(id) + '-ds" role="listbox" hidden></ul></span>';
 }
 
+// Ô lọc kiểu khung nhãn: [Nhãn  giá trị ▾]; đang lọc thì viền xanh thép + nền nhạt (kèm ✕ của ô tìm)
+export function filterBox(label, o) {
+  return '<div class="fbox' + (o.value ? ' on' : '') + '"><span class="lbl">' + esc(label) + '</span>' + comboHtml(o) + '</div>';
+}
+
 // Chữ đã gõ -> { ok, value }: mã, đúng tên (một kết quả), "Tên (MÃ)", "MÃ – Tên", lựa chọn "chưa gán", hoặc mã lạ o.accept nhận
 export function comboResolve(o, text) {
   const t = String(text == null ? '' : text).normalize('NFC').trim();
@@ -114,6 +119,8 @@ export function bindCombo(input, o, onPick) {
       return;
     }
     input.value = comboText(o, v);
+    const fb = input.closest('.fbox');
+    if (fb) fb.classList.toggle('on', !!v);
     if (KT.keyOf(v) === KT.keyOf(o.value || '')) return;
     o.value = v;
     const x = v && v !== NONE ? byCode(o.list, v) : null;

@@ -5,53 +5,73 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kế Toán Công Trình</title>
   <link rel="icon" type="image/png" href="img/logo-dien-thuy-hinh.png">
-  <link rel="preload" href="vendor/fonts/archivo-vietnamese-standard-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="vendor/fonts/archivo-latin-standard-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="vendor/phosphor/icons.css">
+  <link rel="preload" href="vendor/fonts/barlow-vietnamese-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="vendor/fonts/barlow-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="vendor/fonts/barlow-condensed-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="vendor/lucide/icons.css">
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-  <aside class="app-sidebar no-print max-lg:w-16">
-    <!-- Logo công ty. Màn cao: logo đầy đủ trên thẻ trắng (chữ xanh đậm của logo không đọc được trên nền xanh bìa sổ).
-         Màn thấp (laptop 1366×768): hình ngôi nhà cạnh tên phần mềm, gọn như cũ để menu không phải cuộn. Thanh thu gọn: chỉ hình. -->
+  <aside class="app-sidebar no-print">
+    <!-- Logo công ty + tên phần mềm + tên đơn vị (đặt ở Cài đặt). Thu gọn (Ctrl B) hoặc cửa sổ hẹp: chỉ còn logo và biểu tượng. -->
     <div class="side-brand">
-      <div class="brand-card"><img src="img/logo-dien-thuy.png" alt="Điền Thủy — Architecture &amp; Furniture" width="298" height="295"></div>
-      <div class="brand-row">
-        <span class="brand-mark"><img src="img/logo-dien-thuy-hinh.png" alt="Điền Thủy" width="229" height="215"></span>
-        <div class="brand-text min-w-0">
-          <div class="text-[16px] leading-tight font-bold text-white font-stretch-[110%]">Kế Toán Công Trình</div>
-          <div id="org-name" class="mt-0.5 text-[11.5px] leading-snug text-cover-ink-2"></div>
-        </div>
+      <span class="brand-mark"><img src="img/logo-dien-thuy-hinh.png" alt="Điền Thủy" width="229" height="215"></span>
+      <div class="brand-text">
+        <div class="brand-name">Kế Toán Công Trình</div>
+        <div id="org-name" class="brand-org"></div>
       </div>
     </div>
-    <nav id="nav" aria-label="Chức năng" class="flex-1 overflow-y-auto py-1"></nav>
-    <div class="side-foot border-t border-white/10 px-5 py-4 max-lg:hidden">
-      <div id="side-fund"></div>
-      <div id="save-state" class="mt-1 text-[12px] text-cover-ink-2" aria-live="polite"></div>
+    <nav id="nav" aria-label="Chức năng"></nav>
+    <div class="side-foot">
+      <div class="foot-text">
+        <div class="foot-lbl">Tồn quỹ hiện tại · <span id="save-state" aria-live="polite"></span></div>
+        <div id="side-fund"></div>
+      </div>
+      <button type="button" id="side-toggle" class="btn btn-ghost btn-icon side-toggle" title="Thu gọn menu (Ctrl B)" aria-label="Thu gọn menu (Ctrl B)"><i class="ph ph-panel-left-close" aria-hidden="true"></i></button>
     </div>
   </aside>
 
-  <main class="app-main min-h-screen max-lg:ml-16">
+  <main class="app-main min-h-screen">
     <div id="offline-root"></div>
-    <header class="topbar sticky top-0 z-10 flex flex-wrap items-end gap-x-6 gap-y-3 bg-paper/95 px-8 pt-6 pb-4 backdrop-blur max-md:px-4">
-      <div class="min-w-0 flex-1">
-        <h1 id="page-title" class="text-[26px] leading-tight font-semibold tracking-[-0.015em] font-stretch-[112%]">Đang tải</h1>
-        <p id="page-sub" class="mt-1 text-[13.5px] text-ink-3"></p>
-      </div>
-      <div class="no-print flex items-center gap-2">
-        <div id="user-root"></div>
-        <button type="button" class="btn btn-primary" id="btn-new" title="Phím tắt F2">
-          <i class="ph ph-plus" aria-hidden="true"></i>Ghi thu / chi<kbd class="ml-0.5 border-white/30 bg-white/10 text-white/85 max-xl:hidden">F2</kbd>
-        </button>
-        <button type="button" class="btn btn-secondary" id="btn-export">
-          <i class="ph ph-file-xls" aria-hidden="true"></i>Xuất Excel<i class="ph ph-caret-down -mr-1 text-[13px] text-ink-3" aria-hidden="true"></i>
-        </button>
-      </div>
+    <header class="topbar no-print">
+      <button type="button" class="tb-field tb-ct" id="tb-ct" aria-haspopup="listbox" aria-label="Chọn công trình" title="Chọn công trình: áp dụng cho mọi sổ và báo cáo">
+        <span class="lbl">Công trình</span><b id="tb-ct-val">Tất cả công trình</b><i class="ph ph-chevron-down" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="tb-field tb-search" id="tb-search" aria-label="Tìm toàn cục (Ctrl K)" title="Tìm phiếu, NCC, vật tư, số tiền (Ctrl K)">
+        <i class="ph ph-search" aria-hidden="true"></i><span class="min-w-0 flex-1 truncate text-left">Tìm phiếu, NCC, vật tư, số tiền…</span><kbd>Ctrl K</kbd>
+      </button>
+      <div class="flex-1"></div>
+      <button type="button" class="btn btn-primary" id="btn-phieu" title="Nhập phiếu chi phí (F2)"><i class="ph ph-plus" aria-hidden="true"></i>Nhập phiếu chi phí<kbd>F2</kbd></button>
+      <button type="button" class="btn btn-secondary" id="btn-new" title="Ghi thu / chi (F3)"><i class="ph ph-plus" aria-hidden="true"></i>Ghi thu / chi<kbd>F3</kbd></button>
+      <div class="tb-user"><div id="user-root"></div></div>
     </header>
-    <div id="view" class="view flex flex-col gap-5 px-8 pt-3 pb-14 max-md:px-4">
-      <div class="py-24 text-center text-ink-3">Đang tải dữ liệu</div>
+    <div id="ro-root" class="no-print"></div>
+    <div class="page-head">
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1"><h1 id="page-title" class="page-title">Đang tải</h1><span id="page-tags" class="flex flex-wrap items-center gap-2"></span></div>
+        <p id="page-sub" class="page-sub"></p>
+      </div>
+      <div id="page-actions" class="no-print flex flex-wrap items-center gap-2">
+        <span id="page-actions-view" class="contents"></span>
+        <button type="button" class="btn btn-secondary" id="btn-export">
+          <i class="ph ph-file-spreadsheet" aria-hidden="true"></i>Xuất Excel<i class="ph ph-chevron-down" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+    <div id="view" class="view flex flex-col gap-4 pt-3">
+      <div class="flex flex-col gap-2 py-6" role="status" aria-live="polite"><span class="text-ink-3">Đang tải dữ liệu</span>
+        <div class="skeleton h-9"></div><div class="skeleton h-9"></div><div class="skeleton h-9"></div><div class="skeleton h-9"></div><div class="skeleton h-9"></div><div class="skeleton h-9"></div></div>
     </div>
   </main>
+
+  <!-- Điện thoại: thanh dưới 5 mục thay cho menu bên trái (nút 48px) -->
+  <nav id="bottom-nav" class="no-print" aria-label="Điều hướng nhanh">
+    <a href="#/tong-quan" data-bn="tong-quan"><i class="ph ph-house" aria-hidden="true"></i><span>Tổng quan</span></a>
+    <a href="#/so-thu-chi" data-bn="so-thu-chi"><i class="ph ph-book-open" aria-hidden="true"></i><span>Sổ quỹ</span></a>
+    <button type="button" id="bn-ghi" data-bn="cp-nhap"><i class="ph ph-plus" aria-hidden="true"></i><span>Ghi</span></button>
+    <a href="#/cp-cong-no" data-bn="cp-cong-no"><i class="ph ph-dollar-sign" aria-hidden="true"></i><span>Công nợ</span></a>
+    <button type="button" id="bn-them"><i class="ph ph-ellipsis" aria-hidden="true"></i><span>Thêm</span></button>
+  </nav>
 
   <div id="modal-root"></div>
   <div id="auth-root"></div>

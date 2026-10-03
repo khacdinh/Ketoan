@@ -324,13 +324,19 @@ export async function dangXuat() {
   location.reload();
 }
 
+// Khóa màn hình (Ctrl L): đăng xuất, màn hình đăng nhập hiện lại; dữ liệu trên máy không đổi
+export function khoaManHinh() { return dangXuat(); }
+
 function veUserBox() {
   const box = $('#user-root');
   if (!box) return;
+  const tb = box.closest('.tb-user');
+  if (tb) tb.hidden = !(A.bat && A.nguoiDung);
   if (!A.bat || !A.nguoiDung) { box.innerHTML = ''; return; }
   const u = A.nguoiDung;
-  box.innerHTML = '<button type="button" class="user-box" id="btn-user" aria-haspopup="menu" title="Tài khoản đang đăng nhập">' + icon('contacts', 'text-[18px] text-ink-2') +
-    '<span class="max-w-[160px] truncate font-semibold max-md:hidden">' + esc(u.hoTen) + '</span><span class="vai">' + esc(u.tenVaiTro) + '</span></button>';
+  box.innerHTML = '<div class="flex items-center gap-2"><button type="button" class="tb-who" id="btn-user" aria-haspopup="menu" title="Tài khoản đang đăng nhập"><span class="who"><b class="max-w-[160px] truncate">' + esc(u.hoTen) + '</b><span>' + esc(u.tenVaiTro) + '</span></span></button>' +
+    '<button type="button" class="btn btn-secondary btn-icon" id="btn-khoa" title="Khóa màn hình (Ctrl L)" aria-label="Khóa màn hình">' + icon('lock') + '</button></div>';
+  $('#btn-khoa').addEventListener('click', khoaManHinh);
   attachMenu($('#btn-user'), () => [
     { icon: 'contacts', label: u.hoTen, hint: 'Tên đăng nhập: ' + u.tenDangNhap + ' · Vai trò: ' + u.tenVaiTro, disabled: true, action: () => {} },
     { sep: true },

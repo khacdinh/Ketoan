@@ -227,13 +227,13 @@ export function renderCostCatalogs(root) {
     if (f.tab === 'nhom') {
       const byItem = usageMap('maHM');
       const list = S.db.costGroups.filter((g) => match(g.ma + ' ' + g.ten + ' ' + (g.ghiChu || '')));
-      table.innerHTML = '<thead><tr><th>Mã nhóm</th><th>Tên nhóm chi phí</th><th class="num">Số hạng mục</th><th class="num money">Tổng chi phí</th><th>Ghi chú</th><th class="no-print"></th></tr></thead><tbody>' +
+      table.innerHTML = '<thead><tr>' + pickHead + '<th>Mã nhóm</th><th>Tên nhóm chi phí</th><th class="num">Số hạng mục</th><th class="num money">Tổng chi phí</th><th>Ghi chú</th><th class="no-print"></th></tr></thead><tbody>' +
         (list.map((g) => {
           const items = S.db.costItems.filter((i) => KT.keyOf(i.maNhom) === KT.keyOf(g.ma));
           const tien = items.reduce((t, i) => t + ((byItem.get(KT.keyOf(i.ma)) || {}).tien || 0), 0);
-          return '<tr data-id="' + g.id + '"><td class="code">' + highlight(g.ma, f.q) + '</td><td class="font-medium">' + highlight(g.ten, f.q) + '</td>' +
+          return '<tr data-id="' + g.id + '">' + pickCell(g.ma) + '<td class="code">' + highlight(g.ma, f.q) + '</td><td class="font-medium">' + highlight(g.ten, f.q) + '</td>' +
             '<td class="num">' + items.length + '</td><td class="num money">' + money(tien) + '</td><td class="text-[12.5px] text-ink-2">' + esc(g.ghiChu || '') + '</td>' + actions(g.ma) + '</tr>';
-        }).join('') || '<tr><td colspan="6" class="empty">Không có nhóm nào khớp.</td></tr>') + '</tbody>';
+        }).join('') || '<tr><td colspan="7" class="empty">Không có nhóm nào khớp.</td></tr>') + '</tbody>';
       count = S.db.costGroups.length + ' nhóm lớn. Đổi tên nhóm: mọi hạng mục và báo cáo tự đổi theo.';
     } else if (f.tab === 'hang-muc') {
       const use = usageMap('maHM');
@@ -286,7 +286,7 @@ export function renderCostCatalogs(root) {
   };
 
   root.querySelectorAll('input[name=dm-tab]').forEach((r) => r.addEventListener('change', () => { f.tab = r.value; saveFilter('cpDm'); draw(); }));
-  bindMergeUI(root, () => TAB_LOAI[f.tab], (v) => { f.merged = v; saveFilter('cpDm'); draw(); });
+  bindMergeUI(root, () => TAB_LOAI[f.tab], (v) => { f.merged = v; saveFilter('cpDm'); draw(); }, { noun: 'mã', coGop: () => !!TAB_LOAI[f.tab], list: () => listOf(), endpoint: () => ({ nhom: '/api/cost-groups', 'hang-muc': '/api/cost-items', 'vat-tu': '/api/materials', nha: '/api/houses' }[f.tab]) });
   $('#dm-q', root).addEventListener('input', debounce((e) => { f.q = e.target.value; saveFilter('cpDm'); draw(); }, 120));
 
   const listOf = () => ({ nhom: S.db.costGroups, 'hang-muc': S.db.costItems, 'vat-tu': S.db.materials, nha: S.db.houses }[f.tab]);

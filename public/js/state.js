@@ -23,6 +23,7 @@ export const S = {
     cpGia: LS.get('filter.cpGia', { q: '', ncc: '', hm: '', vt: '' }),
     cpDm: LS.get('filter.cpDm', { tab: 'hang-muc', q: '' })
   },
+  ct: LS.get('ct', ''), // công trình đang chọn ở thanh trên ('' = tất cả): áp dụng cho mọi sổ và báo cáo
   selectedVoucher: null,
   flash: new Set(),
   listeners: []
@@ -104,6 +105,7 @@ function remapSavedCodes() {
     (draft.lines || []).forEach((l) => { if (l.maVT) { const v = map('vt', l.maVT); if (v !== l.maVT) { l.maVT = v; c = true; } } });
     if (c) LS.set('cp.draft', draft);
   }
+  if (S.ct) { const v = aliasOf('da', S.ct); if (v !== S.ct) { S.ct = v; LS.set('ct', v); } }
   const sel = LS.get('cp.cn.sel', '');
   if (sel && map('ncc', sel) !== sel) LS.set('cp.cn.sel', map('ncc', sel));
 }

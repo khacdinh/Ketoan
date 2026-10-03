@@ -351,7 +351,7 @@ test('H5 tiêu đề bảo mật: CSP chặn mã chạy thêm và nhúng khung, 
         await page.evaluate((h) => { location.hash = '#/' + h; }, r);
         await page.waitForTimeout(250);
       }
-      await page.keyboard.press('F2');
+      await page.keyboard.press('F3');
       await page.waitForSelector('#entry-form');
       assert.deepEqual(violations, [], 'ứng dụng tự vi phạm CSP của chính nó');
     } finally { await browser.close(); }

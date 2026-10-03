@@ -1,11 +1,13 @@
 /* Sổ chi phí công trình (tương đương sheet NHATKYCHUNG): lọc, tìm, sửa trực tiếp, tổng cuối bảng. */
-import { $, esc, money, fdate, icon, highlight, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, debounce, setDateValue,
-  api, toast, showError, confirmDialog, openModal, dateField, focusInput, fieldError, busy, LS } from '../ui.js';
+import { $, esc, money, fdate, icon, highlight, download, periodControls, bindPeriodControls, syncPeriodControls, refreshPeriod, freshRoot, debounce, setDateValue,
+  api, toast, showError, confirmDialog, openModal, dateField, focusInput, fieldError, busy, LS, setPageActions, densityToggle, bindDensity } from '../ui.js';
 import { coQuyen } from '../auth.js';
 import { S, saveFilter, costProjects, costDatalists, resolveCode, resolveItem, materialByCode, itemByCode, houseByCode, projectByCode, supplierByCode, groupName, allCostLedger } from '../state.js';
 import { printView } from '../print.js';
-import { comboHtml, bindCombo } from '../combo.js';
+import { comboHtml, bindCombo, filterBox } from '../combo.js';
 import { attachBlock, bindAttach, clipHtml, openAttachList } from '../attach.js';
+import { moKyKhoa } from '../khoa.js';
+import { hauQuaCongNo } from '../congno.js';
 
 const KT = window.KT;
 const PAGE = 500; // số dòng vẽ mỗi lần (bảng lớn vẽ chậm); bấm "Hiện thêm" để xem tiếp, in thì hiện hết
@@ -39,50 +41,50 @@ export function renderCostLedger(root) {
   const W = 'w-[200px] max-sm:w-full';
   const cb = {
     ct: { id: 'cl-ct', list: costProjects(), value: f.ct, noun: 'công trình', placeholder: 'Công trình: gõ mã, tên', label: 'Lọc theo công trình', cls: W },
-    nha: { id: 'cl-nha', list: houses, value: f.nha, none: '(Không gán nhà)', noun: 'nhà', placeholder: 'Nhà: gõ mã, tên', label: 'Lọc theo nhà', cls: 'w-[160px] max-sm:w-full' },
-    nhom: { id: 'cl-nhom', list: S.db.costGroups, value: f.nhom, show: 'ten', noun: 'nhóm chi phí', placeholder: 'Nhóm CP: gõ tên', label: 'Lọc theo nhóm chi phí', cls: W },
-    hm: { id: 'cl-hm', list: items, value: f.hm, show: 'ten', noun: 'hạng mục', placeholder: 'Hạng mục: gõ tên', label: 'Lọc theo hạng mục', cls: 'w-[220px] max-sm:w-full' },
-    ncc: { id: 'cl-ncc', list: S.db.suppliers.filter((s) => usedNCC.has(KT.keyOf(s.ma)) || KT.keyOf(s.ma) === KT.keyOf(f.ncc)), value: f.ncc, noun: 'nhà cung cấp', placeholder: 'NCC: gõ mã, tên', label: 'Lọc theo nhà cung cấp', cls: W },
-    vt: { id: 'cl-vt', list: S.db.materials.filter((m) => usedVT.has(KT.keyOf(m.ma)) || KT.keyOf(m.ma) === KT.keyOf(f.vt)), value: f.vt, noun: 'vật tư', placeholder: 'Vật tư: gõ mã, tên', label: 'Lọc theo vật tư', cls: W }
+    nha: { id: 'cl-nha', list: houses, value: f.nha, none: '(Không gán nhà)', noun: 'nhà', placeholder: 'Tất cả', label: 'Lọc theo nhà', cls: 'w-[160px] max-sm:w-full' },
+    nhom: { id: 'cl-nhom', list: S.db.costGroups, value: f.nhom, show: 'ten', noun: 'nhóm chi phí', placeholder: 'Tất cả', label: 'Lọc theo nhóm chi phí', cls: W },
+    hm: { id: 'cl-hm', list: items, value: f.hm, show: 'ten', noun: 'hạng mục', placeholder: 'Tất cả', label: 'Lọc theo hạng mục', cls: 'w-[220px] max-sm:w-full' },
+    ncc: { id: 'cl-ncc', list: S.db.suppliers.filter((s) => usedNCC.has(KT.keyOf(s.ma)) || KT.keyOf(s.ma) === KT.keyOf(f.ncc)), value: f.ncc, noun: 'nhà cung cấp', placeholder: 'Tất cả', label: 'Lọc theo nhà cung cấp', cls: W },
+    vt: { id: 'cl-vt', list: S.db.materials.filter((m) => usedVT.has(KT.keyOf(m.ma)) || KT.keyOf(m.ma) === KT.keyOf(f.vt)), value: f.vt, noun: 'vật tư', placeholder: 'Tất cả', label: 'Lọc theo vật tư', cls: W }
   };
 
+  setPageActions('<button type="button" class="btn btn-secondary" data-act="print">' + icon('print') + 'In sổ</button>' +
+    '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất Excel theo bộ lọc</button>' +
+    '<a href="#/cp-nhap" class="btn btn-secondary !border-pen !text-accent-800">' + icon('plus') + 'Lập phiếu nhập</a>', (act) => {
+    if (act === 'export') download('/api/export/cost-ledger?' + exportQuery(f));
+    else if (act === 'print') { shown = Infinity; draw(true); printView('SỔ CHI PHÍ CÔNG TRÌNH', KT.describeRange(f.from, f.to), S.db.settings); }
+  });
   root.innerHTML =
     '<div class="print-only" id="print-head"></div>' +
     '<div id="cl-dl">' + costDatalists(f.ct) + '</div>' +
-    '<div class="no-print flex flex-wrap items-center gap-2">' +
+    '<div class="no-print flex flex-wrap items-center gap-2.5">' +
     periodControls(f, 'cl') +
-    comboHtml(cb.ct) + comboHtml(cb.nha) +
-    '<select id="cl-loai" class="input w-auto" aria-label="Loại chi phí"><option value="">Mọi loại CP</option>' + KT.LOAI_CP.map((l) => '<option' + (f.loai === l ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select>' +
+    '<label class="search min-w-[240px] flex-1">' + icon('search') + '<input id="cl-q" type="search" class="input" placeholder="Tìm diễn giải, vật tư, số phiếu, số tiền (gõ 45tr để tìm 45.000.000)" value="' + esc(f.q) + '" aria-label="Tìm trong sổ chi phí"></label>' +
+    densityToggle() +
     '</div>' +
-    '<div class="no-print flex flex-wrap items-center gap-2">' +
-    comboHtml(cb.nhom) + comboHtml(cb.hm) + comboHtml(cb.ncc) + comboHtml(cb.vt) +
+    '<div class="no-print filters-grid">' +
+    filterBox('Nhà/lô', cb.nha) + filterBox('Nhóm CP', cb.nhom) + filterBox('Hạng mục', cb.hm) +
+    '<div class="fbox' + (f.loai ? ' on' : '') + '"><span class="lbl">Loại CP</span><select id="cl-loai" class="input" aria-label="Loại chi phí"><option value="">Tất cả</option>' + KT.LOAI_CP.map((l) => '<option' + (f.loai === l ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select></div>' +
+    filterBox('NCC', cb.ncc) + filterBox('Vật tư', cb.vt) +
     (S.drafts.costs.length || f.trangThai ? '<div class="seg seg-sm" role="radiogroup" aria-label="Trạng thái">' +
       [['', 'Mọi trạng thái'], ['so', 'Đã ghi sổ'], ['nhap', 'Nháp (' + S.drafts.costs.length + ')']].map(([v, l]) => '<label class="seg-item"><input type="radio" name="cl-tt" value="' + v + '"' + ((f.trangThai || '') === v ? ' checked' : '') + '><span>' + l + '</span></label>').join('') +
       '</div>' : '') +
-    '<label class="search min-w-[220px] flex-1">' + icon('search') + '<input id="cl-q" type="search" class="input" placeholder="Tìm diễn giải, vật tư, số phiếu, số tiền" value="' + esc(f.q) + '" aria-label="Tìm trong sổ chi phí"></label>' +
-    '<button type="button" class="btn btn-ghost btn-sm" data-act="clear" id="cl-clear">' + icon('eraser') + 'Bỏ lọc</button>' +
     '</div>' +
     khoanCuBanner() +
     '<div id="cl-summary"></div>' +
+    '<div class="no-print flex flex-wrap items-center gap-2 text-[12.5px]" id="cl-chips"></div>' +
     '<section class="sheet overflow-hidden">' +
-    '<div class="no-print flex flex-wrap items-center gap-3 border-b border-rule px-4 py-2.5">' +
-    '<p class="text-[13px] text-ink-2" id="cl-count" aria-live="polite"></p><span class="flex-1"></span>' +
-    '<a href="#/cp-nhap" class="btn btn-primary btn-sm">' + icon('plus') + 'Lập phiếu nhập</a>' +
-    '<button type="button" class="btn btn-ghost btn-sm" data-act="print">' + icon('print') + 'In sổ</button>' +
-    '<button type="button" class="btn btn-secondary btn-sm" data-act="export">' + icon('excel') + 'Xuất Excel theo bộ lọc</button>' +
-    '</div>' +
-    '<div class="table-scroll max-h-[calc(100vh-330px)] min-h-[260px] overflow-auto"><table class="ledger cost-ledger">' +
+    '<div class="table-scroll max-h-[calc(100vh-380px)] min-h-[260px] overflow-auto"><table class="ledger cost-ledger">' +
     '<thead><tr><th>Ngày</th><th>Công trình / nhà</th><th>Hạng mục · loại CP</th><th>Vật tư</th><th>Diễn giải</th>' +
     '<th class="num">Số lượng</th><th class="num money">Đơn giá</th><th class="num money">Thành tiền</th><th>Nhà cung cấp · số phiếu</th><th class="no-print"><span class="sr-only">Thao tác</span></th></tr></thead>' +
     '<tbody id="cl-body"></tbody><tfoot id="cl-foot"></tfoot></table></div>' +
     '<p class="no-print border-t border-rule px-4 py-2 text-[12.5px] text-ink-3">Bấm đúp vào ô Diễn giải, Số lượng, Đơn giá, Hạng mục, Loại CP, Vật tư, Nhà cung cấp hoặc Nhà để sửa ngay trong bảng (<kbd>Enter</kbd> lưu, <kbd>Esc</kbd> bỏ). Nút bút chì để sửa đủ các cột.</p>' +
     '</section>';
 
+  bindDensity(root);
   const draw = (keep) => { if (keep !== true) shown = PAGE; drawRows(root, f); };
   const syncInputs = () => {
-    $('#cl-period', root).value = f.period || 'tat-ca';
-    setDateValue($('#cl-from', root), f.from || '', true);
-    setDateValue($('#cl-to', root), f.to || '', true);
+    syncPeriodControls(root, f, 'cl');
   };
   bindPeriodControls(root, f, 'cl', () => { saveFilter('cpSo'); syncInputs(); draw(); });
   const kc = $('#khoan-cu', root);
@@ -97,8 +99,7 @@ export function renderCostLedger(root) {
     saveFilter('cpSo');
     if (redraw) renderCostLedger(root); else draw();
   };
-  $('#cl-loai', root).addEventListener('change', (e) => pick('loai')(e.target.value));
-  bindCombo($('#cl-ct', root), cb.ct, pick('ct', true));
+  $('#cl-loai', root).addEventListener('change', (e) => { e.target.closest('.fbox').classList.toggle('on', !!e.target.value); pick('loai')(e.target.value); });
   bindCombo($('#cl-nha', root), cb.nha, pick('nha'));
   bindCombo($('#cl-nhom', root), cb.nhom, pick('nhom', true));
   bindCombo($('#cl-hm', root), cb.hm, pick('hm'));
@@ -108,13 +109,22 @@ export function renderCostLedger(root) {
   $('#cl-q', root).addEventListener('input', debounce((e) => { f.q = e.target.value; saveFilter('cpSo'); draw(); }, 150));
 
   root.addEventListener('click', async (e) => {
+    const chip = e.target.closest('[data-chip]');
+    if (chip) {
+      const k = chip.dataset.chip;
+      if (k === 'period') Object.assign(f, { period: 'tat-ca', from: '', to: '', rel: false }); else f[k] = '';
+      saveFilter('cpSo');
+      renderCostLedger(root);
+      return;
+    }
     const a = e.target.closest('[data-act]');
     if (!a) return;
     const act = a.dataset.act;
     const tr = a.closest('tr[data-id]');
     const c = tr ? S.all.costs.find((x) => x.id === Number(tr.dataset.id)) : null;
+    if (act === 'dvt') { moDvt(a); return; }
     if (act === 'clear') {
-      Object.assign(f, { period: 'tat-ca', from: '', to: '', ct: '', nha: '', nhom: '', hm: '', loai: '', ncc: '', vt: '', q: '', trangThai: '' });
+      Object.assign(f, { period: 'tat-ca', from: '', to: '', rel: false, nha: '', nhom: '', hm: '', loai: '', ncc: '', vt: '', q: '', trangThai: '' });
       saveFilter('cpSo');
       renderCostLedger(root);
     } else if (act === 'export') download('/api/export/cost-ledger?' + exportQuery(f));
@@ -125,17 +135,28 @@ export function renderCostLedger(root) {
     else if (act === 'dup' && c) {
       try { await api('POST', '/api/costs', payloadOf(c, { nguon: 'nhan ban' })); toast('Đã nhân bản dòng (cùng phiếu)'); } catch (err) { showError(err); }
     } else if (act === 'del' && c) {
-      if (!(await confirmDialog({ trash: true, title: 'Xóa dòng chi phí', html: 'Xóa dòng ngày <b class="text-ink">' + fdate(c.ngay) + '</b>, ' + esc(c.maVT || c.dienGiai) + ', thành tiền <b class="text-ink">' + money(c.thanhTien) + ' đ</b>?', okText: 'Xóa dòng', danger: true }))) return;
+      if (!(await confirmDialog({ trash: true, title: 'Xóa dòng chi phí', html: 'Xóa dòng ngày <b class="text-ink">' + fdate(c.ngay) + '</b>, ' + esc(c.maVT || c.dienGiai) + ', thành tiền <b class="text-ink">' + money(c.thanhTien) + ' đ</b>?', hauQua: hauQuaCongNo(c.maNCC, -(c.thanhTien || 0), c.maCT), okText: 'Xóa dòng', danger: true }))) return;
       try { await api('DELETE', '/api/costs/' + c.id); toast('Đã xóa dòng chi phí, chuyển vào Thùng rác'); } catch (err) { showError(err); }
     } else if (act === 'clip' && c) {
       openAttachList(a.dataset.owner, Number(a.dataset.oid), 'Chứng từ của ' + (a.dataset.owner === 'slips' ? 'phiếu nhập' : 'dòng chi phí'));
     } else if (act === 'locked' && c) {
-      toast(KT.lockMessage(KT.monthOf(c.ngay), 'sửa'), 'info');
+      moKyKhoa(c.ngay, 'sửa');
     } else if (act === 'post' && c) {
       try { const r = await api('POST', '/api/cost-slips/' + c.phieuId + '/post'); toast('Đã ghi sổ phiếu nháp (' + r.posted + ' dòng), đã tính vào chi phí và công nợ'); } catch (err) { showError(err); }
     } else if (act === 'slip' && c) {
       location.hash = '#/cp-nhap?phieu=' + c.phieuId;
     }
+  });
+  // Bàn phím trên dòng đang chọn (Tab tới dòng): Enter sửa đủ cột · Ctrl D nhân bản · Delete xóa
+  root.addEventListener('keydown', (e) => {
+    const tr = e.target.matches && e.target.matches('tr[data-id]') ? e.target : null;
+    if (!tr) return;
+    const btn = (act) => tr.querySelector('[data-act="' + act + '"]');
+    const ctrl = e.ctrlKey || e.metaKey;
+    const go = (act) => { const b = btn(act) || btn('locked'); if (b) { e.preventDefault(); b.click(); } };
+    if (e.key === 'Enter' && !ctrl) go('edit');
+    else if (ctrl && (e.key === 'd' || e.key === 'D')) go('dup');
+    else if (e.key === 'Delete') go('del');
   });
   root.addEventListener('dblclick', (e) => {
     const td = e.target.closest('[data-edit]');
@@ -153,10 +174,10 @@ function khoanCuBanner() {
   if (!coQuyen('sua-hang-loat')) return '';
   const n = KT.khoanCu(S.all).length;
   if (!n || Number(LS.get('anKhoanCu', 0)) >= n) return '';
-  return '<div id="khoan-cu" class="no-print flex flex-wrap items-center gap-3 rounded-lg bg-pen-soft px-4 py-2.5 text-[13.5px] text-ink">' +
-    icon('info', 'text-[18px] text-pen') + '<span class="min-w-[240px] flex-1">Có <b class="font-semibold">' + n + ' dòng</b> chỉ có Thành tiền nhưng đang lưu kiểu cũ ' +
+  return '<div id="khoan-cu" class="banner no-print">' +
+    icon('info') + '<span class="min-w-[240px] flex-1">Có <b class="font-semibold">' + n + ' dòng</b> chỉ có Thành tiền nhưng đang lưu kiểu cũ ' +
     '<b class="font-semibold">Số lượng 1 × Đơn giá = Thành tiền</b>. Có thể chuyển sang “theo khoản” (Số lượng, Đơn giá để trống, giữ nguyên Thành tiền).</span>' +
-    '<button type="button" class="btn btn-primary btn-sm" data-act="khoan-cu-xem">Xem và chuyển</button>' +
+    '<button type="button" class="btn btn-secondary btn-sm !border-pen !text-accent-800" data-act="khoan-cu-xem">Xem và chuyển</button>' +
     '<button type="button" class="btn btn-ghost btn-sm" data-act="khoan-cu-an">Ẩn</button></div>';
 }
 
@@ -220,27 +241,62 @@ function moChuyenKhoan() {
 function drawRows(root, f) {
   const res = KT.filterCosts(S.costLedger, f);
   const filtered = !!(f.ct || f.nha || f.nhom || f.hm || f.loai || f.ncc || f.vt || f.q || f.from || f.to);
-  const tile = (label, v, cls) => '<div class="eq-cell"><span class="eq-label">' + esc(label) + '</span><span class="eq-value ' + (cls || '') + '">' + money(v) + '</span></div>';
-  const sep = '<span class="eq-sep" aria-hidden="true"></span>';
-  $('#cl-summary', root).innerHTML = '<div class="equation">' + tile(filtered ? 'Tổng chi phí đang lọc' : 'Tổng chi phí', res.total) + sep +
-    KT.LOAI_CP.map((l) => tile(l, res.byLoai[l] || 0, 'text-ink-2')).join(sep) + '</div>';
+  const pct = (v) => (res.total ? ' · ' + (Math.round(v / res.total * 1000) / 10).toLocaleString('vi-VN') + '%' : '');
+  const tile = (label, v, cls) => '<div class="border-l border-rule px-3 py-2"><div class="text-[12px] text-ink-3">' + esc(label) + '</div><div class="text-[18px] font-bold tabular-nums ' + (cls || '') + '">' + money(v) + '</div></div>';
+  $('#cl-summary', root).innerHTML = '<div class="mk grid border border-rule" style="grid-template-columns:minmax(0,1.3fr) repeat(3,minmax(0,1fr))"><div class="px-3 py-2"><div class="text-[12px] text-ink-3">' +
+    (filtered ? 'Tổng chi phí theo bộ lọc' : 'Tổng chi phí') + ' · <b class="text-ink">' + res.rows.length + '</b>' + (filtered ? ' / ' + S.costLedger.length : '') + ' dòng</div><div class="text-[22px] font-bold tabular-nums">' + money(res.total) + ' đ</div></div>' +
+    KT.LOAI_CP.map((l) => tile(l + pct(res.byLoai[l] || 0), res.byLoai[l] || 0)).join('') + '</div>';
+  // dòng "Đang lọc": từng điều kiện là một nhãn, bấm ✕ để bỏ; Xóa lọc bỏ hết
+  const nm = (list, ma, k) => { const x = list.find((y) => KT.keyOf(y.ma) === KT.keyOf(ma)); return x ? (k === 'ma' ? x.ma : x.ten) : ma; };
+  const chips = [];
+  if (f.from || f.to) chips.push(['period', 'Kỳ ' + KT.describeRange(f.from, f.to).replace(/^Từ ngày /, '').replace(' đến ngày ', ' – ')]);
+  if (f.nha) chips.push(['nha', 'Nhà/lô: ' + (f.nha === '__none__' ? 'không gán' : nm(S.db.houses, f.nha, 'ma'))]);
+  if (f.nhom) chips.push(['nhom', 'Nhóm: ' + nm(S.db.costGroups, f.nhom, 'ten')]);
+  if (f.hm) chips.push(['hm', 'Hạng mục: ' + nm(S.db.costItems, f.hm, 'ten')]);
+  if (f.loai) chips.push(['loai', 'Loại CP: ' + f.loai]);
+  if (f.ncc) chips.push(['ncc', 'NCC: ' + nm(S.db.suppliers, f.ncc, 'ten')]);
+  if (f.vt) chips.push(['vt', 'Vật tư: ' + nm(S.db.materials, f.vt, 'ma')]);
+  if (f.q) chips.push(['q', 'Tìm: “' + f.q + '”']);
+  $('#cl-chips', root).innerHTML = chips.length ? '<span class="text-ink-3">Đang lọc:</span>' + chips.map(([k, t]) => '<span class="filter-chip">' + esc(t) + '<button type="button" data-chip="' + k + '" aria-label="Bỏ lọc ' + esc(t) + '">' + icon('x') + '</button></span>').join('') +
+    '<button type="button" class="btn btn-ghost btn-sm" data-act="clear" id="cl-clear">Xóa lọc</button><span class="flex-1"></span><span class="text-ink-3" id="cl-count" aria-live="polite"></span>'
+    : '<span class="text-ink-3" id="cl-count" aria-live="polite"></span>';
   // Dòng Nháp hiện xen trong sổ, không cộng vào các tổng
   const drafts = f.trangThai === 'so' || !S.drafts.costs.length ? [] : KT.filterCosts(allCostLedger().filter(KT.isDraft), f).rows;
   const posted = f.trangThai === 'nhap' ? [] : res.rows;
   const list = drafts.length ? posted.concat(drafts).sort(KT.compareEntries) : posted;
   $('#cl-count', root).innerHTML = '<b class="font-semibold text-ink">' + posted.length + '</b> dòng' + (filtered ? ' khớp bộ lọc, trong tổng số ' + S.costLedger.length + ' dòng' : ' trong sổ') +
     (drafts.length ? ', <b class="font-semibold text-caution">' + drafts.length + ' dòng nháp</b> chưa tính vào tổng' : '') + '.';
-  $('#cl-clear', root).hidden = !(filtered || f.trangThai);
   const all = { rows: list };
   const rows = all.rows.length > shown ? all.rows.slice(-shown) : all.rows;
   const body = $('#cl-body', root);
   body.innerHTML = rows.length ? (all.rows.length > rows.length ? moreRow(rows.length, all.rows.length, 10) : '') +
     rows.map((r) => rowHtml(r, f.q)).join('')
-    : '<tr><td colspan="10" class="empty">' + (S.costLedger.length ? 'Không có dòng nào khớp bộ lọc.' : 'Sổ chi phí chưa có dòng nào. Bấm “Lập phiếu nhập” hoặc nhập file Excel chi phí trong Cài đặt.') + '</td></tr>';
+    : '<tr><td colspan="10" class="empty">' + (S.costLedger.length ? 'Không có dòng nào khớp bộ lọc. <button type="button" class="btn btn-secondary btn-sm ml-2" data-act="clear">Xóa lọc</button>' : 'Sổ chi phí chưa có dòng nào. <a href="#/cp-nhap" class="btn btn-primary btn-sm ml-2">Lập phiếu nhập</a> hoặc nhập file Excel chi phí (mục Nhập từ Excel).') + '</td></tr>';
   const fl = body.querySelector('tr.flash');
   if (fl) fl.scrollIntoView({ block: 'nearest' });
-  $('#cl-foot', root).innerHTML = res.rows.length ? '<tr><td colspan="5" class="text-right">Cộng</td><td class="num">' + slTotalHtml(res) + '</td><td></td>' +
-    '<td class="num money"><span class="dbl">' + money(res.total) + '</span></td><td colspan="2"></td></tr>' : '';
+  $('#cl-foot', root).innerHTML = res.rows.length ? '<tr><td colspan="5" class="text-ink-2"><b>Cộng · ' + res.rows.length + ' dòng</b>' + (all.rows.length > rows.length ? ' <span class="font-normal">(đang hiện ' + rows.length + ')</span>' : '') + '</td><td class="num">' + slTotalHtml(res) + '</td><td></td>' +
+    '<td class="num money"><span class="dbl">' + money(res.total) + '</span></td><td class="font-normal text-[12px] text-ink-3">' + new Set(res.rows.map((r) => KT.keyOf(r.maNCC))).size + ' NCC · ' + new Set(res.rows.map((r) => r.phieuId || r.id)).size + ' phiếu</td><td></td></tr>' : '';
+  slState = res;
+}
+
+let slState = null;
+// Danh sách số lượng theo từng ĐVT (nút "6 ĐVT ▾" ở dòng tổng)
+function moDvt(btn) {
+  const old = document.getElementById('dvt-pop');
+  if (old) { old.remove(); return; }
+  if (!slState) return;
+  const units = Object.keys(slState.slTheoDvt).sort((a, b) => slState.slTheoDvt[b] - slState.slTheoDvt[a]);
+  const pop = document.createElement('div');
+  pop.id = 'dvt-pop';
+  pop.className = 'menu !min-w-[200px] p-2';
+  pop.innerHTML = '<div class="px-2 pb-1 text-[11.5px] font-bold text-ink-3">Số lượng theo đơn vị tính</div>' +
+    units.map((u) => '<div class="flex justify-between gap-6 px-2 py-0.5 text-[13px] tabular-nums"><span>' + esc(u || '(không ĐVT)') + '</span><b>' + KT.fmtQty(slState.slTheoDvt[u]) + '</b></div>').join('');
+  document.body.appendChild(pop);
+  const r = btn.getBoundingClientRect();
+  pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8)) + 'px';
+  pop.style.top = (r.top + window.scrollY - pop.offsetHeight - 6) + 'px';
+  const off = (e) => { if (!pop.contains(e.target)) { pop.remove(); document.removeEventListener('mousedown', off, true); } };
+  setTimeout(() => document.addEventListener('mousedown', off, true), 0);
 }
 
 function moreRow(n, total, cols) {
@@ -254,16 +310,15 @@ function moreRow(n, total, cols) {
 function slTotalHtml(res) {
   const units = Object.keys(res.slTheoDvt);
   if (units.length === 1) return '<span class="dbl">' + KT.fmtQty(res.tongSL) + '</span>' + (units[0] ? ' <span class="text-[12px] font-normal text-ink-3">' + esc(units[0]) + '</span>' : '');
-  const parts = units.sort((a, b) => res.slTheoDvt[b] - res.slTheoDvt[a])
-    .map((u) => KT.fmtQty(res.slTheoDvt[u]) + ' ' + (u || '(không ĐVT)'));
-  return '<div class="ml-auto max-w-[200px] text-[12px] leading-snug font-medium whitespace-normal text-ink-2" title="Số lượng theo từng đơn vị tính">' + esc(parts.join(' · ')) + '</div>';
+  return '<button type="button" class="btn btn-secondary btn-sm no-print" data-act="dvt" title="Số lượng theo từng đơn vị tính (cộng lẫn m3 với kg không có nghĩa)">' + units.length + ' ĐVT ' + icon('caret') + '</button>' +
+    '<span class="print-only text-[12px] font-medium">' + esc(units.sort((a, b) => res.slTheoDvt[b] - res.slTheoDvt[a]).map((u) => KT.fmtQty(res.slTheoDvt[u]) + ' ' + (u || '(không ĐVT)')).join(' · ')) + '</span>';
 }
 
 function rowHtml(r, q) {
   const bad = (ok, text) => (ok ? text : '<span class="code bad" title="Mã chưa có trong danh mục">' + text + '</span>');
   const nhap = KT.isDraft(r);
   const cls = [S.flash.has('costs:' + r.id) ? 'flash' : '', nhap ? 'draft' : ''].filter(Boolean).join(' ');
-  return '<tr data-id="' + r.id + '"' + (cls ? ' class="' + cls + '"' : '') + '>' +
+  return '<tr data-id="' + r.id + '" tabindex="0"' + (cls ? ' class="' + cls + '"' : '') + '>' +
     '<td class="whitespace-nowrap">' + fdate(r.ngay) + (nhap ? '<div><span class="chip chip-draft mt-1" title="Nháp: chưa ghi sổ, chưa tính vào chi phí và công nợ">' + icon('draft') + 'Nháp</span></div>' : '') + '</td>' +
     '<td class="whitespace-nowrap" data-edit="maNha">' + bad(r.ctHopLe, '<span class="code" title="' + esc(r.tenCT) + '">' + highlight(r.maCT, q) + '</span>') +
     (r.maNha && KT.keyOf(r.maNha) !== KT.keyOf(r.maCT) ? '<div class="sub" title="' + esc(r.tenNha) + '">' + bad(r.nhaHopLe, highlight(r.maNha, q)) + '</div>' : '') + '</td>' +
@@ -291,7 +346,7 @@ function inlineEdit(td) {
   const tr = td.closest('tr[data-id]');
   const c = S.all.costs.find((x) => x.id === Number(tr.dataset.id));
   if (!c) return;
-  if (KT.isLockedDate(S.all, c.ngay)) { toast(KT.lockMessage(KT.monthOf(c.ngay), 'sửa'), 'info'); return; }
+  if (KT.isLockedDate(S.all, c.ngay)) { moKyKhoa(c.ngay, 'sửa'); return; }
   const field = td.dataset.edit;
   const old = td.innerHTML;
   let input;
@@ -312,9 +367,11 @@ function inlineEdit(td) {
   input.focus();
   if (input.select) input.select();
   let done = false;
+  const dau = input.value;
   const cancel = () => { if (done) return; done = true; td.innerHTML = old; };
+  // Trả về true khi đã lưu (hoặc không có gì đổi), false khi lỗi — để Tab biết có sang ô kế tiếp được không
   const commit = async () => {
-    if (done) return;
+    if (done) return false;
     let v = input.value.trim();
     const patch = {};
     if (field === 'maHM') { const code = resolveItem(v); if (!code) return fail('Hạng mục "' + v + '" chưa có trong danh mục'); patch.maHM = code; }
@@ -326,7 +383,7 @@ function inlineEdit(td) {
     else if (field === 'maNha') { const code = v ? resolveCode(S.db.houses, v) : ''; if (code && !houseByCode(code)) return fail('Nhà "' + v + '" chưa có trong danh mục'); patch.maNha = code; }
     // Xóa trống Số lượng hoặc Đơn giá: thành dòng theo khoản (không có SL, ĐG), giữ nguyên Thành tiền
     else if ((field === 'soLuong' || field === 'donGia') && !v) {
-      if (KT.isKhoan(c)) { cancel(); return; }
+      if (KT.isKhoan(c)) { cancel(); return true; }
       patch.soLuong = ''; patch.donGia = ''; patch.thanhTien = c.thanhTien;
     }
     else if (field === 'soLuong') { const n = KT.parseQty(v); if (isNaN(n) || n <= 0) return fail('Số lượng không hợp lệ'); patch.soLuong = n; }
@@ -344,13 +401,27 @@ function inlineEdit(td) {
     try {
       await api('PUT', '/api/costs/' + c.id, payloadOf(c, patch));
       toast('Đã lưu');
+      return true;
     } catch (err) {
       showError(err);
       td.innerHTML = old;
+      return false;
     }
   };
-  function fail(msg) { toast(msg, 'error'); input.classList.add('invalid'); input.focus(); }
+  function fail(msg) { toast(msg, 'error'); input.classList.add('invalid'); input.focus(); return false; }
+  // Tab / Shift+Tab: lưu ô này rồi mở ô kế tiếp / trước đó cùng dòng (hết ô thì chỉ lưu)
+  const sangO = async (dir) => {
+    const cells = Array.from(tr.querySelectorAll('td[data-edit]'));
+    const next = cells[cells.indexOf(td) + dir];
+    const id = tr.dataset.id;
+    const ok = input.value === dau ? (cancel(), true) : await commit();
+    if (!ok || !next) return;
+    const f2 = next.dataset.edit;
+    const again = document.querySelector('tr[data-id="' + id + '"] td[data-edit="' + f2 + '"]');
+    if (again) inlineEdit(again);
+  };
   input.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab' && !e.altKey && !e.ctrlKey) { e.preventDefault(); sangO(e.shiftKey ? -1 : 1); return; }
     if (e.key === 'Enter') { e.preventDefault(); commit(); }
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancel(); }
   });

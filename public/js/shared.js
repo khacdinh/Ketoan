@@ -516,6 +516,32 @@
     }
   }
 
+  /* Kỳ theo tháng / quý / năm chứa một ngày (anchor ISO), dịch tiến lùi từng kỳ, nhãn hiển thị (dùng cho thanh chọn kỳ thống nhất) */
+  function periodUnit(kind, anchor) {
+    const a = /^(\d{4})-(\d{2})-(\d{2})$/.test(anchor || '') ? new Date(+anchor.slice(0, 4), +anchor.slice(5, 7) - 1, 1) : new Date();
+    const y = a.getFullYear();
+    const m = a.getMonth();
+    function iso(dt) { return dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate()); }
+    if (kind === 'quy') { const q = Math.floor(m / 3) * 3; return { from: iso(new Date(y, q, 1)), to: iso(new Date(y, q + 3, 0)) }; }
+    if (kind === 'nam') return { from: y + '-01-01', to: y + '-12-31' };
+    return { from: iso(new Date(y, m, 1)), to: iso(new Date(y, m + 1, 0)) };
+  }
+  function periodShift(kind, from, dir) {
+    const d = /^(\d{4})-(\d{2})/.test(from || '') ? new Date(+from.slice(0, 4), +from.slice(5, 7) - 1, 1) : new Date();
+    const step = kind === 'nam' ? 12 : kind === 'quy' ? 3 : 1;
+    d.setMonth(d.getMonth() + dir * step);
+    return periodUnit(kind, d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-01');
+  }
+  function periodLabel(kind, from, to) {
+    const dm = function (iso) { return iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) : ''; };
+    const sub = from && to ? dm(from) + ' – ' + dm(to) + '/' + to.slice(0, 4) : '';
+    if (kind === 'thang' && from) return { title: 'Tháng ' + from.slice(5, 7) + '/' + from.slice(0, 4), sub: sub };
+    if (kind === 'quy' && from) return { title: 'Quý ' + (Math.floor((+from.slice(5, 7) - 1) / 3) + 1) + '/' + from.slice(0, 4), sub: sub };
+    if (kind === 'nam' && from) return { title: 'Năm ' + from.slice(0, 4), sub: sub };
+    if (kind === 'khoang') return { title: from || to ? describeRange(from, to) : 'Chọn khoảng ngày', sub: '' };
+    return { title: 'Toàn bộ thời gian', sub: '' };
+  }
+
   function describeRange(from, to) {
     if (from && to) return 'Từ ngày ' + fmtDate(from) + ' đến ngày ' + fmtDate(to);
     if (from) return 'Từ ngày ' + fmtDate(from);
@@ -1149,7 +1175,7 @@
       const s = sIdx.get(k);
       return {
         id: c.id, ngay: c.ngay, maNCC: c.maNCC || '', tenNCC: s ? s.ten : '', maCT: c.maCT || '', soLuong: c.soLuong, donGia: c.donGia,
-        thanhTien: c.thanhTien, dienGiai: c.dienGiai || '', soPhieu: c.soPhieu || '',
+        thanhTien: c.thanhTien, dienGiai: c.dienGiai || '', soPhieu: c.soPhieu || '', phieuId: c.phieuId,
         chenhLech: prev === undefined ? null : (Number(c.donGia) || 0) - prev
       };
     });
@@ -1516,6 +1542,9 @@
     buildVouchers: buildVouchers,
     nextVoucherNo: nextVoucherNo,
     periodRange: periodRange,
+    periodUnit: periodUnit,
+    periodShift: periodShift,
+    periodLabel: periodLabel,
     describeRange: describeRange,
     // Chi phí công trình
     LOAI_CP: LOAI_CP,

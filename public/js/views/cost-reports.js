@@ -1,12 +1,11 @@
 /* Báo cáo chi phí công trình: bảng điều khiển (TONGHOP), chi tiết theo nhóm (CHI_TIET_THEO_NHOM),
  * công nợ NCC (CONGNO_NCC), thống kê giá vật tư. */
-import { $, $$, esc, money, fdate, fmtShort, icon, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, debounce, highlight, LS, dateField } from '../ui.js';
+import { $, $$, esc, money, fdate, fmtShort, icon, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, debounce, highlight, LS, dateField, setPageActions } from '../ui.js';
 import { S, saveFilter, costProjects, projectByCode, supplierByCode, materialByCode, itemByCode } from '../state.js';
 import { printView } from '../print.js';
-import { comboHtml, bindCombo } from '../combo.js';
-import { openEntryForm } from '../forms.js';
-import { openExtPayForm, deleteExtPay } from '../extpay.js';
-import { openSoDuDauForm, deleteSoDuDau } from '../sodudau.js';
+import { comboHtml, bindCombo, filterBox } from '../combo.js';
+import { datCongTrinh } from '../ctpick.js';
+import { projectDebtHtml } from './debt.js';
 
 const KT = window.KT;
 const HEAVY_ROWS = 1500;
@@ -40,7 +39,6 @@ export function renderCostDashboard(root) {
   const chk = KT.costCatalogCheck(S.db);
   const nVT = new Set(KT.filterCosts(S.costLedger, f).rows.map((r) => KT.keyOf(r.maVT)).filter(Boolean)).size;
   const openState = LS.get('cp.th.open', {});
-  const cbCt = ctCombo('th-ct', f.ct);
   const cbNha = houseCombo('th-nha', f.ct, f.nha);
 
   // link: { loai } → mở sổ chi phí đã lọc; { debt: true } → mở công nợ NCC (cùng công trình, cùng kỳ)
@@ -53,14 +51,7 @@ export function renderCostDashboard(root) {
 
   root.innerHTML =
     '<div class="print-only" id="print-head"></div>' +
-    '<div class="no-print flex flex-wrap items-center gap-2">' +
-    comboHtml(cbCt) + comboHtml(cbNha) +
-    periodControls(f, 'cth') +
-    '<span class="flex-1"></span>' +
-    '<button type="button" class="btn btn-ghost" data-act="print">' + icon('print') + 'In</button>' +
-    '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất Excel</button>' +
-    '<a href="#/cp-nhap" class="btn btn-primary">' + icon('plus') + 'Lập phiếu nhập</a>' +
-    '</div>' +
+    '<div class="no-print flex flex-wrap items-center gap-2.5">' + periodControls(f, 'cth') + filterBox('Nhà/lô', Object.assign(cbNha, { placeholder: 'Tất cả', cls: 'w-[170px]' })) + '</div>' +
     '<section class="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">' +
     '<div><h2 class="text-[13.5px] font-medium text-ink-2">Tổng chi phí · ' + esc(ctLabel(f.ct)) + ' · ' + esc(KT.describeRange(f.from, f.to).toLowerCase()) + '</h2>' +
     '<p class="balance mt-2">' + money(s.total) + '<span class="unit">đồng</span></p>' +
@@ -69,7 +60,7 @@ export function renderCostDashboard(root) {
     '</section>' +
     '<div class="stats">' + loaiTiles +
     tile('Đã trả nhà cung cấp', money(debt.total.daTra), (debt.total.daTraNgoai ? 'Gồm ' + money(debt.total.daTraNgoai) + ' đ trả ngoài quỹ' : 'Từ sổ thu chi, theo mã NCC' + (f.ct ? ' và công trình' : '')), '', { debt: true }) +
-    tile('Còn nợ nhà cung cấp', money(debt.total.conNo), debt.total.ungDu ? 'Ứng dư ' + money(debt.total.ungDu) + ' đ' : '', debt.total.conNo ? 'text-alert' : '', { debt: true }) +
+    tile('Dư Có (còn phải trả NCC)', money(debt.total.conNo), debt.total.ungDu ? 'Dư Nợ (đã ứng trước) ' + money(debt.total.ungDu) + ' đ' : '', '', { debt: true }) +
     '</div>' +
     '<div class="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">' +
     '<section class="sheet overflow-hidden" aria-labelledby="h-nhom"><div class="sheet-head"><div><h3 id="h-nhom" class="sheet-title">Chi phí theo nhóm và hạng mục</h3>' +
@@ -91,7 +82,12 @@ export function renderCostDashboard(root) {
   drawMonthChart($('#th-months', root), s.byMonth);
 
   const rerender = () => renderCostDashboard(root);
-  bindCombo($('#th-ct', root), cbCt, (v) => { f.ct = v; f.nha = ''; saveFilter('cpTh'); rerender(); });
+  setPageActions('<button type="button" class="btn btn-secondary" data-act="print">' + icon('print') + 'In</button>' +
+    '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất Excel</button>' +
+    '<a href="#/cp-nhap" class="btn btn-secondary !border-pen !text-accent-800">' + icon('plus') + 'Lập phiếu nhập</a>', (act) => {
+    if (act === 'export') download('/api/export/costs' + (f.ct ? '?ct=' + encodeURIComponent(f.ct) : ''));
+    else if (act === 'print') printView('BẢNG ĐIỀU KHIỂN CHI PHÍ CÔNG TRÌNH', ctLabel(f.ct) + '. ' + KT.describeRange(f.from, f.to), S.db.settings);
+  });
   bindCombo($('#th-nha', root), cbNha, (v) => { f.nha = v; saveFilter('cpTh'); rerender(); });
   bindPeriodControls(root, f, 'cth', () => { saveFilter('cpTh'); rerender(); });
 
@@ -134,10 +130,8 @@ export function renderCostDashboard(root) {
     if (it) goLedger({ ct: f.ct, nha: f.nha, hm: it.dataset.item, period: f.period, from: f.from, to: f.to });
     const ctRow = e.target.closest('tr[data-ct]');
     if (ctRow) {
-      f.ct = KT.keyOf(f.ct) === KT.keyOf(ctRow.dataset.ct) ? '' : ctRow.dataset.ct;
       f.nha = '';
-      saveFilter('cpTh');
-      rerender();
+      datCongTrinh(KT.keyOf(f.ct) === KT.keyOf(ctRow.dataset.ct) ? '' : ctRow.dataset.ct); // chọn công trình ở thanh trên, mọi màn theo đó
     }
   });
   root.addEventListener('keydown', (e) => {
@@ -234,25 +228,21 @@ export function renderCostDetail(root) {
   root = freshRoot(root);
   const f = refreshPeriod(S.filters.cpCt);
   const usedNCC = new Set(S.db.costs.map((c) => KT.keyOf(c.maNCC)));
-  const cbCt = ctCombo('ct-ct', f.ct);
   const cbNha = houseCombo('ct-nha', f.ct, f.nha);
   const cbNcc = nccCombo('ct-ncc', S.db.suppliers.filter((s) => usedNCC.has(KT.keyOf(s.ma)) || KT.keyOf(s.ma) === KT.keyOf(f.ncc)), f.ncc);
   root.innerHTML =
     '<div class="print-only" id="print-head"></div>' +
-    '<div class="no-print flex flex-wrap items-center gap-2">' +
-    comboHtml(cbCt) + comboHtml(cbNha) +
-    '<select id="ct-loai" class="input w-auto" aria-label="Loại chi phí"><option value="">Mọi loại CP</option>' + KT.LOAI_CP.map((l) => '<option' + (f.loai === l ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select>' +
-    comboHtml(cbNcc) +
-    periodControls(f, 'ctd') +
-    '</div>' +
+    '<div class="no-print flex flex-wrap items-center gap-2.5">' + periodControls(f, 'ctd') + '</div>' +
+    '<div class="no-print filters-grid">' + filterBox('Nhà/lô', Object.assign(cbNha, { placeholder: 'Tất cả' })) +
+    '<div class="fbox' + (f.loai ? ' on' : '') + '"><span class="lbl">Loại CP</span><select id="ct-loai" class="input" aria-label="Loại chi phí"><option value="">Tất cả</option>' + KT.LOAI_CP.map((l) => '<option' + (f.loai === l ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select></div>' +
+    filterBox('NCC', Object.assign(cbNcc, { placeholder: 'Tất cả' })) + '</div>' +
     '<div class="no-print flex flex-wrap items-center gap-2">' +
     '<span class="text-[13px] text-ink-2">Mức hiển thị</span>' +
     '<div class="seg seg-sm" role="radiogroup" aria-label="Mức hiển thị">' +
     [[1, '1 · Chỉ tổng nhóm'], [2, '2 · Thêm cộng hạng mục'], [3, '3 · Toàn bộ chi tiết']].map(([v, l]) => '<label class="seg-item"><input type="radio" name="ct-level" value="' + v + '"' + (Number(f.level) === v ? ' checked' : '') + '><span>' + l + '</span></label>').join('') +
     '</div><span class="flex-1"></span>' +
-    '<button type="button" class="btn btn-ghost" data-act="print">' + icon('print') + 'In</button>' +
-    '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất Excel</button></div>' +
-    '<section class="sheet overflow-hidden"><div class="table-scroll max-h-[calc(100vh-250px)] overflow-auto"><table class="ledger tree">' +
+    '<button type="button" class="btn btn-secondary btn-sm" data-act="expand">Bung hết</button><button type="button" class="btn btn-secondary btn-sm" data-act="collapse">Thu gọn</button></div>' +
+    '<section class="sheet overflow-hidden"><div class="table-scroll max-h-[calc(100vh-300px)] overflow-auto"><table class="ledger tree">' +
     '<thead><tr><th>Ngày</th><th>Vật tư</th><th>Diễn giải</th><th>Nhà cung cấp</th><th>Nhà</th><th class="num">Số lượng</th><th>ĐVT</th><th class="num money">Đơn giá</th><th class="num money">Thành tiền</th></tr></thead>' +
     '<tbody id="ct-body"></tbody><tfoot id="ct-foot"></tfoot></table></div></section>';
 
@@ -271,14 +261,17 @@ export function renderCostDetail(root) {
       if (!g.total && !g.soDong) return;
       const gOpen = level >= 2 && open['g:' + g.ma] !== false;
       html += '<tr class="grp clickable" data-toggle="g:' + esc(g.ma) + '"><td colspan="8"><button type="button" class="tree-toggle" aria-expanded="' + gOpen + '"><span class="caret' + (gOpen ? ' open' : '') + '">' + icon('caretRight') + '</span>' + esc(g.ten) + '</button>' +
-        ' <span class="font-normal text-ink-3">· ' + g.soDong + ' dòng</span></td><td class="num money"><span class="dbl">' + money(g.total) + '</span></td></tr>';
+        ' <span class="font-normal text-ink-3">· ' + g.soDong + ' dòng</span>' +
+        ' <button type="button" class="btn btn-ghost btn-sm no-print" data-act="xem-nhom" data-nhom="' + esc(g.ma) + '">Xem trong sổ</button></td><td class="num money"><span class="dbl">' + money(g.total) + '</span></td></tr>';
       if (!gOpen) return;
       g.items.forEach((it) => {
         const rows = byItem.get(KT.keyOf(it.ma));
         if (!rows) return;
         const iOpen = level >= 3 && (heavy ? open['i:' + it.ma] === true : open['i:' + it.ma] !== false);
         html += '<tr class="itm-sum clickable" data-toggle="i:' + esc(it.ma) + '" id="hm-' + esc(it.ma) + '"><td colspan="8" class="pl-8"><button type="button" class="tree-toggle" aria-expanded="' + iOpen + '"><span class="caret' + (iOpen ? ' open' : '') + '">' + icon('caretRight') + '</span>Cộng ' + esc(it.ten) + '</button>' +
-          ' <span class="font-normal text-ink-3">· ' + rows.length + ' dòng</span></td><td class="num money font-semibold">' + money(it.total) + '</td></tr>';
+          ' <span class="font-normal text-ink-3">· ' + rows.length + ' dòng</span>' +
+          ' <button type="button" class="btn btn-ghost btn-sm no-print" data-act="xem-hm" data-hm="' + esc(it.ma) + '">Xem trong sổ</button>' +
+          '<a href="#/cp-nhap" class="btn btn-ghost btn-sm no-print">Lập phiếu</a></td><td class="num money font-semibold">' + money(it.total) + '</td></tr>';
         if (!iOpen) return;
         html += rows.map((r) => '<tr class="dtl"><td class="whitespace-nowrap pl-14">' + fdate(r.ngay) + '</td>' +
           '<td>' + (r.maVT ? '<span class="font-semibold">' + esc(r.maVT) + '</span><div class="sub">' + esc(r.tenVT) + '</div>' : '') + '</td>' +
@@ -291,7 +284,11 @@ export function renderCostDetail(root) {
   };
 
   const rerender = () => renderCostDetail(root);
-  bindCombo($('#ct-ct', root), cbCt, (v) => { f.ct = v; f.nha = ''; saveFilter('cpCt'); rerender(); });
+  setPageActions('<button type="button" class="btn btn-secondary" data-act="print">' + icon('print') + 'In</button>' +
+    '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất Excel</button>', (act) => {
+    if (act === 'export') download('/api/export/costs' + (f.ct ? '?ct=' + encodeURIComponent(f.ct) : ''));
+    else if (act === 'print') printView('CHI TIẾT CHI PHÍ THEO NHÓM', ctLabel(f.ct) + '. ' + KT.describeRange(f.from, f.to), S.db.settings);
+  });
   bindCombo($('#ct-nha', root), cbNha, (v) => { f.nha = v; saveFilter('cpCt'); draw(); });
   $('#ct-loai', root).addEventListener('change', (e) => { f.loai = e.target.value; saveFilter('cpCt'); draw(); });
   bindCombo($('#ct-ncc', root), cbNcc, (v) => { f.ncc = v; saveFilter('cpCt'); draw(); });
@@ -306,7 +303,10 @@ export function renderCostDetail(root) {
   root.addEventListener('click', (e) => {
     const a = e.target.closest('[data-act]');
     if (a) {
-      if (a.dataset.act === 'open-all') { S.db.costItems.forEach((it) => { open['i:' + it.ma] = true; open['g:' + it.maNhom] = true; }); LS.set('cp.ct.open', open); draw(); }
+      if (a.dataset.act === 'xem-nhom') { goLedger({ ct: f.ct, nha: f.nha, nhom: a.dataset.nhom, loai: f.loai, ncc: f.ncc, period: f.period, from: f.from, to: f.to }); return; }
+      if (a.dataset.act === 'xem-hm') { goLedger({ ct: f.ct, nha: f.nha, hm: a.dataset.hm, loai: f.loai, ncc: f.ncc, period: f.period, from: f.from, to: f.to }); return; }
+      if (a.dataset.act === 'open-all' || a.dataset.act === 'expand') { S.db.costItems.forEach((it) => { open['i:' + it.ma] = true; open['g:' + it.maNhom] = true; }); LS.set('cp.ct.open', open); draw(); }
+      if (a.dataset.act === 'collapse') { S.db.costItems.forEach((it) => { open['i:' + it.ma] = false; open['g:' + it.maNhom] = false; }); LS.set('cp.ct.open', open); draw(); }
       if (a.dataset.act === 'export') download('/api/export/costs' + (f.ct ? '?ct=' + encodeURIComponent(f.ct) : ''));
       if (a.dataset.act === 'print') printView('CHI TIẾT CHI PHÍ THEO NHÓM', ctLabel(f.ct) + '. ' + KT.describeRange(f.from, f.to), S.db.settings);
       return;
@@ -322,258 +322,6 @@ export function renderCostDetail(root) {
     if (refocus) { const b = root.querySelector('tr[data-toggle="' + CSS.escape(k) + '"] .tree-toggle'); if (b) b.focus(); }
   });
   draw();
-}
-
-/* ============================== CÔNG NỢ NHÀ CUNG CẤP ============================== */
-
-export function renderDebt(root) {
-  root = freshRoot(root);
-  const f = S.filters.cpCn;
-  // bộ lọc NCC chọn nhiều (bản trước lưu một mã ở f.ncc)
-  if (!Array.isArray(f.nccs)) f.nccs = f.ncc ? [f.ncc] : [];
-  delete f.ncc;
-  const nccs = f.nccs;
-  const d = KT.supplierDebt(S.db, { ct: f.ct, to: f.to, ncc: nccs });
-  if (!f.pham) f.pham = 'ct';
-  // lọc theo NCC: luôn hiện các NCC đã chọn, không xét phạm vi; rồi lọc nhanh theo tình trạng
-  let rows = nccs.length ? d.rows.slice() : f.pham === 'ct' ? d.rows.filter((r) => r.lienQuan) : f.pham === 'active' ? d.rows.filter((r) => r.soDongCP || r.soDongTT) : d.rows.slice();
-  rows = rows.filter((r) => !f.tt || (f.tt === 'no' ? r.conLai > 0 : f.tt === 'du' ? r.conLai < 0 : r.conLai !== 0));
-  const tot = d.sumRows(rows);
-  if (f.sort === 'conLai') rows.sort((a, b) => b.conLai - a.conLai);
-  else if (f.sort === 'phatSinh') rows.sort((a, b) => b.phatSinh - a.phatSinh);
-  else if (f.sort === 'name') rows.sort((a, b) => a.ten.localeCompare(b.ten, 'vi'));
-  const sel = nccs.length === 1 ? nccs[0] : LS.get('cp.cn.sel', '');
-  const theoCT = KT.projectDebtSummary(S.db, { to: f.to, all: !!f.allCT, ncc: nccs });
-  const nccLabel = debtFilterLabel(nccs, '');
-  const filtered = nccs.length || f.tt;
-  // NCC có phát sinh chi phí lên đầu gợi ý; mã lạ chỉ có trong sổ vẫn lọc được
-  const used = new Set(S.db.costs.map((c) => KT.keyOf(c.maNCC)));
-  const cbCt = ctCombo('cn-ct', f.ct);
-  const cbNcc = Object.assign(nccCombo('cn-ncc', S.db.suppliers.filter((x) => used.has(KT.keyOf(x.ma))).concat(S.db.suppliers.filter((x) => !used.has(KT.keyOf(x.ma)))), '', 'w-[250px] max-sm:w-full'),
-    { placeholder: nccs.length ? 'Thêm NCC: gõ mã hoặc tên' : 'Lọc NCC: gõ mã hoặc tên', label: 'Lọc theo nhà cung cấp (chọn được nhiều)', accept: unknownNcc, multi: true,
-      exclude: new Set(nccs.map(KT.keyOf)) });
-  const TT = [['', 'Mọi tình trạng'], ['no', 'Chỉ NCC còn nợ'], ['du', 'Chỉ NCC ứng dư'], ['an', 'Ẩn NCC đã tất toán']];
-
-  root.innerHTML =
-    '<div class="print-only" id="print-head"></div>' +
-    '<div class="no-print flex flex-wrap items-center gap-2">' +
-    comboHtml(cbCt) + comboHtml(cbNcc) +
-    '<span class="flex items-center gap-2 text-[13.5px] text-ink-2"><span aria-hidden="true">Đến ngày</span>' + dateField({ id: 'cn-to', value: f.to || '', label: 'Tính công nợ đến ngày' }) + '</span>' +
-    '<select id="cn-tt" class="input w-auto" aria-label="Lọc theo tình trạng công nợ">' + TT.map(([v, l]) => '<option value="' + v + '"' + ((f.tt || '') === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
-    '<select id="cn-pham" class="input w-auto" aria-label="Phạm vi nhà cung cấp"' + (nccs.length ? ' disabled title="Đang lọc theo nhà cung cấp"' : '') + '>' + [['ct', 'NCC liên quan công trình'], ['active', 'Mọi NCC có phát sinh'], ['all', 'Tất cả NCC trong danh mục']].map(([v, l]) =>
-      '<option value="' + v + '"' + (f.pham === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
-    '<span class="flex-1"></span>' +
-    '<select id="cn-sort" class="input w-auto" aria-label="Sắp xếp">' + [['conLai', 'Còn nợ nhiều trước'], ['phatSinh', 'Chi phí lớn trước'], ['name', 'Theo tên A đến Z'], ['catalog', 'Theo danh mục']].map(([v, l]) =>
-      '<option value="' + v + '"' + (f.sort === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
-    '<button type="button" class="btn btn-ghost" data-act="print">' + icon('print') + 'In</button>' +
-    '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất Excel</button></div>' +
-    (filtered ? '<div class="no-print flex flex-wrap items-center gap-1.5" id="cn-chips" aria-label="Bộ lọc đang áp dụng"><span class="text-[13px] text-ink-2">Đang lọc:</span>' +
-      nccs.map((m) => { const x = supplierByCode(m); return '<span class="filter-chip" data-ma="' + esc(m) + '"><span><b>' + esc(m) + '</b>' + (x ? ' – ' + esc(x.ten) : '') + '</span>' +
-        '<button type="button" data-act="rm-ncc" aria-label="Bỏ lọc ' + esc(m) + '" title="Bỏ NCC này khỏi bộ lọc">' + icon('x') + '</button></span>'; }).join('') +
-      (f.tt ? '<span class="filter-chip"><span>' + esc(TT.find((t) => t[0] === f.tt)[1]) + '</span><button type="button" data-act="rm-tt" aria-label="Bỏ lọc tình trạng">' + icon('x') + '</button></span>' : '') +
-      '<button type="button" class="btn btn-ghost btn-sm" data-act="clear-ncc" id="cn-clear">' + icon('eraser') + 'Xóa lọc</button></div>' : '') +
-    '<section class="sheet overflow-hidden" aria-labelledby="h-theo-ct"><div class="sheet-head pb-1"><div><h3 id="h-theo-ct" class="sheet-title">Tổng hợp nợ và đã thanh toán theo công trình' + (nccs.length ? ' · ' + esc(nccLabel) : '') + '</h3>' +
-    '<p class="sheet-note screen-hint">Bấm một công trình để xem công nợ từng nhà cung cấp của công trình đó' + (f.to ? ', tính đến ngày ' + fdate(f.to) : '') + '.' +
-    (f.ct ? ' <a href="#" class="font-semibold text-pen underline underline-offset-2" data-act="all-ct">Xem tất cả công trình</a>' : '') +
-    (nccs.length ? ' <a href="#" class="font-semibold text-pen underline underline-offset-2" data-act="all-ncc">Xem tất cả nhà cung cấp</a>' : '') + '</p></div>' +
-    '<label class="check no-print"><input type="checkbox" id="cn-allct"' + (f.allCT ? ' checked' : '') + '>Hiện cả dự án chưa nhập chi phí</label></div>' +
-    projectDebtHtml(theoCT, f.ct) + '</section>' +
-    '<h3 class="mt-1 text-[15px] font-semibold" id="cn-title">Công nợ theo nhà cung cấp · ' + esc(ctLabel(f.ct)) + (nccs.length ? ' · ' + esc(nccLabel) : '') +
-    ' <span class="text-[13px] font-normal text-ink-2" id="cn-count">(' + rows.length + ' nhà cung cấp)</span></h3>' +
-    '<div class="equation"><div class="eq-cell"><span class="eq-label">Số dư đầu kỳ</span><span class="eq-value">' + money(tot.dauKy) + '</span></div><span class="eq-op">+</span>' +
-    '<div class="eq-cell"><span class="eq-label">Chi phí phát sinh</span><span class="eq-value">' + money(tot.phatSinh) + '</span></div><span class="eq-op">−</span>' +
-    '<div class="eq-cell"><span class="eq-label">Đã trả, đã ứng</span><span class="eq-value">' + money(tot.daTra) + '</span></div><span class="eq-op">=</span>' +
-    '<div class="eq-cell"><span class="eq-label">Chênh lệch</span><span class="eq-value' + (tot.conLai > 0 ? ' neg' : '') + '">' + money(tot.conLai) + '</span></div><span class="eq-sep"></span>' +
-    '<div class="eq-cell"><span class="eq-label">Tổng còn nợ</span><span class="eq-value text-alert">' + money(tot.conNo) + '</span></div>' +
-    '<div class="eq-cell"><span class="eq-label">Tổng ứng dư</span><span class="eq-value text-caution">' + money(tot.ungDu) + '</span></div></div>' +
-    '<p class="text-[13px] text-ink-3">Số dư đầu kỳ = công nợ có từ trước khi ghi sổ, nhập tay (nút <b class="font-medium text-ink-2">Đầu kỳ</b> ở chi tiết nhà cung cấp). Chi phí phát sinh lấy từ sổ chi phí (khối lượng đã nhận). Đã trả = sổ thu chi (tổng chi trừ tổng thu của cùng mã NCC' + (f.ct ? ' và cùng mã dự án ' + esc(f.ct) : '') + ') cộng các khoản trả từ nguồn khác, ngoài quỹ' + (tot.daTraNgoai ? ' (' + money(tot.daTraNgoai) + ' đ)' : '') + '. Hai sổ không sửa dữ liệu của nhau. ' +
-    (f.pham === 'ct' && !nccs.length ? '“Liên quan công trình” = NCC có chi phí công trình, hoặc có khoản trả gắn với công trình đang có chi phí.' : '') + '</p>' +
-    '<div class="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">' +
-    '<section class="sheet overflow-hidden"><div class="overflow-x-auto"><table class="ledger">' +
-    '<thead><tr><th>Nhà cung cấp</th><th class="num money">Đầu kỳ</th><th class="num money">Chi phí phát sinh</th><th class="num money">Đã trả / đã ứng</th><th class="num money">Còn lại</th><th>Tình trạng</th><th class="no-print"></th></tr></thead><tbody>' +
-    (rows.length ? rows.map((r) => '<tr class="clickable' + (KT.keyOf(r.ma) === KT.keyOf(sel) ? ' is-active' : '') + '" data-ma="' + esc(r.ma) + '" tabindex="0">' +
-      '<td><div class="code">' + esc(r.ma) + '</div><div class="sub">' + esc(r.ten) + (r.loai ? ' · ' + esc(r.loai) : '') + '</div></td>' +
-      '<td class="num money">' + (r.dauKy ? money(r.dauKy) : '<span class="text-ink-3">0</span>') + '</td>' +
-      '<td class="num money">' + money(r.phatSinh) + '</td><td class="num money">' + money(r.daTra) + ngoaiQuy(r.daTraNgoai) + '</td>' +
-      '<td class="num money font-semibold' + (r.conLai > 0 ? ' neg' : '') + '">' + money(r.conLai) + '</td>' +
-      '<td>' + debtChip(r) + '</td>' +
-      '<td class="actions no-print">' + (r.conLai > 0 && r.inCatalog ? '<div class="flex flex-col items-start gap-0.5"><button type="button" class="btn btn-ghost btn-sm" data-act="pay" title="Ghi phiếu chi trả nhà cung cấp này trong sổ thu chi (tiền quỹ)">' + icon('handCoins') + 'Trả tiền</button>' +
-        '<button type="button" class="btn btn-ghost btn-sm" data-act="xp-add" title="Ghi khoản đã trả nhà cung cấp này bằng nguồn tiền khác, ngoài quỹ (chuyển khoản công ty, chủ nhà trả thẳng…)">' + icon('bank') + 'Nguồn khác</button></div>' : '') + '</td></tr>').join('')
-      : '<tr><td colspan="7" class="empty">' + (filtered ? 'Không có nhà cung cấp nào khớp bộ lọc (' + esc(debtFilterLabel(nccs, f.tt)) + '). <a href="#" class="font-semibold text-pen underline underline-offset-2" data-act="clear-ncc">Xóa lọc</a>'
-        : 'Không có công nợ nào.') + '</td></tr>') +
-    '</tbody><tfoot><tr><td>Tổng cộng</td><td class="num money">' + money(tot.dauKy) + '</td><td class="num money">' + money(tot.phatSinh) + '</td><td class="num money">' + money(tot.daTra) + ngoaiQuy(tot.daTraNgoai) + '</td><td class="num money"><span class="dbl">' + money(tot.conLai) + '</span></td><td colspan="2"></td></tr></tfoot></table></div></section>' +
-    '<aside class="sheet no-print xl:sticky xl:top-[104px]" id="cn-detail"></aside></div>';
-
-  const drawDetail = (ma) => {
-    const el = $('#cn-detail', root);
-    const r = d.rows.find((x) => KT.keyOf(x.ma) === KT.keyOf(ma));
-    if (!r) { el.innerHTML = '<p class="p-6 text-center text-ink-3">Chọn một nhà cung cấp để xem chi tiết phát sinh và thanh toán.</p>'; return; }
-    const costs = S.costLedger.filter((c) => KT.keyOf(c.maNCC) === KT.keyOf(ma) && (!f.ct || KT.keyOf(c.maCT) === KT.keyOf(f.ct)) && (!f.to || c.ngay <= f.to));
-    const pays = S.ledger.filter((e) => KT.keyOf(e.maNCC) === KT.keyOf(ma) && (!f.ct || KT.keyOf(e.maDuAn) === KT.keyOf(f.ct)) && (!f.to || e.ngay <= f.to));
-    // gom chi phí theo phiếu cho gọn
-    const slips = KT.costSlips(Object.assign({}, S.db, { costs }), costs);
-    const ext = (S.db.extPayments || []).filter((p) => KT.keyOf(p.maNCC) === KT.keyOf(ma) && (!f.ct || KT.keyOf(p.maDuAn) === KT.keyOf(f.ct)) && (!f.to || p.ngay <= f.to))
-      .sort((a, b) => (a.ngay < b.ngay ? -1 : a.ngay > b.ngay ? 1 : a.id - b.id));
-    const dk = (S.all.soDuDauKy || []).filter((p) => KT.keyOf(p.maNCC) === KT.keyOf(ma) && (!f.ct || KT.keyOf(p.maDuAn) === KT.keyOf(f.ct)) && (!f.to || p.ngay <= f.to))
-      .sort((a, b) => (a.ngay < b.ngay ? -1 : a.ngay > b.ngay ? 1 : a.id - b.id));
-    el.innerHTML = '<div class="sheet-head"><div><h3 class="sheet-title">' + esc(r.ten) + '</h3><p class="sheet-note">' + esc(r.ma) + (r.loai ? ' · ' + esc(r.loai) : '') + '</p></div>' + debtChip(r) + '</div>' +
-      '<div class="px-5 pb-3" id="cn-dk"><div class="flex items-baseline justify-between gap-2"><h4 class="text-[13px] font-semibold text-ink-2">Số dư đầu kỳ (' + dk.length + ')</h4><b class="tabular-nums">' + money(r.dauKy) + '</b></div>' +
-      '<ul class="mt-1 divide-y divide-rule">' + (dk.map((p) => '<li class="flex items-start justify-between gap-2 py-1.5 text-[13px]" data-dk="' + p.id + '"><span class="min-w-0"><span class="tabular-nums text-ink-3">' + fdate(p.ngay) + '</span> ' +
-        (p.soTien < 0 ? 'đã ứng trước' : 'còn nợ') + (p.maDuAn && !f.ct ? ' · ' + esc(p.maDuAn) : '') + (p.ghiChu ? '<span class="block truncate text-ink-3" title="' + esc(p.ghiChu) + '">' + esc(p.ghiChu) + '</span>' : '') + '</span>' +
-        '<span class="flex shrink-0 items-center gap-1"><span class="tabular-nums' + (p.soTien < 0 ? ' text-caution' : '') + '">' + money(p.soTien) + '</span>' +
-        '<button type="button" class="icon-btn" data-act="dk-edit" aria-label="Sửa số dư đầu kỳ ngày ' + fdate(p.ngay) + '" title="Sửa">' + icon('edit') + '</button>' +
-        '<button type="button" class="icon-btn danger" data-act="dk-del" aria-label="Xóa số dư đầu kỳ ngày ' + fdate(p.ngay) + '" title="Xóa (vào Thùng rác)">' + icon('trash') + '</button></span></li>').join('') ||
-        '<li class="py-1.5 text-[13px] text-ink-3">Chưa nhập. Dùng khi còn nợ (hoặc đã ứng trước) từ trước khi ghi sổ trong phần mềm.</li>') + '</ul>' +
-      (r.inCatalog ? '<button type="button" class="btn btn-ghost btn-sm mt-1" data-act="dk-add">' + icon('plus') + 'Nhập số dư đầu kỳ</button>' : '') + '</div>' +
-      '<div class="border-t border-rule px-5 pt-3 pb-2"><div class="flex items-baseline justify-between"><h4 class="text-[13px] font-semibold text-ink-2">Chi phí phát sinh (' + costs.length + ' dòng)</h4><b class="tabular-nums">' + money(r.phatSinh) + '</b></div>' +
-      '<ul class="mt-1 max-h-[260px] divide-y divide-rule overflow-auto">' + (slips.map((s) => '<li class="flex justify-between gap-2 py-1.5 text-[13px]"><span class="min-w-0 truncate"><span class="tabular-nums text-ink-3">' + fdate(s.ngay) + '</span> ' + esc(s.hangMuc.join(', ') || s.soPhieu) +
-        (s.lines.length > 1 ? ' <span class="pill">' + s.lines.length + ' dòng</span>' : '') + '</span><span class="tabular-nums">' + money(s.total) + '</span></li>').join('') || '<li class="py-2 text-[13px] text-ink-3">Chưa có.</li>') + '</ul></div>' +
-      '<div class="border-t border-rule px-5 pt-3 pb-4"><div class="flex items-baseline justify-between"><h4 class="text-[13px] font-semibold text-ink-2">Đã trả trong sổ thu chi (' + pays.length + ' dòng)</h4><b class="tabular-nums">' + money(r.daTraQuy) + '</b></div>' +
-      '<ul class="mt-1 max-h-[220px] divide-y divide-rule overflow-auto">' + (pays.map((e) => '<li class="flex justify-between gap-2 py-1.5 text-[13px]"><span class="min-w-0 truncate"><span class="tabular-nums text-ink-3">' + fdate(e.ngay) + '</span> ' + esc(e.soPhieu ? e.soPhieu + ' · ' : '') + esc(e.noiDung) + '</span>' +
-        '<span class="tabular-nums ' + (e.thu ? 'text-income' : '') + '">' + (e.thu ? '−' + money(e.thu) : money(e.chi)) + '</span></li>').join('') || '<li class="py-2 text-[13px] text-ink-3">Chưa có khoản chi nào cho nhà cung cấp này.</li>') + '</ul></div>' +
-      '<div class="border-t border-rule px-5 pt-3 pb-4" id="cn-ext"><div class="flex items-baseline justify-between"><h4 class="text-[13px] font-semibold text-ink-2">Đã trả từ nguồn khác, ngoài quỹ (' + ext.length + ' khoản)</h4><b class="tabular-nums">' + money(r.daTraNgoai) + '</b></div>' +
-      '<ul class="mt-1 max-h-[220px] divide-y divide-rule overflow-auto">' + (ext.map((p) => '<li class="flex items-start justify-between gap-2 py-1.5 text-[13px]" data-xp="' + p.id + '"><span class="min-w-0"><span class="tabular-nums text-ink-3">' + fdate(p.ngay) + '</span> ' +
-        '<b class="font-medium">' + esc(p.nguon || 'Nguồn khác') + '</b>' + (p.maDuAn && !f.ct ? ' · ' + esc(p.maDuAn) : '') + (p.ghiChu ? '<span class="block truncate text-ink-3" title="' + esc(p.ghiChu) + '">' + esc(p.ghiChu) + '</span>' : '') + '</span>' +
-        '<span class="flex shrink-0 items-center gap-1"><span class="tabular-nums">' + money(p.soTien) + '</span>' +
-        '<button type="button" class="icon-btn" data-act="xp-edit" aria-label="Sửa khoản trả ngày ' + fdate(p.ngay) + '" title="Sửa">' + icon('edit') + '</button>' +
-        '<button type="button" class="icon-btn danger" data-act="xp-del" aria-label="Xóa khoản trả ngày ' + fdate(p.ngay) + '" title="Xóa (vào Thùng rác)">' + icon('trash') + '</button></span></li>').join('') ||
-        '<li class="py-2 text-[13px] text-ink-3">Chưa có. Dùng khi NCC được trả bằng tiền không thuộc quỹ (chuyển khoản công ty, chủ nhà trả thẳng…).</li>') + '</ul>' +
-      '<div class="mt-3 flex flex-wrap gap-2"><button type="button" class="btn btn-secondary btn-sm" data-act="to-ledger">' + icon('book') + 'Sổ chi phí của NCC</button>' +
-      '<button type="button" class="btn btn-secondary btn-sm" data-act="to-cash">' + icon('receipt') + 'Sổ thu chi của NCC</button>' +
-      (r.conLai > 0 && r.inCatalog ? '<button type="button" class="btn btn-primary btn-sm" data-act="pay">' + icon('handCoins') + 'Ghi phiếu chi ' + money(r.conLai) + '</button>' : '') +
-      (r.inCatalog ? '<button type="button" class="btn btn-secondary btn-sm" data-act="xp-add">' + icon('bank') + 'Trả từ nguồn khác</button>' : '') + '</div></div>';
-    el.dataset.ma = r.ma;
-  };
-
-  bindCombo($('#cn-ct', root), cbCt, (v) => { f.ct = v; saveFilter('cpCn'); renderDebt(root); });
-  bindCombo($('#cn-ncc', root), cbNcc, (v) => {
-    if (!nccs.some((x) => KT.keyOf(x) === KT.keyOf(v))) nccs.push(v);
-    LS.set('cp.cn.sel', v);
-    saveFilter('cpCn');
-    renderDebt(root);
-    refocusNcc(); // chọn tiếp NCC khác ngay
-  });
-  $('#cn-tt', root).addEventListener('change', (e) => { f.tt = e.target.value; saveFilter('cpCn'); renderDebt(root); });
-  $('#cn-to', root).addEventListener('change', (e) => { f.to = e.target.value; saveFilter('cpCn'); renderDebt(root); });
-  $('#cn-pham', root).addEventListener('change', (e) => { f.pham = e.target.value; saveFilter('cpCn'); renderDebt(root); });
-  $('#cn-sort', root).addEventListener('change', (e) => { f.sort = e.target.value; saveFilter('cpCn'); renderDebt(root); });
-  $('#cn-allct', root).addEventListener('change', (e) => { f.allCT = e.target.checked; saveFilter('cpCn'); renderDebt(root); });
-  const pay = (ma) => {
-    const r = d.rows.find((x) => KT.keyOf(x.ma) === KT.keyOf(ma));
-    if (!r) return;
-    openEntryForm({ maNCC: r.ma, maDuAn: f.ct || '', chi: r.conLai, noiDung: 'Thanh toán công nợ ' + r.ten + (f.ct ? ' công trình ' + f.ct : '') }, { loai: 'chi' });
-  };
-  root.addEventListener('click', (e) => {
-    const a = e.target.closest('[data-act]');
-    if (a) {
-      const act = a.dataset.act;
-      const row = a.closest('tr[data-ma]');
-      const ma = row ? row.dataset.ma : ($('#cn-detail', root).dataset.ma || '');
-      if (act === 'all-ct') { e.preventDefault(); f.ct = ''; saveFilter('cpCn'); renderDebt(root); return; }
-      if (act === 'all-ncc') { e.preventDefault(); f.nccs = []; saveFilter('cpCn'); renderDebt(root); return; }
-      if (act === 'clear-ncc') { e.preventDefault(); f.nccs = []; f.tt = ''; saveFilter('cpCn'); renderDebt(root); refocusNcc(); return; }
-      if (act === 'rm-ncc') { f.nccs = nccs.filter((x) => x !== a.closest('[data-ma]').dataset.ma); saveFilter('cpCn'); renderDebt(root); refocusNcc(); return; }
-      if (act === 'rm-tt') { f.tt = ''; saveFilter('cpCn'); renderDebt(root); return; }
-      if (act === 'export') download('/api/export/cost-debt?' + [f.ct ? 'ct=' + encodeURIComponent(f.ct) : ''].concat(nccs.map((x) => 'ncc=' + encodeURIComponent(x)),
-        [f.tt ? 'tt=' + f.tt : '', f.to ? 'to=' + f.to : '']).filter(Boolean).join('&'));
-      else if (act === 'print') printView('CÔNG NỢ NHÀ CUNG CẤP', ctLabel(f.ct) + (filtered ? '. ' + debtFilterLabel(nccs, f.tt) : '') + (f.to ? '. Đến ngày ' + fdate(f.to) : ''), S.db.settings);
-      else if (act === 'pay') pay(ma);
-      else if (act === 'xp-add') { const r = d.rows.find((x) => KT.keyOf(x.ma) === KT.keyOf(ma)); openExtPayForm(null, { maNCC: r ? r.ma : ma, maDuAn: f.ct || '', soTien: r && r.conLai > 0 ? r.conLai : '' }); }
-      else if (act === 'dk-add') openSoDuDauForm(null, { maNCC: ma, maDuAn: f.ct || '' });
-      else if (act === 'dk-edit' || act === 'dk-del') {
-        const rec = (S.all.soDuDauKy || []).find((x) => String(x.id) === a.closest('[data-dk]').dataset.dk);
-        if (rec) { if (act === 'dk-edit') openSoDuDauForm(rec); else deleteSoDuDau(rec); }
-      }
-      else if (act === 'xp-edit' || act === 'xp-del') {
-        const rec = (S.all.extPayments || []).find((x) => String(x.id) === a.closest('[data-xp]').dataset.xp);
-        if (rec) { if (act === 'xp-edit') openExtPayForm(rec); else deleteExtPay(rec); }
-      }
-      else if (act === 'to-ledger') goLedger({ ncc: ma, ct: f.ct });
-      else if (act === 'to-cash') {
-        Object.assign(S.filters.so, { duAn: f.ct || '', ncc: ma, loai: '', q: '', period: 'tat-ca', from: '', to: '' });
-        saveFilter('so');
-        location.hash = '#/so-thu-chi';
-      }
-      return;
-    }
-    const ctRow = e.target.closest('tr[data-ct]');
-    if (ctRow) {
-      f.ct = KT.keyOf(f.ct) === KT.keyOf(ctRow.dataset.ct) ? '' : ctRow.dataset.ct;
-      saveFilter('cpCn');
-      renderDebt(root);
-      return;
-    }
-    const tr = e.target.closest('tr[data-ma]');
-    if (tr) {
-      LS.set('cp.cn.sel', tr.dataset.ma);
-      $$('tr[data-ma]', root).forEach((x) => x.classList.toggle('is-active', x === tr));
-      drawDetail(tr.dataset.ma);
-    }
-  });
-  root.addEventListener('keydown', (e) => {
-    const tr = e.target.closest('tr[data-ma], tr[data-ct]');
-    if (tr && e.key === 'Enter') tr.click();
-  });
-  drawDetail(sel);
-}
-
-// dòng phụ dưới số "Đã trả": phần trả từ nguồn khác, ngoài quỹ
-function ngoaiQuy(n) { return n ? '<div class="sub" title="Trả từ nguồn khác, không qua quỹ tiền mặt">ngoài quỹ ' + money(n) + '</div>' : ''; }
-
-// Mô tả bộ lọc công nợ để ghi lên đầu bản in / file Excel: "NCC: Xuân Trang, Sông Hàn. Chỉ NCC còn nợ"
-// sau khi vẽ lại màn hình: đưa tiêu điểm về ô lọc NCC để chọn tiếp bằng bàn phím
-function refocusNcc() { const el = document.getElementById('cn-ncc'); if (el) el.focus(); }
-
-export function debtFilterLabel(nccs, tt) {
-  const names = (nccs || []).map((m) => { const x = supplierByCode(m); return x ? x.ten : m; });
-  const t = { no: 'Chỉ NCC còn nợ', du: 'Chỉ NCC ứng dư', an: 'Ẩn NCC đã tất toán' }[tt] || '';
-  return [names.length ? 'NCC: ' + names.join(', ') : '', t].filter(Boolean).join('. ');
-}
-
-// Mã NCC lạ (không có trong danh mục) nhưng có trong sổ chi phí / sổ thu chi: vẫn cho lọc
-function unknownNcc(t) {
-  const k = KT.keyOf(t);
-  const r = S.db.costs.find((c) => KT.keyOf(c.maNCC) === k) || S.db.entries.find((e) => KT.keyOf(e.maNCC) === k);
-  return r ? String(r.maNCC).trim() : '';
-}
-
-/* ---------------- Tổng hợp nợ / đã thanh toán theo công trình ---------------- */
-// sum = KT.projectDebtSummary(...). Dòng bấm được (data-ct) để lọc theo công trình đó.
-function projectDebtHtml(sum, activeCt) {
-  const dash = '<span class="text-ink-3">—</span>';
-  const pctBar = (r) => {
-    if (r.tiLeDaTra == null) return dash;
-    const w = Math.min(100, r.tiLeDaTra * 100);
-    return '<div class="flex items-center justify-end gap-2"><div class="mbar mt-0 w-20" aria-hidden="true"><span class="mbar-fill' + (r.tiLeDaTra > 1 ? ' over' : '') + '" style="width:' + w.toFixed(1) + '%"></span></div>' +
-      '<span class="w-12 text-right tabular-nums">' + pct(r.tiLeDaTra) + '</span></div>';
-  };
-  const body = sum.rows.length ? sum.rows.map((r) =>
-    '<tr class="clickable' + (activeCt && KT.keyOf(activeCt) === KT.keyOf(r.ma) ? ' is-active' : '') + '" data-ct="' + esc(r.ma) + '" tabindex="0" aria-label="Xem công nợ công trình ' + esc(r.ma) + '">' +
-    '<td><div class="code">' + esc(r.ma) + '</div><div class="sub">' + esc(r.ten) + (r.coChiPhi ? '' : ' · chưa nhập chi phí') + '</div></td>' +
-    '<td class="num money font-semibold">' + (r.coChiPhi ? money(r.phatSinh) : dash) + (r.dauKy ? '<div class="sub" title="Số dư đầu kỳ nhập tay của các NCC tại công trình này">đầu kỳ ' + money(r.dauKy) + '</div>' : '') + '</td>' +
-    '<td class="num money">' + money(r.daTra) + '</td>' +
-    '<td class="num">' + pctBar(r) + '</td>' +
-    '<td class="num money font-semibold' + (r.conNo ? ' neg' : '') + '">' + (r.coChiPhi ? money(r.conNo) : dash) + (r.soNCCNo ? '<div class="sub">' + r.soNCCNo + ' NCC</div>' : '') + '</td>' +
-    '<td class="num money' + (r.ungDu ? ' text-caution' : '') + '">' + (r.coChiPhi ? money(r.ungDu) : dash) + (r.soNCCDu && r.coChiPhi ? '<div class="sub">' + r.soNCCDu + ' NCC</div>' : '') + '</td>' +
-    '<td class="num money text-ink-2">' + (r.chiKhac ? money(r.chiKhac) : '') + '</td></tr>').join('')
-    : '<tr><td colspan="7" class="empty">Chưa có công trình nào có chi phí.</td></tr>';
-  const t = sum.total;
-  return '<div class="overflow-x-auto"><table class="ledger">' +
-    '<thead><tr><th>Công trình</th><th class="num money">Chi phí phát sinh</th><th class="num money">Đã thanh toán NCC</th><th class="num">% đã thanh toán</th>' +
-    '<th class="num money">Còn nợ NCC</th><th class="num money">Ứng dư NCC</th><th class="num money" title="Khoản chi trong sổ thu chi có mã dự án nhưng không ghi mã NCC">Chi khác (không ghi NCC)</th></tr></thead>' +
-    '<tbody>' + body + '</tbody>' +
-    (sum.rows.length > 1 ? '<tfoot><tr><td>Tổng cộng</td><td class="num money">' + money(t.phatSinh) + '</td><td class="num money">' + money(t.daTra) + '</td><td class="num">' + (t.tiLeDaTra == null ? '' : pct(t.tiLeDaTra)) + '</td>' +
-      '<td class="num money"><span class="dbl">' + money(t.conNo) + '</span></td><td class="num money">' + money(t.ungDu) + '</td><td class="num money">' + (t.chiKhac ? money(t.chiKhac) : '') + '</td></tr></tfoot>' : '') +
-    '</table></div>' +
-    '<p class="px-4 py-2.5 text-[12.5px] leading-relaxed text-ink-3">Đã thanh toán = tổng chi trừ tổng thu trong sổ thu chi có ghi cả Mã dự án và Mã NCC, cộng khoản trả NCC từ nguồn khác (ngoài quỹ) có ghi công trình. Còn nợ / ứng dư cộng theo từng NCC của công trình (NCC này ứng dư không bù cho NCC khác còn nợ).' +
-    (sum.traChuaGanCT.soDong ? ' <span class="font-medium text-caution">' + icon('warnTri', 'align-[-2px]') + ' Có ' + sum.traChuaGanCT.soDong + ' khoản trả cho NCC công trình (' + money(sum.traChuaGanCT.soTien) +
-      ' đ) chưa ghi mã dự án nên chưa tính vào công trình nào.</span>' : '') + '</p>';
-}
-
-export function debtChip(r) {
-  if (r.status === 'no') return '<span class="chip chip-over">' + icon('warn') + 'Còn nợ</span>';
-  if (r.status === 'du') return '<span class="chip chip-near">' + icon('arrowOut') + 'Ứng dư</span>';
-  return '<span class="chip chip-ok">' + icon('checkCircle') + 'Đã tất toán</span>';
 }
 
 /* ============================== GIÁ VẬT TƯ ============================== */
@@ -628,11 +376,14 @@ export function renderPrices(root) {
       stat('Thấp nhất / cao nhất', money(st.min) + ' – ' + money(st.max), 'Bình quân gia quyền ' + money(st.binhQuan)) + '</div>' +
       '<section class="sheet px-5 pt-4 pb-3"><h3 class="sheet-title">Đơn giá theo thời gian</h3><div class="bars mt-3" id="gia-chart"></div>' +
       '<div class="mt-1 flex flex-wrap gap-3 text-[12.5px] text-ink-2" id="gia-legend"></div></section>' +
-      '<section class="sheet overflow-hidden"><div class="overflow-x-auto"><table class="ledger"><thead><tr><th>Ngày</th><th>Nhà cung cấp</th><th>Công trình</th><th>Diễn giải</th><th class="num">Số lượng</th><th class="num money">Đơn giá</th><th class="num">So lần trước (cùng NCC)</th><th class="num money">Thành tiền</th></tr></thead><tbody>' +
+      '<section class="sheet overflow-hidden"><div class="overflow-x-auto"><table class="ledger"><thead><tr><th>Ngày</th><th>Nhà cung cấp</th><th>Công trình</th><th>Diễn giải</th><th class="num">Số lượng</th><th class="num money">Đơn giá</th><th class="num">So lần trước (cùng NCC)</th><th class="num money">Thành tiền</th><th class="no-print"><span class="sr-only">Thao tác</span></th></tr></thead><tbody>' +
       hist.slice().reverse().map((h) => '<tr><td class="whitespace-nowrap">' + fdate(h.ngay) + '</td><td>' + esc(h.tenNCC || h.maNCC) + '</td><td class="code">' + esc(h.maCT) + '</td><td class="wrap-text text-ink-2">' + esc(h.dienGiai) + '</td>' +
         '<td class="num">' + KT.fmtQty(h.soLuong) + '</td><td class="num money font-semibold">' + money(h.donGia) + '</td>' +
         '<td class="num ' + (h.chenhLech > 0 ? 'text-alert' : h.chenhLech < 0 ? 'text-income' : 'text-ink-3') + '">' + (h.chenhLech == null ? '' : h.chenhLech === 0 ? 'bằng' : (h.chenhLech > 0 ? '+' : '−') + money(Math.abs(h.chenhLech))) + '</td>' +
-        '<td class="num money">' + money(h.thanhTien) + '</td></tr>').join('') + '</tbody></table></div></section>';
+        '<td class="num money">' + money(h.thanhTien) + '</td>' +
+        '<td class="actions no-print">' + (h.phieuId ? '<a class="icon-btn" href="#/cp-nhap?phieu=' + h.phieuId + '" title="Mở phiếu nhập" aria-label="Mở phiếu nhập">' + icon('notePencil') + '</a>' : '') +
+        '<button type="button" class="icon-btn" data-act="gia-so" data-ncc="' + esc(h.maNCC) + '" title="Xem dòng này trong sổ chi phí" aria-label="Xem trong sổ chi phí">' + icon('book') + '</button>' +
+        '<button type="button" class="icon-btn" data-act="gia-sua" data-id="' + h.id + '" title="Sửa đơn giá (mở dòng chi phí)" aria-label="Sửa đơn giá">' + icon('edit') + '</button></td></tr>').join('') + '</tbody></table></div></section>';
     drawPriceChart($('#gia-chart', el), $('#gia-legend', el), byNcc);
   };
 
@@ -642,6 +393,10 @@ export function renderPrices(root) {
   root.addEventListener('click', (e) => {
     const a = e.target.closest('[data-act=to-ledger]');
     if (a) { goLedger({ vt: f.vt, ncc: f.ncc }); return; }
+    const gs = e.target.closest('[data-act=gia-so]');
+    if (gs) { goLedger({ vt: f.vt, ncc: gs.dataset.ncc || '' }); return; }
+    const gx = e.target.closest('[data-act=gia-sua]');
+    if (gx) { const c = S.all.costs.find((x) => x.id === Number(gx.dataset.id)); if (c) import('./cost-ledger.js').then((m) => m.openCostLineForm(c)); return; }
     const tr = e.target.closest('tr[data-vt]');
     if (!tr) return;
     f.vt = tr.dataset.vt;
@@ -661,7 +416,7 @@ function stat(label, value, sub) {
   return '<div class="stat"><div class="stat-label">' + esc(label) + '</div><div class="stat-value">' + value + '</div>' + (sub ? '<div class="stat-sub">' + sub + '</div>' : '') + '</div>';
 }
 
-const SERIES = ['#2F5DAA', '#B8621B', '#1D6B47', '#7A4FA3', '#B3261E', '#4A5670'];
+const SERIES = ['#416180', '#8a5a00', '#2f6b3f', '#7a7a7d', '#a33a2e', '#2c455d'];
 
 function drawPriceChart(el, legend, byNcc) {
   const all = [];
@@ -707,7 +462,7 @@ function drawPriceChart(el, legend, byNcc) {
     const color = SERIES[k++ % SERIES.length];
     const name = (supplierByCode(ncc) || {}).ten || ncc;
     if (list.length > 1) svg += '<polyline fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round" points="' + list.map((h) => x(h.ngay).toFixed(1) + ',' + y(h.donGia).toFixed(1)).join(' ') + '"/>';
-    list.forEach((h) => { svg += '<circle cx="' + x(h.ngay).toFixed(1) + '" cy="' + y(h.donGia).toFixed(1) + '" r="4" fill="' + color + '" stroke="#fff" stroke-width="1.5"><title>' + esc(fdate(h.ngay) + ' · ' + name + ': ' + money(h.donGia) + ' đ') + '</title></circle>'; });
+    list.forEach((h) => { svg += '<circle cx="' + x(h.ngay).toFixed(1) + '" cy="' + y(h.donGia).toFixed(1) + '" r="4" fill="' + color + '" stroke="#f2f2f3" stroke-width="1.5"><title>' + esc(fdate(h.ngay) + ' · ' + name + ': ' + money(h.donGia) + ' đ') + '</title></circle>'; });
     leg += '<span class="flex items-center gap-1.5"><span class="inline-block size-2.5 rounded-full" style="background:' + color + '"></span>' + esc(name) + '</span>';
   });
   el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Đơn giá theo thời gian">' + svg + '</svg>';

@@ -279,12 +279,12 @@ test('X5 giao diện Công nợ NCC: nút "Nguồn khác" → form điền sẵn
     assert.equal(row(db, 'NCC_B').conLai, 0);
     await page.waitForFunction((s) => /ngoài quỹ/.test(document.querySelector(s).innerText), rowSel);
     assert.match(await page.$eval(rowSel, (e) => e.innerText), /Đã tất toán/);
-    // khung chi tiết
-    await page.click(rowSel + ' td');
-    await page.waitForSelector('#cn-ext [data-xp]');
-    assert.match(await page.$eval('#cn-ext', (e) => e.innerText), /Chủ nhà trả trực tiếp[\s\S]*Chủ nhà chuyển khoản đợt 2/);
+    // khoản trả ngoài quỹ liệt kê trong Sổ chi tiết của NCC (bấm biểu tượng sổ ở dòng)
+    await page.click(rowSel + ' [data-act=ledger]');
+    await page.waitForSelector('#sct-body [data-act=xp-edit]');
+    assert.match(await page.$eval('#sct-body', (e) => e.innerText), /Ngoài quỹ[\s\S]*Chủ nhà trả trực tiếp · Chủ nhà chuyển khoản đợt 2/);
     // sửa số tiền
-    await page.click('#cn-ext [data-act=xp-edit]');
+    await page.click('#sct-body [data-act=xp-edit]');
     await page.waitForSelector('#xp-form');
     await page.fill('#xp-form [name=soTien]', '10tr');
     await page.click('.modal [data-act=save]');
@@ -296,10 +296,10 @@ test('X5 giao diện Công nợ NCC: nút "Nguồn khác" → form điền sẵn
     // tồn quỹ ở Tổng quan không đổi
     assert.equal(tonQuy(db), ton0);
     // xóa
-    await page.waitForSelector('#cn-ext [data-act=xp-del]');
-    await page.click('#cn-ext [data-act=xp-del]');
+    await page.waitForSelector('#sct-body [data-act=xp-del]');
+    await page.click('#sct-body [data-act=xp-del]');
     await page.click('.modal [data-act=yes]');
-    await page.waitForFunction(() => !document.querySelector('#cn-ext [data-xp]'));
+    await page.waitForFunction(() => !document.querySelector('#sct-body [data-act=xp-del]'));
     db = readStored(srv.dataDir);
     assert.equal(db.extPayments.length, 0);
     assert.equal(db.trash.filter((t) => t.kind === 'extPayments').length, 1);

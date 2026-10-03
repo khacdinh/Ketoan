@@ -1,5 +1,30 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Giao diện mới theo design system “Industry” (03/10/2026)
+
+Dựng lại toàn bộ giao diện theo bản thiết kế (bản vẽ kỹ thuật, xanh thép). **Không đổi dữ liệu, công thức, API, lược đồ** (vẫn lược đồ 7).
+
+- **Nền**: chữ Barlow / Barlow Condensed đóng gói sẵn (có tiếng Việt, chạy offline, thay Archivo); icon **Lucide** nét 1.5 thay Phosphor (vẽ bằng CSS mask, mã giao diện vẫn viết `<i class="ph ph-…">`);
+  bảng màu mới (nền #f2f2f3, màu hành động #416180, trạng thái nghiệp vụ luôn kèm biểu tượng + chữ); góc vuông, khung nét mảnh có dấu “+” ở 4 góc, nút chính là vật đặc duy nhất.
+  `npm run build:assets` sinh lại font và icon từ `@fontsource/barlow`, `@fontsource/barlow-condensed`, `lucide-static` (file sinh ra đã nằm sẵn trong `public/vendor`).
+- **Khung ứng dụng**: menu bên trái nhóm theo trình tự công việc (Nhập liệu / Sổ sách / Báo cáo / Danh mục / Hệ thống), rộng 248px, mỗi mục một biểu tượng Lucide 18px (đã bỏ ô mã 2 chữ và chú thích phím F2/F3), nhãn số việc ở Kiểm soát, chân menu một hàng (tồn quỹ · giờ lưu · nút thu gọn); thu gọn bằng **Ctrl B** còn 56px, nhớ theo người dùng;
+  thanh trên có **chọn công trình dùng chung** cho mọi sổ và báo cáo, **tìm toàn cục Ctrl K**, **F2 = Nhập phiếu chi phí**, **F3 = Ghi thu / chi** (đổi chỗ so với bản trước; Alt+N vẫn mở Ghi thu / chi),
+  **Ctrl L** khóa màn hình (khi bật đăng nhập). **Chọn kỳ thống nhất** Tháng | Quý | Năm | Khoảng ngày | Toàn bộ với mũi tên ‹ ›; **mật độ bảng Gọn / Thoáng**.
+- **Màn hình mới**: **Số dư đầu kỳ NCC** (menu riêng), **Nhập từ Excel** (tách khỏi Cài đặt), **Sổ chi tiết công nợ** NCC (từng phiếu / khoản thanh toán, lũy kế Có / Nợ, Alt ↑↓ đổi NCC),
+  **Biên bản đối chiếu công nợ** A4 để in, **Công nợ NCC theo kỳ** (gộp “Tổng hợp NCC” và “Công nợ NCC”: Dư Nợ | Dư Có đầu kỳ và cuối kỳ, hàng thao tác mở rộng).
+  Quy ước hiển thị: **Dư Có = còn phải trả, Dư Nợ = đã ứng trước**, không hiện số âm cho công nợ.
+- **Phiếu nhập chi phí**: đầu phiếu một hàng, dòng lỗi / cảnh báo đơn giá có dòng báo ngay dưới (nút Dùng giá cũ / Giữ), đếm lỗi — cảnh báo, **Ctrl S** lưu nháp, **Ctrl D** nhân bản dòng, **in phiếu nhập**.
+  **Sổ quỹ**: tích chọn nhiều dòng để ghi sổ nháp / xóa hàng loạt, nút in phiếu. **Sổ chi phí**: nhãn “Đang lọc”, nút **“N ĐVT”** thay cho cột chữ dài ở dòng tổng. **Phiếu thu / chi**: 3 cột (danh sách, xem trước, nội dung in), **Ctrl P**.
+  Tổng quan: “Cần chú ý hôm nay” có nút đi thẳng tới chỗ xử lý.
+- **Thao tác ở dòng** luôn hiện (không chờ rê chuột) theo thứ tự Xem → Sửa → Nhân bản → In → Xóa; **Enter / Ctrl D / Delete / Ctrl P** trên dòng đang chọn; xóa mờ đi kèm lý do khi mã đã có dòng (dùng Gộp mã).
+  Hộp xác nhận xóa viền đỏ, nêu **công nợ sau khi xóa**; bấm dòng thuộc tháng đã khóa mở hộp “Kỳ … đã khóa”.
+- **Điện thoại** (≤ 767px) — bố cục cơ bản, chưa thuộc phạm vi kiểm thử: thanh dưới 5 nút, Tổng quan gọn, Sổ quỹ dạng thẻ (bấm để Ghi sổ · Sửa · Nhân bản · Xóa), mỗi dòng phiếu nhập là một thẻ.
+  Một số màn hình chưa được tinh chỉnh cho điện thoại (ví dụ dải tổng ở Sổ chi phí còn rộng hơn màn hình).
+- **Chọn nhiều dòng ở danh mục** (Công trình, NCC, Vật tư, Hạng mục, Nhà/khu): thanh “Đã chọn N · Gộp mã · Xóa · Bỏ chọn”; xóa nhiều bỏ qua và báo các mã đang có dòng. Sổ chi phí: **Tab / Shift+Tab** khi sửa trực tiếp lưu ô rồi sang ô kế tiếp / trước.
+  Hộp thoại “Trả NCC từ nguồn khác” và “Số dư đầu kỳ” dựng lại theo bản vẽ 12b / 12c (Dư Có / Dư Nợ, “Xem sổ”, ngày phát sinh đầu tiên, chứng từ gốc).
+- Trạng thái bảng: đang tải (khung xương), mất kết nối (màn cũ mờ, tự thử lại 5 giây), chỉ xem (dải xám có ổ khóa).
+- Tên phần mềm giữ **Kế Toán Công Trình**; tên đơn vị (Cài đặt) hiện dưới tên phần mềm. Mục “Dự toán – thực tế” trong bản thiết kế không có dữ liệu tương ứng (sheet DUTOAN đã bỏ theo yêu cầu) nên thay bằng **Tổng hợp chi phí**.
+
 ## Công nợ nhà cung cấp theo kỳ: Đầu kỳ, Phát sinh, Thanh toán, Cuối kỳ; nhập số dư đầu kỳ (02/10/2026)
 
 - **Số dư đầu kỳ NCC** (mới): nhập công nợ có từ trước khi ghi sổ — theo NCC, có thể ghi công trình; “còn nợ” hoặc “đã ứng trước”;

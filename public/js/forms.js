@@ -1,4 +1,5 @@
 /* Biểu mẫu: ghi thu/chi, dự án, nhà cung cấp. */
+import { hauQuaCongNo } from './congno.js';
 import { $, esc, api, openModal, toast, showError, bindMoneyInput, money, confirmDialog, icon, dateField, focusInput, fieldError, busy } from './ui.js';
 import { S, datalists, resolveCode, projectByCode, supplierByCode } from './state.js';
 import { openHistory } from './views/control.js';
@@ -68,8 +69,8 @@ export function openEntryForm(entry, opts) {
     '<span class="flex-1"></span>' +
     '<button type="button" class="btn btn-ghost" data-act="cancel">Hủy</button>' +
     (canDraft ? '<button type="button" class="btn btn-secondary" data-act="save-draft" title="Lưu lại để làm tiếp; dòng Nháp chưa tính vào tồn quỹ, báo cáo, công nợ">' + icon('draft') + 'Lưu nháp</button>' : '') +
-    (isEdit ? '' : '<button type="button" class="btn btn-secondary" data-act="save-next" title="Ghi sổ rồi giữ lại ngày, số phiếu, dự án, nhà cung cấp để ghi dòng tiếp theo">Ghi sổ và ghi tiếp</button>') +
-    (lockedRec ? '' : '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon(isEdit && !isDraftRec ? 'save' : 'check') + (isEdit && !isDraftRec ? 'Lưu thay đổi' : 'Ghi sổ') + '</button>');
+    (isEdit ? '' : '<button type="button" class="btn btn-secondary" data-act="save-next" title="Ghi sổ rồi giữ lại ngày, số phiếu, dự án, nhà cung cấp để ghi dòng tiếp theo (Ctrl Shift Enter)">Ghi sổ và ghi tiếp<kbd>Ctrl Shift Enter</kbd></button>') +
+    (lockedRec ? '' : '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon(isEdit && !isDraftRec ? 'save' : 'check') + (isEdit && !isDraftRec ? 'Lưu thay đổi' : 'Ghi sổ') + '<kbd>Ctrl Enter</kbd></button>');
 
   const m = openModal({
     title: isDraftRec ? 'Sửa dòng nháp (chưa ghi sổ)' : isEdit ? 'Sửa dòng sổ thu chi' : opts.duplicate ? 'Nhân bản dòng sổ thu chi' : 'Ghi thu / chi',
@@ -188,7 +189,7 @@ export function openEntryForm(entry, opts) {
     }
 
     f.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); save(false); }
+      if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); save(!!ev.shiftKey && !isEdit); }
     });
     f.addEventListener('submit', (ev) => { ev.preventDefault(); save(false); });
 
@@ -276,6 +277,7 @@ export async function deleteEntry(e) {
     html: 'Xóa dòng ngày <b class="text-ink">' + esc(KT.fmtDate(e.ngay)) + '</b>: “' + esc(e.noiDung || '') + '” ' +
       (e.chi ? '(chi <b class="text-ink">' + money(e.chi) + ' đ</b>)' : '(thu <b class="text-ink">' + money(e.thu) + ' đ</b>)') + '?' +
       '<p class="mt-2 text-[13px] text-ink-3">Tồn quỹ các dòng sau tự tính lại.</p>',
+    hauQua: hauQuaCongNo(e.maNCC, (e.chi || 0) - (e.thu || 0), e.maDuAn),
     okText: 'Xóa dòng',
     danger: true
   });
