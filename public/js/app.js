@@ -7,11 +7,12 @@ import { openEntryForm } from './forms.js';
 import { renderDashboard } from './views/dashboard.js';
 import { renderLedger } from './views/ledger.js';
 import { renderVouchers } from './views/vouchers.js';
-import { renderProjects, renderSuppliers, renderSupplierReport } from './views/catalogs.js';
+import { renderProjects, renderSuppliers } from './views/catalogs.js';
 import { renderSettings } from './views/settings.js';
 import { renderCostEntry } from './views/cost-entry.js';
 import { renderCostLedger } from './views/cost-ledger.js';
-import { renderCostDashboard, renderCostDetail, renderDebt, renderPrices } from './views/cost-reports.js';
+import { renderCostDashboard, renderCostDetail, renderPrices } from './views/cost-reports.js';
+import { renderDebt } from './views/debt.js';
 import { renderCostCatalogs } from './views/cost-catalogs.js';
 import { renderControl } from './views/control.js';
 import { renderMerge } from './merge.js';
@@ -29,7 +30,7 @@ const ROUTES = {
   'phieu': { title: 'Phiếu thu / chi', sub: 'Các dòng sổ quỹ cùng số phiếu được gộp lại để in 2 liên.', render: renderVouchers },
   'du-an': { title: 'Công trình, dự án', sub: 'Mã công trình và ngân sách phê duyệt', render: renderProjects },
   'ncc': { title: 'Nhà cung cấp và đối tượng', sub: 'Nhà cung cấp, thầu phụ, nhân viên, người nhận tiền', render: renderSuppliers },
-  'tong-hop-ncc': { title: 'Tổng hợp theo nhà cung cấp', sub: 'Đầu kỳ, phát sinh, thanh toán, cuối kỳ của từng nhà cung cấp', render: renderSupplierReport },
+  'tong-hop-ncc': { title: 'Công nợ nhà cung cấp theo kỳ', sub: 'Số dư đầu kỳ + phát sinh − thanh toán = số dư cuối kỳ', render: renderDebt },
   'cai-dat': { title: 'Cài đặt và dữ liệu', sub: 'Thông tin in trên phiếu, sao lưu, khôi phục, xóa dữ liệu', render: renderSettings },
   'nhap-excel': { title: 'Nhập từ Excel', sub: 'Đưa dữ liệu từ file Excel vào sổ (xem trước, rồi mới ghi)', render: renderImportPage },
   'so-du-dau': { title: 'Số dư đầu kỳ nhà cung cấp', sub: 'Công nợ có từ trước khi ghi sổ trong phần mềm: còn nợ hoặc đã ứng trước', render: renderOpeningBalances },

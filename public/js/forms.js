@@ -68,8 +68,8 @@ export function openEntryForm(entry, opts) {
     '<span class="flex-1"></span>' +
     '<button type="button" class="btn btn-ghost" data-act="cancel">Hủy</button>' +
     (canDraft ? '<button type="button" class="btn btn-secondary" data-act="save-draft" title="Lưu lại để làm tiếp; dòng Nháp chưa tính vào tồn quỹ, báo cáo, công nợ">' + icon('draft') + 'Lưu nháp</button>' : '') +
-    (isEdit ? '' : '<button type="button" class="btn btn-secondary" data-act="save-next" title="Ghi sổ rồi giữ lại ngày, số phiếu, dự án, nhà cung cấp để ghi dòng tiếp theo">Ghi sổ và ghi tiếp</button>') +
-    (lockedRec ? '' : '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon(isEdit && !isDraftRec ? 'save' : 'check') + (isEdit && !isDraftRec ? 'Lưu thay đổi' : 'Ghi sổ') + '</button>');
+    (isEdit ? '' : '<button type="button" class="btn btn-secondary" data-act="save-next" title="Ghi sổ rồi giữ lại ngày, số phiếu, dự án, nhà cung cấp để ghi dòng tiếp theo (Ctrl Shift Enter)">Ghi sổ và ghi tiếp<kbd>Ctrl Shift Enter</kbd></button>') +
+    (lockedRec ? '' : '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon(isEdit && !isDraftRec ? 'save' : 'check') + (isEdit && !isDraftRec ? 'Lưu thay đổi' : 'Ghi sổ') + '<kbd>Ctrl Enter</kbd></button>');
 
   const m = openModal({
     title: isDraftRec ? 'Sửa dòng nháp (chưa ghi sổ)' : isEdit ? 'Sửa dòng sổ thu chi' : opts.duplicate ? 'Nhân bản dòng sổ thu chi' : 'Ghi thu / chi',
@@ -188,7 +188,7 @@ export function openEntryForm(entry, opts) {
     }
 
     f.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); save(false); }
+      if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); save(!!ev.shiftKey && !isEdit); }
     });
     f.addEventListener('submit', (ev) => { ev.preventDefault(); save(false); });
 

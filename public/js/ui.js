@@ -69,6 +69,11 @@ const ICONS = {
   info: 'ph-info',
   minus: 'ph-minus-circle',
   dot: 'ph-circle',
+  paper: 'ph-file-text',
+  clock: 'ph-clock',
+  panelLeft: 'ph-panel-left',
+  chevUp: 'ph-chevron-up',
+  wallet: 'ph-wallet',
   calendar: 'ph-calendar-blank',
   book: 'ph-book-open-text',
   notebook: 'ph-notebook',
@@ -184,6 +189,13 @@ export function setPageActions(html, onClick, giuXuatExcel) {
   slot.onclick = html && onClick ? (e) => { const a = e.target.closest('[data-act]'); if (a) onClick(a.dataset.act, a, e); } : null;
   const ex = document.getElementById('btn-export');
   if (ex) ex.hidden = !!html && !giuXuatExcel;
+}
+
+// Đổi tiêu đề / mô tả của màn hình đang mở (vd "Sổ chi tiết công nợ · Xuân Trang")
+export function setPageTitle(title, sub) {
+  const t = document.getElementById('page-title'); if (t && title != null) t.textContent = title;
+  const u = document.getElementById('page-sub'); if (u && sub != null) u.textContent = sub;
+  if (title != null) document.title = title + ' | Kế Toán Công Trình';
 }
 
 // Nhãn nhỏ cạnh tiêu đề trang (vd "Phiếu mới · chưa lưu", "Kỳ 09/2026 đang mở"); app.js xóa mỗi lần đổi màn hình

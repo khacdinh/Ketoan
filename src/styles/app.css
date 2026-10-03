@@ -173,6 +173,14 @@
   .tb-search { @apply max-w-[340px] min-w-[200px] flex-1 cursor-pointer text-neutral-700; }
   .tb-user { @apply flex h-[34px] items-center gap-2 border-l border-rule pl-2.5; }
   .tb-who { @apply cursor-pointer text-left hover:bg-accent-100; }
+  /* đầu bảng hai tầng (Công nợ theo kỳ): tầng 2 dính ngay dưới tầng 1 */
+  .ledger thead th.group { @apply border-b border-rule text-center; }
+  .ledger thead tr:nth-child(2) th.sub2 { top: 28px; }
+  .ledger tr.open-row > td { @apply border-b border-rule bg-accent-100/60 py-1.5; }
+  .ledger tr.open-balance > td { @apply bg-surface/60; }
+  .ledger tr.docline > td { @apply border-b border-rule/60 py-0.5; }
+  .ledger td.pay-cell { @apply text-income; }
+  .ledger tr.pay-row > td { background: var(--color-income-soft); }
   .tb-user .who { @apply text-right leading-[1.15]; }
   .btn-icon { @apply w-[34px] px-0; }
   .tb-user .who b { @apply block font-bold text-ink; }
@@ -256,7 +264,7 @@
   .seg-item { @apply relative cursor-pointer; }
   .seg-item + .seg-item { @apply border-l border-rule-2; }
   .seg-item input { @apply pointer-events-none absolute opacity-0; }
-  .seg-item span { @apply flex h-8 items-center px-3 text-[13px] whitespace-nowrap text-ink transition-colors; }
+  .seg-item span { @apply flex h-8 items-center gap-1 px-3 text-[13px] whitespace-nowrap text-ink transition-colors; }
   .seg-item:hover span { @apply bg-ink/7; }
   .seg-item input:checked + span { @apply bg-pen font-medium text-paper; }
   .seg-item input:focus-visible + span { @apply outline-2 -outline-offset-2 outline-pen; }
@@ -264,6 +272,11 @@
 
   .check { @apply inline-flex cursor-pointer items-center gap-2 text-[13.5px] text-ink; }
   .check input { @apply size-4 accent-pen; }
+
+  /* Số dư kèm chữ Có / Nợ (cột chữ rộng cố định 26px để số thẳng hàng) */
+  .cono { @apply tabular-nums; }
+  .cono-lbl { @apply ml-1 inline-block w-[26px] text-left text-[12px] font-bold; }
+  .cono-lbl.no { @apply text-caution; }
 
   /* Ô lọc kiểu khung nhãn (thanh lọc của các sổ) */
   .fbox { @apply flex h-8 min-w-0 items-center gap-1.5 border border-rule-2 bg-surface px-2; }
@@ -543,6 +556,8 @@
   .paper { @apply mx-auto min-h-[297mm] w-[210mm] bg-white px-[12mm] py-[10mm] shadow-md; }
 
   /* ---------------- Chi phí công trình ---------------- */
+  .alert-go { @apply flex-none text-[12.5px] font-bold whitespace-nowrap text-pen underline-offset-2 hover:text-pen-hover hover:underline; }
+
   /* Ô số liệu tổng hợp */
   .stats { @apply grid gap-0 border border-rule; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
   .stat { @apply border-r border-b border-rule bg-transparent px-3 py-2; margin: 0 -1px -1px 0; }
@@ -647,6 +662,17 @@
 .vc-sign { display: flex; flex-direction: column; align-items: center; }
 .vc-sign i { font-size: 11pt; color: #444; }
 .vc-name { margin-top: auto; font-weight: 700; min-height: 1.3em; }
+/* Biên bản đối chiếu công nợ nhà cung cấp (A4 dọc, đen trắng) */
+.bb-head { display: flex; justify-content: space-between; gap: 12px; }
+.bb-qh { text-align: center; }
+.bb-gach { width: 42mm; border-top: 1px solid #000; margin: 1mm auto 0; }
+.bb-title { margin-top: 5mm; }
+.bb-t .nw { white-space: nowrap; }
+.bb-ke th, .bb-ke td { font-size: 10.5pt; }
+.bb-ke thead { display: table-header-group; }
+.bb-t tr { break-inside: avoid; }
+.bb-signs { margin-top: 4mm; min-height: 38mm; }
+.bb-foot { margin-top: 6mm; border-top: 1px solid #999; padding-top: 1.5mm; font-size: 9pt; color: #444; }
 /* Biên bản kiểm kê quỹ (in A4 dọc cùng khung phiếu) */
 .bb p { margin: 2mm 0; }
 .bb-t { width: 100%; border-collapse: collapse; margin: 3mm 0; }
