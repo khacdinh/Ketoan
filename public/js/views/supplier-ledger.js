@@ -32,7 +32,6 @@ export function renderSupplierLedger(root) {
   const cb = { id: 'sct-ncc', list: S.db.suppliers.map((x) => ({ ma: x.ma, ten: x.ten, sub: x.loai })), value: ma, show: 'ma', noun: 'nhà cung cấp', placeholder: 'Gõ mã hoặc tên', label: 'Nhà cung cấp' };
 
   setPageTitle('Sổ chi tiết công nợ · ' + (sup ? sup.ten : ma), ma + (sup && sup.loai ? ' · ' + sup.loai : '') + (d.cts.length ? ' · ' + d.cts.length + ' công trình: ' + d.cts.slice(0, 5).join(', ') + (d.cts.length > 5 ? '…' : '') : ''));
-  setPageTags(debtChip(d.per.status));
   const cur = d.cuoiKy > 0 ? 'no' : d.cuoiKy < 0 ? 'du' : 'ok';
   setPageTags(debtChip(cur));
   const action = (act) => {

@@ -1,5 +1,5 @@
 /* Khung ứng dụng: điều hướng, thanh trên cùng, tải dữ liệu. */
-import { $, esc, api, onDatabase, showError, icon, attachMenu, download, hasOpenModal, dangCheDangNhap, LS, datMau, setPageActions } from './ui.js';
+import { $, esc, api, onDatabase, showError, icon, attachMenu, download, hasOpenModal, dangCheDangNhap, LS, datMau, setPageActions, openModal } from './ui.js';
 import { S, setDb, onChange, vouchers, anomalies, saveFilter } from './state.js';
 import { veChonCongTrinh, moChonCongTrinh } from './ctpick.js';
 import { moTimKiem } from './search.js';
@@ -116,6 +116,9 @@ function renderShell() {
     if (a.dataset.route === '@ghi-thu-chi') { e.preventDefault(); openEntryForm(null); return; }
     if (a.dataset.tab) { S.filters.cpDm.tab = a.dataset.tab; saveFilter('cpDm'); if (current() === 'cp-danh-muc') render(); }
   });
+  $('#bn-ghi').addEventListener('click', moGhi);
+  $('#bn-them').addEventListener('click', moMenuDayDu);
+  window.matchMedia('(max-width: 767px)').addEventListener('change', () => { if (S.db) render(); });
   datMau(LS.get('density', 'gon'));
   thuGonMenu(LS.get('side-thu', false));
 }
@@ -128,6 +131,43 @@ function thuGonMenu(on) {
 }
 function doiMenu() { thuGonMenu(!document.body.classList.contains('side-thu')); }
 
+// Điện thoại: nút "Ghi" hỏi ghi gì; nút "Thêm" liệt kê toàn bộ chức năng (menu bên trái ẩn đi)
+function moGhi() {
+  const m = openModal({
+    title: 'Ghi gì?',
+    size: 'small',
+    body: '<div class="flex flex-col gap-2.5"><button type="button" class="btn btn-primary !h-12 w-full" data-go="thu-chi">' + icon('plus') + 'Ghi thu / chi</button>' +
+      '<button type="button" class="btn btn-secondary !h-12 w-full" data-go="phieu">' + icon('plus') + 'Phiếu nhập chi phí</button></div>',
+    onMount(el, h) {
+      el.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-go]');
+        if (!b) return;
+        h.close();
+        if (b.dataset.go === 'thu-chi') openEntryForm(null); else location.hash = '#/cp-nhap';
+      });
+    }
+  });
+  return m;
+}
+function moMenuDayDu() {
+  openModal({
+    title: 'Tất cả chức năng',
+    size: 'small',
+    body: NAV.map((g) => '<div class="mb-3">' + (g.head ? '<div class="mb-1 text-[11px] font-bold text-ink-3">' + esc(g.head) + '</div>' : '') +
+      g.items.filter((it) => it[0].startsWith('@') || duocMo(it[0])).map(([k, code, label, , tab]) =>
+        '<a href="' + (k.startsWith('@') ? '#' : '#/' + k) + '" data-route="' + esc(k) + '"' + (tab ? ' data-tab="' + tab + '"' : '') + ' class="flex h-12 items-center gap-3 border-b border-rule px-1 text-[15px]"><span class="nav-code">' + code + '</span>' + esc(label) + '</a>').join('') + '</div>').join(''),
+    onMount(el, h) {
+      el.addEventListener('click', (e) => {
+        const a = e.target.closest('a[data-route]');
+        if (!a) return;
+        if (a.dataset.route === '@ghi-thu-chi') { e.preventDefault(); h.close(); openEntryForm(null); return; }
+        if (a.dataset.tab) { S.filters.cpDm.tab = a.dataset.tab; saveFilter('cpDm'); }
+        h.close();
+      });
+    }
+  });
+}
+
 let lastRoute = null;
 
 function render() {
@@ -139,6 +179,7 @@ function render() {
     a.classList.toggle('active', on);
     if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   });
+  document.querySelectorAll('#bottom-nav [data-bn]').forEach((a) => { const on = a.dataset.bn === k; a.classList.toggle('on', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   $('#page-title').textContent = r.title;
   $('#page-sub').textContent = r.sub;
   $('#page-tags').innerHTML = '';

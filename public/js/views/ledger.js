@@ -51,7 +51,8 @@ export function renderLedger(root) {
     '</div>' +
     '<div id="so-summary"></div>' +
     '<div id="so-bulk" class="no-print"></div>' +
-    '<section class="sheet overflow-hidden">' +
+    '<div id="so-cards" class="flex flex-col gap-2.5 md:hidden"></div>' +
+    '<section class="sheet overflow-hidden max-md:hidden">' +
     '<div class="table-scroll scroll-x max-h-[calc(100vh-360px)] min-h-[260px] overflow-auto" id="so-wrap"><table class="ledger">' +
     '<thead><tr><th class="no-print w-8"><input type="checkbox" id="so-all" aria-label="Chọn tất cả các dòng đang hiện"></th><th class="num">STT</th><th>Ngày</th><th>Số phiếu</th><th>Dự án</th><th>NCC, đối tượng</th><th>Nội dung, ghi chú</th>' +
     '<th class="num money">Thu</th><th class="num money">Chi</th><th class="num money">Tồn quỹ</th><th class="no-print"><span class="sr-only">Thao tác</span></th></tr></thead>' +
@@ -74,10 +75,11 @@ export function renderLedger(root) {
     const a = e.target.closest('[data-act]');
     if (!a) return;
     const act = a.dataset.act;
-    const tr = a.closest('tr[data-id]');
+    const tr = a.closest('tr[data-id], .crow[data-id]');
     const entry = tr ? S.all.entries.find((x) => x.id === Number(tr.dataset.id)) : null;
+    if (act === 'toggle-card') { const c = a.closest('.crow'); const x = c.querySelector('.cr-actions'); x.hidden = !x.hidden; a.setAttribute('aria-expanded', String(!x.hidden)); return; }
     if (act === 'clear') {
-      Object.assign(f, { period: 'tat-ca', from: '', to: '', duAn: '', ncc: '', loai: '', q: '', trangThai: '' });
+      Object.assign(f, { period: 'tat-ca', from: '', to: '', rel: false, duAn: '', ncc: '', loai: '', q: '', trangThai: '' });
       saveFilter('so');
       renderLedger(root);
     } else if (act === 'export') download('/api/export/ledger?' + exportQuery(f));
@@ -174,6 +176,26 @@ function drawRows(root, f) {
       '<td class="num money"><span class="dbl">' + money(res.tongChi) + '</span></td><td class="num money' + (res.tonCuoiKy < 0 ? ' neg' : '') + '">' + money(res.tonCuoiKy) + '</td><td class="no-print"></td></tr>'
     : '';
   drawBulk(root);
+  if (window.matchMedia('(max-width: 767px)').matches) drawCards(root, list.slice(-shown).reverse());
+}
+
+// Điện thoại: mỗi dòng sổ là một thẻ; bấm thẻ để mở các nút Ghi sổ · Sửa · Nhân bản · Xóa (48px)
+function drawCards(root, rows) {
+  const box = $('#so-cards', root);
+  if (!box) return;
+  const hint = '<p class="text-[12px] text-ink-3">Bấm vào một dòng để Ghi sổ, Sửa, Nhân bản, Xóa.</p>';
+  box.innerHTML = hint + (rows.length ? rows.slice(0, 200).map((r) => {
+    const nhap = KT.isDraft(r);
+    const lock = KT.isLockedDate(S.all, r.ngay);
+    return '<div class="crow' + (nhap ? ' draft' : '') + '" data-id="' + r.id + '"><button type="button" class="cr-main" data-act="toggle-card" aria-expanded="false">' +
+      '<span class="cr-date tabular-nums">' + esc(fdate(r.ngay).slice(0, 5)) + '</span><span class="cr-body"><b>' + esc(r.noiDung || 'Không có nội dung') + '</b>' +
+      '<small>' + (nhap ? 'Nháp · ' : '') + esc([r.soPhieu, r.maDuAn].filter(Boolean).join(' · ')) + '</small></span>' +
+      '<b class="cr-amt ' + (r.chi > 0 ? '' : 'text-income') + '">' + (r.chi > 0 ? '−' + money(r.chi) : '+' + money(r.thu)) + '</b>' + icon('caret', 'text-ink-3') + '</button>' +
+      '<div class="cr-actions" hidden>' + (nhap ? '<button type="button" data-act="post" class="text-income">' + icon('check') + 'Ghi sổ</button>' : '<span></span>') +
+      (lock ? '<button type="button" data-act="locked">' + icon('lock') + 'Đã khóa</button>' : '<button type="button" data-act="edit">' + icon('edit') + 'Sửa</button>') +
+      '<button type="button" data-act="dup">' + icon('copy') + 'Nhân bản</button>' +
+      (lock ? '<span></span>' : '<button type="button" data-act="del" class="text-alert">' + icon('trash') + 'Xóa</button>') + '</div></div>';
+  }).join('') : '<p class="py-8 text-center text-ink-3">Không có dòng nào khớp.</p>');
 }
 
 // Thanh trên bảng: số dòng; khi có dòng được chọn thì thành thanh thao tác hàng loạt (Ghi sổ các dòng nháp, Xóa, Bỏ chọn)

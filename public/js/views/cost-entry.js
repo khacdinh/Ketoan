@@ -135,7 +135,7 @@ export function renderCostEntry(root) {
     (st.mode !== 'new' && coThayDoi(params) ? '<div class="banner mx-4 mt-3 !bg-caution-soft !text-ink" role="note">' + icon('warnTri', 'text-caution') +
       '<span class="flex-1">Phiếu đang có thay đổi <b class="font-bold">chưa lưu</b>. Bấm Lưu để giữ, hoặc mở lại phiếu như đã lưu.</span>' +
       '<button type="button" class="btn btn-ghost btn-sm" data-act="reload-slip">' + icon('refresh') + 'Mở lại bản đã lưu</button></div>' : '') +
-    '<form id="cp-head" class="grid grid-cols-1 gap-x-4 gap-y-3 px-4 py-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" novalidate autocomplete="off">' +
+    '<form id="cp-head" class="grid grid-cols-2 gap-x-3 gap-y-2.5 px-3 py-3 md:gap-x-4 md:px-4 lg:grid-cols-3 xl:grid-cols-6" novalidate autocomplete="off">' +
     '<label class="field"><span class="label">Ngày <b class="req">*</b></span>' + dateField({ name: 'ngay', value: h.ngay, required: true, label: 'Ngày' }) + '<span class="hint"></span></label>' +
     headField('maCT', 'Công trình', h.maCT, 'dl-projects', 'Gõ mã hoặc tên công trình', true) +
     headField('maNha', 'Nhà / khu', h.maNha, 'dl-nha', 'Để trống = dùng chung', false) +
@@ -275,14 +275,14 @@ export function renderCostEntry(root) {
     const cell = (col, val, cls, extra) => '<input class="cell' + (cls ? ' ' + cls : '') + '" data-col="' + col + '" data-row="' + i + '" value="' + esc(val) + '"' + (extra || '') + '>';
     return '<tr data-row="' + i + '">' +
       '<td class="num text-ink-3">' + (i + 1) + '</td>' +
-      '<td>' + cell('maVT', l.maVT, 'font-semibold', ' list="dl-vt" aria-label="Mã vật tư dòng ' + (i + 1) + '" autocomplete="off"') + '</td>' +
-      '<td class="vt-name"></td><td class="vt-dvt text-ink-2"></td>' +
-      '<td>' + cell('dienGiai', l.dienGiai, '', ' aria-label="Diễn giải dòng ' + (i + 1) + '"') + '</td>' +
-      '<td>' + cell('soLuong', l.soLuong, 'text-right tabular-nums', ' inputmode="decimal" aria-label="Số lượng dòng ' + (i + 1) + '"') + '</td>' +
-      '<td>' + cell('donGia', l.donGia, 'text-right tabular-nums' + (l.goiY ? ' suggested' : ''), ' inputmode="decimal" aria-label="Đơn giá dòng ' + (i + 1) + '"') + '</td>' +
-      '<td>' + cell('thanhTien', l.thanhTien || '', 'text-right tabular-nums font-semibold', ' inputmode="decimal" aria-label="Thành tiền dòng ' + (i + 1) + '"') + '</td>' +
-      '<td>' + cell('hm', l.hm, '', ' list="dl-hm" placeholder="theo đầu phiếu" aria-label="Hạng mục riêng dòng ' + (i + 1) + '"') + '</td>' +
-      '<td><select class="cell" data-col="loaiCP" data-row="' + i + '" aria-label="Loại chi phí dòng ' + (i + 1) + '"></select></td>' +
+      '<td data-l="Mã vật tư">' + cell('maVT', l.maVT, 'font-semibold', ' list="dl-vt" aria-label="Mã vật tư dòng ' + (i + 1) + '" autocomplete="off"') + '</td>' +
+      '<td class="vt-name" data-l="Tên vật tư"></td><td class="vt-dvt text-ink-2"></td>' +
+      '<td data-l="Diễn giải / quy cách">' + cell('dienGiai', l.dienGiai, '', ' aria-label="Diễn giải dòng ' + (i + 1) + '"') + '</td>' +
+      '<td data-l="Số lượng">' + cell('soLuong', l.soLuong, 'text-right tabular-nums', ' inputmode="decimal" aria-label="Số lượng dòng ' + (i + 1) + '"') + '</td>' +
+      '<td data-l="Đơn giá">' + cell('donGia', l.donGia, 'text-right tabular-nums' + (l.goiY ? ' suggested' : ''), ' inputmode="decimal" aria-label="Đơn giá dòng ' + (i + 1) + '"') + '</td>' +
+      '<td data-l="Thành tiền">' + cell('thanhTien', l.thanhTien || '', 'text-right tabular-nums font-semibold', ' inputmode="decimal" aria-label="Thành tiền dòng ' + (i + 1) + '"') + '</td>' +
+      '<td data-l="Hạng mục riêng">' + cell('hm', l.hm, '', ' list="dl-hm" placeholder="theo đầu phiếu" aria-label="Hạng mục riêng dòng ' + (i + 1) + '"') + '</td>' +
+      '<td data-l="Loại chi phí"><select class="cell" data-col="loaiCP" data-row="' + i + '" aria-label="Loại chi phí dòng ' + (i + 1) + '"></select></td>' +
       '<td class="actions"><button type="button" class="icon-btn" data-act="dup-row" tabindex="-1" title="Nhân bản dòng (Ctrl D)" aria-label="Nhân bản dòng ' + (i + 1) + '">' + icon('copy') + '</button>' +
       '<button type="button" class="icon-btn danger" data-act="del-row" tabindex="-1" title="Xóa dòng" aria-label="Xóa dòng ' + (i + 1) + '">' + icon('x') + '</button></td></tr>' +
       '<tr class="row-msg" data-msg="' + i + '" hidden><td></td><td colspan="10"></td></tr>';

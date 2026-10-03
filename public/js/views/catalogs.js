@@ -7,8 +7,11 @@ import { printView } from '../print.js';
 import { comboHtml, bindCombo } from '../combo.js';
 import { mergeToolbarHtml, bindMergeUI, pickHead, pickCell, mergedRecords, mergedChip } from '../merge.js';
 import { openSoDuDauList } from '../sodudau.js';
+import { datCongTrinh } from '../ctpick.js';
 
 const KT = window.KT;
+const usedCost = (ma) => S.all.costs.filter((x) => KT.keyOf(x.maCT) === KT.keyOf(ma)).length;
+const usedNcc = (ma) => S.all.costs.filter((x) => KT.keyOf(x.maNCC) === KT.keyOf(ma)).length;
 
 function goLedger(field, ma) {
   Object.assign(S.filters.so, { duAn: '', ncc: '', loai: '', q: '', period: 'tat-ca', from: '', to: '' });
@@ -17,11 +20,14 @@ function goLedger(field, ma) {
   location.hash = '#/so-thu-chi';
 }
 
-function rowActions(label) {
+// Thứ tự nút: Xem sổ → Sửa → Xóa (xóa luôn cuối, màu đỏ). o.xem = [{ act, title, ic }] các nút xem; o.khoa = lý do không xóa được (nút mờ + giải thích, bấm vẫn báo lý do)
+function rowActions(label, o) {
+  o = o || {};
+  const xem = o.xem || [{ act: 'ledger', title: 'Xem sổ chi tiết', ic: 'book' }];
   return '<td class="actions no-print">' +
-    '<button type="button" class="icon-btn" data-act="ledger" title="Xem sổ chi tiết" aria-label="Xem sổ của ' + esc(label) + '">' + icon('book') + '</button>' +
+    xem.map((x) => '<button type="button" class="icon-btn" data-act="' + x.act + '" title="' + esc(x.title) + '" aria-label="' + esc(x.title + ' ' + label) + '">' + icon(x.ic) + '</button>').join('') +
     '<button type="button" class="icon-btn" data-act="edit" title="Sửa" aria-label="Sửa ' + esc(label) + '">' + icon('edit') + '</button>' +
-    '<button type="button" class="icon-btn danger" data-act="del" title="Xóa" aria-label="Xóa ' + esc(label) + '">' + icon('trash') + '</button></td>';
+    '<button type="button" class="icon-btn danger" data-act="del"' + (o.khoa ? ' aria-disabled="true" title="' + esc(o.khoa) + '"' : ' title="Xóa (vào Thùng rác)"') + ' aria-label="Xóa ' + esc(label) + '">' + icon('trash') + '</button></td>';
 }
 
 function toolbar(o) {
@@ -66,7 +72,8 @@ export function renderProjects(root) {
         '<td class="whitespace-nowrap">' + esc(p.trangThai || '') + (p.ngayKhoiCong ? '<div class="text-[12.5px] text-ink-2">Khởi công ' + fdate(p.ngayKhoiCong) + '</div>' : '') + '</td>' +
         '<td class="num">' + r.soDong + '</td>' +
         '<td class="text-[12.5px] text-ink-2">' + highlight(p.ghiChu || '', state.q) + '</td>' +
-        rowActions(p.ma) + '</tr>';
+        rowActions(p.ma, { xem: [{ act: 'cost-ledger', title: 'Sổ chi phí của công trình', ic: 'table' }, { act: 'ledger', title: 'Sổ thu chi của dự án', ic: 'book' }],
+          khoa: (r.soDong || usedCost(p.ma)) ? 'Đã có ' + (r.soDong + usedCost(p.ma)) + ' dòng sổ / chi phí: dùng Gộp mã để chuyển sang mã khác rồi mới xóa' : '' }) + '</tr>';
     }).join('') : '<tr><td colspan="11" class="empty">Không có dự án nào khớp. Thử từ khóa khác hoặc thêm dự án mới.</td></tr>') +
       // dự án đã gộp (ẩn mặc định): chỉ để tra cứu; muốn dùng lại thì hoàn tác ở màn Gộp mã
       (state.merged ? mergedRecords('da').filter((p) => !q || KT.normalizeText([p.ma, p.ten, p.gopVao].join(' ')).includes(q)).map((p) =>
@@ -88,6 +95,7 @@ export function renderProjects(root) {
     else if (act === 'print') printView('DANH MỤC DỰ ÁN VÀ NGÂN SÁCH', '', S.db.settings);
     else if (act === 'edit' && p) openProjectForm(p);
     else if (act === 'ledger' && p) goLedger('duAn', p.ma);
+    else if (act === 'cost-ledger' && p) { Object.assign(S.filters.cpSo, { period: 'tat-ca', from: '', to: '', rel: false, nha: '', nhom: '', hm: '', loai: '', ncc: '', vt: '', q: '' }); datCongTrinh(p.ma); location.hash = '#/cp-so'; }
     else if (act === 'del' && p) {
       const used = S.all.entries.filter((x) => KT.keyOf(x.maDuAn) === KT.keyOf(p.ma)).length;
       if (used) return toast('Không xóa được: dự án ' + p.ma + ' đang có ' + used + ' dòng sổ. Chuyển các dòng đó sang dự án khác trước.', 'error');
@@ -141,7 +149,7 @@ export function renderSuppliers(root) {
         '<td class="whitespace-nowrap">' + highlight(s.sdt || '', state.q) + '</td><td class="text-[12.5px] text-ink-2">' + highlight(s.diaChi || '', state.q) + '</td>' +
         '<td class="num money ' + (r.chi ? 'font-semibold' : 'text-ink-3') + '">' + money(r.chi) + '</td><td class="num">' + r.soDong + '</td>' +
         '<td class="text-[12.5px] text-ink-2">' + highlight(s.ghiChu || '', state.q) + '</td>' +
-        rowActions(s.ma) + '</tr>';
+        rowActions(s.ma, { xem: [{ act: 'ncc-ledger', title: 'Sổ chi tiết công nợ', ic: 'book' }], khoa: (r.soDong || usedNcc(s.ma)) ? 'Đã có ' + (r.soDong + usedNcc(s.ma)) + ' dòng sổ / chi phí: dùng Gộp mã để chuyển sang mã khác rồi mới xóa' : '' }) + '</tr>';
     }).join('') : '<tr><td colspan="10" class="empty">Không có nhà cung cấp nào khớp. Thử từ khóa khác hoặc thêm mới.</td></tr>') +
       // mã đã gộp (ẩn mặc định): chỉ để tra cứu, không sửa / xóa; muốn dùng lại thì hoàn tác ở màn Gộp mã
       (state.merged ? mergedRecords('ncc').filter((s) => !q || KT.normalizeText([s.ma, s.ten, s.gopVao].join(' ')).includes(q)).map((s) =>
@@ -161,7 +169,7 @@ export function renderSuppliers(root) {
     else if (act === 'export') download('/api/export/suppliers');
     else if (act === 'print') printView('DANH MỤC NHÀ CUNG CẤP VÀ ĐỐI TƯỢNG', '', S.db.settings);
     else if (act === 'edit' && s) openSupplierForm(s);
-    else if (act === 'ledger' && s) goLedger('ncc', s.ma);
+    else if (act === 'ncc-ledger' && s) { LS.set('sct.ncc', s.ma); location.hash = '#/so-chi-tiet-ncc'; }
     else if (act === 'del' && s) {
       const used = S.all.entries.filter((x) => KT.keyOf(x.maNCC) === KT.keyOf(s.ma)).length;
       if (used) return toast('Không xóa được: ' + s.ma + ' đang có ' + used + ' dòng sổ. Chuyển các dòng đó sang nhà cung cấp khác trước.', 'error');

@@ -24,6 +24,7 @@ function qs(obj) {
 
 export function renderDashboard(root) {
   root = freshRoot(root);
+  if (window.matchMedia('(max-width: 767px)').matches) return renderDashboardPhone(root);
   const f = refreshPeriod(S.filters.dash);
   const ps = KT.projectSummary(S.db, f);
   const L = KT.filterLedger(S.ledger, f);
@@ -99,6 +100,39 @@ export function renderDashboard(root) {
     if (e.key !== 'Enter') return;
     const row = e.target.closest('tr[data-ma]');
     if (row) openProjectLedger(row.dataset.ma, f);
+  });
+}
+
+// Điện thoại (7b): tồn quỹ lớn, bốn số chính, hai nút việc chính, việc cần chú ý, ghi gần đây
+function renderDashboardPhone(root) {
+  const L = KT.filterLedger(S.ledger, {});
+  const s = KT.costSummary(S.db, {}, S.costLedger);
+  const d = KT.supplierDebt(S.db, {});
+  const ps = KT.projectSummary(S.db, {});
+  const nhap = S.drafts.entries.length + new Set(S.drafts.costs.map((c) => c.phieuId)).size;
+  const a = anomalies();
+  const item = (ic, html, href, act) => '<a href="' + href + '"' + (act ? ' data-act="' + act + '"' : '') + ' class="flex min-h-12 items-center gap-3 border border-rule px-3 py-2 text-[14px]">' + icon(ic, 'text-[18px] text-ink-2') + '<span class="min-w-0 flex-1">' + html + '</span>' + icon('caretRight', 'text-ink-3') + '</a>';
+  root.innerHTML =
+    '<section><div class="text-[12.5px] text-ink-3">Tồn quỹ hiện tại · ' + esc(fdate(KT.todayISO())) + '</div>' +
+    '<div class="balance mt-1' + (L.tonCuoiKy < 0 ? ' neg' : '') + '">' + money(L.tonCuoiKy) + '<span class="unit">đ</span></div></section>' +
+    '<section class="sheet grid grid-cols-2 gap-x-4 gap-y-3 p-3">' +
+    '<div><div class="text-[12px] text-ink-3">Tổng thu</div><b class="text-[17px] tabular-nums text-income">' + money(L.tongThu) + '</b></div>' +
+    '<div><div class="text-[12px] text-ink-3">Tổng chi</div><b class="text-[17px] tabular-nums">' + money(L.tongChi) + '</b></div>' +
+    '<div><div class="text-[12px] text-ink-3">Chi phí công trình</div><b class="text-[17px] tabular-nums">' + money(s.total) + '</b></div>' +
+    '<div><div class="text-[12px] text-ink-3">Dư Có (còn phải trả)</div><b class="text-[17px] tabular-nums">' + money(d.total.conNo) + '</b></div></section>' +
+    '<div class="grid grid-cols-2 gap-2.5"><button type="button" class="btn btn-primary !h-12" data-act="m-ghi">' + icon('plus') + 'Ghi thu / chi</button>' +
+    '<a href="#/cp-nhap" class="btn btn-secondary !h-12">' + icon('plus') + 'Phiếu nhập</a></div>' +
+    '<h3 class="text-[20px]">Cần chú ý</h3><div class="flex flex-col gap-2">' +
+    (a.open ? item('flag', '<b>' + a.open + ' việc cần xử lý</b>', '#/kiem-soat?tab=can-xu-ly') : '') +
+    (nhap ? item('draft', '<b>' + nhap + ' dòng nháp</b> chưa ghi sổ', '#/so-thu-chi', 'go-nhap') : '') +
+    (ps.khongDuAn.chi > 0 ? item('info', '<b class="tabular-nums">' + money(ps.khongDuAn.chi) + ' đ</b> chi chưa gán dự án', '#/so-thu-chi') : '') +
+    (!a.open && !nhap && !(ps.khongDuAn.chi > 0) ? '<p class="text-ink-3">Không có gì cần chú ý.</p>' : '') + '</div>' +
+    '<h3 class="text-[20px]">Ghi gần đây</h3>' + '<div class="sheet">' + recentHtml() + '</div>';
+  root.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]');
+    if (!b) return;
+    if (b.dataset.act === 'm-ghi') import('../forms.js').then((m) => m.openEntryForm(null));
+    if (b.dataset.act === 'go-nhap') { Object.assign(S.filters.so, { period: 'tat-ca', from: '', to: '', rel: false, trangThai: 'nhap', duAn: '', ncc: '', loai: '', q: '' }); saveFilter('so'); }
   });
 }
 

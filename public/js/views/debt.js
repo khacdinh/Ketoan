@@ -233,7 +233,7 @@ function unknownNcc(t) {
 }
 
 /* ---------------- Tổng hợp nợ / đã thanh toán theo công trình ---------------- */
-function projectDebtHtml(sum, activeCt) {
+export function projectDebtHtml(sum, activeCt) {
   const dash = '<span class="text-ink-3">—</span>';
   const pctBar = (r) => {
     if (r.tiLeDaTra == null) return dash;

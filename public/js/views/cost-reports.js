@@ -1,12 +1,11 @@
 /* Báo cáo chi phí công trình: bảng điều khiển (TONGHOP), chi tiết theo nhóm (CHI_TIET_THEO_NHOM),
  * công nợ NCC (CONGNO_NCC), thống kê giá vật tư. */
-import { $, $$, esc, money, fdate, fmtShort, icon, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, debounce, highlight, LS, dateField } from '../ui.js';
+import { $, $$, esc, money, fdate, fmtShort, icon, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, debounce, highlight, LS, dateField, setPageActions } from '../ui.js';
 import { S, saveFilter, costProjects, projectByCode, supplierByCode, materialByCode, itemByCode } from '../state.js';
 import { printView } from '../print.js';
-import { comboHtml, bindCombo } from '../combo.js';
-import { openEntryForm } from '../forms.js';
-import { openExtPayForm, deleteExtPay } from '../extpay.js';
-import { openSoDuDauForm, deleteSoDuDau } from '../sodudau.js';
+import { comboHtml, bindCombo, filterBox } from '../combo.js';
+import { datCongTrinh } from '../ctpick.js';
+import { projectDebtHtml } from './debt.js';
 
 const KT = window.KT;
 const HEAVY_ROWS = 1500;
@@ -40,7 +39,6 @@ export function renderCostDashboard(root) {
   const chk = KT.costCatalogCheck(S.db);
   const nVT = new Set(KT.filterCosts(S.costLedger, f).rows.map((r) => KT.keyOf(r.maVT)).filter(Boolean)).size;
   const openState = LS.get('cp.th.open', {});
-  const cbCt = ctCombo('th-ct', f.ct);
   const cbNha = houseCombo('th-nha', f.ct, f.nha);
 
   // link: { loai } → mở sổ chi phí đã lọc; { debt: true } → mở công nợ NCC (cùng công trình, cùng kỳ)
@@ -53,14 +51,7 @@ export function renderCostDashboard(root) {
 
   root.innerHTML =
     '<div class="print-only" id="print-head"></div>' +
-    '<div class="no-print flex flex-wrap items-center gap-2">' +
-    comboHtml(cbCt) + comboHtml(cbNha) +
-    periodControls(f, 'cth') +
-    '<span class="flex-1"></span>' +
-    '<button type="button" class="btn btn-ghost" data-act="print">' + icon('print') + 'In</button>' +
-    '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất Excel</button>' +
-    '<a href="#/cp-nhap" class="btn btn-primary">' + icon('plus') + 'Lập phiếu nhập</a>' +
-    '</div>' +
+    '<div class="no-print flex flex-wrap items-center gap-2.5">' + periodControls(f, 'cth') + filterBox('Nhà/lô', Object.assign(cbNha, { placeholder: 'Tất cả', cls: 'w-[170px]' })) + '</div>' +
     '<section class="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">' +
     '<div><h2 class="text-[13.5px] font-medium text-ink-2">Tổng chi phí · ' + esc(ctLabel(f.ct)) + ' · ' + esc(KT.describeRange(f.from, f.to).toLowerCase()) + '</h2>' +
     '<p class="balance mt-2">' + money(s.total) + '<span class="unit">đồng</span></p>' +
@@ -69,7 +60,7 @@ export function renderCostDashboard(root) {
     '</section>' +
     '<div class="stats">' + loaiTiles +
     tile('Đã trả nhà cung cấp', money(debt.total.daTra), (debt.total.daTraNgoai ? 'Gồm ' + money(debt.total.daTraNgoai) + ' đ trả ngoài quỹ' : 'Từ sổ thu chi, theo mã NCC' + (f.ct ? ' và công trình' : '')), '', { debt: true }) +
-    tile('Còn nợ nhà cung cấp', money(debt.total.conNo), debt.total.ungDu ? 'Ứng dư ' + money(debt.total.ungDu) + ' đ' : '', debt.total.conNo ? 'text-alert' : '', { debt: true }) +
+    tile('Dư Có (còn phải trả NCC)', money(debt.total.conNo), debt.total.ungDu ? 'Dư Nợ (đã ứng trước) ' + money(debt.total.ungDu) + ' đ' : '', '', { debt: true }) +
     '</div>' +
     '<div class="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">' +
     '<section class="sheet overflow-hidden" aria-labelledby="h-nhom"><div class="sheet-head"><div><h3 id="h-nhom" class="sheet-title">Chi phí theo nhóm và hạng mục</h3>' +
@@ -91,7 +82,12 @@ export function renderCostDashboard(root) {
   drawMonthChart($('#th-months', root), s.byMonth);
 
   const rerender = () => renderCostDashboard(root);
-  bindCombo($('#th-ct', root), cbCt, (v) => { f.ct = v; f.nha = ''; saveFilter('cpTh'); rerender(); });
+  setPageActions('<button type="button" class="btn btn-secondary" data-act="print">' + icon('print') + 'In</button>' +
+    '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất Excel</button>' +
+    '<a href="#/cp-nhap" class="btn btn-secondary !border-pen !text-accent-800">' + icon('plus') + 'Lập phiếu nhập</a>', (act) => {
+    if (act === 'export') download('/api/export/costs' + (f.ct ? '?ct=' + encodeURIComponent(f.ct) : ''));
+    else if (act === 'print') printView('BẢNG ĐIỀU KHIỂN CHI PHÍ CÔNG TRÌNH', ctLabel(f.ct) + '. ' + KT.describeRange(f.from, f.to), S.db.settings);
+  });
   bindCombo($('#th-nha', root), cbNha, (v) => { f.nha = v; saveFilter('cpTh'); rerender(); });
   bindPeriodControls(root, f, 'cth', () => { saveFilter('cpTh'); rerender(); });
 
@@ -134,10 +130,8 @@ export function renderCostDashboard(root) {
     if (it) goLedger({ ct: f.ct, nha: f.nha, hm: it.dataset.item, period: f.period, from: f.from, to: f.to });
     const ctRow = e.target.closest('tr[data-ct]');
     if (ctRow) {
-      f.ct = KT.keyOf(f.ct) === KT.keyOf(ctRow.dataset.ct) ? '' : ctRow.dataset.ct;
       f.nha = '';
-      saveFilter('cpTh');
-      rerender();
+      datCongTrinh(KT.keyOf(f.ct) === KT.keyOf(ctRow.dataset.ct) ? '' : ctRow.dataset.ct); // chọn công trình ở thanh trên, mọi màn theo đó
     }
   });
   root.addEventListener('keydown', (e) => {
@@ -234,25 +228,21 @@ export function renderCostDetail(root) {
   root = freshRoot(root);
   const f = refreshPeriod(S.filters.cpCt);
   const usedNCC = new Set(S.db.costs.map((c) => KT.keyOf(c.maNCC)));
-  const cbCt = ctCombo('ct-ct', f.ct);
   const cbNha = houseCombo('ct-nha', f.ct, f.nha);
   const cbNcc = nccCombo('ct-ncc', S.db.suppliers.filter((s) => usedNCC.has(KT.keyOf(s.ma)) || KT.keyOf(s.ma) === KT.keyOf(f.ncc)), f.ncc);
   root.innerHTML =
     '<div class="print-only" id="print-head"></div>' +
-    '<div class="no-print flex flex-wrap items-center gap-2">' +
-    comboHtml(cbCt) + comboHtml(cbNha) +
-    '<select id="ct-loai" class="input w-auto" aria-label="Loại chi phí"><option value="">Mọi loại CP</option>' + KT.LOAI_CP.map((l) => '<option' + (f.loai === l ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select>' +
-    comboHtml(cbNcc) +
-    periodControls(f, 'ctd') +
-    '</div>' +
+    '<div class="no-print flex flex-wrap items-center gap-2.5">' + periodControls(f, 'ctd') + '</div>' +
+    '<div class="no-print filters-grid">' + filterBox('Nhà/lô', Object.assign(cbNha, { placeholder: 'Tất cả' })) +
+    '<div class="fbox' + (f.loai ? ' on' : '') + '"><span class="lbl">Loại CP</span><select id="ct-loai" class="input" aria-label="Loại chi phí"><option value="">Tất cả</option>' + KT.LOAI_CP.map((l) => '<option' + (f.loai === l ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select></div>' +
+    filterBox('NCC', Object.assign(cbNcc, { placeholder: 'Tất cả' })) + '</div>' +
     '<div class="no-print flex flex-wrap items-center gap-2">' +
     '<span class="text-[13px] text-ink-2">Mức hiển thị</span>' +
     '<div class="seg seg-sm" role="radiogroup" aria-label="Mức hiển thị">' +
     [[1, '1 · Chỉ tổng nhóm'], [2, '2 · Thêm cộng hạng mục'], [3, '3 · Toàn bộ chi tiết']].map(([v, l]) => '<label class="seg-item"><input type="radio" name="ct-level" value="' + v + '"' + (Number(f.level) === v ? ' checked' : '') + '><span>' + l + '</span></label>').join('') +
     '</div><span class="flex-1"></span>' +
-    '<button type="button" class="btn btn-ghost" data-act="print">' + icon('print') + 'In</button>' +
-    '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất Excel</button></div>' +
-    '<section class="sheet overflow-hidden"><div class="table-scroll max-h-[calc(100vh-250px)] overflow-auto"><table class="ledger tree">' +
+    '<button type="button" class="btn btn-secondary btn-sm" data-act="expand">Bung hết</button><button type="button" class="btn btn-secondary btn-sm" data-act="collapse">Thu gọn</button></div>' +
+    '<section class="sheet overflow-hidden"><div class="table-scroll max-h-[calc(100vh-300px)] overflow-auto"><table class="ledger tree">' +
     '<thead><tr><th>Ngày</th><th>Vật tư</th><th>Diễn giải</th><th>Nhà cung cấp</th><th>Nhà</th><th class="num">Số lượng</th><th>ĐVT</th><th class="num money">Đơn giá</th><th class="num money">Thành tiền</th></tr></thead>' +
     '<tbody id="ct-body"></tbody><tfoot id="ct-foot"></tfoot></table></div></section>';
 
@@ -291,7 +281,11 @@ export function renderCostDetail(root) {
   };
 
   const rerender = () => renderCostDetail(root);
-  bindCombo($('#ct-ct', root), cbCt, (v) => { f.ct = v; f.nha = ''; saveFilter('cpCt'); rerender(); });
+  setPageActions('<button type="button" class="btn btn-secondary" data-act="print">' + icon('print') + 'In</button>' +
+    '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất Excel</button>', (act) => {
+    if (act === 'export') download('/api/export/costs' + (f.ct ? '?ct=' + encodeURIComponent(f.ct) : ''));
+    else if (act === 'print') printView('CHI TIẾT CHI PHÍ THEO NHÓM', ctLabel(f.ct) + '. ' + KT.describeRange(f.from, f.to), S.db.settings);
+  });
   bindCombo($('#ct-nha', root), cbNha, (v) => { f.nha = v; saveFilter('cpCt'); draw(); });
   $('#ct-loai', root).addEventListener('change', (e) => { f.loai = e.target.value; saveFilter('cpCt'); draw(); });
   bindCombo($('#ct-ncc', root), cbNcc, (v) => { f.ncc = v; saveFilter('cpCt'); draw(); });
@@ -306,7 +300,8 @@ export function renderCostDetail(root) {
   root.addEventListener('click', (e) => {
     const a = e.target.closest('[data-act]');
     if (a) {
-      if (a.dataset.act === 'open-all') { S.db.costItems.forEach((it) => { open['i:' + it.ma] = true; open['g:' + it.maNhom] = true; }); LS.set('cp.ct.open', open); draw(); }
+      if (a.dataset.act === 'open-all' || a.dataset.act === 'expand') { S.db.costItems.forEach((it) => { open['i:' + it.ma] = true; open['g:' + it.maNhom] = true; }); LS.set('cp.ct.open', open); draw(); }
+      if (a.dataset.act === 'collapse') { S.db.costItems.forEach((it) => { open['i:' + it.ma] = false; open['g:' + it.maNhom] = false; }); LS.set('cp.ct.open', open); draw(); }
       if (a.dataset.act === 'export') download('/api/export/costs' + (f.ct ? '?ct=' + encodeURIComponent(f.ct) : ''));
       if (a.dataset.act === 'print') printView('CHI TIẾT CHI PHÍ THEO NHÓM', ctLabel(f.ct) + '. ' + KT.describeRange(f.from, f.to), S.db.settings);
       return;
@@ -409,7 +404,7 @@ function stat(label, value, sub) {
   return '<div class="stat"><div class="stat-label">' + esc(label) + '</div><div class="stat-value">' + value + '</div>' + (sub ? '<div class="stat-sub">' + sub + '</div>' : '') + '</div>';
 }
 
-const SERIES = ['#2F5DAA', '#B8621B', '#1D6B47', '#7A4FA3', '#B3261E', '#4A5670'];
+const SERIES = ['#416180', '#8a5a00', '#2f6b3f', '#7a7a7d', '#a33a2e', '#2c455d'];
 
 function drawPriceChart(el, legend, byNcc) {
   const all = [];
@@ -455,7 +450,7 @@ function drawPriceChart(el, legend, byNcc) {
     const color = SERIES[k++ % SERIES.length];
     const name = (supplierByCode(ncc) || {}).ten || ncc;
     if (list.length > 1) svg += '<polyline fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round" points="' + list.map((h) => x(h.ngay).toFixed(1) + ',' + y(h.donGia).toFixed(1)).join(' ') + '"/>';
-    list.forEach((h) => { svg += '<circle cx="' + x(h.ngay).toFixed(1) + '" cy="' + y(h.donGia).toFixed(1) + '" r="4" fill="' + color + '" stroke="#fff" stroke-width="1.5"><title>' + esc(fdate(h.ngay) + ' · ' + name + ': ' + money(h.donGia) + ' đ') + '</title></circle>'; });
+    list.forEach((h) => { svg += '<circle cx="' + x(h.ngay).toFixed(1) + '" cy="' + y(h.donGia).toFixed(1) + '" r="4" fill="' + color + '" stroke="#f2f2f3" stroke-width="1.5"><title>' + esc(fdate(h.ngay) + ' · ' + name + ': ' + money(h.donGia) + ' đ') + '</title></circle>'; });
     leg += '<span class="flex items-center gap-1.5"><span class="inline-block size-2.5 rounded-full" style="background:' + color + '"></span>' + esc(name) + '</span>';
   });
   el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Đơn giá theo thời gian">' + svg + '</svg>';
