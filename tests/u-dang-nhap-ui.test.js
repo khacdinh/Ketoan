@@ -25,7 +25,7 @@ async function dangNhapUI(page, ten, mk) {
   await page.fill('#dn-form [name=ten]', ten);
   await page.fill('#dn-form [name=mk]', mk);
   await page.press('#dn-form [name=mk]', 'Enter');
-  await page.waitForSelector('#user-root .user-box');
+  await page.waitForSelector('#user-root #btn-user');
   await settle(page);
 }
 // Mở form ghi thu / chi bằng F2 rồi bấm vào ô Nội dung như người dùng: form tự đặt con trỏ vào ô ngày sau 30–40 ms nếu chưa ai
@@ -47,7 +47,7 @@ test('U1 vai trò ở giao diện: Chỉ xem không thấy nút thêm / sửa / 
     // ----- Chỉ xem -----
     await dangNhapUI(page, 'xem1', 'chỉ xem mật khẩu 1');
     await page.waitForSelector('#view tr[data-id]');
-    assert.equal(await page.$eval('#user-root .vai', (e) => e.textContent), 'Chỉ xem');
+    assert.equal(await page.$eval('#user-root .who span', (e) => e.textContent), 'Chỉ xem');
     assert.equal(await hien(page, '#btn-new'), 0, 'không có nút Ghi thu / chi');
     assert.equal(await hien(page, '#view [data-act=edit], #view [data-act=del], #view [data-act=dup]'), 0, 'không có nút sửa / xóa / nhân bản');
     const nav = await page.$$eval('#nav a', (as) => as.map((a) => a.dataset.route));
@@ -60,9 +60,12 @@ test('U1 vai trò ở giao diện: Chỉ xem không thấy nút thêm / sửa / 
     await page.waitForFunction(() => /không có quyền mở màn hình/.test(document.querySelector('#view').innerText));
     await page.evaluate(() => { location.hash = '#/cai-dat'; });
     await page.waitForSelector('#st-form');
-    assert.equal(await page.locator('#imp-file').count(), 0, 'không có nhập Excel');
     assert.equal(await page.locator('[data-act=restore], [data-act=reset], [data-act=backup-zip], [data-act=auth-tat]').count(), 0);
     assert.equal(await page.locator('[data-act=export-full]').count(), 1, 'vẫn xuất Excel được');
+    // nhập Excel nằm ở màn riêng (menu Nhập liệu › Nhập từ Excel): Chỉ xem không có ô chọn file
+    await page.evaluate(() => { location.hash = '#/nhap-excel'; });
+    await page.waitForFunction(() => /không có quyền/.test(document.querySelector('#view').innerText));
+    assert.equal(await page.locator('#imp-file').count(), 0, 'không có nhập Excel');
     await page.evaluate(() => { location.hash = '#/kiem-soat'; });
     await page.waitForSelector('[role=tablist]');
     assert.doesNotMatch(await page.$eval('[role=tablist]', (e) => e.innerText), /Nhật ký/, 'Chỉ xem không có thẻ Nhật ký');
@@ -81,9 +84,11 @@ test('U1 vai trò ở giao diện: Chỉ xem không thấy nút thêm / sửa / 
     assert.match(await page.$eval('[role=tablist]', (e) => e.innerText), /Nhật ký/);
     assert.equal(await hien(page, '[data-act=purge-all], [data-act=purge]'), 0, 'Kế toán không xóa vĩnh viễn');
     await page.evaluate(() => { location.hash = '#/cai-dat'; });
-    await page.waitForSelector('#imp-file', { state: 'attached' });
+    await page.waitForSelector('#st-form');
     assert.equal(await page.locator('[data-act=restore], [data-act=reset], [data-act=auth-tat]').count(), 0);
     assert.equal(await page.locator('[data-act=backup-zip]').count(), 1, 'Kế toán tạo sao lưu được');
+    await page.evaluate(() => { location.hash = '#/nhap-excel'; });
+    await page.waitForSelector('#imp-file', { state: 'attached' });
     // Kế toán ghi một dòng bằng form
     await moFormGhi(page);
     await page.fill('.modal [name=noiDung]', 'kế toán ghi');
@@ -142,7 +147,7 @@ test('U2 màn Người dùng (Chủ): thêm người dùng (họ tên chứa mã
     await page.fill('#dmk-form [name=moi]', 'Lan đổi mật khẩu riêng');
     await page.fill('#dmk-form [name=moi2]', 'Lan đổi mật khẩu riêng');
     await page.press('#dmk-form [name=moi2]', 'Enter');
-    await page.waitForSelector('#user-root .user-box');
+    await page.waitForSelector('#user-root #btn-user');
     await page.waitForSelector('#view .sheet');
     assert.match(await page.$eval('#user-root', (e) => e.innerText), /<img src=x/, 'tên ở góc trên cũng hiện nguyên văn');
     assert.equal(await page.$$eval('#user-root img', (x) => x.length), 0);

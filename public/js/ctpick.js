@@ -1,11 +1,12 @@
-/* Chọn công trình ở thanh trên: áp dụng cho mọi sổ và báo cáo (thay cho ô "Dự án / Công trình" riêng ở từng màn hình).
- * Giá trị nằm ở S.ct; để các màn hình cũ vẫn chạy, mỗi lần đổi ta ghi cùng mã vào bộ lọc công trình của từng màn hình. */
+/* Chọn công trình ở thanh trên: áp dụng cho các sổ và báo cáo chi phí (thay cho ô "Công trình" riêng ở từng màn hình).
+ * Giá trị nằm ở S.ct; để các màn hình cũ vẫn chạy, mỗi lần đổi ta ghi cùng mã vào bộ lọc công trình của từng màn hình.
+ * Sổ quỹ thu chi giữ ô "Dự án" riêng của nó (có cả "Chưa gán dự án") nên không nằm trong danh sách này. */
 import { $, esc, LS, icon } from './ui.js';
 import { S, saveFilter, costProjects } from './state.js';
 
 const KT = window.KT;
 // [tên bộ lọc, tên trường chứa mã công trình]
-const LOC = [['so', 'duAn'], ['cpSo', 'ct'], ['cpTh', 'ct'], ['cpCt', 'ct'], ['cpCn', 'ct']];
+const LOC = [['cpSo', 'ct'], ['cpTh', 'ct'], ['cpCt', 'ct'], ['cpCn', 'ct']];
 
 export function datCongTrinh(ma, nhanh) {
   S.ct = ma || '';

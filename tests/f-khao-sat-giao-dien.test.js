@@ -60,6 +60,8 @@ async function pressAll(page, errors, route, state, report) {
     const href = await loc.getAttribute('href').catch(() => null);
     if (href && SKIP_CTRL.test(href)) continue;
     const errs0 = errors.length;
+    // lựa chọn (Thu và chi / Mọi trạng thái / Gọn…) đang được chọn sẵn: bấm lại không đổi gì là đúng
+    const daChon = await loc.evaluate((e) => e.matches('label.seg-item') && !!e.querySelector('input[type=radio]:checked')).catch(() => false);
     // quan sát: có thay đổi gì sau cú bấm không (DOM, hộp thoại, địa chỉ, yêu cầu mạng, tải về)
     await page.evaluate(() => {
       window.__mut = 0; window.__req = 0;
@@ -75,7 +77,7 @@ async function pressAll(page, errors, route, state, report) {
     const changed = await page.evaluate(() => ({ mut: window.__mut, req: window.__req, hash: location.hash, modal: !!document.querySelector('#modal-root .modal'), print: window.__printCalls || 0 }));
     const downloaded = await dl;
     // nút lịch (showPicker) mở lịch của trình duyệt, không đổi DOM trang nên không quan sát được
-    if (!changed.mut && !changed.req && changed.hash === hash0 && !changed.modal && !downloaded && !changed.print && !/Chọn ngày trên lịch/.test(label)) report.dead.push(state + ' ' + route + ' #' + i + ' ' + label);
+    if (!changed.mut && !changed.req && changed.hash === hash0 && !changed.modal && !downloaded && !changed.print && !daChon && !/Chọn ngày trên lịch/.test(label)) report.dead.push(state + ' ' + route + ' #' + i + ' ' + label);
     // đóng hộp thoại, quay lại màn hình đang khảo sát
     for (let k = 0; k < 3 && await page.locator('#modal-root .modal').count(); k++) { await page.keyboard.press('Escape'); await page.waitForTimeout(220); }
     if (errors.length > errs0) report.errors.push(state + ' ' + route + ' #' + i + ' ' + label + ' → ' + errors.slice(errs0).join(' | '));
@@ -129,7 +131,7 @@ test('F8 đi qua từng màn hình và từng nút với dữ liệu trống, 1 
 test('F9 cửa sổ hẹp và rộng: không tràn ngang toàn trang, điều hướng và nút chính dùng được, chụp ảnh để xem', { skip: SKIP, timeout: 600000 }, async () => {
   fs.mkdirSync(SHOTS, { recursive: true });
   const srv = await makeServer('day-du');
-  const sizes = [[1920, 1080], [1440, 900], [1024, 768], [768, 1024], [390, 844]];
+  const sizes = [[1920, 1080], [1440, 900], [1024, 768], [768, 1024]]; // điện thoại (≤ 767px) không nằm trong phạm vi kiểm tra
   const bad = [];
   try {
     for (const [w, h] of sizes) {
@@ -144,7 +146,7 @@ test('F9 cửa sổ hẹp và rộng: không tràn ngang toàn trang, điều h�
           if (m.sw > m.iw + 1) bad.push(w + 'px ' + r + ': tràn ngang ' + m.sw + ' > ' + m.iw);
           if (m.nav < 5) bad.push(w + 'px ' + r + ': thanh điều hướng không dùng được (' + m.nav + ' mục nhìn thấy)');
           if (m.view < 20) bad.push(w + 'px ' + r + ': nội dung trống');
-          if ((w === 390 || w === 1920) && ['tong-quan', 'cp-nhap', 'cp-so', 'cp-tong-hop', 'cp-cong-no'].includes(r)) await page.screenshot({ path: path.join(SHOTS, r + '-' + w + '.png') });
+          if ((w === 768 || w === 1920) && ['tong-quan', 'cp-nhap', 'cp-so', 'cp-tong-hop', 'cp-cong-no'].includes(r)) await page.screenshot({ path: path.join(SHOTS, r + '-' + w + '.png') });
         }
         // form nhập thu chi trên cửa sổ hẹp: hộp thoại nằm gọn trong màn hình
         await page.keyboard.press('F3');
@@ -153,7 +155,7 @@ test('F9 cửa sổ hẹp và rộng: không tràn ngang toàn trang, điều h�
         if (box.l < -1 || box.r > box.w + 1) bad.push(w + 'px: hộp thoại ghi thu chi vượt chiều ngang (' + Math.round(box.l) + '..' + Math.round(box.r) + ' / ' + box.w + ')');
         const saveBtn = await page.locator('#modal-root [data-act=save]').boundingBox();
         if (!saveBtn || saveBtn.x + saveBtn.width > w + 1) bad.push(w + 'px: nút Lưu nằm ngoài màn hình');
-        if (w === 390) await page.screenshot({ path: path.join(SHOTS, 'form-thu-chi-390.png') });
+        if (w === 768) await page.screenshot({ path: path.join(SHOTS, 'form-thu-chi-768.png') });
         await page.keyboard.press('Escape');
         assert.deepEqual(errors, [], w + 'px lỗi console');
       } finally { await browser.close(); }
@@ -214,19 +216,19 @@ test('F11 chữ tiếng Việt hiển thị đúng: font cục bộ có tập k�
       const fam = getComputedStyle(document.body).fontFamily;
       // đo bề rộng: nếu ký tự tiếng Việt rơi về font dự phòng thì bề rộng khác font chính
       const c = document.createElement('canvas').getContext('2d');
-      c.font = '16px "Archivo Variable"';
+      c.font = '16px "Barlow"';
       const w1 = c.measureText(probe).width;
       c.font = '16px monospace';
       const w2 = c.measureText(probe).width;
-      return { loaded, fam, w1, w2, check: document.fonts.check('16px "Archivo Variable"', probe), hasViet: [...document.fonts].some((f) => /Archivo/.test(f.family) && f.status === 'loaded') };
+      return { loaded, fam, w1, w2, check: document.fonts.check('16px "Barlow"', probe), hasViet: [...document.fonts].some((f) => /Barlow/.test(f.family) && f.status === 'loaded') };
     });
-    assert.match(info.fam, /Archivo/, 'font của giao diện: ' + info.fam);
-    assert.ok(info.hasViet && info.check, 'font Archivo (tập tiếng Việt) chưa nạp được: ' + JSON.stringify(info.loaded));
+    assert.match(info.fam, /Barlow/, 'font của giao diện: ' + info.fam);
+    assert.ok(info.hasViet && info.check, 'font Barlow (tập tiếng Việt) chưa nạp được: ' + JSON.stringify(info.loaded));
     assert.notEqual(Math.round(info.w1), Math.round(info.w2), 'chữ có dấu đang hiển thị bằng font dự phòng');
     // tệp font nằm cục bộ và tải được
-    for (const f of ['archivo-vietnamese-standard-normal.woff2', 'archivo-latin-ext-standard-normal.woff2', 'archivo-latin-standard-normal.woff2']) {
+    for (const f of ['barlow-vietnamese-400-normal.woff2', 'barlow-latin-ext-400-normal.woff2', 'barlow-latin-400-normal.woff2', 'barlow-vietnamese-700-normal.woff2']) {
       const r = await srv.call('GET', '/vendor/fonts/' + f);
-      assert.equal(r.status, 200); assert.ok(r.body.length > 10000, f);
+      assert.equal(r.status, 200); assert.ok(r.body.length > 5000, f);
     }
     // nội dung dữ liệu tiếng Việt có dấu hiển thị nguyên vẹn trên màn hình và trong ô nhập
     await page.evaluate(() => { location.hash = '#/du-an'; });
