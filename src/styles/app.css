@@ -438,27 +438,16 @@
   /* Thu = xanh thép đậm, chi = xám: khác nhau về độ sáng (đọc được cả khi in đen trắng), có chú thích */
   .flow { @apply relative; --thu: #416180; --chi: #98989b; }
   .flow svg { @apply block h-auto w-full overflow-visible; }
-  .flow .grid-line { stroke: var(--color-rule); stroke-width: 1; }
+  .flow .grid-line { stroke: var(--color-rule); stroke-width: 1; stroke-dasharray: 2 3; }
   .flow .zero-line { stroke: var(--color-rule-2); stroke-width: 1; }
   .flow .tick { stroke: var(--color-rule-2); stroke-width: 1; }
   .flow .axis { fill: var(--color-ink-3); font-size: 11.5px; font-variant-numeric: tabular-nums; }
-  .flow .panel-title { fill: var(--color-ink-2); font-size: 12px; font-weight: 700; }
-  .flow .line { fill: none; stroke: var(--color-pen); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-  .flow .area-top { stop-color: var(--color-pen); stop-opacity: 0.2; }
-  .flow .area-bot { stop-color: var(--color-pen); stop-opacity: 0.03; }
-  .flow .area-neg { fill: var(--color-alert); fill-opacity: 0.14; }
   .flow .bar-thu { fill: var(--thu); }
   .flow .bar-chi { fill: var(--chi); }
-  .flow .end-dot { fill: var(--color-pen); stroke: var(--color-paper); stroke-width: 2; }
-  .flow .mark-dot { fill: var(--color-paper); stroke: var(--color-pen); stroke-width: 2; }
-  .flow .direct { fill: var(--color-ink); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; paint-order: stroke; stroke: var(--color-paper); stroke-width: 3px; stroke-linejoin: round; }
-  .flow .direct-sub { fill: var(--color-ink-3); font-size: 11.5px; paint-order: stroke; stroke: var(--color-paper); stroke-width: 3px; stroke-linejoin: round; }
-  .flow .cross { stroke: var(--color-ink); stroke-width: 1; opacity: 0.3; }
-  .flow .hover-dot { fill: var(--color-paper); stroke: var(--color-pen); stroke-width: 2.5; }
+  .flow .hl { fill: var(--color-accent-100); }
   .flow-legend { @apply flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-ink-2; --thu: #416180; --chi: #98989b; }
   .flow-legend span, .tip .muted:has(.sw) { @apply inline-flex items-center gap-1.5; }
   .sw { @apply inline-block h-2.5 w-2.5 flex-none; }
-  .sw-ton { @apply h-0.5 w-4 bg-pen; }
   .sw-thu { background: #416180; }
   .sw-chi { background: #98989b; }
   .tip {
@@ -628,10 +617,10 @@
   .bars svg { @apply block h-auto w-full overflow-visible; }
   .bars .grid-line { stroke: var(--color-rule); stroke-width: 1; }
   .bars .axis { fill: var(--color-ink-3); font-size: 11px; font-variant-numeric: tabular-nums; }
-  .bars .bar { fill: var(--color-pen); fill-opacity: 0.85; }
-  .bars .bar:hover { fill-opacity: 1; }
-  .bars .cum { fill: none; stroke: var(--color-caution); stroke-width: 2; stroke-linejoin: round; }
-  .bars .cum-dot { fill: var(--color-caution); stroke: var(--color-paper); stroke-width: 2; }
+  .bars .bar { fill: var(--color-accent-700); }
+  .bars .bar:hover { fill: var(--color-accent-800); }
+  .bars .cum { fill: none; stroke: var(--color-ink); stroke-width: 1.5; stroke-dasharray: 5 3; stroke-linejoin: round; }
+  .bars .cum-dot { fill: var(--color-ink); stroke: var(--color-paper); stroke-width: 2; }
 
   /* Chứng từ đính kèm */
   .att-box { @apply mt-4 flex flex-col gap-2 border border-rule bg-transparent px-4 py-3; }

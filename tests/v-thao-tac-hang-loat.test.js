@@ -138,3 +138,29 @@ test('V4 menu trái (bản 1a): rộng 248px, mục cao 30px có biểu tượng
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });
+
+test('V5 biểu đồ Thu, chi trong ngày (Tổng quan): mỗi ngày hai cột Thu / Chi cạnh nhau đúng số liệu, rê chuột hiện thu, chi, thay đổi, tồn quỹ cuối ngày; không còn đường tồn quỹ', { skip: SKIP, timeout: 180000 }, async () => {
+  const srv = await startServer({});
+  await srv.ok('POST', '/api/projects', { ma: 'CT1', ten: 'Công trình 1' });
+  await srv.ok('POST', '/api/entries', { ngay: '2026-09-01', soPhieu: 'PT001/09', noiDung: 'Thu 1', thu: 5000000, maDuAn: 'CT1' });
+  await srv.ok('POST', '/api/entries', { ngay: '2026-09-03', soPhieu: 'PC001/09', noiDung: 'Chi 1', chi: 2000000, maDuAn: 'CT1' });
+  await srv.ok('POST', '/api/entries', { ngay: '2026-09-03', soPhieu: 'PT002/09', noiDung: 'Thu 2', thu: 1000000, maDuAn: 'CT1' });
+  const { browser, page, errors } = await openPage(srv, '#/tong-quan');
+  try {
+    await page.waitForSelector('#flow svg .hit');
+    assert.equal(await page.locator('#flow .bar-thu').count(), 2, 'hai ngày có thu');
+    assert.equal(await page.locator('#flow .bar-chi').count(), 1, 'một ngày có chi');
+    assert.equal(await page.locator('#flow .line, #flow .area, #flow .end-dot').count(), 0, 'không còn đường tồn quỹ');
+    const w = await page.$eval('#flow .bar-thu', (e) => Number(e.getAttribute('width')));
+    assert.ok(w > 1, 'cột có bề rộng');
+    // rê chuột vào cụm cột ngày 3/9: thu 1.000.000, chi 2.000.000, thay đổi −1.000.000, tồn quỹ cuối ngày 4.000.000
+    const [thuBox, chiBox] = await Promise.all([page.locator('#flow .bar-thu').nth(1).boundingBox(), page.locator('#flow .bar-chi').first().boundingBox()]);
+    assert.ok(Math.abs(thuBox.x - chiBox.x) < 40, 'cột thu và chi của cùng ngày nằm cạnh nhau');
+    const hit = await page.locator('#flow .hit').boundingBox();
+    await page.mouse.move(chiBox.x + chiBox.width / 2, hit.y + hit.height / 2);
+    await page.waitForSelector('#flow .tip.show');
+    const t = await page.$eval('#flow .tip', (e) => e.innerText);
+    assert.match(t, /03\/09\/2026/); assert.match(t, /1\.000\.000/); assert.match(t, /2\.000\.000/); assert.match(t, /Tồn quỹ cuối ngày[\s\S]*4\.000\.000/);
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); await srv.stop(); }
+});

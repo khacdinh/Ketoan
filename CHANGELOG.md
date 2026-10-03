@@ -1,5 +1,11 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Biểu đồ theo giao diện mới (03/10/2026)
+
+- **Tổng quan · Thu, chi trong ngày**: đổi sang cột Thu (xanh thép) và Chi (xám) cạnh nhau cho mỗi ngày (kỳ dài hơn 120 ngày gộp theo tuần), góc vuông, nền trắng, chỉ có mốc “Cao nhất” và trục ngày; bỏ đường tồn quỹ (tồn quỹ vẫn ở dòng phương trình phía trên và trong chú thích khi rê chuột: thu, chi, thay đổi, tồn quỹ cuối ngày).
+- **Tổng hợp chi phí · Chi phí theo tháng**: cột vuông xanh thép, đường lũy kế nét đứt màu mực (bỏ màu nâu vàng dành cho cảnh báo).
+- **Giá vật tư · Đơn giá theo thời gian**: nhiều nhà cung cấp phân biệt bằng nét liền / đứt trong thang xanh thép và xám (không dùng màu đỏ, xanh lá, nâu của trạng thái); điểm đánh dấu hình vuông.
+
 ## Giao diện mới theo design system “Industry” (03/10/2026)
 
 Dựng lại toàn bộ giao diện theo bản thiết kế (bản vẽ kỹ thuật, xanh thép). **Không đổi dữ liệu, công thức, API, lược đồ** (vẫn lược đồ 7).
