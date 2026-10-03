@@ -96,6 +96,7 @@ Mục **Kiểm soát** (con số màu vàng = số việc cần xử lý): **C�
 - **Ngày** luôn nhập dạng ngày/tháng/năm: gõ `29/9` là đủ (tự hiểu năm nay), hoặc `29/09/2026`, `290926`. Phím ↑ ↓ để tăng/giảm 1 ngày.
 - **Số phiếu**: bấm **Số mới** để lấy số kế tiếp trong tháng (VD `PC045/09`). Nhiều dòng dùng chung một số phiếu sẽ được gộp khi in.
 - **Mã dự án / Mã NCC**: gõ mã **hoặc gõ tên** rồi chọn trong danh sách gợi ý. Nếu chưa có, bấm “thêm mới” ngay trong form.
+- **Mã vật tư** (không bắt buộc, chỉ khi Chi tiền): chọn vật tư mà phiếu chi này trả tiền — gõ mã **hoặc tên**, dưới ô hiện tên và đơn vị tính. Mã được lưu trong dòng sổ, hiện ở Sổ quỹ (dòng “Vật tư: …”), ở danh sách dòng của Phiếu thu / chi và tìm kiếm được. Vật tư chưa có thì thêm ở Danh mục › Vật tư trước. Đổi mã vật tư thì dòng sổ đi theo; vật tư đã có dòng sổ không xóa được (dùng Gộp mã).
 - Khi chọn nhà cung cấp có chi phí công trình, dưới ô hiện luôn **công nợ còn lại** (theo dự án đang chọn) và nút **Điền số này**.
 - **Số tiền** gõ được: `1.250.000`, `1250000`, `50tr`, `1,5tr`, `300k`, hoặc phép tính `58000+11000` (giống cách ghi công thức trong Excel cũ). Cách ghi dính như `2tr5` hoặc `1tr250k` bị từ chối (phần mềm không đoán ý) — hãy viết `2,5tr` hoặc `1tr+250k`. Bên dưới hiện luôn số tiền bằng chữ để đối chiếu.
 - Bấm **Ghi sổ** (hoặc **Ctrl + Enter**) để ghi vào sổ; **Esc** để đóng. Nút **Ghi sổ và ghi tiếp** giữ lại ngày, số phiếu, dự án, NCC để ghi dòng kế tiếp của cùng phiếu.

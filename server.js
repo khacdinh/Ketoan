@@ -227,6 +227,13 @@ function cleanEntry(body) {
     if (!s) throw new HttpError(400, 'Mã NCC "' + e.maNCC + '" chưa có trong danh mục');
     e.maNCC = s.ma;
   }
+  // Mã vật tư (không bắt buộc): phiếu chi trả cho vật tư nào. Chỉ lưu khi có; mã cũ đã gộp tự đổi sang mã đích.
+  const vt = str(body.maVT, 60);
+  if (vt) {
+    const m = findCode(store.db.materials, vt);
+    if (!m) throw new HttpError(400, 'Mã vật tư "' + vt + '" chưa có trong danh mục');
+    e.maVT = m.ma;
+  }
   return e;
 }
 
@@ -370,6 +377,7 @@ async function handleApi(req, res, url) {
         trace.assertOpen([rec.ngay, e.ngay], 'sửa');
         Object.assign(rec, e, { updatedAt: now });
         if (!e.trangThai) delete rec.trangThai;
+        if (!e.maVT) delete rec.maVT;
         trace.log(req, KT.isDraft(before) && !KT.isDraft(rec) ? 'ghi-so' : 'sua', 'entries', rec, before, rec);
         store.save();
         return ok(res, { id: rec.id });

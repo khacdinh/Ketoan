@@ -164,3 +164,62 @@ test('V5 biểu đồ Thu, chi trong ngày (Tổng quan): mỗi ngày hai cột 
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });
+
+test('V6 phiếu chi có mục Mã vật tư: chọn theo mã hoặc tên, lưu vào dòng sổ, hiện ở Sổ quỹ; mã lạ bị từ chối; Thu thì không lưu; sửa bỏ mã; đổi mã vật tư lan sang dòng sổ; xóa vật tư đang dùng bị chặn', { skip: SKIP, timeout: 180000 }, async () => {
+  const srv = await startServer({});
+  await srv.ok('POST', '/api/projects', { ma: 'CT1', ten: 'Công trình 1' });
+  const hm = (await srv.db()).costItems[0].ma;
+  await srv.ok('POST', '/api/materials', { ma: 'XM', ten: 'Xi măng', dvt: 'bao', maHM: hm });
+  // API: mã lạ bị từ chối, mã đúng (không phân biệt hoa thường) được chuẩn hóa
+  const bad = await srv.call('POST', '/api/entries', { ngay: '2026-09-01', noiDung: 'x', chi: 1000, maVT: 'KHONGCO' });
+  assert.equal(bad.status, 400); assert.match(JSON.stringify(bad.json || bad.body), /vật tư/);
+  await srv.ok('POST', '/api/entries', { ngay: '2026-09-01', soPhieu: 'PC001/09', noiDung: 'Mua xi măng', chi: 500000, maDuAn: 'CT1', maVT: 'xm' });
+  assert.equal(readStored(srv.dataDir).entries[0].maVT, 'XM');
+  const { browser, page, errors } = await openPage(srv, '#/so-thu-chi');
+  try {
+    await page.waitForSelector('#view tr[data-id]');
+    assert.match(await page.$eval('#view tr[data-id]', (e) => e.innerText), /Vật tư: XM – Xi măng/, 'Sổ quỹ hiện vật tư');
+    // form: gõ tên vật tư, lưu
+    await page.keyboard.press('F3');
+    await page.waitForSelector('#entry-form');
+    await page.waitForTimeout(150);
+    await page.click('.modal [name=noiDung]'); await page.fill('.modal [name=noiDung]', 'Chi mua xi măng đợt 2');
+    await page.fill('.modal [name=chi]', '2tr');
+    await page.fill('.modal [name=maVT]', 'Xi măng');
+    await page.locator('.modal [name=maVT]').dispatchEvent('change');
+    assert.match(await page.$eval('#vt-hint', (e) => e.textContent), /Xi măng · bao/);
+    // mã vật tư lạ: báo lỗi tại ô, không ghi
+    await page.fill('.modal [name=maVT]', 'LA');
+    await page.keyboard.press('Control+Enter');
+    await settle(page);
+    assert.equal(readStored(srv.dataDir).entries.length, 1, 'mã lạ thì chưa ghi');
+    await page.fill('.modal [name=maVT]', 'Xi măng');
+    await page.locator('.modal [name=maVT]').dispatchEvent('change');
+    await page.keyboard.press('Control+Enter');
+    await page.waitForFunction(() => !document.querySelector('.modal'));
+    let db = readStored(srv.dataDir);
+    assert.deepEqual(db.entries.map((e) => e.maVT), ['XM', 'XM']);
+    // loại Thu: ô Mã vật tư ẩn
+    await page.keyboard.press('F3'); await page.waitForSelector('#entry-form');
+    await page.click('.modal label.seg-item:has(input[value=thu])');
+    assert.equal(await page.$eval('.modal [name=maVT]', (e) => e.closest('label').hidden), true);
+    await page.keyboard.press('Escape');
+    // sửa: bỏ mã vật tư
+    const id = db.entries[1].id;
+    await page.dblclick('#view tr[data-id="' + id + '"]');
+    await page.waitForSelector('#entry-form');
+    assert.equal(await page.inputValue('.modal [name=maVT]'), 'XM');
+    await page.fill('.modal [name=maVT]', '');
+    await page.keyboard.press('Control+Enter');
+    await page.waitForFunction(() => !document.querySelector('.modal'));
+    db = readStored(srv.dataDir);
+    assert.equal(db.entries.find((e) => e.id === id).maVT, undefined, 'bỏ mã thì không còn trường');
+    // đổi mã vật tư: dòng sổ đi theo; xóa vật tư đang dùng: bị chặn
+    const vt = (await srv.db()).materials[0];
+    await srv.ok('PUT', '/api/materials/' + vt.id, { ma: 'XM2', ten: 'Xi măng', dvt: 'bao', maHM: hm });
+    assert.equal(readStored(srv.dataDir).entries[0].maVT, 'XM2');
+    const del = await srv.call('DELETE', '/api/materials/' + vt.id);
+    assert.ok(del.status >= 400 && del.status < 500, 'xóa vật tư đang dùng bị từ chối (' + del.status + ')');
+    assert.deepEqual(errors.filter((e) => !/status of (400|409)/.test(e)), []);
+  } finally { await browser.close(); await srv.stop(); }
+});

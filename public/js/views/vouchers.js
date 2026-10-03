@@ -85,7 +85,7 @@ export function renderVouchers(root) {
       '<section class="sheet overflow-hidden"><div class="px-4 pt-3 pb-2"><h3 class="sheet-title">Các dòng trong sổ</h3></div>' +
       '<ul class="divide-y divide-rule border-t border-rule">' + v.lines.map((r) =>
         '<li class="flex items-start justify-between gap-2 px-4 py-2" data-id="' + r.id + '"><div class="min-w-0"><div class="text-[13px]">' + esc(r.noiDung) + '</div>' +
-        '<div class="text-[11.5px] text-ink-3">' + esc([fdate(r.ngay), r.maDuAn, r.tenNCC].filter(Boolean).join(' · ')) + '</div></div>' +
+        '<div class="text-[11.5px] text-ink-3">' + esc([fdate(r.ngay), r.maDuAn, r.tenNCC, r.maVT ? 'Vật tư ' + r.maVT : ''].filter(Boolean).join(' · ')) + '</div></div>' +
         '<div class="flex flex-none items-center gap-0.5"><span class="font-bold tabular-nums">' + money(v.loai === 'thu' ? r.thu : r.chi) + '</span>' +
         '<button type="button" class="icon-btn" data-act="edit-line" title="Sửa dòng" aria-label="Sửa dòng">' + icon('edit') + '</button></div></li>').join('') +
       '</ul></section>' +

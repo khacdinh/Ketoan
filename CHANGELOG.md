@@ -1,5 +1,11 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Phiếu chi có mục Mã vật tư (03/10/2026)
+
+- Form **Ghi thu / chi** (loại Chi tiền) thêm ô **Mã vật tư** (không bắt buộc, gõ mã hoặc tên). Lưu thành trường `maVT` của dòng sổ quỹ (không đổi lược đồ: nằm trong cột `khac`); hiện ở Sổ quỹ, ở danh sách dòng của Phiếu thu / chi, tìm kiếm được (Sổ quỹ và Ctrl K).
+- Mã vật tư lạ bị từ chối; mã đã gộp tự đổi sang mã đích; đổi mã vật tư và Gộp mã đi theo dòng sổ; vật tư đang có dòng sổ không xóa được.
+- Chưa có trong file Excel xuất / nhập sổ thu chi (giữ nguyên bố cục file gốc).
+
 ## Biểu đồ theo giao diện mới (03/10/2026)
 
 - **Tổng quan · Thu, chi trong ngày**: đổi sang cột Thu (xanh thép) và Chi (xám) cạnh nhau cho mỗi ngày (kỳ dài hơn 120 ngày gộp theo tuần), góc vuông, nền trắng, chỉ có mốc “Cao nhất” và trục ngày; bỏ đường tồn quỹ (tồn quỹ vẫn ở dòng phương trình phía trên và trong chú thích khi rê chuột: thu, chi, thay đổi, tồn quỹ cuối ngày).

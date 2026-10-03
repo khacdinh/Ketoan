@@ -295,7 +295,7 @@
       if (f.loai === 'thu' && !(r.thu > 0)) return false;
       if (f.loai === 'chi' && !(r.chi > 0)) return false;
       if (q) {
-        const hay = normalizeText([r.soPhieu, r.maDuAn, r.tenDuAn, r.maNCC, r.tenNCC, r.noiDung, r.nguoiNhan, r.ghiChu, fmtMoney(r.thu), fmtMoney(r.chi)].join(' '));
+        const hay = normalizeText([r.soPhieu, r.maDuAn, r.tenDuAn, r.maNCC, r.tenNCC, r.maVT, r.noiDung, r.nguoiNhan, r.ghiChu, fmtMoney(r.thu), fmtMoney(r.chi)].join(' '));
         if (hay.indexOf(q) < 0) return false;
       }
       return true;
