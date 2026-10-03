@@ -60,12 +60,12 @@ test('UI2 Tổng quan: tồn quỹ hiển thị đúng số trong dữ liệu', 
   } finally { await browser.close(); await srv.stop(); }
 });
 
-test('UI3 form nhập: F2, ngày (29/9, 290926, 29.9.26, ↑↓), tiền, số tiền bằng chữ, Ctrl+Enter, Lưu và nhập tiếp', { skip: SKIP, timeout: 120000 }, async () => {
+test('UI3 form nhập: F3, ngày (29/9, 290926, 29.9.26, ↑↓), tiền, số tiền bằng chữ, Ctrl+Enter, Lưu và nhập tiếp', { skip: SKIP, timeout: 120000 }, async () => {
   const srv = await startServer({ seed: V2 });
   const { browser, page, errors } = await open(srv, '#/so-thu-chi');
   try {
     await page.waitForSelector('#so-body tr');
-    await page.keyboard.press('F2');
+    await page.keyboard.press('F3');
     await page.waitForSelector('#entry-form');
     await page.waitForTimeout(120); // openModal tự chuyển tiêu điểm sau 30 ms
     const dateText = page.locator('#entry-form .date-text');
@@ -221,7 +221,7 @@ test('UI6 Tổng hợp chi phí: bấm ô Vật tư / Nhân công / Đã trả /
       await page.waitForSelector('.stat-link[data-tile=debt]');
       await page.locator('.stat-link[data-tile=debt]').nth(i).click();
       await page.waitForFunction(() => location.hash === '#/cp-cong-no');
-      await page.waitForSelector('#cn-detail');
+      await page.waitForSelector('#cn-table');
     }
     await page.evaluate(() => { location.hash = '#/cp-tong-hop'; });
     await page.waitForSelector('.stat-link');
@@ -252,6 +252,9 @@ test('UI7 Cài đặt: lưu thông tin in, xuất Excel, nhập Excel (xem trư�
     assert.ok(wb.worksheets.length >= 4);
     // nhập lại file vừa xuất: xem trước + gộp → không thêm dòng
     const n0 = (await srv.db()).entries.length;
+    // nhập Excel nằm ở màn riêng (menu Nhập liệu › Nhập từ Excel)
+    await page.evaluate(() => { location.hash = '#/nhap-excel'; });
+    await page.waitForSelector('#imp-file', { state: 'attached' });
     await page.setInputFiles('#imp-file', file);
     await page.waitForSelector('#imp-preview [data-imp=merge]', { timeout: 20000 });
     const pvText = await page.$eval('#imp-preview', (e) => e.innerText);
@@ -265,6 +268,8 @@ test('UI7 Cài đặt: lưu thông tin in, xuất Excel, nhập Excel (xem trư�
     await page.setInputFiles('#imp-file', bad);
     await page.waitForFunction(() => /Không đọc được file Excel/.test(document.querySelector('#imp-preview').innerText), null, { timeout: 15000 });
     // sao lưu ngay → xuất hiện trong danh sách
+    await page.evaluate(() => { location.hash = '#/cai-dat'; });
+    await page.waitForSelector('#bk-list table');
     await page.click('[data-act=backup-now]');
     await page.waitForFunction(() => /Sao lưu thủ công/.test(document.querySelector('#bk-list').innerText), null, { timeout: 8000 });
     const snap = await srv.db();
@@ -365,7 +370,7 @@ test('UI8 danh mục dự án / nhà cung cấp: thêm, sửa (đổi mã lan sa
     assert.equal(await page.locator('#ncc-body tr[data-id]').count(), 1);
     // tổng hợp NCC khớp tính độc lập
     await page.evaluate(() => { location.hash = '#/tong-hop-ncc'; });
-    await page.waitForSelector('#th-body tr');
+    await page.waitForSelector('#cn-table tbody tr');
     const txt = await page.$eval('#view', (e) => e.innerText);
     // bảng công nợ theo kỳ (toàn bộ thời gian): tổng Thanh toán = chi − thu của các dòng sổ có mã NCC, Cuối kỳ = Phát sinh − Thanh toán
     const dbx = await srv.db();

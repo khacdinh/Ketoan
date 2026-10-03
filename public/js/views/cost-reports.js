@@ -261,14 +261,17 @@ export function renderCostDetail(root) {
       if (!g.total && !g.soDong) return;
       const gOpen = level >= 2 && open['g:' + g.ma] !== false;
       html += '<tr class="grp clickable" data-toggle="g:' + esc(g.ma) + '"><td colspan="8"><button type="button" class="tree-toggle" aria-expanded="' + gOpen + '"><span class="caret' + (gOpen ? ' open' : '') + '">' + icon('caretRight') + '</span>' + esc(g.ten) + '</button>' +
-        ' <span class="font-normal text-ink-3">· ' + g.soDong + ' dòng</span></td><td class="num money"><span class="dbl">' + money(g.total) + '</span></td></tr>';
+        ' <span class="font-normal text-ink-3">· ' + g.soDong + ' dòng</span>' +
+        ' <button type="button" class="btn btn-ghost btn-sm no-print" data-act="xem-nhom" data-nhom="' + esc(g.ma) + '">Xem trong sổ</button></td><td class="num money"><span class="dbl">' + money(g.total) + '</span></td></tr>';
       if (!gOpen) return;
       g.items.forEach((it) => {
         const rows = byItem.get(KT.keyOf(it.ma));
         if (!rows) return;
         const iOpen = level >= 3 && (heavy ? open['i:' + it.ma] === true : open['i:' + it.ma] !== false);
         html += '<tr class="itm-sum clickable" data-toggle="i:' + esc(it.ma) + '" id="hm-' + esc(it.ma) + '"><td colspan="8" class="pl-8"><button type="button" class="tree-toggle" aria-expanded="' + iOpen + '"><span class="caret' + (iOpen ? ' open' : '') + '">' + icon('caretRight') + '</span>Cộng ' + esc(it.ten) + '</button>' +
-          ' <span class="font-normal text-ink-3">· ' + rows.length + ' dòng</span></td><td class="num money font-semibold">' + money(it.total) + '</td></tr>';
+          ' <span class="font-normal text-ink-3">· ' + rows.length + ' dòng</span>' +
+          ' <button type="button" class="btn btn-ghost btn-sm no-print" data-act="xem-hm" data-hm="' + esc(it.ma) + '">Xem trong sổ</button>' +
+          '<a href="#/cp-nhap" class="btn btn-ghost btn-sm no-print">Lập phiếu</a></td><td class="num money font-semibold">' + money(it.total) + '</td></tr>';
         if (!iOpen) return;
         html += rows.map((r) => '<tr class="dtl"><td class="whitespace-nowrap pl-14">' + fdate(r.ngay) + '</td>' +
           '<td>' + (r.maVT ? '<span class="font-semibold">' + esc(r.maVT) + '</span><div class="sub">' + esc(r.tenVT) + '</div>' : '') + '</td>' +
@@ -300,6 +303,8 @@ export function renderCostDetail(root) {
   root.addEventListener('click', (e) => {
     const a = e.target.closest('[data-act]');
     if (a) {
+      if (a.dataset.act === 'xem-nhom') { goLedger({ ct: f.ct, nha: f.nha, nhom: a.dataset.nhom, loai: f.loai, ncc: f.ncc, period: f.period, from: f.from, to: f.to }); return; }
+      if (a.dataset.act === 'xem-hm') { goLedger({ ct: f.ct, nha: f.nha, hm: a.dataset.hm, loai: f.loai, ncc: f.ncc, period: f.period, from: f.from, to: f.to }); return; }
       if (a.dataset.act === 'open-all' || a.dataset.act === 'expand') { S.db.costItems.forEach((it) => { open['i:' + it.ma] = true; open['g:' + it.maNhom] = true; }); LS.set('cp.ct.open', open); draw(); }
       if (a.dataset.act === 'collapse') { S.db.costItems.forEach((it) => { open['i:' + it.ma] = false; open['g:' + it.maNhom] = false; }); LS.set('cp.ct.open', open); draw(); }
       if (a.dataset.act === 'export') download('/api/export/costs' + (f.ct ? '?ct=' + encodeURIComponent(f.ct) : ''));
@@ -371,11 +376,14 @@ export function renderPrices(root) {
       stat('Thấp nhất / cao nhất', money(st.min) + ' – ' + money(st.max), 'Bình quân gia quyền ' + money(st.binhQuan)) + '</div>' +
       '<section class="sheet px-5 pt-4 pb-3"><h3 class="sheet-title">Đơn giá theo thời gian</h3><div class="bars mt-3" id="gia-chart"></div>' +
       '<div class="mt-1 flex flex-wrap gap-3 text-[12.5px] text-ink-2" id="gia-legend"></div></section>' +
-      '<section class="sheet overflow-hidden"><div class="overflow-x-auto"><table class="ledger"><thead><tr><th>Ngày</th><th>Nhà cung cấp</th><th>Công trình</th><th>Diễn giải</th><th class="num">Số lượng</th><th class="num money">Đơn giá</th><th class="num">So lần trước (cùng NCC)</th><th class="num money">Thành tiền</th></tr></thead><tbody>' +
+      '<section class="sheet overflow-hidden"><div class="overflow-x-auto"><table class="ledger"><thead><tr><th>Ngày</th><th>Nhà cung cấp</th><th>Công trình</th><th>Diễn giải</th><th class="num">Số lượng</th><th class="num money">Đơn giá</th><th class="num">So lần trước (cùng NCC)</th><th class="num money">Thành tiền</th><th class="no-print"><span class="sr-only">Thao tác</span></th></tr></thead><tbody>' +
       hist.slice().reverse().map((h) => '<tr><td class="whitespace-nowrap">' + fdate(h.ngay) + '</td><td>' + esc(h.tenNCC || h.maNCC) + '</td><td class="code">' + esc(h.maCT) + '</td><td class="wrap-text text-ink-2">' + esc(h.dienGiai) + '</td>' +
         '<td class="num">' + KT.fmtQty(h.soLuong) + '</td><td class="num money font-semibold">' + money(h.donGia) + '</td>' +
         '<td class="num ' + (h.chenhLech > 0 ? 'text-alert' : h.chenhLech < 0 ? 'text-income' : 'text-ink-3') + '">' + (h.chenhLech == null ? '' : h.chenhLech === 0 ? 'bằng' : (h.chenhLech > 0 ? '+' : '−') + money(Math.abs(h.chenhLech))) + '</td>' +
-        '<td class="num money">' + money(h.thanhTien) + '</td></tr>').join('') + '</tbody></table></div></section>';
+        '<td class="num money">' + money(h.thanhTien) + '</td>' +
+        '<td class="actions no-print">' + (h.phieuId ? '<a class="icon-btn" href="#/cp-nhap?phieu=' + h.phieuId + '" title="Mở phiếu nhập" aria-label="Mở phiếu nhập">' + icon('notePencil') + '</a>' : '') +
+        '<button type="button" class="icon-btn" data-act="gia-so" data-ncc="' + esc(h.maNCC) + '" title="Xem dòng này trong sổ chi phí" aria-label="Xem trong sổ chi phí">' + icon('book') + '</button>' +
+        '<button type="button" class="icon-btn" data-act="gia-sua" data-id="' + h.id + '" title="Sửa đơn giá (mở dòng chi phí)" aria-label="Sửa đơn giá">' + icon('edit') + '</button></td></tr>').join('') + '</tbody></table></div></section>';
     drawPriceChart($('#gia-chart', el), $('#gia-legend', el), byNcc);
   };
 
@@ -385,6 +393,10 @@ export function renderPrices(root) {
   root.addEventListener('click', (e) => {
     const a = e.target.closest('[data-act=to-ledger]');
     if (a) { goLedger({ vt: f.vt, ncc: f.ncc }); return; }
+    const gs = e.target.closest('[data-act=gia-so]');
+    if (gs) { goLedger({ vt: f.vt, ncc: gs.dataset.ncc || '' }); return; }
+    const gx = e.target.closest('[data-act=gia-sua]');
+    if (gx) { const c = S.all.costs.find((x) => x.id === Number(gx.dataset.id)); if (c) import('./cost-ledger.js').then((m) => m.openCostLineForm(c)); return; }
     const tr = e.target.closest('tr[data-vt]');
     if (!tr) return;
     f.vt = tr.dataset.vt;

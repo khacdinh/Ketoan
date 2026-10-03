@@ -1175,7 +1175,7 @@
       const s = sIdx.get(k);
       return {
         id: c.id, ngay: c.ngay, maNCC: c.maNCC || '', tenNCC: s ? s.ten : '', maCT: c.maCT || '', soLuong: c.soLuong, donGia: c.donGia,
-        thanhTien: c.thanhTien, dienGiai: c.dienGiai || '', soPhieu: c.soPhieu || '',
+        thanhTien: c.thanhTien, dienGiai: c.dienGiai || '', soPhieu: c.soPhieu || '', phieuId: c.phieuId,
         chenhLech: prev === undefined ? null : (Number(c.donGia) || 0) - prev
       };
     });

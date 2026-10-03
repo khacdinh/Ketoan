@@ -93,3 +93,12 @@ export function soChiTiet(ma, o) {
     cts: Array.from(new Set(docs.map((d) => d.ct).filter(Boolean)))
   };
 }
+
+// Hậu quả công nợ của một lần xóa, để ghi vào hộp xác nhận. delta = thay đổi của số dư cuối kỳ (dương = còn nợ nhiều hơn)
+export function hauQuaCongNo(maNCC, delta, ct) {
+  if (!maNCC || !delta) return '';
+  const d = KT.debtOf(S.db, maNCC, ct || '');
+  const now = d ? d.conLai : 0;
+  const fmt = (n) => (n === 0 ? 'đã tất toán' : (n > 0 ? 'Dư Có ' : 'Dư Nợ ') + money(Math.abs(n)) + ' đ');
+  return 'Công nợ ' + esc(tenNCC(maNCC)) + ' sau khi xóa: ' + fmt(now) + ' → <b class="text-ink">' + fmt(now + delta) + '</b>.';
+}

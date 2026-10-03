@@ -27,7 +27,7 @@ function rowActions(label, o) {
   return '<td class="actions no-print">' +
     xem.map((x) => '<button type="button" class="icon-btn" data-act="' + x.act + '" title="' + esc(x.title) + '" aria-label="' + esc(x.title + ' ' + label) + '">' + icon(x.ic) + '</button>').join('') +
     '<button type="button" class="icon-btn" data-act="edit" title="Sửa" aria-label="Sửa ' + esc(label) + '">' + icon('edit') + '</button>' +
-    '<button type="button" class="icon-btn danger" data-act="del"' + (o.khoa ? ' aria-disabled="true" title="' + esc(o.khoa) + '"' : ' title="Xóa (vào Thùng rác)"') + ' aria-label="Xóa ' + esc(label) + '">' + icon('trash') + '</button></td>';
+    '<button type="button" class="icon-btn danger" data-act="del"' + (o.khoa ? ' data-khoa="1" title="' + esc(o.khoa) + '"' : ' title="Xóa (vào Thùng rác)"') + ' aria-label="Xóa ' + esc(label) + (o.khoa ? ' (chưa xóa được: ' + esc(o.khoa) + ')' : '') + '">' + icon('trash') + '</button></td>';
 }
 
 function toolbar(o) {

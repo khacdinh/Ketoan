@@ -6,6 +6,8 @@ import { S, saveFilter, costProjects, costDatalists, resolveCode, resolveItem, m
 import { printView } from '../print.js';
 import { comboHtml, bindCombo, filterBox } from '../combo.js';
 import { attachBlock, bindAttach, clipHtml, openAttachList } from '../attach.js';
+import { moKyKhoa } from '../khoa.js';
+import { hauQuaCongNo } from '../congno.js';
 
 const KT = window.KT;
 const PAGE = 500; // số dòng vẽ mỗi lần (bảng lớn vẽ chậm); bấm "Hiện thêm" để xem tiếp, in thì hiện hết
@@ -133,17 +135,28 @@ export function renderCostLedger(root) {
     else if (act === 'dup' && c) {
       try { await api('POST', '/api/costs', payloadOf(c, { nguon: 'nhan ban' })); toast('Đã nhân bản dòng (cùng phiếu)'); } catch (err) { showError(err); }
     } else if (act === 'del' && c) {
-      if (!(await confirmDialog({ trash: true, title: 'Xóa dòng chi phí', html: 'Xóa dòng ngày <b class="text-ink">' + fdate(c.ngay) + '</b>, ' + esc(c.maVT || c.dienGiai) + ', thành tiền <b class="text-ink">' + money(c.thanhTien) + ' đ</b>?', okText: 'Xóa dòng', danger: true }))) return;
+      if (!(await confirmDialog({ trash: true, title: 'Xóa dòng chi phí', html: 'Xóa dòng ngày <b class="text-ink">' + fdate(c.ngay) + '</b>, ' + esc(c.maVT || c.dienGiai) + ', thành tiền <b class="text-ink">' + money(c.thanhTien) + ' đ</b>?', hauQua: hauQuaCongNo(c.maNCC, -(c.thanhTien || 0), c.maCT), okText: 'Xóa dòng', danger: true }))) return;
       try { await api('DELETE', '/api/costs/' + c.id); toast('Đã xóa dòng chi phí, chuyển vào Thùng rác'); } catch (err) { showError(err); }
     } else if (act === 'clip' && c) {
       openAttachList(a.dataset.owner, Number(a.dataset.oid), 'Chứng từ của ' + (a.dataset.owner === 'slips' ? 'phiếu nhập' : 'dòng chi phí'));
     } else if (act === 'locked' && c) {
-      toast(KT.lockMessage(KT.monthOf(c.ngay), 'sửa'), 'info');
+      moKyKhoa(c.ngay, 'sửa');
     } else if (act === 'post' && c) {
       try { const r = await api('POST', '/api/cost-slips/' + c.phieuId + '/post'); toast('Đã ghi sổ phiếu nháp (' + r.posted + ' dòng), đã tính vào chi phí và công nợ'); } catch (err) { showError(err); }
     } else if (act === 'slip' && c) {
       location.hash = '#/cp-nhap?phieu=' + c.phieuId;
     }
+  });
+  // Bàn phím trên dòng đang chọn (Tab tới dòng): Enter sửa đủ cột · Ctrl D nhân bản · Delete xóa
+  root.addEventListener('keydown', (e) => {
+    const tr = e.target.matches && e.target.matches('tr[data-id]') ? e.target : null;
+    if (!tr) return;
+    const btn = (act) => tr.querySelector('[data-act="' + act + '"]');
+    const ctrl = e.ctrlKey || e.metaKey;
+    const go = (act) => { const b = btn(act) || btn('locked'); if (b) { e.preventDefault(); b.click(); } };
+    if (e.key === 'Enter' && !ctrl) go('edit');
+    else if (ctrl && (e.key === 'd' || e.key === 'D')) go('dup');
+    else if (e.key === 'Delete') go('del');
   });
   root.addEventListener('dblclick', (e) => {
     const td = e.target.closest('[data-edit]');
@@ -258,7 +271,7 @@ function drawRows(root, f) {
   const body = $('#cl-body', root);
   body.innerHTML = rows.length ? (all.rows.length > rows.length ? moreRow(rows.length, all.rows.length, 10) : '') +
     rows.map((r) => rowHtml(r, f.q)).join('')
-    : '<tr><td colspan="10" class="empty">' + (S.costLedger.length ? 'Không có dòng nào khớp bộ lọc.' : 'Sổ chi phí chưa có dòng nào. Bấm “Lập phiếu nhập” hoặc nhập file Excel chi phí trong Cài đặt.') + '</td></tr>';
+    : '<tr><td colspan="10" class="empty">' + (S.costLedger.length ? 'Không có dòng nào khớp bộ lọc. <button type="button" class="btn btn-secondary btn-sm ml-2" data-act="clear">Xóa lọc</button>' : 'Sổ chi phí chưa có dòng nào. <a href="#/cp-nhap" class="btn btn-primary btn-sm ml-2">Lập phiếu nhập</a> hoặc nhập file Excel chi phí (mục Nhập từ Excel).') + '</td></tr>';
   const fl = body.querySelector('tr.flash');
   if (fl) fl.scrollIntoView({ block: 'nearest' });
   $('#cl-foot', root).innerHTML = res.rows.length ? '<tr><td colspan="5" class="text-ink-2"><b>Cộng · ' + res.rows.length + ' dòng</b>' + (all.rows.length > rows.length ? ' <span class="font-normal">(đang hiện ' + rows.length + ')</span>' : '') + '</td><td class="num">' + slTotalHtml(res) + '</td><td></td>' +
@@ -305,7 +318,7 @@ function rowHtml(r, q) {
   const bad = (ok, text) => (ok ? text : '<span class="code bad" title="Mã chưa có trong danh mục">' + text + '</span>');
   const nhap = KT.isDraft(r);
   const cls = [S.flash.has('costs:' + r.id) ? 'flash' : '', nhap ? 'draft' : ''].filter(Boolean).join(' ');
-  return '<tr data-id="' + r.id + '"' + (cls ? ' class="' + cls + '"' : '') + '>' +
+  return '<tr data-id="' + r.id + '" tabindex="0"' + (cls ? ' class="' + cls + '"' : '') + '>' +
     '<td class="whitespace-nowrap">' + fdate(r.ngay) + (nhap ? '<div><span class="chip chip-draft mt-1" title="Nháp: chưa ghi sổ, chưa tính vào chi phí và công nợ">' + icon('draft') + 'Nháp</span></div>' : '') + '</td>' +
     '<td class="whitespace-nowrap" data-edit="maNha">' + bad(r.ctHopLe, '<span class="code" title="' + esc(r.tenCT) + '">' + highlight(r.maCT, q) + '</span>') +
     (r.maNha && KT.keyOf(r.maNha) !== KT.keyOf(r.maCT) ? '<div class="sub" title="' + esc(r.tenNha) + '">' + bad(r.nhaHopLe, highlight(r.maNha, q)) + '</div>' : '') + '</td>' +
@@ -333,7 +346,7 @@ function inlineEdit(td) {
   const tr = td.closest('tr[data-id]');
   const c = S.all.costs.find((x) => x.id === Number(tr.dataset.id));
   if (!c) return;
-  if (KT.isLockedDate(S.all, c.ngay)) { toast(KT.lockMessage(KT.monthOf(c.ngay), 'sửa'), 'info'); return; }
+  if (KT.isLockedDate(S.all, c.ngay)) { moKyKhoa(c.ngay, 'sửa'); return; }
   const field = td.dataset.edit;
   const old = td.innerHTML;
   let input;

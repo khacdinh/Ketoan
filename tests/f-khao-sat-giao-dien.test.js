@@ -147,7 +147,7 @@ test('F9 cửa sổ hẹp và rộng: không tràn ngang toàn trang, điều h�
           if ((w === 390 || w === 1920) && ['tong-quan', 'cp-nhap', 'cp-so', 'cp-tong-hop', 'cp-cong-no'].includes(r)) await page.screenshot({ path: path.join(SHOTS, r + '-' + w + '.png') });
         }
         // form nhập thu chi trên cửa sổ hẹp: hộp thoại nằm gọn trong màn hình
-        await page.keyboard.press('F2');
+        await page.keyboard.press('F3');
         await page.waitForSelector('#entry-form'); await page.waitForTimeout(300);
         const box = await page.$eval('#modal-root .modal', (e) => { const b = e.getBoundingClientRect(); return { l: b.left, r: b.right, w: window.innerWidth, t: b.top, b: b.bottom, h: window.innerHeight }; });
         if (box.l < -1 || box.r > box.w + 1) bad.push(w + 'px: hộp thoại ghi thu chi vượt chiều ngang (' + Math.round(box.l) + '..' + Math.round(box.r) + ' / ' + box.w + ')');

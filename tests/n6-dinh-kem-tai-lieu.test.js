@@ -124,7 +124,7 @@ test('TL3 Ghi thu / chi (dòng mới): chọn ảnh trước khi ghi → Ghi s�
   try {
     const { browser, page, errors } = await openPage(srv, '#/so-thu-chi');
     try {
-      await page.keyboard.press('F2');
+      await page.keyboard.press('F3');
       await page.waitForSelector('.modal [data-att-pending-input]', { state: 'attached' });
       await page.click('.modal [name=noiDung]');
       await page.fill('.modal [name=noiDung]', 'Mua vật tư lẻ');

@@ -2,6 +2,7 @@
  * khai báo đầu phiếu một lần, rồi nhập nhiều dòng Mã VT × Số lượng × Đơn giá (hoặc chỉ Thành tiền cho khoản khoán). */
 import { $, $$, esc, money, fdate, icon, api, toast, showError, confirmDialog, freshRoot, debounce, dateField, highlight, LS, focusInput, fieldError, busy, setPageTags, densityToggle, bindDensity } from '../ui.js';
 import { printSlip } from '../print.js';
+import { hauQuaCongNo } from '../congno.js';
 import { S, costDatalists, resolveCode, resolveItem, materialByCode, itemByCode, houseByCode, projectByCode, supplierByCode, groupName, houseListOptions, allCostLedger } from '../state.js';
 import { openProjectForm, openSupplierForm } from '../forms.js';
 import { openItemForm, openMaterialForm, openHouseForm } from './cost-catalogs.js';
@@ -37,6 +38,13 @@ function routeParams(hash) {
   const p = {};
   qs.split('&').filter(Boolean).forEach((kv) => { const [k, v] = kv.split('='); p[k] = decodeURIComponent(v || ''); });
   return p;
+}
+
+// Hậu quả công nợ khi xóa cả phiếu nhập
+function slipHauQua(phieuId) {
+  const ls = allCostLedger().filter((c) => String(c.phieuId) === String(phieuId));
+  if (!ls.length) return '';
+  return hauQuaCongNo(ls[0].maNCC, -ls.reduce((t, c) => t + (c.thanhTien || 0), 0), ls[0].maCT);
 }
 
 function slipLines(phieuId) {
@@ -702,7 +710,7 @@ export function renderCostEntry(root) {
       openMaterialForm({ ma: st.lines[i].maVT, maHM: lineHM(st.lines[i]) }, after(i, 'soLuong', (x) => { st.lines[i].maVT = x.ma; }));
     } else if (act === 'del-slip') {
       const n = slipLines(st.phieuId).length;
-      if (!(await confirmDialog({ trash: true, title: 'Xóa phiếu nhập', html: 'Xóa phiếu này cùng <b class="text-ink">' + n + '</b> dòng trong sổ chi phí?', okText: 'Xóa phiếu', danger: true }))) return;
+      if (!(await confirmDialog({ trash: true, title: 'Xóa phiếu nhập', html: 'Xóa phiếu này cùng <b class="text-ink">' + n + '</b> dòng trong sổ chi phí?', hauQua: slipHauQua(st.phieuId), okText: 'Xóa phiếu', danger: true }))) return;
       try { await api('DELETE', '/api/cost-slips/' + st.phieuId); draft = null; LS.set('cp.draft', null); toast('Đã xóa phiếu, chuyển vào Thùng rác'); location.hash = '#/cp-nhap'; } catch (err) { showError(err); }
     }
   });
@@ -781,7 +789,7 @@ function bindRecent(root) {
     if (!b) return;
     const id = b.closest('tr').dataset.phieu;
     const n = slipLines(id).length;
-    if (!(await confirmDialog({ trash: true, title: 'Xóa phiếu nhập', html: 'Xóa phiếu này cùng <b class="text-ink">' + n + '</b> dòng trong sổ chi phí?', okText: 'Xóa phiếu', danger: true }))) return;
+    if (!(await confirmDialog({ trash: true, title: 'Xóa phiếu nhập', html: 'Xóa phiếu này cùng <b class="text-ink">' + n + '</b> dòng trong sổ chi phí?', hauQua: slipHauQua(id), okText: 'Xóa phiếu', danger: true }))) return;
     try { await api('DELETE', '/api/cost-slips/' + id); toast('Đã xóa phiếu, chuyển vào Thùng rác'); } catch (err) { showError(err); }
   });
   drawRecent(root);

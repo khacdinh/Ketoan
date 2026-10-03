@@ -5,6 +5,7 @@ import { comboHtml, bindCombo, filterBox } from '../combo.js';
 import { openEntryForm, deleteEntry } from '../forms.js';
 import { printView, printVoucher } from '../print.js';
 import { clipHtml, openAttachList } from '../attach.js';
+import { moKyKhoa } from '../khoa.js';
 
 const KT = window.KT;
 const PAGE = 500; // số dòng vẽ mỗi lần (bảng lớn vẽ chậm); bấm "Hiện thêm" để xem tiếp, in thì hiện hết
@@ -90,7 +91,7 @@ export function renderLedger(root) {
     else if (act === 'dup' && entry) openEntryForm(entry, { duplicate: true });
     else if (act === 'del' && entry) deleteEntry(entry);
     else if (act === 'clip' && entry) openAttachList('entries', entry.id, 'Chứng từ của dòng sổ');
-    else if (act === 'locked' && entry) toast(KT.lockMessage(KT.monthOf(entry.ngay), 'sửa'), 'info');
+    else if (act === 'locked' && entry) moKyKhoa(entry.ngay, 'sửa');
     else if (act === 'post' && entry) {
       api('POST', '/api/entries/post', { ids: [entry.id] }).then(() => toast('Đã ghi sổ dòng nháp, đã tính vào tồn quỹ')).catch(showError);
     }
@@ -122,6 +123,18 @@ export function renderLedger(root) {
     const t = e.target;
     if (t.id === 'so-all') { root.querySelectorAll('input[data-sel]').forEach((c) => { c.checked = t.checked; t.checked ? sel.add(Number(c.dataset.sel)) : sel.delete(Number(c.dataset.sel)); }); drawBulk(root); }
     else if (t.dataset && t.dataset.sel) { t.checked ? sel.add(Number(t.dataset.sel)) : sel.delete(Number(t.dataset.sel)); drawBulk(root); }
+  });
+  // Bàn phím trên dòng đang chọn (Tab tới dòng): Enter sửa · Ctrl D nhân bản · Delete xóa · Ctrl P in phiếu
+  root.addEventListener('keydown', (e) => {
+    const tr = e.target.matches && e.target.matches('tr[data-id]') ? e.target : null;
+    if (!tr) return;
+    const en = S.all.entries.find((x) => x.id === Number(tr.dataset.id));
+    if (!en) return;
+    const ctrl = e.ctrlKey || e.metaKey;
+    if (e.key === 'Enter' && !ctrl) { e.preventDefault(); if (KT.isLockedDate(S.all, en.ngay)) moKyKhoa(en.ngay, 'sửa'); else openEntryForm(en); }
+    else if (ctrl && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); openEntryForm(en, { duplicate: true }); }
+    else if (e.key === 'Delete') { e.preventDefault(); if (KT.isLockedDate(S.all, en.ngay)) moKyKhoa(en.ngay, 'xóa'); else deleteEntry(en); }
+    else if (ctrl && (e.key === 'p' || e.key === 'P') && en.soPhieu) { e.preventDefault(); const v = vouchers().find((x) => x.key === KT.voucherKey(en.soPhieu)); if (v) printVoucher(v, S.db.settings); }
   });
   root.addEventListener('dblclick', (e) => {
     const tr = e.target.closest('tr[data-id]');
@@ -161,7 +174,8 @@ function drawRows(root, f) {
   if (!rows.length) {
     body.innerHTML = '<tr><td colspan="11" class="empty">' + (S.ledger.length
       ? 'Không có dòng nào khớp bộ lọc. Thử bỏ bớt điều kiện lọc.'
-      : 'Sổ chưa có dòng nào. Bấm “Ghi thu / chi” để ghi khoản đầu tiên, hoặc nhập từ file Excel trong Cài đặt.') + '</td></tr>';
+      : 'Sổ chưa có dòng nào. Bấm “Ghi thu / chi” để ghi khoản đầu tiên, hoặc nhập từ file Excel (mục Nhập từ Excel).') +
+      (S.ledger.length ? ' <button type="button" class="btn btn-secondary btn-sm ml-2" data-act="clear">Xóa lọc</button>' : '') + '</td></tr>';
   } else {
     body.innerHTML = (res2.rows.length > rows.length ? '<tr><td colspan="11" class="text-[12.5px] text-ink-3">Đang hiện ' + rows.length + ' dòng gần nhất trong ' + res2.rows.length + ' dòng. ' +
       '<button type="button" class="btn btn-ghost btn-sm no-print" data-act="more">Hiện thêm ' + Math.min(PAGE, res2.rows.length - rows.length) + ' dòng cũ hơn</button>' +
@@ -224,7 +238,7 @@ function rowHtml(r, q) {
   if (r.ghiChu) extra.push('<span>Ghi chú: <span class="text-ink-2">' + highlight(r.ghiChu, q) + '</span></span>');
   const nhap = KT.isDraft(r);
   const cls = [S.flash.has('entries:' + r.id) ? 'flash' : '', nhap ? 'draft' : ''].filter(Boolean).join(' ');
-  return '<tr data-id="' + r.id + '"' + (cls ? ' class="' + cls + '"' : '') + '>' +
+  return '<tr data-id="' + r.id + '" tabindex="0"' + (cls ? ' class="' + cls + '"' : '') + '>' +
     '<td class="no-print"><input type="checkbox" data-sel="' + r.id + '"' + (sel.has(r.id) ? ' checked' : '') + ' aria-label="Chọn dòng ' + r.stt + '"></td>' +
     '<td class="num text-ink-3">' + (nhap ? '<span class="chip chip-draft" title="Nháp: chưa ghi sổ, chưa tính vào tồn quỹ và báo cáo">' + icon('draft') + 'Nháp</span>' : r.stt) + '</td>' +
     '<td class="whitespace-nowrap">' + fdate(r.ngay) + '</td>' +

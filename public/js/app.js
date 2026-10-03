@@ -270,7 +270,12 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-onAuthChange(() => { veNav(); if (S.db) render(); });
+// Vai trò Chỉ xem: dải báo xám có ổ khóa (các nút thêm / sửa / xóa đã ẩn, máy chủ vẫn chặn thật)
+function veChiXem() {
+  const ro = A.bat && A.nguoiDung && A.nguoiDung.vaiTro === 'chi-xem';
+  $('#ro-root').innerHTML = ro ? '<div class="banner !bg-neutral-200 !text-ink px-[18px]" role="note">' + icon('lock') + '<span>Tài khoản này chỉ được <b>xem</b>: xem, lọc, tìm, in, xuất Excel. Không thêm, sửa, xóa được.</span></div>' : '';
+}
+onAuthChange(() => { veNav(); veChiXem(); if (S.db) render(); });
 
 async function boot() {
   onDatabase(setDb);

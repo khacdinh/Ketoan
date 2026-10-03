@@ -96,8 +96,8 @@ test('N2.3 giao diện: Lưu nháp từ form, dòng nháp có nhãn và không �
   try {
     await page.waitForSelector('#so-body tr[data-id]');
     const ton0 = await page.$eval('#so-summary', (e) => e.innerText);
-    assert.equal(await page.locator('input[name=so-tt]').count(), 0, 'chưa có nháp thì không hiện bộ lọc trạng thái');
-    await page.keyboard.press('F2');
+    assert.equal(await page.locator('input[name=so-tt]').count(), 3, 'bộ lọc trạng thái luôn có (Mọi trạng thái / Đã ghi sổ / Nháp)');
+    await page.keyboard.press('F3');
     await page.waitForSelector('#entry-form');
     await page.waitForTimeout(100);
     await page.fill('#entry-form textarea[name=noiDung]', 'Tạm ứng thợ (nháp)');

@@ -684,7 +684,7 @@ test('F6 Công nợ NCC: bảng, tổng, chi tiết từng NCC; Trả tiền →
     // form phiếu chi hiện công nợ của NCC đang chọn
     const other = rows.find((r) => r.conLai > 0 && r.ma !== debtor.ma);
     if (other) {
-      await page.keyboard.press('F2');
+      await page.keyboard.press('F3');
       await page.waitForSelector('#entry-form'); await page.waitForTimeout(200);
       await page.fill('#entry-form input[name=maNCC]', other.ma);
       await page.locator('#entry-form input[name=maNCC]').dispatchEvent('change');

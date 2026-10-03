@@ -31,7 +31,7 @@ async function dangNhapUI(page, ten, mk) {
 // Mở form ghi thu / chi bằng F2 rồi bấm vào ô Nội dung như người dùng: form tự đặt con trỏ vào ô ngày sau 30–40 ms nếu chưa ai
 // chạm vào — gõ ngay (page.fill) có thể bị con trỏ kéo sang ô ngày giữa chừng
 async function moFormGhi(page) {
-  await page.keyboard.press('F2');
+  await page.keyboard.press('F3');
   await page.waitForSelector('.modal [name=noiDung]');
   await page.click('.modal [name=noiDung]');
 }
@@ -52,7 +52,7 @@ test('U1 vai trò ở giao diện: Chỉ xem không thấy nút thêm / sửa / 
     assert.equal(await hien(page, '#view [data-act=edit], #view [data-act=del], #view [data-act=dup]'), 0, 'không có nút sửa / xóa / nhân bản');
     const nav = await page.$$eval('#nav a', (as) => as.map((a) => a.dataset.route));
     assert.ok(!nav.includes('gop-ma') && !nav.includes('cp-nhap'), JSON.stringify(nav));
-    await page.keyboard.press('F2');
+    await page.keyboard.press('F3');
     await page.dblclick('#view tr[data-id]');
     await settle(page);
     assert.equal(await page.locator('.modal').count(), 0, 'F2 / bấm đúp không mở form');

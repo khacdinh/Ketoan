@@ -231,7 +231,7 @@
     @apply inline-grid size-[26px] cursor-pointer place-items-center border border-transparent text-[15px] text-neutral-800 transition-colors hover:bg-accent-100 hover:text-pen-hover;
   }
   .icon-btn.danger { @apply text-alert hover:bg-alert-soft hover:text-alert; }
-  .icon-btn:disabled, .icon-btn[aria-disabled="true"] { @apply cursor-not-allowed opacity-45 hover:bg-transparent hover:text-alert; }
+  .icon-btn:disabled, .icon-btn[aria-disabled="true"], .icon-btn[data-khoa] { @apply cursor-not-allowed opacity-45 hover:bg-transparent hover:text-alert; }
 
   /* Chọn kỳ: mũi tên ‹ › + nhãn kỳ */
   .period-nav { @apply flex h-8 items-center border border-rule-2; }
@@ -347,7 +347,8 @@
   .ledger .wrap-text { @apply min-w-[180px]; }
   .ledger tbody tr:hover > td { background: color-mix(in srgb, var(--color-ink) 4%, transparent); }
   .ledger tbody tr.clickable { @apply cursor-pointer; }
-  .ledger tbody tr.clickable:focus-visible > td { @apply bg-accent-100; outline: none; }
+  .ledger tbody tr.clickable:focus-visible > td, .ledger tbody tr[tabindex]:focus-visible > td { @apply bg-accent-100; }
+  .ledger tbody tr[tabindex]:focus-visible { outline: none; }
   .ledger .num { @apply text-right whitespace-nowrap; }
   .ledger .money { border-left: 0; }
   .ledger .thu { @apply text-income; }
@@ -548,6 +549,9 @@
   /* Mất kết nối với phần mềm (cửa sổ KhoiDong.bat bị tắt) */
   .offline-bar { @apply sticky top-0 z-40 flex flex-wrap items-center gap-x-3 gap-y-1 bg-alert px-[18px] py-2 text-[13.5px] text-paper; }
   .offline-bar .btn { @apply h-7 border border-paper/60 bg-transparent px-2.5 text-[13px] text-paper hover:bg-paper/15; }
+  body.offline #view { @apply pointer-events-none opacity-50; }
+  /* Đang tải: khung xương xám nhấp nháy (bảng sổ) */
+  .skeleton { @apply animate-pulse bg-neutral-200; }
   .banner { @apply flex flex-wrap items-center gap-x-2.5 gap-y-1.5 bg-accent-100 px-2.5 py-1.5 text-[12.5px] text-accent-900; }
   .banner > i { @apply text-[15px]; }
 
@@ -709,7 +713,8 @@
 @media print {
   html, body { background: #fff !important; }
   body { font-size: 10pt; }
-  .no-print, .app-sidebar, .topbar, #toast-root, #modal-root, .tip, .menu { display: none !important; }
+  .no-print, .app-sidebar, .topbar, #toast-root, #modal-root, .tip, .menu, #bottom-nav, .page-head { display: none !important; }
+  :is(.mk, .sheet, .equation, .modal, .auth-card, .btn-primary)::before { display: none !important; }
   .app-main { margin-left: 0 !important; }
   .view { padding: 0 !important; gap: 10px !important; }
   .sheet, .equation { border-color: #bbb !important; box-shadow: none !important; }

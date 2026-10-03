@@ -251,16 +251,22 @@ export async function api(method, url, body, isRaw, extraHeaders, _lan) {
 
 // Dải báo mất kết nối ở đầu trang: còn hiện đến khi gọi được máy chủ lại (dữ liệu đang gõ trong hộp thoại vẫn giữ nguyên)
 let offline = false;
+let offlineTimer = null;
 function setOffline(on) {
   if (on === offline) return;
   offline = on;
   const root = document.getElementById('offline-root');
   if (!root) return;
+  document.body.classList.toggle('offline', on);
+  clearInterval(offlineTimer);
   if (!on) { root.innerHTML = ''; toast('Đã kết nối lại với phần mềm'); return; }
+  // màn hình cũ mờ 50% (xem lại được, chưa thao tác được); tự thử nối lại sau mỗi 5 giây
   root.innerHTML = '<div class="offline-bar no-print" role="alert">' + icon('warnTri', 'text-[18px]') +
-    '<span class="flex-1"><b class="font-semibold">Mất kết nối với phần mềm.</b> Các thay đổi chưa được lưu. Mở lại <b class="font-semibold">KhoiDong.bat</b> rồi bấm Thử lại.</span>' +
-    '<button type="button" class="btn" data-act="reconnect">' + icon('refresh') + 'Thử lại</button></div>';
-  root.querySelector('[data-act=reconnect]').addEventListener('click', () => { api('GET', '/api/db').catch(() => toast('Vẫn chưa kết nối được. Kiểm tra cửa sổ KhoiDong.bat.', 'error')); });
+    '<span class="flex-1"><b class="font-bold">Mất kết nối với phần mềm.</b> Phần mềm đã bị tắt, hãy mở lại bằng biểu tượng trên màn hình. Các thay đổi chưa lưu sẽ không được ghi. Tự thử lại sau mỗi 5 giây.</span>' +
+    '<button type="button" class="btn" data-act="reconnect">' + icon('refresh') + 'Thử kết nối lại</button></div>';
+  const thu = (bao) => api('GET', '/api/db').catch(() => { if (bao) toast('Vẫn chưa kết nối được. Hãy mở lại phần mềm bằng biểu tượng trên màn hình.', 'error'); });
+  root.querySelector('[data-act=reconnect]').addEventListener('click', () => thu(true));
+  offlineTimer = setInterval(() => thu(false), 5000);
 }
 
 // Nút đang xử lý: khóa nút, đổi chữ (vd. "Đang lưu…"), trả về hàm khôi phục
@@ -380,7 +386,7 @@ export function openModal(opts) {
   const id = 'modal-title-' + Date.now();
   wrap.className = 'modal-backdrop';
   wrap.innerHTML =
-    '<div class="modal ' + (opts.size || '') + '" role="dialog" aria-modal="true" aria-labelledby="' + id + '">' +
+    '<div class="modal ' + (opts.size || '') + (opts.cls ? ' ' + opts.cls : '') + '" role="dialog" aria-modal="true" aria-labelledby="' + id + '">' +
     '<div class="modal-head"><h2 id="' + id + '">' + esc(opts.title) + '</h2>' +
     '<button type="button" class="icon-btn modal-x" aria-label="Đóng">' + icon('x') + '</button></div>' +
     '<div class="modal-body">' + (opts.body || '') + '</div>' +
@@ -436,7 +442,8 @@ export function confirmDialog(o) {
     const m = openModal({
       title: o.title || 'Xác nhận',
       size: 'small',
-      body: '<div class="leading-relaxed text-ink-2">' + (o.html || esc(o.message || '')) +
+      cls: o.danger ? 'danger' : '',
+      body: '<div class="leading-relaxed text-ink-2">' + (o.html || esc(o.message || '')) + (o.hauQua ? '<p class="mt-2 flex items-start gap-1.5 text-[13px] text-ink-2">' + icon('warnTri', 'mt-0.5 text-caution') + '<span>' + o.hauQua + '</span></p>' : '') +
         (o.trash ? '<p class="mt-2 flex items-start gap-1.5 text-[13px] text-ink-3">' + icon('info', 'mt-0.5') + '<span>Sẽ chuyển vào <b class="font-semibold text-ink-2">Thùng rác</b> (mục Kiểm soát sổ sách), khôi phục lại được bất cứ lúc nào.</span></p>' : '') + '</div>',
       // thao tác xóa/thay dữ liệu: con trỏ đặt sẵn ở nút Hủy để lỡ tay bấm Enter không mất dữ liệu
       footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="no"' + (o.danger ? ' autofocus' : '') + '>' + esc(o.cancelText || 'Hủy') + '</button>' +

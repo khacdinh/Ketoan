@@ -112,7 +112,7 @@ export function renderDebt(root) {
       (rows.length ? rows.map((r) => rowHtml(r)).join('') : '<tr><td colspan="10" class="empty">' + (S.db.suppliers.length ? 'Không có nhà cung cấp nào khớp bộ lọc. <a href="#" class="font-bold text-pen underline underline-offset-2" data-act="clear">Xóa lọc</a>' : 'Chưa có nhà cung cấp.') + '</td></tr>') +
       '</tbody><tfoot><tr><td>Tổng cộng · ' + rows.length + ' NCC</td>' +
       '<td class="num money">' + money(dauNo) + '</td><td class="num money">' + money(dauCo) + '</td><td class="num money">' + money(tot.phatSinh) + '</td><td class="num money">' + money(tot.thanhToan) + '</td>' +
-      '<td class="num money text-caution">' + money(tot.ungDu) + '</td><td class="num money"><span class="dbl">' + money(tot.conNo) + '</span></td><td colspan="3" class="font-normal text-[12px] text-ink-3">Chi / thu không ghi NCC: tách riêng ở sổ quỹ</td></tr></tfoot></table></div></section>';
+      '<td class="num money text-caution">' + money(tot.ungDu) + '</td><td class="num money"><span class="dbl">' + money(tot.conNo) + '</span></td><td colspan="3" class="font-normal text-[12px] text-ink-3">Còn lại thuần (Có − Nợ): <b class="tabular-nums text-ink">' + money(tot.cuoiKy) + '</b> · chi / thu không ghi NCC tách riêng ở sổ quỹ</td></tr></tfoot></table></div></section>';
   }
 
   function rowHtml(r) {

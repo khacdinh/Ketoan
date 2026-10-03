@@ -1,4 +1,5 @@
 /* Biểu mẫu: ghi thu/chi, dự án, nhà cung cấp. */
+import { hauQuaCongNo } from './congno.js';
 import { $, esc, api, openModal, toast, showError, bindMoneyInput, money, confirmDialog, icon, dateField, focusInput, fieldError, busy } from './ui.js';
 import { S, datalists, resolveCode, projectByCode, supplierByCode } from './state.js';
 import { openHistory } from './views/control.js';
@@ -276,6 +277,7 @@ export async function deleteEntry(e) {
     html: 'Xóa dòng ngày <b class="text-ink">' + esc(KT.fmtDate(e.ngay)) + '</b>: “' + esc(e.noiDung || '') + '” ' +
       (e.chi ? '(chi <b class="text-ink">' + money(e.chi) + ' đ</b>)' : '(thu <b class="text-ink">' + money(e.thu) + ' đ</b>)') + '?' +
       '<p class="mt-2 text-[13px] text-ink-3">Tồn quỹ các dòng sau tự tính lại.</p>',
+    hauQua: hauQuaCongNo(e.maNCC, (e.chi || 0) - (e.thu || 0), e.maDuAn),
     okText: 'Xóa dòng',
     danger: true
   });
