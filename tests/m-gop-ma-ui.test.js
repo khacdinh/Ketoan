@@ -68,7 +68,7 @@ test('MU1 gộp NCC qua giao diện: tích 2 dòng → Gộp mã → xem trướ
     await page.waitForSelector('#gm-log tr[data-id]');
     await page.click('#gm-log [data-act=undo]');
     await page.click('.modal [data-act=yes]');
-    await page.waitForFunction(() => /Đã hoàn tác/.test(document.querySelector('#gm-log').innerText), null, { timeout: 5000 });
+    await page.waitForFunction(() => document.querySelector('#gm-log') && /Đã hoàn tác/.test(document.querySelector('#gm-log').innerText), null, { timeout: 5000 });
     db = readStored(srv.dataDir);
     const strip = (d) => { const x = JSON.parse(JSON.stringify(d)); ['mergeLog', 'aliases', 'updatedAt', 'nextId'].forEach((k) => delete x[k]); return x; };
     assert.deepEqual(strip(db), strip(start), 'hoàn tác: dữ liệu như ban đầu');
@@ -241,7 +241,7 @@ test('MU4 gộp dự án ở màn Dự án: tích 2 dự án → Gộp mã → b
     await page.waitForSelector('#gm-log tr[data-id] [data-act=undo]');
     await page.click('#gm-log [data-act=undo]');
     await page.click('.modal [data-act=yes]');
-    await page.waitForFunction(() => /Đã hoàn tác/.test(document.querySelector('#gm-log').innerText), null, { timeout: 5000 });
+    await page.waitForFunction(() => document.querySelector('#gm-log') && /Đã hoàn tác/.test(document.querySelector('#gm-log').innerText), null, { timeout: 5000 });
     db = readStored(srv.dataDir);
     const strip = (d) => { const x = JSON.parse(JSON.stringify(d)); ['mergeLog', 'aliases', 'updatedAt', 'nextId'].forEach((k) => delete x[k]); return x; };
     assert.deepEqual(strip(db), strip(start), 'hoàn tác: dữ liệu như ban đầu');

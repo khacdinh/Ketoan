@@ -83,7 +83,7 @@ export function renderProjects(root) {
   };
 
   $('#pj-q', root).addEventListener('input', debounce((e) => { state.q = e.target.value; LS.set('q.projects', state.q); draw(); }, 120));
-  bindMergeUI(root, 'da', (v) => { state.merged = v; LS.set('merged.projects', v); draw(); });
+  bindMergeUI(root, 'da', (v) => { state.merged = v; LS.set('merged.projects', v); draw(); }, { noun: 'công trình', list: () => S.db.projects, endpoint: () => '/api/projects' });
   root.addEventListener('click', async (e) => {
     const a = e.target.closest('[data-act]');
     if (!a) return;
@@ -158,7 +158,7 @@ export function renderSuppliers(root) {
 
   $('#ncc-q', root).addEventListener('input', debounce((e) => { state.q = e.target.value; LS.set('q.suppliers', state.q); draw(); }, 120));
   $('#ncc-loai', root).addEventListener('change', (e) => { state.loai = e.target.value; LS.set('loai.suppliers', state.loai); draw(); });
-  bindMergeUI(root, 'ncc', (v) => { state.merged = v; LS.set('merged.suppliers', v); draw(); });
+  bindMergeUI(root, 'ncc', (v) => { state.merged = v; LS.set('merged.suppliers', v); draw(); }, { noun: 'đối tượng', list: () => S.db.suppliers, endpoint: () => '/api/suppliers' });
   root.addEventListener('click', async (e) => {
     const a = e.target.closest('[data-act]');
     if (!a) return;

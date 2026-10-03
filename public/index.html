@@ -13,7 +13,7 @@
 </head>
 <body>
   <aside class="app-sidebar no-print">
-    <!-- Logo công ty + tên phần mềm + tên đơn vị (đặt ở Cài đặt). Thu gọn (Ctrl B) hoặc cửa sổ hẹp: chỉ còn hình và ô mã 2 chữ. -->
+    <!-- Logo công ty + tên phần mềm + tên đơn vị (đặt ở Cài đặt). Thu gọn (Ctrl B) hoặc cửa sổ hẹp: chỉ còn logo và biểu tượng. -->
     <div class="side-brand">
       <span class="brand-mark"><img src="img/logo-dien-thuy-hinh.png" alt="Điền Thủy" width="229" height="215"></span>
       <div class="brand-text">
@@ -23,10 +23,11 @@
     </div>
     <nav id="nav" aria-label="Chức năng"></nav>
     <div class="side-foot">
-      <div class="full">Tồn quỹ hiện tại</div>
-      <div id="side-fund"></div>
-      <div id="save-state" class="full" aria-live="polite"></div>
-      <button type="button" id="side-toggle" class="side-toggle" title="Thu gọn / mở rộng menu (Ctrl B)" aria-label="Thu gọn menu"><i class="ph ph-panel-left" aria-hidden="true"></i><span class="label">Thu gọn menu Ctrl B</span></button>
+      <div class="foot-text">
+        <div class="foot-lbl">Tồn quỹ hiện tại · <span id="save-state" aria-live="polite"></span></div>
+        <div id="side-fund"></div>
+      </div>
+      <button type="button" id="side-toggle" class="btn btn-ghost btn-icon side-toggle" title="Thu gọn menu (Ctrl B)" aria-label="Thu gọn menu (Ctrl B)"><i class="ph ph-panel-left-close" aria-hidden="true"></i></button>
     </div>
   </aside>
 

@@ -367,9 +367,11 @@ function inlineEdit(td) {
   input.focus();
   if (input.select) input.select();
   let done = false;
+  const dau = input.value;
   const cancel = () => { if (done) return; done = true; td.innerHTML = old; };
+  // Trả về true khi đã lưu (hoặc không có gì đổi), false khi lỗi — để Tab biết có sang ô kế tiếp được không
   const commit = async () => {
-    if (done) return;
+    if (done) return false;
     let v = input.value.trim();
     const patch = {};
     if (field === 'maHM') { const code = resolveItem(v); if (!code) return fail('Hạng mục "' + v + '" chưa có trong danh mục'); patch.maHM = code; }
@@ -381,7 +383,7 @@ function inlineEdit(td) {
     else if (field === 'maNha') { const code = v ? resolveCode(S.db.houses, v) : ''; if (code && !houseByCode(code)) return fail('Nhà "' + v + '" chưa có trong danh mục'); patch.maNha = code; }
     // Xóa trống Số lượng hoặc Đơn giá: thành dòng theo khoản (không có SL, ĐG), giữ nguyên Thành tiền
     else if ((field === 'soLuong' || field === 'donGia') && !v) {
-      if (KT.isKhoan(c)) { cancel(); return; }
+      if (KT.isKhoan(c)) { cancel(); return true; }
       patch.soLuong = ''; patch.donGia = ''; patch.thanhTien = c.thanhTien;
     }
     else if (field === 'soLuong') { const n = KT.parseQty(v); if (isNaN(n) || n <= 0) return fail('Số lượng không hợp lệ'); patch.soLuong = n; }
@@ -399,13 +401,27 @@ function inlineEdit(td) {
     try {
       await api('PUT', '/api/costs/' + c.id, payloadOf(c, patch));
       toast('Đã lưu');
+      return true;
     } catch (err) {
       showError(err);
       td.innerHTML = old;
+      return false;
     }
   };
-  function fail(msg) { toast(msg, 'error'); input.classList.add('invalid'); input.focus(); }
+  function fail(msg) { toast(msg, 'error'); input.classList.add('invalid'); input.focus(); return false; }
+  // Tab / Shift+Tab: lưu ô này rồi mở ô kế tiếp / trước đó cùng dòng (hết ô thì chỉ lưu)
+  const sangO = async (dir) => {
+    const cells = Array.from(tr.querySelectorAll('td[data-edit]'));
+    const next = cells[cells.indexOf(td) + dir];
+    const id = tr.dataset.id;
+    const ok = input.value === dau ? (cancel(), true) : await commit();
+    if (!ok || !next) return;
+    const f2 = next.dataset.edit;
+    const again = document.querySelector('tr[data-id="' + id + '"] td[data-edit="' + f2 + '"]');
+    if (again) inlineEdit(again);
+  };
   input.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab' && !e.altKey && !e.ctrlKey) { e.preventDefault(); sangO(e.shiftKey ? -1 : 1); return; }
     if (e.key === 'Enter') { e.preventDefault(); commit(); }
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancel(); }
   });

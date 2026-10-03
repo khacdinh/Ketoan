@@ -70,7 +70,7 @@
 
 @layer base {
   :root {
-    --side-w: 216px;
+    --side-w: 248px;
     --top-h: 56px;
     --cell-py: 4px;   /* mật độ Gọn */
     --cell-px: 8px;
@@ -125,46 +125,49 @@
     white-space: nowrap; overflow: hidden;
   }
   .app-main { margin-left: var(--side-w); }
-  .side-brand { @apply flex h-14 flex-none items-center gap-2 px-3; }
-  .brand-mark { @apply grid size-8 flex-none place-items-center border border-rule bg-white p-0.5; }
+  /* Menu trái (bản cập nhật 1a): rộng 248px, thu gọn 56px; không còn ô mã 2 chữ, biểu tượng Lucide 18px */
+  .side-brand { @apply flex flex-none items-center gap-2.5; height: 52px; padding: 0 16px; }
+  .brand-mark { @apply grid flex-none place-items-center border border-rule bg-white p-0.5; width: 36px; height: 36px; }
   .brand-mark img { @apply block h-full w-full object-contain; }
   .brand-text { @apply min-w-0 leading-[1.15]; }
-  .brand-name { font-family: var(--font-heading); @apply text-[16px] font-semibold text-ink; }
-  .brand-org { @apply truncate text-[10.5px] text-neutral-700 uppercase; }
-  #nav { @apply flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-2 pb-2; }
-  .nav-group { @apply flex flex-col gap-px; }
-  .nav-head { @apply px-1.5 pt-0.5 text-[11px] leading-4 font-bold text-neutral-700; }
-  .nav-item {
-    @apply relative flex h-7 items-center gap-2 px-1.5 text-[13.5px] text-ink transition-colors;
-  }
-  .nav-item:hover { @apply bg-neutral-200; }
-  .nav-code { @apply grid h-5 w-[26px] flex-none place-items-center border border-neutral-500 text-[10px] font-bold text-neutral-800; }
+  .brand-name { font-family: var(--font-heading); @apply text-[18px] font-semibold text-ink; }
+  .brand-org { @apply truncate text-[11px] text-neutral-700; }
+  #nav { @apply flex min-h-0 flex-1 flex-col overflow-y-auto; gap: 8px; padding: 0 12px 6px; }
+  .nav-group { @apply flex flex-col; }
+  .nav-head { font-family: var(--font-heading); @apply font-semibold text-neutral-700 uppercase; font-size: 12.5px; letter-spacing: .08em; padding: 0 10px 2px; }
+  .nav-item { @apply relative flex items-center text-[14px] text-ink no-underline transition-colors; height: 30px; gap: 11px; padding: 0 10px; }
+  .nav-item .ph { @apply flex-none; font-size: 18px; }
+  .nav-item:hover { background: var(--color-accent-100); }
   .nav-label { @apply min-w-0 flex-1 truncate; }
-  .nav-key { @apply text-[10px] text-neutral-700; }
-  .nav-item.active { @apply bg-pen font-bold text-paper; }
-  .nav-item.active:hover { @apply bg-pen-hover; }
-  .nav-item.active .nav-code { @apply border-paper/70 text-paper; }
-  .nav-item.active .nav-key { @apply text-accent-200; }
-  /* số việc cần xử lý trên menu: màu cảnh báo kèm số */
-  .nav-badge { @apply ml-auto inline-grid h-4 min-w-4 flex-none place-items-center bg-caution-soft px-1 text-[10.5px] font-bold text-caution tabular-nums; }
+  .nav-item.active { @apply font-bold text-paper; background: var(--color-accent-700); }
+  .nav-item.active:hover { background: var(--color-accent-700); }
+  /* số việc cần xử lý ở Kiểm soát: chữ nâu trên nền vàng nhạt, ẩn khi bằng 0 */
+  .nav-badge { @apply flex-none bg-caution-soft font-bold text-caution tabular-nums; font-size: 11.5px; padding: 1px 7px; }
   .nav-item.active .nav-badge { @apply bg-caution-soft text-caution; }
-  .side-foot { @apply flex-none border-t border-rule px-3 py-2 text-[11.5px] leading-snug text-neutral-700; }
-  .side-foot .fund { @apply text-[17px] font-bold text-ink tabular-nums; }
-  .side-toggle { @apply mt-1 inline-flex cursor-pointer items-center gap-1.5 py-0.5 text-[12px] font-medium text-pen hover:text-pen-hover; }
-  /* menu thu gọn (Ctrl B) hoặc cửa sổ hẹp: chỉ còn ô mã 2 chữ */
-  body.side-thu .brand-text, body.side-thu .nav-label, body.side-thu .nav-key, body.side-thu .nav-head, body.side-thu .side-foot .full, body.side-thu .side-toggle .label { display: none; }
-  body.side-thu .nav-item { @apply justify-center px-0; }
-  body.side-thu .nav-badge { @apply absolute top-0 right-0 ml-0; }
-  body.side-thu .side-brand { @apply justify-center px-0; }
+  .side-foot { @apply flex flex-none items-end justify-center gap-2 border-t border-rule; padding: 7px 16px; }
+  .side-foot .foot-text { @apply min-w-0 flex-1; }
+  .side-foot .foot-lbl { @apply truncate text-[12px] text-neutral-700; }
+  .side-foot .fund { @apply font-bold text-ink tabular-nums; font-size: 19px; line-height: 1.25; }
+  .side-foot .fund.neg { @apply text-alert; }
+  .side-toggle { @apply flex-none; color: var(--color-accent-700); }
+  /* menu thu gọn (Ctrl B) hoặc cửa sổ hẹp: chỉ còn logo, biểu tượng, nút mở rộng; tên nhóm thành đường kẻ mảnh */
+  body.side-thu .brand-text, body.side-thu .nav-label, body.side-thu .nav-head, body.side-thu .side-foot .foot-text { display: none; }
+  body.side-thu #nav { padding: 0 6px 6px; }
+  body.side-thu .nav-group + .nav-group { border-top: 1px solid var(--color-rule); padding-top: 8px; }
+  body.side-thu .nav-item { @apply justify-center; padding: 0; }
+  body.side-thu .nav-badge { @apply absolute; top: 1px; right: 2px; font-size: 9.5px; padding: 0 3px; }
+  body.side-thu .side-brand { @apply justify-center; padding: 0 10px; }
+  body.side-thu .side-foot { padding: 7px 6px; }
   @media (max-width: 1023px) {
     :root { --side-w: 56px; }
-    .brand-text, .nav-label, .nav-key, .nav-head, .side-foot .full, .side-toggle .label { display: none; }
-    .nav-item { @apply justify-center px-0; }
-    .nav-badge { @apply absolute top-0 right-0 ml-0; }
-    .side-brand { @apply justify-center px-0; }
+    .brand-text, .nav-label, .nav-head, .side-foot .foot-text { display: none; }
+    #nav { padding: 0 6px 6px; }
+    .nav-group + .nav-group { border-top: 1px solid var(--color-rule); padding-top: 8px; }
+    .nav-item { @apply justify-center; padding: 0; }
+    .nav-badge { @apply absolute; top: 1px; right: 2px; font-size: 9.5px; padding: 0 3px; }
+    .side-brand { @apply justify-center; padding: 0 10px; }
+    .side-foot { padding: 7px 6px; }
   }
-
-  body.side-thu .side-foot #side-fund { display: none; }
   /* Thanh dưới trên điện thoại */
   #bottom-nav { @apply fixed inset-x-0 bottom-0 z-30 hidden grid-cols-5 border-t border-rule bg-paper; }
   #bottom-nav > * { @apply relative flex h-14 cursor-pointer flex-col items-center justify-center gap-0.5 border-0 bg-transparent text-[11px] font-medium text-neutral-800; }

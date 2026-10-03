@@ -24,22 +24,22 @@ export function openSoDuDauForm(rec, d) {
   const cbN = { name: 'maNCC', list: S.db.suppliers.map((x) => ({ ma: x.ma, ten: x.ten, sub: x.loai })), value: v.maNCC, noun: 'nhà cung cấp', type: 'text', quiet: true, placeholder: 'Gõ mã hoặc tên NCC' };
   const cbP = { name: 'maDuAn', list: S.db.projects.map((x) => ({ ma: x.ma, ten: x.ten })), value: v.maDuAn, noun: 'công trình', type: 'text', quiet: true, placeholder: 'Để trống nếu không tách theo công trình' };
   return openModal({
-    title: isEdit ? 'Sửa số dư đầu kỳ nhà cung cấp' : 'Nhập số dư đầu kỳ nhà cung cấp',
+    title: (isEdit ? 'Sửa số dư đầu kỳ' : 'Số dư đầu kỳ') + (v.maNCC ? ' · ' + tenNCC(v.maNCC) : ' nhà cung cấp'),
     size: 'wide',
     dismissible: false,
     body: '<p class="mb-3 rounded-md bg-pen-soft px-3 py-2 text-[13px] text-ink-2">' + icon('info', 'mr-1 align-[-3px] text-pen') +
-      'Công nợ đã có <b class="font-semibold text-ink">trước khi ghi sổ trong phần mềm</b> (vd còn nợ từ năm trước). Được cộng vào cột Đầu kỳ của công nợ; không phải chi phí phát sinh, không vào sổ thu chi, không đổi tồn quỹ.</p>' +
+      'Công nợ có từ <b class="font-semibold text-ink">trước khi bắt đầu ghi sổ trong phần mềm</b>. Chọn đúng bên. Số này vào cột Đầu kỳ của công nợ; không phải chi phí phát sinh, không vào sổ quỹ, không đổi tồn quỹ.</p>' +
       '<form id="dk-form" class="grid grid-cols-2 gap-x-5 gap-y-4 max-sm:grid-cols-1" novalidate autocomplete="off">' +
       '<div class="field"><span class="label">Nhà cung cấp <b class="req">*</b></span>' + comboHtml(cbN) + '<span class="hint" id="dk-no"></span></div>' +
       '<div class="field"><span class="label">Công trình</span>' + comboHtml(cbP) + '<span class="hint">Ghi công trình để công nợ theo từng công trình đúng; nợ chung nhiều công trình thì để trống.</span></div>' +
-      '<fieldset class="field col-span-2 max-sm:col-span-1"><legend class="label">Số dư là <b class="req">*</b></legend><div class="flex flex-wrap gap-x-6 gap-y-1">' +
-      '<label class="check"><input type="radio" name="loai" value="no"' + (ung ? '' : ' checked') + '>Mình còn nợ nhà cung cấp</label>' +
-      '<label class="check"><input type="radio" name="loai" value="ung"' + (ung ? ' checked' : '') + '>Mình đã ứng trước / trả dư (NCC đang giữ tiền)</label></div></fieldset>' +
+      '<fieldset class="field col-span-2 max-sm:col-span-1"><legend class="label">Chọn đúng bên <b class="req">*</b></legend><div class="flex flex-wrap gap-x-6 gap-y-1">' +
+      '<label class="check"><input type="radio" name="loai" value="no"' + (ung ? '' : ' checked') + '>Dư Có (còn phải trả)</label>' +
+      '<label class="check"><input type="radio" name="loai" value="ung"' + (ung ? ' checked' : '') + '>Dư Nợ (đã ứng trước)</label></div></fieldset>' +
       '<label class="field"><span class="label">Số tiền <b class="req">*</b></span><input name="soTien" class="input money-input" inputmode="decimal" value="' + esc(v.soTien === '' ? '' : money(Math.abs(v.soTien))) + '" placeholder="vd 50tr, 1.250.000">' +
       '<span class="hint" id="dk-chu"></span></label>' +
-      '<label class="field"><span class="label">Tính đến đầu ngày <b class="req">*</b></span>' + dateField({ name: 'ngay', value: v.ngay, required: true, label: 'Tính đến đầu ngày' }) +
-      '<span class="hint">Thường là ngày bắt đầu ghi sổ trong phần mềm. Báo cáo đến ngày trước ngày này thì chưa tính số dư này.</span></label>' +
-      '<label class="field col-span-2 max-sm:col-span-1"><span class="label">Ghi chú</span><textarea name="ghiChu" class="input" rows="2" placeholder="vd Còn nợ theo biên bản đối chiếu công nợ 31/12/2025">' + esc(v.ghiChu) + '</textarea></label>' +
+      '<label class="field"><span class="label">Ngày số dư <b class="req">*</b></span>' + dateField({ name: 'ngay', value: v.ngay, required: true, label: 'Ngày số dư' }) +
+      '<span class="hint" id="dk-ngay">Phải trước ngày phát sinh đầu tiên của nhà cung cấp.</span></label>' +
+      '<label class="field col-span-2 max-sm:col-span-1"><span class="label">Chứng từ gốc</span><textarea name="ghiChu" class="input" rows="2" placeholder="vd Biên bản đối chiếu công nợ 31/12/2025">' + esc(v.ghiChu) + '</textarea></label>' +
       '</form>',
     footer: (isEdit ? '<button type="button" class="btn btn-danger-ghost" data-act="del">' + icon('trash') + 'Xóa</button>' : '') + '<span class="flex-1"></span>' +
       '<button type="button" class="btn btn-ghost" data-act="cancel">Hủy</button><button type="button" class="btn btn-primary" data-act="save">' + icon('check') + (isEdit ? 'Lưu thay đổi' : 'Ghi số dư đầu kỳ') + '</button>',
@@ -53,7 +53,15 @@ export function openSoDuDauForm(rec, d) {
         $('#dk-chu', el).textContent = !isNaN(n) && n > 0 ? KT.docTienBangChu(n) : '';
         const ncc = comboResolve(cbN, g('maNCC').value).value;
         const daCo = ncc ? (S.all.soDuDauKy || []).filter((x) => KT.keyOf(x.maNCC) === KT.keyOf(ncc) && (!isEdit || x.id !== rec.id)) : [];
-        $('#dk-no', el).innerHTML = daCo.length ? 'Đã có ' + daCo.length + ' số dư đầu kỳ của NCC này: ' + daCo.map((x) => esc(moTaSoDu(x.soTien)) + (x.maDuAn ? ' (' + esc(x.maDuAn) + ')' : '')).join('; ') : '';
+        $('#dk-no', el).innerHTML = daCo.length ? 'Đã có ' + daCo.length + ' số dư đầu kỳ của NCC này: ' + daCo.map((x) => '<span class="tabular-nums">' + fdate(x.ngay) + (x.maDuAn ? ' · ' + esc(x.maDuAn) : '') + ' · ' + money(Math.abs(x.soTien)) + (x.soTien < 0 ? ' Nợ' : ' Có') + '</span>').join('; ') : '';
+        // ngày phát sinh đầu tiên của NCC (chi phí, sổ quỹ, trả ngoài quỹ): số dư đầu kỳ phải nằm trước ngày này
+        let dau = '';
+        if (ncc) [].concat(S.all.costs || [], S.all.entries || [], S.all.extPayments || []).forEach((x) => { if (KT.keyOf(x.maNCC) === KT.keyOf(ncc) && x.ngay && (!dau || x.ngay < dau)) dau = x.ngay; });
+        const nv = g('ngay').value;
+        const sau = dau && KT.isISODate(nv) && nv >= dau;
+        const e = $('#dk-ngay', el);
+        e.textContent = dau ? 'Phải trước ngày phát sinh đầu tiên (' + fdate(dau).slice(0, 5) + ')' + (sau ? ' — ngày này không nằm trước đó' : '') : 'Chưa có phát sinh nào của nhà cung cấp này.';
+        e.classList.toggle('text-caution', !!sau);
       };
       fm.addEventListener('input', hint);
       fm.addEventListener('change', hint);

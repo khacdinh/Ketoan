@@ -286,7 +286,7 @@ export function renderCostCatalogs(root) {
   };
 
   root.querySelectorAll('input[name=dm-tab]').forEach((r) => r.addEventListener('change', () => { f.tab = r.value; saveFilter('cpDm'); draw(); }));
-  bindMergeUI(root, () => TAB_LOAI[f.tab], (v) => { f.merged = v; saveFilter('cpDm'); draw(); });
+  bindMergeUI(root, () => TAB_LOAI[f.tab], (v) => { f.merged = v; saveFilter('cpDm'); draw(); }, { noun: 'mã', list: () => listOf(), endpoint: () => ({ nhom: '/api/cost-groups', 'hang-muc': '/api/cost-items', 'vat-tu': '/api/materials', nha: '/api/houses' }[f.tab]) });
   $('#dm-q', root).addEventListener('input', debounce((e) => { f.q = e.target.value; saveFilter('cpDm'); draw(); }, 120));
 
   const listOf = () => ({ nhom: S.db.costGroups, 'hang-muc': S.db.costItems, 'vat-tu': S.db.materials, nha: S.db.houses }[f.tab]);

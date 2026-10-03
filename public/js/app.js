@@ -48,14 +48,14 @@ const ROUTES = {
   'gop-ma': { title: 'Gộp mã', sub: 'Đưa các mã trùng (NCC, vật tư, hạng mục, nhà, dự án) về một mã, có xem trước và hoàn tác', render: renderMerge },
   'nguoi-dung': { title: 'Người dùng', sub: 'Tài khoản, vai trò, mở khóa, đặt lại mật khẩu, sự kiện bảo mật', render: renderUsers }
 };
-// Menu: nhóm theo trình tự công việc. Mỗi mục: [đường dẫn, mã 2 chữ, tên, phím tắt]; tab = mở sẵn tab của danh mục chi phí
+// Menu: nhóm theo trình tự công việc. Mỗi mục: [đường dẫn, biểu tượng Lucide, tên, phím tắt (chỉ hiện ở chú thích), tab]; tab = mở sẵn tab của danh mục chi phí
 const NAV = [
-  { items: [['tong-quan', 'TQ', 'Tổng quan']] },
-  { head: 'Nhập liệu', items: [['cp-nhap', 'PN', 'Phiếu nhập chi phí', 'F2'], ['@ghi-thu-chi', 'TC', 'Ghi thu / chi', 'F3'], ['so-du-dau', 'SD', 'Số dư đầu kỳ NCC'], ['nhap-excel', 'XL', 'Nhập từ Excel']] },
-  { head: 'Sổ sách', items: [['so-thu-chi', 'SQ', 'Sổ quỹ thu chi'], ['phieu', 'PT', 'Phiếu thu / chi'], ['cp-so', 'CP', 'Sổ chi phí'], ['so-chi-tiet-ncc', 'SN', 'Sổ chi tiết NCC']] },
-  { head: 'Báo cáo', items: [['cp-chi-tiet', 'BC', 'Chi phí theo nhóm'], ['cp-tong-hop', 'TH', 'Tổng hợp chi phí'], ['cp-cong-no', 'CN', 'Công nợ NCC theo kỳ'], ['cp-gia', 'GV', 'Giá vật tư']] },
-  { head: 'Danh mục', items: [['du-an', 'CT', 'Công trình, nhà/lô'], ['ncc', 'NC', 'NCC, đối tượng'], ['cp-danh-muc', 'VT', 'Vật tư', '', 'vat-tu'], ['cp-danh-muc', 'HM', 'Hạng mục, nhóm CP', '', 'hang-muc'], ['gop-ma', 'GM', 'Gộp mã']] },
-  { head: 'Hệ thống', items: [['kiem-soat', 'KS', 'Kiểm soát'], ['cai-dat', 'CĐ', 'Cài đặt, sao lưu'], ['nguoi-dung', 'ND', 'Người dùng']] }
+  { items: [['tong-quan', 'ph-layout-dashboard', 'Tổng quan']] },
+  { head: 'Nhập liệu', items: [['cp-nhap', 'ph-file-plus', 'Phiếu nhập chi phí', 'F2'], ['@ghi-thu-chi', 'ph-arrow-left-right', 'Ghi thu / chi', 'F3'], ['so-du-dau', 'ph-flag', 'Số dư đầu kỳ NCC'], ['nhap-excel', 'ph-file-spreadsheet', 'Nhập từ Excel']] },
+  { head: 'Sổ sách', items: [['so-thu-chi', 'ph-wallet', 'Sổ quỹ thu chi'], ['phieu', 'ph-receipt', 'Phiếu thu / chi'], ['cp-so', 'ph-book-open', 'Sổ chi phí'], ['so-chi-tiet-ncc', 'ph-list', 'Sổ chi tiết NCC']] },
+  { head: 'Báo cáo', items: [['cp-chi-tiet', 'ph-chart-pie', 'Chi phí theo nhóm'], ['cp-tong-hop', 'ph-target', 'Tổng hợp chi phí'], ['cp-cong-no', 'ph-scale', 'Công nợ NCC theo kỳ'], ['cp-gia', 'ph-trending-up', 'Giá vật tư']] },
+  { head: 'Danh mục', items: [['du-an', 'ph-building-2', 'Công trình, nhà/lô'], ['ncc', 'ph-truck', 'NCC, đối tượng'], ['cp-danh-muc', 'ph-package', 'Vật tư', '', 'vat-tu'], ['cp-danh-muc', 'ph-folder-tree', 'Hạng mục, nhóm CP', '', 'hang-muc'], ['gop-ma', 'ph-merge', 'Gộp mã']] },
+  { head: 'Hệ thống', items: [['kiem-soat', 'ph-shield-check', 'Kiểm soát'], ['cai-dat', 'ph-database', 'Cài đặt, sao lưu'], ['nguoi-dung', 'ph-users', 'Người dùng']] }
 ];
 // Màn hình cần quyền riêng (đăng nhập bật). Không có quyền: ẩn khỏi menu, mở bằng đường dẫn thì báo không có quyền.
 const QUYEN_MAN = { 'gop-ma': 'gop-ma', 'cp-nhap': 'ghi', 'nguoi-dung': 'quan-ly-nguoi-dung', 'nhap-excel': 'nhap-excel' };
@@ -72,13 +72,14 @@ function veNav() {
     const items = g.items.filter((it) => it[0].startsWith('@') || duocMo(it[0]));
     if (!items.length) return '';
     return '<div class="nav-group">' + (g.head ? '<div class="nav-head">' + esc(g.head) + '</div>' : '') + items.map((it) => {
-      const [k, code, label, key, tab] = it;
+      const [k, icono, label, key, tab] = it;
       const act = k.startsWith('@');
-      return '<a href="' + (act ? '#' : '#/' + k) + '" class="nav-item" data-route="' + esc(k) + '"' + (tab ? ' data-tab="' + tab + '"' : '') + ' title="' + esc(label) + (key ? ' (' + key + ')' : '') + '">' +
-        '<span class="nav-code" aria-hidden="true">' + code + '</span><span class="nav-label">' + esc(label) + '</span>' + (key ? '<span class="nav-key" aria-hidden="true">' + key + '</span>' : '') +
+      return '<a href="' + (act ? '#' : '#/' + k) + '" class="nav-item" data-route="' + esc(k) + '"' + (tab ? ' data-tab="' + tab + '"' : '') + ' data-tip="' + esc(label + (key ? ' (' + key + ')' : '')) + '" aria-label="' + esc(label) + '">' +
+        '<i class="ph ' + icono + '" aria-hidden="true"></i><span class="nav-label">' + esc(label) + '</span>' +
         (k === 'kiem-soat' ? '<span class="nav-badge" id="nav-badge" hidden></span>' : '') + '</a>';
     }).join('') + '</div>';
   }).join('');
+  capNhatTip();
 }
 
 function renderShell() {
@@ -120,14 +121,28 @@ function renderShell() {
   $('#bn-them').addEventListener('click', moMenuDayDu);
   window.matchMedia('(max-width: 767px)').addEventListener('change', () => { if (S.db) render(); });
   datMau(LS.get('density', 'gon'));
-  thuGonMenu(LS.get('side-thu', false));
+  thuGonMenu(LS.get(khoaMenu(), LS.get('side-thu', false)), true);
+  window.matchMedia('(max-width: 1023px)').addEventListener('change', capNhatTip);
 }
 
-function thuGonMenu(on) {
+// Trạng thái thu gọn lưu theo người dùng (khi đăng nhập bật) hoặc theo máy
+const khoaMenu = () => 'side-thu' + (A.bat && A.nguoiDung ? '.' + A.nguoiDung.id : '');
+const menuHep = () => window.matchMedia('(max-width: 1023px)').matches;
+// Chú thích (tooltip) tên mục: chỉ khi menu thu gọn (hoặc cửa sổ hẹp), vì khi mở rộng tên đã hiện ngay trên mục
+function capNhatTip() {
+  const thu = document.body.classList.contains('side-thu') || menuHep();
+  document.querySelectorAll('#nav .nav-item').forEach((a) => { if (thu) a.title = a.dataset.tip || ''; else a.removeAttribute('title'); });
+}
+function thuGonMenu(on, khongLuu) {
   document.body.classList.toggle('side-thu', !!on);
-  LS.set('side-thu', !!on);
+  if (!khongLuu) LS.set(khoaMenu(), !!on);
   const t = $('#side-toggle');
-  if (t) { t.setAttribute('aria-label', on ? 'Mở rộng menu' : 'Thu gọn menu'); t.querySelector('.label').textContent = on ? 'Mở rộng menu Ctrl B' : 'Thu gọn menu Ctrl B'; }
+  if (t) {
+    const nhan = on ? 'Mở rộng menu (Ctrl B)' : 'Thu gọn menu (Ctrl B)';
+    t.setAttribute('aria-label', nhan); t.title = nhan;
+    t.querySelector('i').className = on ? 'ph ph-panel-left-open' : 'ph ph-panel-left-close';
+  }
+  capNhatTip();
 }
 function doiMenu() { thuGonMenu(!document.body.classList.contains('side-thu')); }
 
@@ -154,8 +169,8 @@ function moMenuDayDu() {
     title: 'Tất cả chức năng',
     size: 'small',
     body: NAV.map((g) => '<div class="mb-3">' + (g.head ? '<div class="mb-1 text-[11px] font-bold text-ink-3">' + esc(g.head) + '</div>' : '') +
-      g.items.filter((it) => it[0].startsWith('@') || duocMo(it[0])).map(([k, code, label, , tab]) =>
-        '<a href="' + (k.startsWith('@') ? '#' : '#/' + k) + '" data-route="' + esc(k) + '"' + (tab ? ' data-tab="' + tab + '"' : '') + ' class="flex h-12 items-center gap-3 border-b border-rule px-1 text-[15px]"><span class="nav-code">' + code + '</span>' + esc(label) + '</a>').join('') + '</div>').join(''),
+      g.items.filter((it) => it[0].startsWith('@') || duocMo(it[0])).map(([k, icono, label, , tab]) =>
+        '<a href="' + (k.startsWith('@') ? '#' : '#/' + k) + '" data-route="' + esc(k) + '"' + (tab ? ' data-tab="' + tab + '"' : '') + ' class="flex h-12 items-center gap-3 border-b border-rule px-1 text-[15px]"><i class="ph ' + icono + ' text-[18px] text-neutral-700" aria-hidden="true"></i>' + esc(label) + '</a>').join('') + '</div>').join(''),
     onMount(el, h) {
       el.addEventListener('click', (e) => {
         const a = e.target.closest('a[data-route]');
@@ -221,7 +236,7 @@ function updateFooter() {
   const ton = S.ledger.length ? S.ledger[S.ledger.length - 1].ton : 0;
   $('#side-fund').innerHTML = '<div class="fund' + (ton < 0 ? ' neg' : '') + '">' + KT.fmtMoney(ton) + ' đ</div>';
   const t = S.savedAt;
-  $('#save-state').textContent = t ? 'Đã lưu ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') + ' · ' + S.db.entries.length + ' dòng sổ' : '';
+  $('#save-state').textContent = t ? 'lưu ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') : '';
 }
 
 window.addEventListener('hashchange', render);
@@ -275,7 +290,7 @@ function veChiXem() {
   const ro = A.bat && A.nguoiDung && A.nguoiDung.vaiTro === 'chi-xem';
   $('#ro-root').innerHTML = ro ? '<div class="banner !bg-neutral-200 !text-ink px-[18px]" role="note">' + icon('lock') + '<span>Tài khoản này chỉ được <b>xem</b>: xem, lọc, tìm, in, xuất Excel. Không thêm, sửa, xóa được.</span></div>' : '';
 }
-onAuthChange(() => { veNav(); veChiXem(); if (S.db) render(); });
+onAuthChange(() => { veNav(); thuGonMenu(LS.get(khoaMenu(), LS.get('side-thu', false)), true); veChiXem(); if (S.db) render(); });
 
 async function boot() {
   onDatabase(setDb);

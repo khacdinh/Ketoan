@@ -396,14 +396,61 @@ export function mergedRecords(loai) { return ((S.raw && S.raw[LOAI[loai].list]) 
 export const mergedChip = (x) => '<span class="chip chip-idle" title="Mã này đã gộp, không dùng để nhập mới">' + icon('merge') + 'Đã gộp vào ' + esc(x.gopVao) + '</span>';
 // Bấm Gộp mã: lấy các dòng đang tích làm mã nguồn
 // loai: mã loại hoặc hàm trả mã loại (màn hình có nhiều tab). Dòng tích đầu tiên = mã đích gợi ý, các dòng sau = mã nguồn.
-export function bindMergeUI(root, loai, onToggle) {
-  root.addEventListener('click', (e) => {
-    const a = e.target.closest('[data-act=merge]');
-    if (!a) return;
+export function bindMergeUI(root, loai, onToggle, bulk) {
+  const picked = () => Array.from(root.querySelectorAll('[data-pick]:checked')).map((c) => c.dataset.pick);
+  const moGop = () => {
     const l = typeof loai === 'function' ? loai() : loai;
     if (!l) return;
-    const picks = Array.from(root.querySelectorAll('[data-pick]:checked')).map((c) => c.dataset.pick);
+    const picks = picked();
     openMergeDialog(l, { nguon: picks.length > 1 ? picks.slice(1) : picks, dich: picks.length > 1 ? picks[0] : '' });
+  };
+  root.addEventListener('click', (e) => {
+    if (e.target.closest('[data-act=merge]')) moGop();
   });
   root.addEventListener('change', (e) => { if (e.target.matches('[data-merged-toggle]') && onToggle) onToggle(e.target.checked); });
+  if (!bulk) return;
+
+  // Thanh "Đã chọn N …": Gộp mã N · Xóa · Bỏ chọn. Xóa từng mã một (mã đang có dòng sổ bị từ chối như khi xóa lẻ).
+  let bar = null;
+  const refresh = () => {
+    const picks = picked();
+    if (!picks.length) { if (bar) { bar.remove(); bar = null; } return; }
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'sel-bar';
+      bar.className = 'banner no-print';
+      bar.setAttribute('role', 'region');
+      bar.setAttribute('aria-label', 'Thao tác với các dòng đã chọn');
+      const anchor = root.querySelector('.sheet');
+      if (anchor) anchor.insertAdjacentElement('beforebegin', bar); else root.appendChild(bar);
+      bar.addEventListener('click', async (e) => {
+        const a = e.target.closest('[data-bar]');
+        if (!a) return;
+        if (a.dataset.bar === 'clear') { root.querySelectorAll('[data-pick]:checked').forEach((c) => { c.checked = false; }); refresh(); }
+        else if (a.dataset.bar === 'merge') moGop();
+        else if (a.dataset.bar === 'del') await xoaNhieu();
+      });
+    }
+    const html = '<b>Đã chọn ' + picks.length + ' ' + esc(bulk.noun) + '</b><span class="min-w-0 truncate text-ink-2">' + esc(picks.slice(0, 3).join(', ') + (picks.length > 3 ? '…' : '')) + '</span><span class="flex-1"></span>' +
+      (picks.length > 1 ? '<button type="button" class="btn btn-secondary btn-sm" data-bar="merge">' + icon('merge') + 'Gộp mã ' + picks.length + ' ' + esc(bulk.noun) + '</button>' : '') +
+      '<button type="button" class="btn btn-secondary btn-sm !text-alert" data-bar="del">' + icon('trash') + 'Xóa ' + picks.length + '</button>' +
+      '<button type="button" class="btn btn-ghost btn-sm" data-bar="clear">Bỏ chọn</button>';
+    if (bar.innerHTML !== html) bar.innerHTML = html;
+  };
+  async function xoaNhieu() {
+    const picks = picked();
+    const recs = picks.map((ma) => bulk.list().find((x) => KT.keyOf(x.ma) === KT.keyOf(ma))).filter(Boolean);
+    if (!recs.length) return;
+    const ok = await confirmDialog({ trash: true, title: 'Xóa ' + recs.length + ' ' + bulk.noun, danger: true, okText: 'Xóa ' + recs.length,
+      html: 'Xóa <b class="text-ink">' + esc(recs.map((x) => x.ma).slice(0, 6).join(', ') + (recs.length > 6 ? '…' : '')) + '</b>? Mã đang có dòng sổ sẽ không xóa được (dùng Gộp mã). Các mã xóa được chuyển vào Thùng rác.' });
+    if (!ok) return;
+    const xong = []; const loi = [];
+    for (const r of recs) {
+      try { await api('DELETE', bulk.endpoint() + '/' + r.id); xong.push(r.ma); } catch (err) { loi.push(r.ma + ': ' + (err && err.message ? err.message : 'không xóa được')); }
+    }
+    if (xong.length) toast('Đã xóa ' + xong.length + ' ' + bulk.noun + ', chuyển vào Thùng rác' + (loi.length ? '; ' + loi.length + ' mã không xóa được' : ''));
+    if (loi.length) toast(loi.length + ' mã không xóa được: ' + loi.slice(0, 3).join(' | ') + (loi.length > 3 ? ' …' : ''), 'error');
+  }
+  root.addEventListener('change', (e) => { if (e.target.matches('[data-pick]')) refresh(); });
+  new MutationObserver((muts) => { if (!muts.every((m) => bar && bar.contains(m.target))) refresh(); }).observe(root, { childList: true, subtree: true });
 }

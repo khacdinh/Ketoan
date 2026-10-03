@@ -38,8 +38,8 @@ Muốn có biểu tượng trên Desktop: bấm đúp **`TaoBieuTuongDesktop.bat
 
 - **Menu bên trái** chia theo trình tự công việc: *Tổng quan* · **Nhập liệu** (Phiếu nhập chi phí, Ghi thu / chi, Số dư đầu kỳ NCC, Nhập từ Excel) ·
   **Sổ sách** (Sổ quỹ thu chi, Phiếu thu / chi, Sổ chi phí, Sổ chi tiết NCC) · **Báo cáo** (Chi phí theo nhóm, Tổng hợp chi phí, Công nợ NCC theo kỳ, Giá vật tư) ·
-  **Danh mục** (Công trình nhà/lô, NCC đối tượng, Vật tư, Hạng mục nhóm CP, Gộp mã) · **Hệ thống** (Kiểm soát, Cài đặt sao lưu, Người dùng). Mỗi mục có ô mã 2 chữ (TQ, PN, TC…).
-  Cuối menu là **tồn quỹ hiện tại** và giờ lưu gần nhất. **Ctrl B** thu gọn menu còn các ô mã 2 chữ.
+  **Danh mục** (Công trình nhà/lô, NCC đối tượng, Vật tư, Hạng mục nhóm CP, Gộp mã) · **Hệ thống** (Kiểm soát, Cài đặt sao lưu, Người dùng). Mỗi mục có biểu tượng riêng; mục Kiểm soát có nhãn số việc cần xử lý (ẩn khi bằng 0).
+  Cuối menu là **tồn quỹ hiện tại**, giờ lưu gần nhất và nút thu gọn. **Ctrl B** thu gọn menu (rộng 248px → 56px) chỉ còn logo và biểu tượng, rê chuột vào biểu tượng để xem tên mục; trạng thái này được nhớ theo từng người dùng.
 - **Thanh trên cùng**: ô **Công trình** (chọn một công trình thì mọi sổ chi phí, báo cáo, công nợ chỉ hiện công trình đó; chọn “Tất cả công trình” để bỏ lọc), ô **Tìm** toàn cục
   (**Ctrl K**: gõ số phiếu, tên NCC, vật tư, nội dung hoặc số tiền như `45tr`), nút **Nhập phiếu chi phí** (**F2**), nút **Ghi thu / chi** (**F3**), và (khi bật đăng nhập) tên người dùng + nút khóa màn hình (**Ctrl L**).
   Trên điện thoại, menu bên trái được thay bằng thanh 5 nút ở đáy màn hình (Tổng quan, Sổ quỹ, Ghi, Công nợ, Thêm).
@@ -56,6 +56,10 @@ Muốn có biểu tượng trên Desktop: bấm đúp **`TaoBieuTuongDesktop.bat
 | **Sổ quỹ thu chi** | `So_Thu_Chi_Hang_Ngay` | Ghi / sửa / xóa / nhân bản / in dòng thu chi. Tồn quỹ tự tính lũy kế. Lọc theo kỳ, dự án, NCC, thu / chi, trạng thái (Nháp), tìm kiếm. Tích chọn nhiều dòng để **Ghi sổ các dòng nháp** hoặc **Xóa** cùng lúc. |
 | **Phiếu thu / chi** | `Phieu_Chi` | Các dòng cùng **số phiếu** được gộp thành 1 phiếu. Danh sách bên trái, xem trước **2 liên trên 1 tờ A4** ở giữa, nội dung in bên phải. **Ctrl P** in. Số phiếu **PT** là phiếu thu, **PC** là phiếu chi. |
 | **Công trình, nhà/lô** | `Danh_Muc_Du_An`, `DM_CONGTRINH` | Mã, tên, ngân sách, trạng thái, ngày khởi công; đã chi, còn lại. Nút **Sổ chi phí** của công trình. Công trình đã có dòng thì nút Xóa mờ đi và chỉ dẫn dùng **Gộp mã**. |
+
+**Chọn nhiều dòng ở danh mục** (Công trình, NCC, Vật tư, Hạng mục, Nhà/khu): tích ô đầu dòng, thanh **Đã chọn N** hiện phía trên bảng với nút **Gộp mã N**, **Xóa N** và **Bỏ chọn**. Xóa nhiều chỉ xóa các mã chưa có dòng nào (vào Thùng rác); mã đang dùng được giữ lại và phần mềm nêu rõ mã nào không xóa được.
+
+**Sửa trực tiếp trong Sổ chi phí**: bấm đúp một ô để sửa; **Tab** lưu ô đó rồi sang ô kế tiếp cùng dòng, **Shift+Tab** quay lại ô trước, **Enter** lưu và đóng, **Esc** bỏ. Ô không đổi thì không ghi gì.
 | **NCC, đối tượng** | `Danh_Muc_NCC`, `DM_NCC` | Mã, tên, loại, SĐT, địa chỉ (in tự động lên phiếu). Nút **Sổ chi tiết công nợ** ở mỗi dòng. |
 | **Số dư đầu kỳ NCC** | (mới) | Mọi khoản số dư đầu kỳ đã nhập, cột Dư Có / Dư Nợ; thêm, sửa, xóa. Xem mục 12. |
 | **Nhập từ Excel** | — | Chọn file Excel (thu chi hoặc chi phí), xem trước, rồi mới ghi. |
