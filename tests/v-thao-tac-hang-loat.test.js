@@ -54,6 +54,14 @@ test('V2 danh mục vật tư: xóa nhiều mã vật tư chưa dùng; thanh ch�
     await page.waitForFunction(() => !document.querySelector('[data-pick="V1"]') && !document.querySelector('[data-pick="V2"]'), null, { timeout: 10000 });
     await settle(page);
     assert.deepEqual(readStored(srv.dataDir).materials, []);
+    // tab Nhóm chi phí: có ô tích và thanh chọn, nhưng không có nút Gộp mã; nhóm còn hạng mục thì không xóa được
+    await page.click('label:has(input[name=dm-tab][value=nhom])');
+    await page.waitForSelector('#dm-table [data-pick]');
+    const nhoms = await page.$$eval('#dm-table [data-pick]', (c) => c.slice(0, 2).map((x) => x.dataset.pick));
+    for (const m of nhoms) await page.check('[data-pick="' + m + '"]');
+    await page.waitForSelector('#sel-bar');
+    assert.equal(await page.locator('#sel-bar [data-bar=merge]').count(), 0, 'nhóm chi phí không có Gộp mã');
+    assert.equal(await page.locator('#sel-bar [data-bar=del]').count(), 1);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });

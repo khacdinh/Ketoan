@@ -432,7 +432,7 @@ export function bindMergeUI(root, loai, onToggle, bulk) {
       });
     }
     const html = '<b>Đã chọn ' + picks.length + ' ' + esc(bulk.noun) + '</b><span class="min-w-0 truncate text-ink-2">' + esc(picks.slice(0, 3).join(', ') + (picks.length > 3 ? '…' : '')) + '</span><span class="flex-1"></span>' +
-      (picks.length > 1 ? '<button type="button" class="btn btn-secondary btn-sm" data-bar="merge">' + icon('merge') + 'Gộp mã ' + picks.length + ' ' + esc(bulk.noun) + '</button>' : '') +
+      (picks.length > 1 && (!bulk.coGop || bulk.coGop()) ? '<button type="button" class="btn btn-secondary btn-sm" data-bar="merge">' + icon('merge') + 'Gộp mã ' + picks.length + ' ' + esc(bulk.noun) + '</button>' : '') +
       '<button type="button" class="btn btn-secondary btn-sm !text-alert" data-bar="del">' + icon('trash') + 'Xóa ' + picks.length + '</button>' +
       '<button type="button" class="btn btn-ghost btn-sm" data-bar="clear">Bỏ chọn</button>';
     if (bar.innerHTML !== html) bar.innerHTML = html;
