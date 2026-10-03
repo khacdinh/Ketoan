@@ -223,3 +223,55 @@ test('V6 phiếu chi có mục Mã vật tư: chọn theo mã hoặc tên, lưu 
     assert.deepEqual(errors.filter((e) => !/status of (400|409)/.test(e)), []);
   } finally { await browser.close(); await srv.stop(); }
 });
+
+test('V7 mã vật tư của phiếu chi đi theo phiếu in 2 liên và file Excel: dòng "Vật tư:" khi in, cột "Mã Vật Tư" khi xuất sổ (đầy đủ và theo bộ lọc), nhập lại giữ mã, mã lạ bị bỏ kèm cảnh báo', { skip: SKIP, timeout: 180000 }, async () => {
+  const X = require('./excel-helpers');
+  const srv = await startServer({});
+  await srv.ok('POST', '/api/projects', { ma: 'CT1', ten: 'Công trình 1' });
+  const hm = (await srv.db()).costItems[0].ma;
+  await srv.ok('POST', '/api/materials', { ma: 'XM', ten: 'Xi măng', dvt: 'bao', maHM: hm });
+  await srv.ok('POST', '/api/entries', { ngay: '2026-09-01', soPhieu: 'PC001/09', noiDung: 'Mua xi măng', chi: 500000, maDuAn: 'CT1', maVT: 'XM' });
+  await srv.ok('POST', '/api/entries', { ngay: '2026-09-01', soPhieu: 'PC001/09', noiDung: 'Tiền xe', chi: 100000, maDuAn: 'CT1' });
+  try {
+    // phiếu in 2 liên: dòng Vật tư
+    const { browser, page, errors } = await openPage(srv, '#/phieu');
+    try {
+      await page.evaluate(() => { location.hash = '#/phieu'; });
+      await page.waitForFunction(() => /PC001\/09/.test(document.querySelector('#view').innerText));
+      const html = await page.evaluate(async () => { const m = await import('/js/print.js'); const st = await import('/js/state.js'); const v = window.KT.buildVouchers(st.S.db).find((x) => x.soPhieu === 'PC001/09'); return m.voucherHtml(v, st.S.db.settings); });
+      assert.match(html, /Vật tư:<\/span><span class="vc-v">XM – Xi măng</);
+      assert.deepEqual(errors, []);
+    } finally { await browser.close(); }
+    // xuất sổ đầy đủ và sổ theo bộ lọc: cột Mã Vật Tư
+    for (const [url, sheet] of [['/api/export/full', 'So_Thu_Chi_Hang_Ngay'], ['/api/export/ledger', 'So_Thu_Chi']]) {
+      const wb = await X.loadWb((await srv.call('GET', url)).body);
+      const ws = wb.getWorksheet(sheet);
+      let hr = 0; let col = 0;
+      ws.eachRow((row, r) => { row.eachCell((c, ci) => { if (X.cellVal(c) === 'Mã Vật Tư') { hr = r; col = ci; } }); });
+      assert.ok(hr && col === 14, sheet + ': có cột Mã Vật Tư (cột N)');
+      const vals = [];
+      ws.eachRow((row, r) => { if (r > hr && X.cellVal(row.getCell(8)) === 'Mua xi măng') vals.push(X.cellVal(row.getCell(col))); });
+      assert.deepEqual(vals, ['XM'], sheet);
+    }
+    // nhập lại file đầy đủ vào bản sạch có danh mục vật tư: giữ mã; bản không có vật tư: bỏ mã kèm cảnh báo
+    const full = (await srv.call('GET', '/api/export/full')).body;
+    const srv2 = await startServer({});
+    try {
+      const hm2 = (await srv2.db()).costItems[0].ma;
+      await srv2.ok('POST', '/api/materials', { ma: 'xm', ten: 'Xi măng', dvt: 'bao', maHM: hm2 });
+      const r = await srv2.call('POST', '/api/import?mode=replace', full);
+      assert.equal(r.status, 200, JSON.stringify(r.json || {}).slice(0, 300));
+      const e = readStored(srv2.dataDir).entries.find((x) => x.noiDung === 'Mua xi măng');
+      assert.equal(e.maVT, 'xm', 'lấy đúng cách viết của danh mục');
+      assert.equal(readStored(srv2.dataDir).entries.find((x) => x.noiDung === 'Tiền xe').maVT, undefined);
+    } finally { await srv2.stop(); }
+    const srv3 = await startServer({});
+    try {
+      const dry = await srv3.call('POST', '/api/import?dryRun=1', full);
+      assert.match(JSON.stringify(dry.json.preview.warnings), /mã vật tư \\"XM\\" chưa có trong danh mục vật tư/);
+      const r = await srv3.call('POST', '/api/import?mode=replace', full);
+      assert.equal(r.status, 200);
+      assert.equal(readStored(srv3.dataDir).entries.find((x) => x.noiDung === 'Mua xi măng').maVT, undefined, 'mã lạ bị bỏ');
+    } finally { await srv3.stop(); }
+  } finally { await srv.stop(); }
+});

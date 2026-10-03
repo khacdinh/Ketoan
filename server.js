@@ -528,6 +528,7 @@ async function handleApi(req, res, url) {
       store.flushAudit();
       return ok(res, { kind: 'chi-phi', result, warnings: result.warnings.slice(0, 300), biDanh });
     }
+    importer.chuanHoaVatTu(parsed, store.db);
     if (url.searchParams.get('dryRun') === '1') {
       const nLocked = KT.isLockedDate(store.db, '') || !store.db.locks.length ? 0 : parsed.entries.filter((e) => KT.isLockedDate(store.db, e.ngay)).length;
       const w = (nLocked ? ['Có ' + nLocked + ' dòng thuộc tháng đã khóa sổ: sẽ được bỏ qua khi nhập.'] : []).concat(parsed.warnings);

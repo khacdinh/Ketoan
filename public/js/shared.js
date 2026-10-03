@@ -417,6 +417,7 @@
   function buildVouchers(db, ledger) {
     ledger = ledger || buildLedger(db);
     const sIdx = indexBy(db.suppliers);
+    const mIdx = indexBy(db.materials || []);
     const overrides = db.vouchers || {};
     const settings = db.settings || {};
     const map = new Map();
@@ -453,6 +454,16 @@
         if (t && !seenNd.has(t)) { seenNd.add(t); lyDoParts.push(t); }
       });
       const lyDoTuDong = lyDoParts.join('; ');
+      // vật tư của các dòng trong phiếu (mục Mã vật tư ở form Ghi thu / chi): "MÃ – Tên", không lặp
+      const seenVt = new Set();
+      const vatTuParts = [];
+      v.lines.forEach(function (r) {
+        const k = keyOf(r.maVT);
+        if (!k || seenVt.has(k)) return;
+        seenVt.add(k);
+        const m = mIdx.get(k);
+        vatTuParts.push(String(r.maVT).trim() + (m && m.ten ? ' – ' + m.ten : ''));
+      });
       list.push({
         key: v.key,
         soPhieu: v.soPhieu,
@@ -470,6 +481,7 @@
         diaChi: (ov.diaChi || '').trim() || diaChiTuDong,
         lyDoTuDong: lyDoTuDong,
         lyDo: (ov.lyDo || '').trim() || lyDoTuDong,
+        vatTu: vatTuParts.join('; '),
         hinhThuc: ov.hinhThuc || settings.hinhThucMacDinh || 'Tiền mặt',
         kemTheo: ov.kemTheo || '',
         override: ov,

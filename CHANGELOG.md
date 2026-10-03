@@ -4,7 +4,8 @@
 
 - Form **Ghi thu / chi** (loại Chi tiền) thêm ô **Mã vật tư** (không bắt buộc, gõ mã hoặc tên). Lưu thành trường `maVT` của dòng sổ quỹ (không đổi lược đồ: nằm trong cột `khac`); hiện ở Sổ quỹ, ở danh sách dòng của Phiếu thu / chi, tìm kiếm được (Sổ quỹ và Ctrl K).
 - Mã vật tư lạ bị từ chối; mã đã gộp tự đổi sang mã đích; đổi mã vật tư và Gộp mã đi theo dòng sổ; vật tư đang có dòng sổ không xóa được.
-- Chưa có trong file Excel xuất / nhập sổ thu chi (giữ nguyên bố cục file gốc).
+- **Phiếu in 2 liên** có thêm dòng “Vật tư: MÃ – Tên” khi phiếu có dòng gắn vật tư (file Excel một phiếu ghi kèm vào Lý do chi).
+- **Excel sổ thu chi** (Toàn bộ sổ sách và Sổ thu chi theo bộ lọc) thêm cột cuối **Mã Vật Tư** (cột N); nhập lại đọc cột này: mã khớp danh mục (không phân biệt hoa / thường, mã cũ đã gộp tự đổi) được giữ, mã chưa có trong danh mục vật tư bị bỏ kèm cảnh báo ở bước xem trước.
 
 ## Biểu đồ theo giao diện mới (03/10/2026)
 
