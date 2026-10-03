@@ -42,4 +42,26 @@ async function pick(page, sel, text) {
   await settle(page);
 }
 
-module.exports = { chromium, SKIP, openPage, settle, num, pick };
+// Chọn công trình ở thanh trên ('' = tất cả công trình): áp dụng cho mọi sổ và báo cáo
+async function chonCongTrinh(page, ma) {
+  await page.click('#tb-ct');
+  await page.waitForSelector('#ct-q');
+  if (ma) await page.fill('#ct-q', ma);
+  await page.waitForTimeout(60);
+  if (ma) await page.press('#ct-q', 'Enter'); else await page.click('#ct-list [data-ma=""]');
+  await settle(page);
+}
+
+// Thanh chọn kỳ thống nhất: kind = thang | quy | nam | khoang | tat-ca; khoảng ngày thì gõ từ ngày / đến ngày (dd/mm/yyyy)
+async function chonKy(page, prefix, kind, from, to) {
+  await page.click('label:has(input[name="' + prefix + '-pk"][value="' + kind + '"])');
+  await settle(page);
+  if (kind === 'khoang' && (from || to)) {
+    const box = (id) => page.locator('.date-field:has(#' + id + ') .date-text');
+    if (from) { await box(prefix + '-from').fill(from); await box(prefix + '-from').press('Tab'); }
+    if (to) { await box(prefix + '-to').fill(to); await box(prefix + '-to').press('Tab'); }
+    await settle(page);
+  }
+}
+
+module.exports = { chromium, SKIP, openPage, settle, num, pick, chonCongTrinh, chonKy };

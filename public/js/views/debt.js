@@ -33,7 +33,7 @@ export function renderDebt(root) {
   root = freshRoot(root);
   const f = normalizeFilter(S.filters.cpCn);
   const nccs = f.nccs;
-  const sel = LS.get('cp.cn.sel', '');
+  let sel = LS.get('cp.cn.sel', '');
   const used = new Set(S.db.costs.map((c) => KT.keyOf(c.maNCC)));
   const cbNcc = { id: 'cn-ncc', list: S.db.suppliers.filter((x) => used.has(KT.keyOf(x.ma))).concat(S.db.suppliers.filter((x) => !used.has(KT.keyOf(x.ma)))).map((x) => ({ ma: x.ma, ten: x.ten, sub: x.loai })),
     value: '', noun: 'nhà cung cấp', placeholder: nccs.length ? 'Thêm NCC: gõ mã hoặc tên' : 'Tất cả · gõ mã hoặc tên', label: 'Lọc theo nhà cung cấp (chọn được nhiều)', cls: 'w-[240px] max-sm:w-full',
@@ -208,6 +208,7 @@ export function renderDebt(root) {
       const ma = tr.dataset.ma;
       openMa = openMa === ma ? '' : ma;
       LS.set('cp.cn.sel', ma);
+      sel = ma;
       draw();
     }
   });

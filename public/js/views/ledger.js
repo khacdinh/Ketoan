@@ -220,7 +220,7 @@ function drawBulk(root) {
   sel.forEach((id) => { if (!visibleIds.includes(id)) sel.delete(id); });
   const all = $('#so-all', root);
   if (all) { all.checked = !!visibleIds.length && ids.length === visibleIds.length; all.indeterminate = ids.length > 0 && ids.length < visibleIds.length; }
-  if (!ids.length) { el.innerHTML = '<p class="text-[12.5px] text-ink-2" aria-live="polite">' + countHtml + '</p>'; return; }
+  if (!ids.length) { el.innerHTML = '<p class="text-[12.5px] text-ink-2" id="so-count" aria-live="polite">' + countHtml + '</p>'; return; }
   const rows = S.all.entries.filter((x) => sel.has(x.id));
   const nhap = rows.filter((x) => KT.isDraft(x));
   const tong = rows.reduce((t, x) => t + (x.thu || 0) + (x.chi || 0), 0);
