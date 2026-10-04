@@ -1,5 +1,9 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Menu trái nền xám nhạt (04/10/2026)
+
+- Theo bản cập nhật menu 1a (phương án “Xám nhạt”): nền menu neutral-200 #e7e7ea, đường kẻ neutral-300, tên nhóm và chữ phụ neutral-800, rê chuột neutral-300; mục đang mở giữ nền xanh thép accent-700.
+
 ## Phiếu chi có mục Mã vật tư (03/10/2026)
 
 - Form **Ghi thu / chi** (loại Chi tiền) thêm ô **Mã vật tư** (không bắt buộc, gõ mã hoặc tên). Lưu thành trường `maVT` của dòng sổ quỹ (không đổi lược đồ: nằm trong cột `khac`); hiện ở Sổ quỹ, ở danh sách dòng của Phiếu thu / chi, tìm kiếm được (Sổ quỹ và Ctrl K).
