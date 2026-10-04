@@ -234,6 +234,10 @@ function drawBulk(root) {
 
 function rowHtml(r, q) {
   const extra = [];
+  if (r.maVT) {
+    const vt = S.db.materials.find((x) => KT.keyOf(x.ma) === KT.keyOf(r.maVT));
+    extra.push('<span>Vật tư: <span class="text-ink-2">' + highlight(r.maVT + (vt ? ' – ' + vt.ten : ''), q) + '</span></span>');
+  }
   if (r.nguoiNhan) extra.push('<span>Người nhận: <span class="text-ink-2">' + highlight(r.nguoiNhan, q) + '</span></span>');
   if (r.ghiChu) extra.push('<span>Ghi chú: <span class="text-ink-2">' + highlight(r.ghiChu, q) + '</span></span>');
   const nhap = KT.isDraft(r);

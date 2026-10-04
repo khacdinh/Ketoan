@@ -35,7 +35,7 @@ export function openEntryForm(entry, opts) {
   const body =
     '<form id="entry-form" class="grid grid-cols-2 gap-x-5 gap-y-4 max-sm:grid-cols-1" novalidate autocomplete="off">' +
     (lockedRec ? '<p class="form-error col-span-2 max-sm:col-span-1" role="note">' + icon('lock') + '<span>' + esc(KT.lockMessage(KT.monthOf(entry.ngay), 'sửa')) + '</span></p>' : '') +
-    datalists() +
+    datalists() + '<datalist id="dl-vt-so">' + S.db.materials.map((m) => '<option value="' + esc(m.ma) + '">' + esc(m.ten + (m.dvt ? ' · ' + m.dvt : '')) + '</option>').join('') + '</datalist>' +
     '<div class="col-span-2 max-sm:col-span-1"><div class="seg" role="radiogroup" aria-label="Loại nghiệp vụ">' +
     [['chi', 'Chi tiền'], ['thu', 'Thu tiền'], ['ca-hai', 'Thu và chi cùng lúc']].map(([v, l]) =>
       '<label class="seg-item"><input type="radio" name="loai" value="' + v + '"' + (loai === v ? ' checked' : '') + '><span>' + l + '</span></label>').join('') +
@@ -49,6 +49,8 @@ export function openEntryForm(entry, opts) {
     '<span class="hint" id="da-hint"></span></label>' +
     '<label class="field"><span class="label">Nhà cung cấp, đối tượng</span><input name="maNCC" class="input" list="dl-suppliers" value="' + esc(e.maNCC) + '" placeholder="Gõ mã hoặc tên">' +
     '<span class="hint" id="ncc-hint"></span></label>' +
+    '<label class="field" data-show="chi"><span class="label">Mã vật tư</span><input name="maVT" class="input" list="dl-vt-so" value="' + esc(e.maVT || '') + '" placeholder="Gõ mã hoặc tên vật tư (không bắt buộc)">' +
+    '<span class="hint" id="vt-hint"></span></label>' +
     '<label class="field col-span-2 max-sm:col-span-1"><span class="label">Nội dung thu, chi <b class="req">*</b></span><textarea name="noiDung" class="input" rows="2" placeholder="VD: Thanh toán công nợ vật tư" required>' + esc(e.noiDung) + '</textarea></label>' +
     '<label class="field" data-show="chi"><span class="label">Số tiền chi (đồng)</span><input name="chi" inputmode="decimal" class="input money-input h-11" value="' + (e.chi ? money(e.chi) : '') + '" placeholder="VD: 1.250.000 hoặc 50tr" aria-describedby="chi-hint">' +
     '<span class="hint" id="chi-hint"></span></label>' +
@@ -110,6 +112,19 @@ export function openEntryForm(entry, opts) {
       else setHint(h, 'Chưa có trong danh mục. <a href="#" data-act="add-' + kind + '">Thêm ' + (kind === 'project' ? 'dự án' : 'nhà cung cấp') + ' này</a>', 'hint bad');
     }
     const daHint = () => hint(get('maDuAn'), S.db.projects, '#da-hint', 'project');
+    // mã vật tư: hiện tên và đơn vị tính; mã lạ chỉ báo lỗi, không có nút thêm (thêm vật tư ở Danh mục)
+    const vtHint = () => {
+      const h = $('#vt-hint', el);
+      const v = get('maVT').value.trim();
+      if (!v) { setHint(h, '', 'hint'); return; }
+      const code = resolveCode(S.db.materials, v);
+      const m = S.db.materials.find((x) => KT.keyOf(x.ma) === KT.keyOf(code));
+      if (m) setHint(h, esc(m.ten) + (m.dvt ? ' · ' + esc(m.dvt) : ''), 'hint good');
+      else setHint(h, 'Chưa có trong danh mục vật tư', 'hint bad');
+    };
+    get('maVT').addEventListener('input', vtHint);
+    get('maVT').addEventListener('change', () => { get('maVT').value = resolveCode(S.db.materials, get('maVT').value); vtHint(); });
+    vtHint();
     const nccHint = () => hint(get('maNCC'), S.db.suppliers, '#ncc-hint', 'supplier');
     // Công nợ còn lại của NCC (chi phí công trình − đã trả), theo dự án nếu đã chọn; không tính dòng đang sửa
     function debtHint(maNCC) {
@@ -202,6 +217,7 @@ export function openEntryForm(entry, opts) {
         soPhieu: get('soPhieu').value.trim(),
         maDuAn: resolveCode(S.db.projects, get('maDuAn').value),
         maNCC: resolveCode(S.db.suppliers, get('maNCC').value),
+        maVT: loai === 'thu' ? '' : resolveCode(S.db.materials, get('maVT').value),
         noiDung: get('noiDung').value.trim(),
         thu: loai === 'chi' ? 0 : getThu(),
         chi: loai === 'thu' ? 0 : getChi(),
@@ -213,6 +229,7 @@ export function openEntryForm(entry, opts) {
       if (KT.isLockedDate(S.all, data.ngay)) return fail('ngay', KT.lockMessage(KT.monthOf(data.ngay), 'ghi'));
       if (data.maDuAn && !projectByCode(data.maDuAn)) return fail('maDuAn', 'Mã dự án chưa có trong danh mục. Bấm “Thêm dự án này” hoặc chọn mã có sẵn');
       if (data.maNCC && !supplierByCode(data.maNCC)) return fail('maNCC', 'Mã nhà cung cấp chưa có trong danh mục. Bấm “Thêm nhà cung cấp này” hoặc chọn mã có sẵn');
+      if (data.maVT && !S.db.materials.some((x) => KT.keyOf(x.ma) === KT.keyOf(data.maVT))) return fail('maVT', 'Mã vật tư chưa có trong danh mục vật tư. Chọn mã có sẵn hoặc để trống');
       if (!data.noiDung) return fail('noiDung', 'Nhập nội dung thu, chi');
       if (isNaN(data.chi)) return fail('chi', 'Số tiền chi không hợp lệ. Ví dụ: 1.250.000, 50tr, 300k');
       if (isNaN(data.thu)) return fail('thu', 'Số tiền thu không hợp lệ. Ví dụ: 1.250.000, 50tr, 300k');

@@ -227,6 +227,13 @@ function cleanEntry(body) {
     if (!s) throw new HttpError(400, 'Mã NCC "' + e.maNCC + '" chưa có trong danh mục');
     e.maNCC = s.ma;
   }
+  // Mã vật tư (không bắt buộc): phiếu chi trả cho vật tư nào. Chỉ lưu khi có; mã cũ đã gộp tự đổi sang mã đích.
+  const vt = str(body.maVT, 60);
+  if (vt) {
+    const m = findCode(store.db.materials, vt);
+    if (!m) throw new HttpError(400, 'Mã vật tư "' + vt + '" chưa có trong danh mục');
+    e.maVT = m.ma;
+  }
   return e;
 }
 
@@ -370,6 +377,7 @@ async function handleApi(req, res, url) {
         trace.assertOpen([rec.ngay, e.ngay], 'sửa');
         Object.assign(rec, e, { updatedAt: now });
         if (!e.trangThai) delete rec.trangThai;
+        if (!e.maVT) delete rec.maVT;
         trace.log(req, KT.isDraft(before) && !KT.isDraft(rec) ? 'ghi-so' : 'sua', 'entries', rec, before, rec);
         store.save();
         return ok(res, { id: rec.id });
@@ -520,6 +528,7 @@ async function handleApi(req, res, url) {
       store.flushAudit();
       return ok(res, { kind: 'chi-phi', result, warnings: result.warnings.slice(0, 300), biDanh });
     }
+    importer.chuanHoaVatTu(parsed, store.db);
     if (url.searchParams.get('dryRun') === '1') {
       const nLocked = KT.isLockedDate(store.db, '') || !store.db.locks.length ? 0 : parsed.entries.filter((e) => KT.isLockedDate(store.db, e.ngay)).length;
       const w = (nLocked ? ['Có ' + nLocked + ' dòng thuộc tháng đã khóa sổ: sẽ được bỏ qua khi nhập.'] : []).concat(parsed.warnings);

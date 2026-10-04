@@ -22,7 +22,7 @@ export function timKiem(raw) {
   const [vs, vt] = lay(vouchers(), (v) => KT.normalizeText(v.soPhieu).includes(n) || (coSo && v.soTien === so));
   them('Phiếu thu / chi', vs.map((v) => ({ ten: v.soPhieu, phu: (v.loai === 'thu' ? 'Phiếu thu' : 'Phiếu chi') + ' · ' + fdate(v.ngay || (v.lines[0] && v.lines[0].ngay)), phai: money(v.soTien || 0), di: () => { S.selectedVoucher = v.key; chuyenDen('#/phieu'); } })), vt);
   // dòng sổ quỹ
-  const [es, et] = lay(S.ledger, (e) => KT.normalizeText([e.soPhieu, e.noiDung, e.tenNCC, e.maNCC, e.tenDuAn, e.maDuAn, e.nguoiNhan, e.ghiChu].join(' ')).includes(n) || (coSo && (e.thu === so || e.chi === so)));
+  const [es, et] = lay(S.ledger, (e) => KT.normalizeText([e.soPhieu, e.noiDung, e.tenNCC, e.maNCC, e.tenDuAn, e.maDuAn, e.maVT, e.nguoiNhan, e.ghiChu].join(' ')).includes(n) || (coSo && (e.thu === so || e.chi === so)));
   them('Dòng sổ quỹ', es.map((e) => ({ ten: e.noiDung || e.soPhieu || '(không nội dung)', phu: fdate(e.ngay) + (e.soPhieu ? ' · ' + e.soPhieu : '') + (e.maDuAn ? ' · ' + e.maDuAn : ''), phai: money(e.thu || e.chi), di: () => { Object.assign(S.filters.so, { period: 'tat-ca', from: '', to: '', ncc: '', loai: '', q }); saveFilter('so'); chuyenDen('#/so-thu-chi'); } })), et);
   // nhà cung cấp
   const [ss, st] = lay(S.db.suppliers, (x) => KT.normalizeText(x.ma + ' ' + x.ten).includes(n));

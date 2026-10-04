@@ -20,6 +20,7 @@ function part(v, s, lien) {
     '<div class="vc-row"><span class="vc-l">' + (thu ? 'Họ và tên người nộp tiền:' : 'Họ và tên người nhận tiền:') + '</span><span class="vc-v strong">' + esc(v.nguoiNhan) + '</span></div>' +
     '<div class="vc-row"><span class="vc-l">Địa chỉ:</span><span class="vc-v">' + esc(v.diaChi) + '</span></div>' +
     '<div class="vc-row vc-reason"><span class="vc-l">' + (thu ? 'Lý do nộp:' : 'Lý do chi:') + '</span><span class="vc-v">' + esc(v.lyDo) + '</span></div>' +
+    (v.vatTu ? '<div class="vc-row"><span class="vc-l">Vật tư:</span><span class="vc-v">' + esc(v.vatTu) + '</span></div>' : '') +
     '<div class="vc-row"><span class="vc-l">Số tiền:</span><span class="vc-v strong vc-amount">' + money(v.soTien) + ' đ</span>' +
     '<span class="vc-l vc-l2">Hình thức:</span><span class="vc-v vc-form">' + esc(v.hinhThuc) + '</span></div>' +
     '<div class="vc-row"><span class="vc-l">Bằng chữ:</span><span class="vc-v italic">' + esc(v.bangChu) + '</span></div>' +

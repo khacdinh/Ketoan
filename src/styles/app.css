@@ -121,39 +121,41 @@
 
   /* ---------------- Khung ứng dụng ---------------- */
   .app-sidebar {
-    @apply fixed inset-y-0 left-0 z-20 flex w-[var(--side-w)] flex-col border-r border-rule bg-paper text-ink;
+    @apply fixed inset-y-0 left-0 z-20 flex w-[var(--side-w)] flex-col text-ink;
     white-space: nowrap; overflow: hidden;
+    /* nền menu xám nhạt (bản 1a, phương án "Xám nhạt"): neutral-200, đường kẻ neutral-300 */
+    background: var(--color-neutral-200); border-right: 1px solid var(--color-neutral-300);
   }
   .app-main { margin-left: var(--side-w); }
   /* Menu trái (bản cập nhật 1a): rộng 248px, thu gọn 56px; không còn ô mã 2 chữ, biểu tượng Lucide 18px */
   .side-brand { @apply flex flex-none items-center gap-2.5; height: 52px; padding: 0 16px; }
-  .brand-mark { @apply grid flex-none place-items-center border border-rule bg-white p-0.5; width: 36px; height: 36px; }
+  .brand-mark { @apply grid flex-none place-items-center border border-neutral-300 bg-white p-0.5; width: 36px; height: 36px; }
   .brand-mark img { @apply block h-full w-full object-contain; }
   .brand-text { @apply min-w-0 leading-[1.15]; }
   .brand-name { font-family: var(--font-heading); @apply text-[18px] font-semibold text-ink; }
-  .brand-org { @apply truncate text-[11px] text-neutral-700; }
+  .brand-org { @apply truncate text-[11px] text-neutral-800; }
   #nav { @apply flex min-h-0 flex-1 flex-col overflow-y-auto; gap: 8px; padding: 0 12px 6px; }
   .nav-group { @apply flex flex-col; }
-  .nav-head { font-family: var(--font-heading); @apply font-semibold text-neutral-700 uppercase; font-size: 12.5px; letter-spacing: .08em; padding: 0 10px 2px; }
+  .nav-head { font-family: var(--font-heading); @apply font-semibold text-neutral-800 uppercase; font-size: 12.5px; letter-spacing: .08em; padding: 0 10px 2px; }
   .nav-item { @apply relative flex items-center text-[14px] text-ink no-underline transition-colors; height: 30px; gap: 11px; padding: 0 10px; }
   .nav-item .ph { @apply flex-none; font-size: 18px; }
-  .nav-item:hover { background: var(--color-accent-100); }
+  .nav-item:hover { background: var(--color-neutral-300); }
   .nav-label { @apply min-w-0 flex-1 truncate; }
   .nav-item.active { @apply font-bold text-paper; background: var(--color-accent-700); }
   .nav-item.active:hover { background: var(--color-accent-700); }
   /* số việc cần xử lý ở Kiểm soát: chữ nâu trên nền vàng nhạt, ẩn khi bằng 0 */
   .nav-badge { @apply flex-none bg-caution-soft font-bold text-caution tabular-nums; font-size: 11.5px; padding: 1px 7px; }
   .nav-item.active .nav-badge { @apply bg-caution-soft text-caution; }
-  .side-foot { @apply flex flex-none items-end justify-center gap-2 border-t border-rule; padding: 7px 16px; }
+  .side-foot { @apply flex flex-none items-end justify-center gap-2; border-top: 1px solid var(--color-neutral-300); padding: 7px 16px; }
   .side-foot .foot-text { @apply min-w-0 flex-1; }
-  .side-foot .foot-lbl { @apply truncate text-[12px] text-neutral-700; }
+  .side-foot .foot-lbl { @apply truncate text-[12px] text-neutral-800; }
   .side-foot .fund { @apply font-bold text-ink tabular-nums; font-size: 19px; line-height: 1.25; }
   .side-foot .fund.neg { @apply text-alert; }
   .side-toggle { @apply flex-none; color: var(--color-accent-700); }
   /* menu thu gọn (Ctrl B) hoặc cửa sổ hẹp: chỉ còn logo, biểu tượng, nút mở rộng; tên nhóm thành đường kẻ mảnh */
   body.side-thu .brand-text, body.side-thu .nav-label, body.side-thu .nav-head, body.side-thu .side-foot .foot-text { display: none; }
   body.side-thu #nav { padding: 0 6px 6px; }
-  body.side-thu .nav-group + .nav-group { border-top: 1px solid var(--color-rule); padding-top: 8px; }
+  body.side-thu .nav-group + .nav-group { border-top: 1px solid var(--color-neutral-300); padding-top: 8px; }
   body.side-thu .nav-item { @apply justify-center; padding: 0; }
   body.side-thu .nav-badge { @apply absolute; top: 1px; right: 2px; font-size: 9.5px; padding: 0 3px; }
   body.side-thu .side-brand { @apply justify-center; padding: 0 10px; }
@@ -162,7 +164,7 @@
     :root { --side-w: 56px; }
     .brand-text, .nav-label, .nav-head, .side-foot .foot-text { display: none; }
     #nav { padding: 0 6px 6px; }
-    .nav-group + .nav-group { border-top: 1px solid var(--color-rule); padding-top: 8px; }
+    .nav-group + .nav-group { border-top: 1px solid var(--color-neutral-300); padding-top: 8px; }
     .nav-item { @apply justify-center; padding: 0; }
     .nav-badge { @apply absolute; top: 1px; right: 2px; font-size: 9.5px; padding: 0 3px; }
     .side-brand { @apply justify-center; padding: 0 10px; }
@@ -438,27 +440,16 @@
   /* Thu = xanh thép đậm, chi = xám: khác nhau về độ sáng (đọc được cả khi in đen trắng), có chú thích */
   .flow { @apply relative; --thu: #416180; --chi: #98989b; }
   .flow svg { @apply block h-auto w-full overflow-visible; }
-  .flow .grid-line { stroke: var(--color-rule); stroke-width: 1; }
+  .flow .grid-line { stroke: var(--color-rule); stroke-width: 1; stroke-dasharray: 2 3; }
   .flow .zero-line { stroke: var(--color-rule-2); stroke-width: 1; }
   .flow .tick { stroke: var(--color-rule-2); stroke-width: 1; }
   .flow .axis { fill: var(--color-ink-3); font-size: 11.5px; font-variant-numeric: tabular-nums; }
-  .flow .panel-title { fill: var(--color-ink-2); font-size: 12px; font-weight: 700; }
-  .flow .line { fill: none; stroke: var(--color-pen); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-  .flow .area-top { stop-color: var(--color-pen); stop-opacity: 0.2; }
-  .flow .area-bot { stop-color: var(--color-pen); stop-opacity: 0.03; }
-  .flow .area-neg { fill: var(--color-alert); fill-opacity: 0.14; }
   .flow .bar-thu { fill: var(--thu); }
   .flow .bar-chi { fill: var(--chi); }
-  .flow .end-dot { fill: var(--color-pen); stroke: var(--color-paper); stroke-width: 2; }
-  .flow .mark-dot { fill: var(--color-paper); stroke: var(--color-pen); stroke-width: 2; }
-  .flow .direct { fill: var(--color-ink); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; paint-order: stroke; stroke: var(--color-paper); stroke-width: 3px; stroke-linejoin: round; }
-  .flow .direct-sub { fill: var(--color-ink-3); font-size: 11.5px; paint-order: stroke; stroke: var(--color-paper); stroke-width: 3px; stroke-linejoin: round; }
-  .flow .cross { stroke: var(--color-ink); stroke-width: 1; opacity: 0.3; }
-  .flow .hover-dot { fill: var(--color-paper); stroke: var(--color-pen); stroke-width: 2.5; }
+  .flow .hl { fill: var(--color-accent-100); }
   .flow-legend { @apply flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-ink-2; --thu: #416180; --chi: #98989b; }
   .flow-legend span, .tip .muted:has(.sw) { @apply inline-flex items-center gap-1.5; }
   .sw { @apply inline-block h-2.5 w-2.5 flex-none; }
-  .sw-ton { @apply h-0.5 w-4 bg-pen; }
   .sw-thu { background: #416180; }
   .sw-chi { background: #98989b; }
   .tip {
@@ -628,10 +619,10 @@
   .bars svg { @apply block h-auto w-full overflow-visible; }
   .bars .grid-line { stroke: var(--color-rule); stroke-width: 1; }
   .bars .axis { fill: var(--color-ink-3); font-size: 11px; font-variant-numeric: tabular-nums; }
-  .bars .bar { fill: var(--color-pen); fill-opacity: 0.85; }
-  .bars .bar:hover { fill-opacity: 1; }
-  .bars .cum { fill: none; stroke: var(--color-caution); stroke-width: 2; stroke-linejoin: round; }
-  .bars .cum-dot { fill: var(--color-caution); stroke: var(--color-paper); stroke-width: 2; }
+  .bars .bar { fill: var(--color-accent-700); }
+  .bars .bar:hover { fill: var(--color-accent-800); }
+  .bars .cum { fill: none; stroke: var(--color-ink); stroke-width: 1.5; stroke-dasharray: 5 3; stroke-linejoin: round; }
+  .bars .cum-dot { fill: var(--color-ink); stroke: var(--color-paper); stroke-width: 2; }
 
   /* Chứng từ đính kèm */
   .att-box { @apply mt-4 flex flex-col gap-2 border border-rule bg-transparent px-4 py-3; }

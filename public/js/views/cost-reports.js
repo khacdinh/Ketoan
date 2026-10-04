@@ -202,7 +202,7 @@ function drawMonthChart(el, byMonth) {
       '<text class="axis" x="' + (m.l - 6) + '" y="' + (yc(maxCol * k) + 4).toFixed(1) + '" text-anchor="end">' + esc(fmtShort(maxCol * k)) + '</text>';
   });
   data.forEach((d, i) => {
-    svg += '<rect class="bar" x="' + (x(i) - bw / 2).toFixed(1) + '" y="' + yc(d.total).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (m.t + ih - yc(d.total)).toFixed(1) + '" rx="2"><title>' +
+    svg += '<rect class="bar" x="' + (x(i) - bw / 2).toFixed(1) + '" y="' + yc(d.total).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (m.t + ih - yc(d.total)).toFixed(1) + '"><title>' +
       esc('Tháng ' + d.thang.slice(5) + '/' + d.thang.slice(0, 4) + ': ' + money(d.total) + ' đ, lũy kế ' + money(d.luyKe) + ' đ') + '</title></rect>' +
       '<text class="axis" x="' + x(i).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle">' + d.thang.slice(5) + '/' + d.thang.slice(2, 4) + '</text>';
   });
@@ -416,7 +416,8 @@ function stat(label, value, sub) {
   return '<div class="stat"><div class="stat-label">' + esc(label) + '</div><div class="stat-value">' + value + '</div>' + (sub ? '<div class="stat-sub">' + sub + '</div>' : '') + '</div>';
 }
 
-const SERIES = ['#416180', '#8a5a00', '#2f6b3f', '#7a7a7d', '#a33a2e', '#2c455d'];
+// Nhiều nhà cung cấp trên một biểu đồ: chỉ dùng thang xanh thép và xám, phân biệt bằng nét (liền / đứt) chứ không bằng màu trạng thái
+const SERIES = [{ c: '#416180', d: '' }, { c: '#1d1f20', d: '6 3' }, { c: '#749dc4', d: '' }, { c: '#7a7a7d', d: '2 3' }, { c: '#2c455d', d: '9 3 2 3' }, { c: '#98989b', d: '' }];
 
 function drawPriceChart(el, legend, byNcc) {
   const all = [];
@@ -459,11 +460,12 @@ function drawPriceChart(el, legend, byNcc) {
   let k = 0;
   let leg = '';
   byNcc.forEach((list, ncc) => {
-    const color = SERIES[k++ % SERIES.length];
+    const sr = SERIES[k++ % SERIES.length];
+    const color = sr.c;
     const name = (supplierByCode(ncc) || {}).ten || ncc;
-    if (list.length > 1) svg += '<polyline fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round" points="' + list.map((h) => x(h.ngay).toFixed(1) + ',' + y(h.donGia).toFixed(1)).join(' ') + '"/>';
-    list.forEach((h) => { svg += '<circle cx="' + x(h.ngay).toFixed(1) + '" cy="' + y(h.donGia).toFixed(1) + '" r="4" fill="' + color + '" stroke="#f2f2f3" stroke-width="1.5"><title>' + esc(fdate(h.ngay) + ' · ' + name + ': ' + money(h.donGia) + ' đ') + '</title></circle>'; });
-    leg += '<span class="flex items-center gap-1.5"><span class="inline-block size-2.5 rounded-full" style="background:' + color + '"></span>' + esc(name) + '</span>';
+    if (list.length > 1) svg += '<polyline fill="none" stroke="' + color + '" stroke-width="2"' + (sr.d ? ' stroke-dasharray="' + sr.d + '"' : '') + ' stroke-linejoin="round" points="' + list.map((h) => x(h.ngay).toFixed(1) + ',' + y(h.donGia).toFixed(1)).join(' ') + '"/>';
+    list.forEach((h) => { svg += '<rect x="' + (x(h.ngay) - 3.5).toFixed(1) + '" y="' + (y(h.donGia) - 3.5).toFixed(1) + '" width="7" height="7" fill="' + color + '" stroke="#f2f2f3" stroke-width="1.5"><title>' + esc(fdate(h.ngay) + ' · ' + name + ': ' + money(h.donGia) + ' đ') + '</title></rect>'; });
+    leg += '<span class="flex items-center gap-1.5"><svg width="24" height="8" viewBox="0 0 24 8" aria-hidden="true"><line x1="0" x2="24" y1="4" y2="4" stroke="' + color + '" stroke-width="2"' + (sr.d ? ' stroke-dasharray="' + sr.d + '"' : '') + '/></svg>' + esc(name) + '</span>';
   });
   el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Đơn giá theo thời gian">' + svg + '</svg>';
   legend.innerHTML = leg;
