@@ -21,12 +21,12 @@
 
   /* Giấy & mực (bảng màu của giao diện cũ: giấy sổ xanh lá nhạt, mực xanh đen) */
   --color-paper: #F4F6F1;       /* nền trang: giấy sổ */
-  --color-sheet: #FFFFFF;       /* mặt bảng, thẻ, hộp thoại */
+  --color-sheet: #FCFDFB;       /* mặt bảng, thẻ, hộp thoại */
   --color-surface: #F7F9F4;     /* dòng tổng, ô phụ */
   --color-head: #EBF1E8;        /* đầu cột bảng */
   --color-ink: #172A4E;         /* mực xanh đen: chữ chính, nút chính */
   --color-ink-2: #4A5670;       /* chữ phụ */
-  --color-ink-3: #667085;       /* chữ mờ (vẫn đạt tương phản 4.5:1) */
+  --color-ink-3: #596376;       /* chữ mờ (vẫn đạt tương phản 4.5:1) */
   --color-rule: #DCE6DB;        /* đường kẻ sổ */
   --color-rule-2: #B3CAB7;      /* đường kẻ đậm */
   --color-field: #8E9990;       /* viền ô nhập (≥ 3:1) */
@@ -700,7 +700,6 @@
   /* Mặt giấy: nền trắng như giao diện cũ (khung vẫn vuông, có dấu góc) */
   .sheet, .equation, .att-box, .user-box { background: var(--color-sheet); }
   .stat { background: var(--color-sheet); }
-  .nav-item.active, .nav-item.active:hover { background: var(--color-ink); color: #fff; }
   /* Biểu đồ: màu thu / chi của giao diện cũ */
   .flow, .flow-legend { --thu: #2A8A66; --chi: #D97A2B; }
   .sw-thu { background: #2A8A66; }
@@ -710,6 +709,32 @@
   .bars .bar:hover { fill-opacity: 1; }
   .bars .cum { stroke: var(--color-caution); stroke-dasharray: none; stroke-width: 2; }
   .bars .cum-dot { fill: var(--color-caution); }
+  /* ================= Dịu mắt, dễ tìm =================
+     Một quy ước màu: XANH DƯƠNG = chỗ bấm được và "đang ở đây" (nút chính, menu đang mở, viền nút phụ, biểu tượng thao tác);
+     XANH LÁ = tiền thu; CAM NÂU = tiền chi; ĐỎ = xóa / lỗi. Nền kem xanh nhạt, khung trắng ngà (đỡ chói), chữ phụ đậm hơn một nấc,
+     dòng bảng xen kẽ rất nhạt + rê chuột xanh nhạt để mắt theo được dòng, vòng tiêu điểm rõ khi dùng bàn phím. */
+  .nav-head { color: var(--color-accent-700); font-size: 11.5px; font-weight: 700; letter-spacing: .07em; padding: 0 10px 2px; }
+  .nav-item { font-size: 14.5px; color: var(--color-ink); border-left: 3px solid transparent; padding-left: 7px; }
+  .nav-item .ph { color: var(--color-accent-600); }
+  .nav-item:hover { background: #DCE4D9; }
+  .nav-item.active, .nav-item.active:hover { background: #D5E3F6; color: #0F2A5C; font-weight: 700; border-left-color: var(--color-pen); }
+  .nav-item.active .ph { color: #0F2A5C; }
+  .btn-primary { background: var(--color-pen); border-color: var(--color-pen); }
+  .btn-primary:hover:not(:disabled) { background: var(--color-accent-700); }
+  .btn-primary:active:not(:disabled) { background: var(--color-accent-800); }
+  .btn-secondary { background: var(--color-sheet); border-color: #9DB3D9; color: var(--color-accent-700); font-weight: 600; }
+  .btn-secondary:hover:not(:disabled) { background: var(--color-accent-100); border-color: var(--color-pen); color: var(--color-accent-800); }
+  .btn-ghost { color: var(--color-accent-700); }
+  .btn-ghost:hover:not(:disabled) { background: var(--color-accent-100); color: var(--color-accent-800); }
+  .icon-btn { color: #3F5F94; }
+  .icon-btn:hover { background: var(--color-accent-100); color: var(--color-accent-800); }
+  .icon-btn.danger { color: var(--color-alert); }
+  .icon-btn.danger:hover { background: var(--color-alert-soft); color: var(--color-alert); }
+  :is(.btn, .icon-btn, .nav-item, a, summary, [tabindex]):focus-visible { outline: 2px solid var(--color-pen); outline-offset: 2px; }
+  .ledger:not(.grid-entry) tbody tr:where(:nth-child(even):not(.is-active):not(.draft)) > td { background: rgb(47 93 170 / .028); }
+  .ledger tbody tr:hover > td { background: #E8EFFA; }
+  .ledger td.chi { color: #9A4A14; }
+  .seg-item input:checked + span { color: var(--color-accent-800); }
 }
 
 /* =====================================================================

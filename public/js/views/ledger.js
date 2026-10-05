@@ -252,7 +252,7 @@ function rowHtml(r, q) {
     '<td class="wrap-text">' + highlight(r.noiDung, q) + clipHtml('entries', r.id) +
     (extra.length ? '<div class="mt-0.5 flex flex-wrap gap-x-3 text-[12.5px] text-ink-3">' + extra.join('') + '</div>' : '') + '</td>' +
     '<td class="num money thu">' + (r.thu ? highlight(money(r.thu), q) : '') + '</td>' +
-    '<td class="num money">' + (r.chi ? highlight(money(r.chi), q) : '') + '</td>' +
+    '<td class="num money chi">' + (r.chi ? highlight(money(r.chi), q) : '') + '</td>' +
     '<td class="num money font-medium' + (r.ton < 0 ? ' neg' : '') + '">' + (nhap ? '<span class="text-ink-3" title="Dòng nháp không tính vào tồn quỹ">—</span>' : money(r.ton)) + '</td>' +
     '<td class="actions no-print">' +
     (nhap ? '<button type="button" class="icon-btn" data-act="post" title="Ghi sổ dòng nháp này" aria-label="Ghi sổ dòng nháp">' + icon('check') + '</button>' : '') +
