@@ -464,6 +464,7 @@
   }
   .modal-backdrop.show .modal { @apply translate-y-0; }
   .modal.wide { @apply max-w-[780px]; }
+  .modal.wide.phieu { @apply max-w-[1040px]; }
   .modal.small { @apply max-w-[440px]; }
   .modal-head { @apply flex items-center justify-between gap-3 border-b border-rule px-5 py-3; }
   .modal-head h2 { @apply text-[20px] leading-tight font-semibold; }

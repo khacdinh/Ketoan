@@ -355,6 +355,45 @@ async function handleApi(req, res, url) {
       store.save();
       return ok(res, { deleted: gone.length });
     }
+    // Ghi cả phiếu nhiều dòng trong một lần lưu: POST /api/entries/phieu { rows: [{ id?, ...dòng }], xoa: [id] }
+    // Dòng có id thì sửa, không có id thì thêm; xoa = dòng của phiếu bị bỏ khỏi phiếu (vào thùng rác). Hợp lệ hết mới ghi, hỏng một dòng thì không ghi dòng nào.
+    if (m === 'POST' && seg[2] === 'phieu' && seg.length === 3) {
+      const body = await readJson(req);
+      if (!Array.isArray(body.rows) || !body.rows.length) throw new HttpError(400, 'Phiếu cần có ít nhất một dòng');
+      if (body.rows.length > 200) throw new HttpError(400, 'Một phiếu tối đa 200 dòng');
+      const bo = idList(body.xoa);
+      const items = body.rows.map((r, i) => {
+        if (!r || typeof r !== 'object') throw new HttpError(400, 'Dòng ' + (i + 1) + ' không hợp lệ');
+        let e;
+        try { e = cleanEntry(r); } catch (err) { if (err instanceof HttpError) throw new HttpError(err.status, 'Dòng ' + (i + 1) + ': ' + err.message); throw err; }
+        const rec = r.id ? byId(db.entries, r.id) : null;
+        if (rec && bo.has(rec.id)) throw new HttpError(400, 'Dòng ' + (i + 1) + ' vừa sửa vừa xóa');
+        return { e, rec };
+      });
+      const gone = db.entries.filter((x) => bo.has(x.id));
+      if (gone.length !== bo.size) throw new HttpError(404, 'Có dòng cần xóa không còn trong sổ');
+      trace.assertOpen(items.map((x) => x.e.ngay).concat(items.filter((x) => x.rec).map((x) => x.rec.ngay), gone.map((x) => x.ngay)), 'ghi phiếu');
+      const ids = items.map(({ e, rec }) => {
+        if (rec) {
+          const before = trace.clone(rec);
+          Object.assign(rec, e, { updatedAt: now });
+          if (!e.trangThai) delete rec.trangThai;
+          if (!e.maVT) delete rec.maVT;
+          trace.log(req, KT.isDraft(before) && !KT.isDraft(rec) ? 'ghi-so' : 'sua', 'entries', rec, before, rec);
+          return rec.id;
+        }
+        const nu = Object.assign({ id: store.newId(), seq: store.nextSeq(), createdAt: now, updatedAt: now }, e);
+        db.entries.push(nu);
+        trace.log(req, 'them', 'entries', nu, null, nu, KT.isDraft(nu) ? { note: 'Lưu nháp (chưa ghi sổ)' } : null);
+        return nu.id;
+      });
+      if (gone.length) {
+        db.entries = db.entries.filter((x) => !bo.has(x.id));
+        trace.toTrash(req, 'entries', gone, gone.length === 1 ? 'Dòng sổ ' + trace.describe('entries', gone[0]) : gone.length + ' dòng sổ thu chi');
+      }
+      store.save();
+      return ok(res, { ids });
+    }
     // Ghi sổ các dòng nháp: POST /api/entries/post { ids }
     if (m === 'POST' && seg[2] === 'post' && seg.length === 3) {
       const ids = idList((await readJson(req)).ids);

@@ -202,7 +202,7 @@ test('V6 phiếu chi có mục Mã vật tư: chọn theo mã hoặc tên, lưu 
     // loại Thu: ô Mã vật tư ẩn
     await page.keyboard.press('F3'); await page.waitForSelector('#entry-form');
     await page.click('.modal label.seg-item:has(input[value=thu])');
-    assert.equal(await page.$eval('.modal [name=maVT]', (e) => e.closest('label').hidden), true);
+    assert.equal(await page.$eval('.modal [name=maVT]', (e) => e.closest('[data-show]').hidden), true);
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('.modal')); // chờ hộp thoại cũ đóng hẳn trước khi mở hộp thoại sửa
     // sửa: bỏ mã vật tư

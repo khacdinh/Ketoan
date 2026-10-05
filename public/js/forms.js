@@ -20,21 +20,45 @@ export function nguoiThaoTacHtml(r) {
 let soForm = 0;
 let lastUsed = { ngay: '', soPhieu: '', maDuAn: '', maNCC: '', loai: 'chi' };
 
+/* Phiếu nhiều dòng: phần chung (ngày, số phiếu, đối tượng, người nhận, ghi chú) + bảng các dòng, mỗi dòng có nội dung, dự án, mã vật tư, số tiền riêng.
+   Mỗi dòng là một dòng sổ thu chi (cùng số phiếu) nên công nợ NCC tách đúng theo dự án. Dòng đầu tiên giữ thuộc tính name (noiDung, maDuAn, maVT, chi, thu)
+   và id gợi ý (da-hint, vt-hint, chi-hint, thu-hint) như biểu mẫu một dòng trước đây; mọi dòng đều có data-c. */
+const COT_DONG = ['noiDung', 'maDuAn', 'maVT', 'chi', 'thu'];
+const GOI_Y_DONG = { maDuAn: ['da-hint', 'da'], maVT: ['vt-hint', 'vt'], chi: ['chi-hint', 'chi'], thu: ['thu-hint', 'thu'] };
+
+function dongHtml(r) {
+  return '<tr data-row data-id="' + (r.id || '') + '" class="align-top">' +
+    '<td class="align-top"><div class="field"><textarea data-c="noiDung" class="input block resize-none" rows="1" placeholder="Diễn giải" aria-label="Nội dung dòng">' + esc(r.noiDung || '') + '</textarea></div></td>' +
+    '<td class="align-top"><div class="field"><input data-c="maDuAn" class="input" list="dl-projects" value="' + esc(r.maDuAn || '') + '" placeholder="Mã dự án" aria-label="Dự án của dòng"><span class="hint" data-h="da"></span></div></td>' +
+    '<td data-show="chi" class="align-top"><div class="field"><input data-c="maVT" class="input" list="dl-vt-so" value="' + esc(r.maVT || '') + '" placeholder="Mã vật tư" aria-label="Mã vật tư của dòng"><span class="hint" data-h="vt"></span></div></td>' +
+    '<td data-show="chi" class="align-top"><div class="field"><input data-c="chi" inputmode="decimal" class="input money-input" value="' + (r.chi ? money(r.chi) : '') + '" placeholder="Số tiền chi" aria-label="Số tiền chi của dòng"><span class="hint" data-h="chi"></span></div></td>' +
+    '<td data-show="thu" class="align-top"><div class="field"><input data-c="thu" inputmode="decimal" class="input money-input" value="' + (r.thu ? money(r.thu) : '') + '" placeholder="Số tiền thu" aria-label="Số tiền thu của dòng"><span class="hint" data-h="thu"></span></div></td>' +
+    '<td class="w-10 align-top"><button type="button" class="icon-btn" data-act="bo-dong" aria-label="Bỏ dòng này khỏi phiếu" title="Bỏ dòng này khỏi phiếu">' + icon('x') + '</button></td></tr>';
+}
+
 export function openEntryForm(entry, opts) {
   opts = opts || {};
   const isEdit = !!(entry && entry.id && !opts.duplicate);
   const choKey = 'so-moi-' + (++soForm); // danh sách file chờ của dòng mới (riêng cho mỗi lần mở form)
+  // Sửa cả phiếu: opts.phieu = mọi dòng cùng số phiếu; mặc định mở một dòng (có thể thêm dòng vào phiếu)
+  const dongPhieu = isEdit && opts.phieu && opts.phieu.length > 1 ? opts.phieu : null;
+  const dongCu = dongPhieu || (isEdit ? [entry] : []);
+  const cungPhieu = isEdit && !dongPhieu && entry.soPhieu ? S.all.entries.filter((x) => KT.voucherKey(x.soPhieu) === KT.voucherKey(entry.soPhieu) && x.id !== entry.id) : [];
   // Dòng Nháp (hoặc dòng mới) được chọn giữa Lưu nháp và Ghi sổ; dòng đã ghi sổ chỉ Lưu thay đổi
-  const isDraftRec = isEdit && KT.isDraft(entry);
-  const lockedRec = isEdit && KT.isLockedDate(S.all, entry.ngay); // tháng đã khóa sổ: chỉ xem
+  const isDraftRec = isEdit && dongCu.every((x) => KT.isDraft(x));
+  const ngayKhoa = isEdit ? dongCu.map((x) => x.ngay).find((d) => KT.isLockedDate(S.all, d)) : '';
+  const lockedRec = !!ngayKhoa; // tháng đã khóa sổ: chỉ xem
   const canDraft = (!isEdit || isDraftRec) && !lockedRec;
   const e = Object.assign({ ngay: lastUsed.ngay || KT.todayISO(), soPhieu: '', maDuAn: '', maNCC: '', noiDung: '', thu: 0, chi: 0, nguoiNhan: '', ghiChu: '' }, entry || {});
   if (opts.duplicate) { e.id = undefined; }
-  let loai = e.thu > 0 && e.chi > 0 ? 'ca-hai' : e.thu > 0 ? 'thu' : (entry && entry.id) ? 'chi' : (opts.loai || lastUsed.loai || 'chi');
+  const coThu = dongCu.length ? dongCu.some((x) => x.thu > 0) : e.thu > 0;
+  const coChi = dongCu.length ? dongCu.some((x) => x.chi > 0) : e.chi > 0;
+  let loai = coThu && coChi ? 'ca-hai' : coThu ? 'thu' : (entry && entry.id) ? 'chi' : (opts.loai || lastUsed.loai || 'chi');
+  const dongDau = dongCu.length ? dongCu : [e];
 
   const body =
     '<form id="entry-form" class="grid grid-cols-2 gap-x-5 gap-y-4 max-sm:grid-cols-1" novalidate autocomplete="off">' +
-    (lockedRec ? '<p class="form-error col-span-2 max-sm:col-span-1" role="note">' + icon('lock') + '<span>' + esc(KT.lockMessage(KT.monthOf(entry.ngay), 'sửa')) + '</span></p>' : '') +
+    (lockedRec ? '<p class="form-error col-span-2 max-sm:col-span-1" role="note">' + icon('lock') + '<span>' + esc(KT.lockMessage(KT.monthOf(ngayKhoa), 'sửa')) + '</span></p>' : '') +
     datalists() + '<datalist id="dl-vt-so">' + S.db.materials.map((m) => '<option value="' + esc(m.ma) + '">' + esc(m.ten + (m.dvt ? ' · ' + m.dvt : '')) + '</option>').join('') + '</datalist>' +
     '<div class="col-span-2 max-sm:col-span-1"><div class="seg" role="radiogroup" aria-label="Loại nghiệp vụ">' +
     [['chi', 'Chi tiền'], ['thu', 'Thu tiền'], ['ca-hai', 'Thu và chi cùng lúc']].map(([v, l]) =>
@@ -45,38 +69,41 @@ export function openEntryForm(entry, opts) {
     '<input name="soPhieu" class="input" value="' + esc(e.soPhieu) + '" placeholder="VD: PC045/09" aria-label="Số phiếu">' +
     '<button type="button" class="btn btn-secondary flex-none" data-act="so-moi" title="Lấy số phiếu kế tiếp trong tháng">Số mới</button></div>' +
     '<span class="hint" id="so-hint"></span></div>' +
-    '<label class="field"><span class="label">Dự án</span><input name="maDuAn" class="input" list="dl-projects" value="' + esc(e.maDuAn) + '" placeholder="Gõ mã hoặc tên dự án">' +
-    '<span class="hint" id="da-hint"></span></label>' +
     '<label class="field"><span class="label">Nhà cung cấp, đối tượng</span><input name="maNCC" class="input" list="dl-suppliers" value="' + esc(e.maNCC) + '" placeholder="Gõ mã hoặc tên">' +
     '<span class="hint" id="ncc-hint"></span></label>' +
-    '<label class="field" data-show="chi"><span class="label">Mã vật tư</span><input name="maVT" class="input" list="dl-vt-so" value="' + esc(e.maVT || '') + '" placeholder="Gõ mã hoặc tên vật tư (không bắt buộc)">' +
-    '<span class="hint" id="vt-hint"></span></label>' +
-    '<label class="field col-span-2 max-sm:col-span-1"><span class="label">Nội dung thu, chi <b class="req">*</b></span><textarea name="noiDung" class="input" rows="2" placeholder="VD: Thanh toán công nợ vật tư" required>' + esc(e.noiDung) + '</textarea></label>' +
-    '<label class="field" data-show="chi"><span class="label">Số tiền chi (đồng)</span><input name="chi" inputmode="decimal" class="input money-input h-11" value="' + (e.chi ? money(e.chi) : '') + '" placeholder="VD: 1.250.000 hoặc 50tr" aria-describedby="chi-hint">' +
-    '<span class="hint" id="chi-hint"></span></label>' +
-    '<label class="field" data-show="thu"><span class="label">Số tiền thu (đồng)</span><input name="thu" inputmode="decimal" class="input money-input h-11" value="' + (e.thu ? money(e.thu) : '') + '" placeholder="VD: 1.250.000 hoặc 50tr" aria-describedby="thu-hint">' +
-    '<span class="hint" id="thu-hint"></span></label>' +
     '<label class="field"><span class="label">Người nhận, người nộp</span><input name="nguoiNhan" class="input" value="' + esc(e.nguoiNhan) + '" placeholder="Để trống thì lấy theo nhà cung cấp khi in"></label>' +
-    '<label class="field"><span class="label">Ghi chú</span><input name="ghiChu" class="input" value="' + esc(e.ghiChu) + '"></label>' +
+    '<label class="field col-span-2 max-sm:col-span-1"><span class="label">Ghi chú</span><input name="ghiChu" class="input" value="' + esc(e.ghiChu) + '"></label>' +
+    '<section class="col-span-2 max-sm:col-span-1" aria-label="Các dòng của phiếu">' +
+    '<div class="mb-2 flex items-center gap-3"><h3 class="text-[14px] font-semibold text-ink">Các dòng của phiếu</h3>' +
+    '<span class="text-[12.5px] text-ink-3">Mỗi dòng gắn một dự án riêng để công nợ nhà cung cấp tách đúng theo dự án.</span>' +
+    '<span class="flex-1"></span><button type="button" class="btn btn-secondary btn-sm" data-act="them-dong">' + icon('plus') + 'Thêm dòng</button></div>' +
+    '<div class="overflow-x-auto"><table class="w-full min-w-[640px] border-separate border-spacing-x-2 border-spacing-y-1 text-left" id="phieu-dong"><thead><tr class="text-[12.5px] font-medium text-ink-2">' +
+    '<th class="w-[34%] pb-1 font-medium">Nội dung <b class="req">*</b></th><th class="pb-1 font-medium">Dự án</th><th data-show="chi" class="pb-1 font-medium">Mã vật tư</th>' +
+    '<th data-show="chi" class="pb-1 font-medium">Số tiền chi</th><th data-show="thu" class="pb-1 font-medium">Số tiền thu</th><th class="w-10"><span class="sr-only">Bỏ dòng</span></th></tr></thead>' +
+    '<tbody>' + dongDau.map(dongHtml).join('') + '</tbody></table></div>' +
+    '<p class="mt-2 text-[13.5px] text-ink-2" id="phieu-tong" aria-live="polite"></p></section>' +
     '<p class="col-span-2 text-[12.5px] leading-relaxed text-ink-3 max-sm:col-span-1">' + icon('keyboard', 'mr-1 align-[-3px] text-[15px]') +
     'Ô số tiền nhận <b class="font-medium text-ink-2">1.250.000</b>, <b class="font-medium text-ink-2">50tr</b>, <b class="font-medium text-ink-2">300k</b> hoặc phép tính <b class="font-medium text-ink-2">58000+11000</b>. ' +
+    'Nội dung dòng để trống thì lấy theo dòng đầu. Enter ở ô cuối của dòng cuối sẽ thêm dòng mới. ' +
     'Ghi sổ nhanh bằng <kbd>Ctrl</kbd> + <kbd>Enter</kbd>, đóng bằng <kbd>Esc</kbd>.</p>' +
+    (cungPhieu.length ? '<p class="col-span-2 text-[13px] text-ink-2 max-sm:col-span-1" data-cung-phieu>' + icon('list', 'mr-1 align-[-3px] text-[15px]') +
+      'Phiếu này còn <b>' + cungPhieu.length + '</b> dòng khác. <a href="#" data-act="sua-phieu">Sửa cả phiếu (' + (cungPhieu.length + 1) + ' dòng)</a></p>' : '') +
     (isEdit ? nguoiThaoTacHtml(e) : '') +
     // dòng mới: chọn ảnh / tài liệu ngay, tự tải lên khi ghi sổ (hoặc lưu nháp); dòng đã có: đính kèm thẳng
     '</form>' + (isEdit ? attachBlock('entries', e.id, { readonly: false }) : pendingBlock(choKey, 'Ghi sổ (hoặc Lưu nháp)'));
 
   const footer =
-    (isEdit ? (lockedRec ? '' : '<button type="button" class="btn btn-danger-ghost" data-act="delete">' + icon('trash') + 'Xóa dòng</button>') +
-      '<button type="button" class="btn btn-ghost" data-act="history" title="Xem mọi lần thêm, sửa của dòng này trong nhật ký">' + icon('history') + 'Lịch sử</button>' : '') +
+    (isEdit && !dongPhieu ? (lockedRec ? '' : '<button type="button" class="btn btn-danger-ghost" data-act="delete">' + icon('trash') + 'Xóa dòng</button>') : '') +
+    (isEdit ? '<button type="button" class="btn btn-ghost" data-act="history" title="Xem mọi lần thêm, sửa của dòng này trong nhật ký">' + icon('history') + 'Lịch sử</button>' : '') +
     '<span class="flex-1"></span>' +
     '<button type="button" class="btn btn-ghost" data-act="cancel">Hủy</button>' +
     (canDraft ? '<button type="button" class="btn btn-secondary" data-act="save-draft" title="Lưu lại để làm tiếp; dòng Nháp chưa tính vào tồn quỹ, báo cáo, công nợ">' + icon('draft') + 'Lưu nháp</button>' : '') +
-    (isEdit ? '' : '<button type="button" class="btn btn-secondary" data-act="save-next" title="Ghi sổ rồi giữ lại ngày, số phiếu, dự án, nhà cung cấp để ghi dòng tiếp theo (Ctrl Shift Enter)">Ghi sổ và ghi tiếp<kbd>Ctrl Shift Enter</kbd></button>') +
+    (isEdit ? '' : '<button type="button" class="btn btn-secondary" data-act="save-next" title="Ghi sổ rồi giữ lại ngày, số phiếu, nhà cung cấp để ghi phiếu tiếp theo (Ctrl Shift Enter)">Ghi sổ và ghi tiếp<kbd>Ctrl Shift Enter</kbd></button>') +
     (lockedRec ? '' : '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon(isEdit && !isDraftRec ? 'save' : 'check') + (isEdit && !isDraftRec ? 'Lưu thay đổi' : 'Ghi sổ') + '<kbd>Ctrl Enter</kbd></button>');
 
   const m = openModal({
-    title: isDraftRec ? 'Sửa dòng nháp (chưa ghi sổ)' : isEdit ? 'Sửa dòng sổ thu chi' : opts.duplicate ? 'Nhân bản dòng sổ thu chi' : 'Ghi thu / chi',
-    size: 'wide',
+    title: isDraftRec ? 'Sửa dòng nháp (chưa ghi sổ)' : dongPhieu ? 'Sửa phiếu ' + e.soPhieu + ' (' + dongPhieu.length + ' dòng)' : isEdit ? 'Sửa dòng sổ thu chi' : opts.duplicate ? 'Nhân bản dòng sổ thu chi' : 'Ghi thu / chi',
+    size: 'wide phieu',
     body,
     footer,
     dismissible: false,
@@ -87,8 +114,19 @@ export function openEntryForm(entry, opts) {
   function bindEntryForm(el) {
     const f = $('#entry-form', el);
     const get = (n) => f.elements[n];
-    const getChi = bindMoneyInput(get('chi'), $('#chi-hint', el));
-    const getThu = bindMoneyInput(get('thu'), $('#thu-hint', el));
+    const tbody = $('#phieu-dong tbody', el);
+    const rows = () => Array.from(tbody.rows);
+    const cell = (tr, k) => tr.querySelector('[data-c="' + k + '"]');
+    const rowState = new Map(); // tr -> { goc: dòng sổ cũ (khi sửa), getChi, getThu }
+    const xoaIds = []; // dòng cũ bị bỏ khỏi phiếu
+    const dirty = { nguoiNhan: false, ghiChu: false }; // chỉ ghi đè người nhận / ghi chú của từng dòng khi người dùng sửa ô chung
+    let curRow = null;
+    ['nguoiNhan', 'ghiChu'].forEach((n) => get(n).addEventListener('input', () => { dirty[n] = true; }));
+    if (dongPhieu) {
+      const khac = (n) => new Set(dongPhieu.map((x) => x[n] || '')).size > 1;
+      ['nguoiNhan', 'ghiChu'].forEach((n) => { if (khac(n)) get(n).placeholder = 'Các dòng đang khác nhau, để trống thì giữ nguyên từng dòng'; });
+      ['nguoiNhan', 'ghiChu'].forEach((n) => { if (khac(n)) get(n).value = ''; });
+    }
 
     function applyLoai() {
       loai = f.querySelector('input[name=loai]:checked').value;
@@ -96,51 +134,140 @@ export function openEntryForm(entry, opts) {
         x.hidden = !(loai === 'ca-hai' || x.dataset.show === loai);
       });
       updateSoHint();
+      tong();
     }
     f.querySelectorAll('input[name=loai]').forEach((r) => r.addEventListener('change', applyLoai));
 
     // Chỉ ghi lại khi nội dung đổi: bấm vào liên kết trong gợi ý (Thêm ... này, Điền số này) làm ô nhập mất tiêu điểm → sự kiện change
     // vẽ lại gợi ý ngay giữa lúc nhấn chuột, liên kết bị thay mới và cú bấm không tới được.
     function setHint(h, html, cls) { if (h.dataset.src !== html) { h.innerHTML = html; h.dataset.src = html; } if (h.className !== cls) h.className = cls; }
-    function hint(input, list, hintSel, kind) {
-      const code = resolveCode(list, input.value);
-      const h = $(hintSel, el);
-      if (!input.value.trim()) { setHint(h, '', 'hint'); return; }
-      const found = list.find((x) => KT.keyOf(x.ma) === KT.keyOf(code));
-      if (found && kind === 'supplier') setHint(h, esc(found.ten) + debtHint(found.ma), 'hint good');
-      else if (found) setHint(h, esc(found.ten), 'hint good');
-      else setHint(h, 'Chưa có trong danh mục. <a href="#" data-act="add-' + kind + '">Thêm ' + (kind === 'project' ? 'dự án' : 'nhà cung cấp') + ' này</a>', 'hint bad');
+    const gy = (tr, k) => tr.querySelector('[data-h="' + k + '"]');
+    function nccHint() {
+      const input = get('maNCC');
+      const code = resolveCode(S.db.suppliers, input.value);
+      const h = $('#ncc-hint', el);
+      if (!input.value.trim()) setHint(h, '', 'hint');
+      else {
+        const found = S.db.suppliers.find((x) => KT.keyOf(x.ma) === KT.keyOf(code));
+        if (found) setHint(h, esc(found.ten) + debtHint(found.ma), 'hint good');
+        else setHint(h, 'Chưa có trong danh mục. <a href="#" data-act="add-supplier">Thêm nhà cung cấp này</a>', 'hint bad');
+      }
+      rows().forEach(daHint); // công nợ tại từng dự án phụ thuộc nhà cung cấp
     }
-    const daHint = () => hint(get('maDuAn'), S.db.projects, '#da-hint', 'project');
-    // mã vật tư: hiện tên và đơn vị tính; mã lạ chỉ báo lỗi, không có nút thêm (thêm vật tư ở Danh mục)
-    const vtHint = () => {
-      const h = $('#vt-hint', el);
-      const v = get('maVT').value.trim();
-      if (!v) { setHint(h, '', 'hint'); return; }
-      const code = resolveCode(S.db.materials, v);
-      const m = S.db.materials.find((x) => KT.keyOf(x.ma) === KT.keyOf(code));
-      if (m) setHint(h, esc(m.ten) + (m.dvt ? ' · ' + esc(m.dvt) : ''), 'hint good');
-      else setHint(h, 'Chưa có trong danh mục vật tư', 'hint bad');
+    // đang sửa thì không tính các dòng của chính phiếu này vào công nợ
+    const viewKhongGomDangSua = () => {
+      const ids = new Set(dongCu.map((x) => x.id));
+      return ids.size ? Object.assign({}, S.db, { entries: S.db.entries.filter((x) => !ids.has(x.id)) }) : S.db;
     };
-    get('maVT').addEventListener('input', vtHint);
-    get('maVT').addEventListener('change', () => { get('maVT').value = resolveCode(S.db.materials, get('maVT').value); vtHint(); });
-    vtHint();
-    const nccHint = () => hint(get('maNCC'), S.db.suppliers, '#ncc-hint', 'supplier');
-    // Công nợ còn lại của NCC (chi phí công trình − đã trả), theo dự án nếu đã chọn; không tính dòng đang sửa
+    // Công nợ còn lại của NCC (chi phí công trình − đã trả); phiếu một dòng có dự án thì theo dự án đó, phiếu nhiều dòng thì toàn bộ
     function debtHint(maNCC) {
-      const ct = resolveCode(S.db.projects, get('maDuAn').value);
-      const view = isEdit ? Object.assign({}, S.db, { entries: S.db.entries.filter((x) => x.id !== e.id) }) : S.db;
-      const d = KT.debtOf(view, maNCC, projectByCode(ct) ? ct : '');
+      const trs = rows();
+      const ct = trs.length === 1 ? resolveCode(S.db.projects, cell(trs[0], 'maDuAn').value) : '';
+      const d = KT.debtOf(viewKhongGomDangSua(), maNCC, projectByCode(ct) ? ct : '');
       if (!d || !d.soDongCP) return '';
       const where = projectByCode(ct) ? ' tại ' + esc(ct) : '';
       if (d.conLai > 0) return '<br><span class="text-ink-2">Công nợ' + where + ': còn nợ <b class="font-semibold tabular-nums">' + money(d.conLai) + ' đ</b></span> <a href="#" data-act="fill-debt" data-v="' + d.conLai + '">Điền số này</a>';
       if (d.conLai < 0) return '<br><span class="text-caution">Công nợ' + where + ': đã ứng dư ' + money(-d.conLai) + ' đ</span>';
       return '<br><span class="text-ink-2">Công nợ' + where + ': đã tất toán</span>';
     }
-    get('maDuAn').addEventListener('change', () => nccHint());
-    get('maDuAn').addEventListener('input', daHint);
+    // dự án của dòng: hiện tên; đã chọn nhà cung cấp thì kèm số còn nợ nhà cung cấp tại dự án đó (để chia tiền cho đúng)
+    function daHint(tr) {
+      const input = cell(tr, 'maDuAn');
+      const h = gy(tr, 'da');
+      if (!input.value.trim()) { setHint(h, '', 'hint'); return; }
+      const code = resolveCode(S.db.projects, input.value);
+      const found = S.db.projects.find((x) => KT.keyOf(x.ma) === KT.keyOf(code));
+      if (!found) { setHint(h, 'Chưa có trong danh mục. <a href="#" data-act="add-project">Thêm dự án này</a>', 'hint bad'); return; }
+      let t = esc(found.ten);
+      const ncc = resolveCode(S.db.suppliers, get('maNCC').value);
+      if (ncc && supplierByCode(ncc) && rows().length > 1) {
+        const d = KT.debtOf(viewKhongGomDangSua(), ncc, found.ma);
+        if (d && d.soDongCP && d.conLai > 0) t += '<br><span class="text-ink-2">NCC còn nợ tại đây: <b class="font-semibold tabular-nums">' + money(d.conLai) + ' đ</b></span>';
+      }
+      setHint(h, t, 'hint good');
+    }
+    // mã vật tư: hiện tên và đơn vị tính; mã lạ chỉ báo lỗi, không có nút thêm (thêm vật tư ở Danh mục)
+    function vtHint(tr) {
+      const h = gy(tr, 'vt');
+      const v = cell(tr, 'maVT').value.trim();
+      if (!v) { setHint(h, '', 'hint'); return; }
+      const code = resolveCode(S.db.materials, v);
+      const mt = S.db.materials.find((x) => KT.keyOf(x.ma) === KT.keyOf(code));
+      if (mt) setHint(h, esc(mt.ten) + (mt.dvt ? ' · ' + esc(mt.dvt) : ''), 'hint good');
+      else setHint(h, 'Chưa có trong danh mục vật tư', 'hint bad');
+    }
+
+    // Dòng đầu giữ name / id như biểu mẫu một dòng; các dòng sau chỉ có data-c
+    function danhSo() {
+      rows().forEach((tr, i) => {
+        COT_DONG.forEach((k) => {
+          const c = cell(tr, k);
+          if (i === 0) c.setAttribute('name', k); else c.removeAttribute('name');
+          const g = GOI_Y_DONG[k];
+          if (g) { const h = gy(tr, g[1]); if (i === 0) h.id = g[0]; else h.removeAttribute('id'); }
+        });
+        const bo = tr.querySelector('[data-act=bo-dong]');
+        bo.hidden = rows().length === 1 || lockedRec;
+      });
+    }
+
+    function tong() {
+      let chi = 0, thu = 0, n = 0, loi = false;
+      rows().forEach((tr) => {
+        const st = rowState.get(tr);
+        const c = loai === 'thu' ? 0 : st.getChi(), t = loai === 'chi' ? 0 : st.getThu();
+        if (isNaN(c) || isNaN(t)) { loi = true; return; }
+        chi += c; thu += t; n++;
+      });
+      const parts = [];
+      if (loai !== 'thu') parts.push('Tổng chi <b class="font-semibold tabular-nums">' + money(chi) + ' đ</b>');
+      if (loai !== 'chi') parts.push('Tổng thu <b class="font-semibold tabular-nums">' + money(thu) + ' đ</b>');
+      const words = loai === 'chi' && chi ? ' · ' + esc(KT.docTienBangChu(chi)) : loai === 'thu' && thu ? ' · ' + esc(KT.docTienBangChu(thu)) : '';
+      $('#phieu-tong', el).innerHTML = rows().length + ' dòng · ' + parts.join(' · ') + words + (loi ? ' <span class="text-alert">(có ô số tiền chưa hợp lệ)</span>' : '');
+    }
+
+    function bindDong(tr, goc) {
+      const st = { goc, getChi: bindMoneyInput(cell(tr, 'chi'), gy(tr, 'chi')), getThu: bindMoneyInput(cell(tr, 'thu'), gy(tr, 'thu')) };
+      rowState.set(tr, st);
+      const da = cell(tr, 'maDuAn'), vt = cell(tr, 'maVT');
+      da.addEventListener('input', () => { daHint(tr); if (rows().length === 1) nccHint(); });
+      da.addEventListener('change', () => { da.value = resolveCode(S.db.projects, da.value); daHint(tr); if (rows().length === 1) nccHint(); });
+      vt.addEventListener('input', () => vtHint(tr));
+      vt.addEventListener('change', () => { vt.value = resolveCode(S.db.materials, vt.value); vtHint(tr); });
+      ['chi', 'thu'].forEach((k) => { cell(tr, k).addEventListener('input', tong); cell(tr, k).addEventListener('blur', tong); });
+      tr.addEventListener('focusin', () => { curRow = tr; });
+      daHint(tr); vtHint(tr);
+    }
+    rows().forEach((tr, i) => bindDong(tr, dongCu[i] || null));
+
+    function themDong(vals) {
+      const tmp = document.createElement('tbody');
+      tmp.innerHTML = dongHtml(vals || {});
+      const tr = tmp.firstElementChild;
+      tbody.appendChild(tr);
+      bindDong(tr, null);
+      danhSo();
+      applyLoai();
+      rows().forEach(daHint);
+      focusInput(cell(tr, 'noiDung'));
+      return tr;
+    }
+
+    // Enter trong bảng dòng: sang ô kế tiếp; ở ô cuối của dòng cuối thì thêm dòng mới (không ghi sổ, ghi sổ bằng Ctrl+Enter)
+    tbody.addEventListener('keydown', (ev) => {
+      if (ev.key !== 'Enter' || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.isComposing) return;
+      const c = ev.target.closest('[data-c]');
+      if (!c) return;
+      ev.preventDefault();
+      const tr = c.closest('tr');
+      const cells = Array.from(tr.querySelectorAll('[data-c]')).filter((x) => !x.closest('[hidden]'));
+      const i = cells.indexOf(c);
+      if (i < cells.length - 1) cells[i + 1].focus();
+      else if (tr === rows()[rows().length - 1]) { if (!lockedRec) themDong(); }
+      else cell(tr.nextElementSibling, 'noiDung').focus();
+    });
+
     get('maNCC').addEventListener('input', nccHint);
-    get('maDuAn').addEventListener('change', () => { get('maDuAn').value = resolveCode(S.db.projects, get('maDuAn').value); daHint(); });
     get('maNCC').addEventListener('change', () => { get('maNCC').value = resolveCode(S.db.suppliers, get('maNCC').value); nccHint(); });
 
     function updateSoHint() {
@@ -152,7 +279,8 @@ export function openEntryForm(entry, opts) {
         return;
       }
       const t = KT.voucherType(so);
-      const others = S.all.entries.filter((x) => KT.voucherKey(x.soPhieu) === KT.voucherKey(so) && x.id !== e.id);
+      const mine = new Set(dongCu.map((x) => x.id));
+      const others = S.all.entries.filter((x) => KT.voucherKey(x.soPhieu) === KT.voucherKey(so) && !mine.has(x.id));
       let txt = t === 'thu' ? 'Phiếu thu' : 'Phiếu chi';
       if (others.length) txt += ', đã có ' + others.length + ' dòng cùng số (sẽ gộp khi in)';
       if (t === 'thu' && loai === 'chi') txt += '. Lưu ý: số phiếu PT dành cho khoản thu';
@@ -164,11 +292,14 @@ export function openEntryForm(entry, opts) {
       const a = ev.target.closest('[data-act]');
       if (!a) return;
       const act = a.dataset.act;
+      const tr = a.closest('tr[data-row]');
       if (act === 'fill-debt') {
         ev.preventDefault();
-        get('chi').value = money(Number(a.dataset.v));
-        get('chi').dispatchEvent(new Event('input'));
-        get('chi').focus();
+        const dich = curRow && curRow.isConnected ? curRow : rows()[0];
+        const c = cell(dich, 'chi');
+        c.value = money(Number(a.dataset.v));
+        c.dispatchEvent(new Event('input'));
+        c.focus();
       } else if (act === 'so-moi') {
         get('soPhieu').value = KT.nextVoucherNo(S.all, loai === 'thu' ? 'thu' : 'chi', get('ngay').value);
         updateSoHint();
@@ -176,12 +307,31 @@ export function openEntryForm(entry, opts) {
         ev.preventDefault();
         get('soPhieu').value = lastUsed.soPhieu;
         updateSoHint();
+      } else if (act === 'them-dong') {
+        themDong();
+      } else if (act === 'bo-dong' && tr) {
+        const st = rowState.get(tr);
+        if (st && st.goc && st.goc.id) xoaIds.push(st.goc.id);
+        const ke = tr.previousElementSibling || tr.nextElementSibling;
+        rowState.delete(tr);
+        tr.remove();
+        danhSo();
+        rows().forEach(daHint);
+        nccHint();
+        tong();
+        if (ke) focusInput(cell(ke, 'noiDung')); // nút vừa bấm biến mất: giữ tiêu điểm trong form để Ctrl + Enter vẫn ghi sổ được
       } else if (act === 'add-project') {
         ev.preventDefault();
-        openProjectForm({ ma: get('maDuAn').value.trim() }, (p) => { get('maDuAn').value = p.ma; refreshLists(); daHint(); });
+        const input = cell(tr, 'maDuAn');
+        openProjectForm({ ma: input.value.trim() }, (p) => { input.value = p.ma; refreshLists(); daHint(tr); });
       } else if (act === 'add-supplier') {
         ev.preventDefault();
         openSupplierForm({ ma: get('maNCC').value.trim() }, (s) => { get('maNCC').value = s.ma; refreshLists(); nccHint(); });
+      } else if (act === 'sua-phieu') {
+        ev.preventDefault();
+        const all = [entry].concat(cungPhieu).sort((x, y) => (x.seq || 0) - (y.seq || 0) || x.id - y.id);
+        m.close();
+        openEntryForm(all[0], { phieu: all, onSaved: opts.onSaved });
       } else if (act === 'history') {
         m.close();
         openHistory(e.id);
@@ -211,55 +361,90 @@ export function openEntryForm(entry, opts) {
     let saving = false;
     async function save(next, asDraft) {
       if (saving) return;
-      const data = {
+      if (lockedRec) return;
+      const chung = {
         trangThai: asDraft ? 'nhap' : '',
         ngay: get('ngay').value,
         soPhieu: get('soPhieu').value.trim(),
-        maDuAn: resolveCode(S.db.projects, get('maDuAn').value),
-        maNCC: resolveCode(S.db.suppliers, get('maNCC').value),
-        maVT: loai === 'thu' ? '' : resolveCode(S.db.materials, get('maVT').value),
-        noiDung: get('noiDung').value.trim(),
-        thu: loai === 'chi' ? 0 : getThu(),
-        chi: loai === 'thu' ? 0 : getChi(),
-        nguoiNhan: get('nguoiNhan').value.trim(),
-        ghiChu: get('ghiChu').value.trim()
+        maNCC: resolveCode(S.db.suppliers, get('maNCC').value)
       };
-      if (lockedRec) return;
-      if (!KT.isISODate(data.ngay)) return fail('ngay', 'Nhập ngày chứng từ, ví dụ 29/9');
-      if (KT.isLockedDate(S.all, data.ngay)) return fail('ngay', KT.lockMessage(KT.monthOf(data.ngay), 'ghi'));
-      if (data.maDuAn && !projectByCode(data.maDuAn)) return fail('maDuAn', 'Mã dự án chưa có trong danh mục. Bấm “Thêm dự án này” hoặc chọn mã có sẵn');
-      if (data.maNCC && !supplierByCode(data.maNCC)) return fail('maNCC', 'Mã nhà cung cấp chưa có trong danh mục. Bấm “Thêm nhà cung cấp này” hoặc chọn mã có sẵn');
-      if (data.maVT && !S.db.materials.some((x) => KT.keyOf(x.ma) === KT.keyOf(data.maVT))) return fail('maVT', 'Mã vật tư chưa có trong danh mục vật tư. Chọn mã có sẵn hoặc để trống');
-      if (!data.noiDung) return fail('noiDung', 'Nhập nội dung thu, chi');
-      if (isNaN(data.chi)) return fail('chi', 'Số tiền chi không hợp lệ. Ví dụ: 1.250.000, 50tr, 300k');
-      if (isNaN(data.thu)) return fail('thu', 'Số tiền thu không hợp lệ. Ví dụ: 1.250.000, 50tr, 300k');
-      if (loai === 'chi' && !data.chi) return fail('chi', 'Nhập số tiền chi');
-      if (loai === 'thu' && !data.thu) return fail('thu', 'Nhập số tiền thu');
-      if (loai === 'ca-hai' && !data.thu && !data.chi) return fail('chi', 'Nhập số tiền thu hoặc chi');
+      const nguoiNhan = get('nguoiNhan').value.trim(), ghiChu = get('ghiChu').value.trim();
+      if (!KT.isISODate(chung.ngay)) return fail(get('ngay'), 'Nhập ngày chứng từ, ví dụ 29/9');
+      if (KT.isLockedDate(S.all, chung.ngay)) return fail(get('ngay'), KT.lockMessage(KT.monthOf(chung.ngay), 'ghi'));
+      if (chung.maNCC && !supplierByCode(chung.maNCC)) return fail(get('maNCC'), 'Mã nhà cung cấp chưa có trong danh mục. Bấm “Thêm nhà cung cấp này” hoặc chọn mã có sẵn');
+
+      const trs = rows();
+      const dongTrong = (tr) => {
+        const st = rowState.get(tr);
+        return !cell(tr, 'noiDung').value.trim() && !cell(tr, 'maDuAn').value.trim() && !cell(tr, 'maVT').value.trim() && !cell(tr, 'chi').value.trim() && !cell(tr, 'thu').value.trim() && !st.goc;
+      };
+      const dung = trs.length > 1 ? trs.filter((tr) => !dongTrong(tr)) : trs; // bỏ qua dòng mới còn trống
+      const nd0 = dung.map((tr) => cell(tr, 'noiDung').value.trim()).find(Boolean) || '';
+      const lines = [];
+      for (let i = 0; i < dung.length; i++) {
+        const tr = dung[i], st = rowState.get(tr);
+        const at = trs.length > 1 ? 'Dòng ' + (trs.indexOf(tr) + 1) + ': ' : '';
+        const maDuAn = resolveCode(S.db.projects, cell(tr, 'maDuAn').value);
+        const maVT = loai === 'thu' ? '' : resolveCode(S.db.materials, cell(tr, 'maVT').value);
+        const noiDung = cell(tr, 'noiDung').value.trim() || nd0;
+        const thu = loai === 'chi' ? 0 : st.getThu(), chi = loai === 'thu' ? 0 : st.getChi();
+        if (maDuAn && !projectByCode(maDuAn)) return fail(cell(tr, 'maDuAn'), at + 'Mã dự án chưa có trong danh mục. Bấm “Thêm dự án này” hoặc chọn mã có sẵn');
+        if (maVT && !S.db.materials.some((x) => KT.keyOf(x.ma) === KT.keyOf(maVT))) return fail(cell(tr, 'maVT'), at + 'Mã vật tư chưa có trong danh mục vật tư. Chọn mã có sẵn hoặc để trống');
+        if (!noiDung) return fail(cell(tr, 'noiDung'), at + 'Nhập nội dung thu, chi');
+        if (isNaN(chi)) return fail(cell(tr, 'chi'), at + 'Số tiền chi không hợp lệ. Ví dụ: 1.250.000, 50tr, 300k');
+        if (isNaN(thu)) return fail(cell(tr, 'thu'), at + 'Số tiền thu không hợp lệ. Ví dụ: 1.250.000, 50tr, 300k');
+        if (loai === 'chi' && !chi) return fail(cell(tr, 'chi'), at + 'Nhập số tiền chi');
+        if (loai === 'thu' && !thu) return fail(cell(tr, 'thu'), at + 'Nhập số tiền thu');
+        if (loai === 'ca-hai' && !thu && !chi) return fail(cell(tr, 'chi'), at + 'Nhập số tiền thu hoặc chi');
+        const goc = st.goc;
+        lines.push(Object.assign({}, chung, {
+          id: goc && goc.id ? goc.id : undefined,
+          maDuAn, maVT, noiDung, thu, chi,
+          nguoiNhan: goc && !dirty.nguoiNhan ? goc.nguoiNhan || '' : nguoiNhan,
+          ghiChu: goc && !dirty.ghiChu ? goc.ghiChu || '' : ghiChu
+        }));
+      }
+      // một dòng thì giữ cách ghi cũ (một lệnh thêm / sửa); nhiều dòng hoặc có dòng bị bỏ thì ghi cả phiếu trong một lần
+      const viaPhieu = lines.length > 1 || xoaIds.length > 0 || (isEdit && lines.length === 1 && !lines[0].id);
       saving = true;
       const btn = el.querySelector(asDraft ? '[data-act=save-draft]' : next ? '[data-act=save-next]' : '[data-act=save]');
       const done = busy(btn, isEdit || asDraft ? 'Đang lưu…' : 'Đang ghi…');
       try {
-        if (isEdit) await api('PUT', '/api/entries/' + e.id, data);
-        else {
-          const r = await api('POST', '/api/entries', data);
+        let idDau;
+        if (viaPhieu) {
+          const r = await api('POST', '/api/entries/phieu', { rows: lines, xoa: xoaIds });
+          idDau = r.ids && r.ids[0];
+        } else if (isEdit) { await api('PUT', '/api/entries/' + e.id, lines[0]); idDau = e.id; }
+        else { const r = await api('POST', '/api/entries', lines[0]); idDau = r.id; }
+        if (!isEdit) {
           const cho = pendingFiles(choKey);
-          if (cho.length && r.id) {
-            const n = await uploadFiles('entries', r.id, cho);
+          if (cho.length && idDau) {
+            const n = await uploadFiles('entries', idDau, cho);
             clearPending(choKey);
-            if (n) toast('Đã đính kèm ' + n + ' / ' + cho.length + ' file vào dòng vừa ghi');
+            if (n) toast('Đã đính kèm ' + n + ' / ' + cho.length + ' file vào ' + (lines.length > 1 ? 'dòng đầu của phiếu' : 'dòng vừa ghi'));
             const box = el.querySelector('[data-att-pending]');
             if (box) { box.outerHTML = pendingBlock(choKey, 'Ghi sổ (hoặc Lưu nháp)'); bindPending(el); }
           }
         }
-        lastUsed = { ngay: data.ngay, soPhieu: data.soPhieu, maDuAn: data.maDuAn, maNCC: data.maNCC, loai };
-        toast(asDraft ? 'Đã lưu nháp (chưa ghi sổ, chưa tính vào tồn quỹ)' : isDraftRec ? 'Đã ghi sổ dòng nháp' : isEdit ? 'Đã lưu thay đổi' : 'Đã ghi sổ ' + (data.chi ? 'khoản chi ' + money(data.chi) : 'khoản thu ' + money(data.thu)) + ' đ');
+        lastUsed = { ngay: chung.ngay, soPhieu: chung.soPhieu, maDuAn: lines[0].maDuAn, maNCC: chung.maNCC, loai };
+        const tongTien = lines.reduce((s, x) => s + (x.chi || x.thu), 0);
+        toast(asDraft ? 'Đã lưu nháp (chưa ghi sổ, chưa tính vào tồn quỹ)' : isDraftRec ? 'Đã ghi sổ dòng nháp' : isEdit ? 'Đã lưu thay đổi' :
+          lines.length > 1 ? 'Đã ghi sổ phiếu ' + lines.length + ' dòng, tổng ' + money(tongTien) + ' đ' :
+          'Đã ghi sổ ' + (lines[0].chi ? 'khoản chi ' + money(lines[0].chi) : 'khoản thu ' + money(lines[0].thu)) + ' đ');
         if (next) {
-          ['noiDung', 'chi', 'thu', 'nguoiNhan', 'ghiChu'].forEach((n) => { get(n).value = ''; });
-          get('chi').dispatchEvent(new Event('input'));
-          get('thu').dispatchEvent(new Event('input'));
+          // giữ ngày, số phiếu, nhà cung cấp; bỏ các dòng thừa, xóa nội dung dòng đầu
+          rows().slice(1).forEach((tr) => { rowState.delete(tr); tr.remove(); });
+          const tr0 = rows()[0];
+          ['noiDung', 'chi', 'thu', 'maVT'].forEach((k) => { cell(tr0, k).value = ''; });
+          cell(tr0, 'chi').dispatchEvent(new Event('input'));
+          cell(tr0, 'thu').dispatchEvent(new Event('input'));
+          vtHint(tr0);
+          ['nguoiNhan', 'ghiChu'].forEach((n) => { get(n).value = ''; });
+          danhSo();
           updateSoHint();
-          get('noiDung').focus();
+          nccHint();
+          tong();
+          cell(tr0, 'noiDung').focus();
         } else {
           m.close();
         }
@@ -273,17 +458,17 @@ export function openEntryForm(entry, opts) {
     }
 
     // Lỗi hiện ngay dưới ô (không che nút Ghi sổ như thông báo góc màn hình)
-    function fail(name, msg) {
-      if (!fieldError(get(name), msg)) toast(msg, 'error');
+    function fail(input, msg) {
+      if (!fieldError(input, msg)) toast(msg, 'error');
     }
 
+    danhSo();
     applyLoai();
     if (lockedRec) f.querySelectorAll('input, textarea, select, button').forEach((x) => { x.disabled = true; });
-    daHint();
     nccHint();
     let touched = false;
     ['pointerdown', 'keydown', 'input'].forEach((t) => el.addEventListener(t, () => { touched = true; }, true));
-    setTimeout(() => { if (!touched) focusInput(isEdit ? get('noiDung') : get('ngay')); }, 40);
+    setTimeout(() => { if (!touched) focusInput(isEdit ? cell(rows()[0], 'noiDung') : get('ngay')); }, 40);
   }
 }
 
