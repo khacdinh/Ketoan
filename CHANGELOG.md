@@ -1,5 +1,9 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Menu trái xanh lá đậm như giao diện cũ (05/10/2026)
+
+- Menu trái đổi sang nền **xanh lá đậm** (#1E4636) để tách hẳn khỏi vùng nội dung: chữ và biểu tượng sáng, tên nhóm xanh nhạt, rê chuột nền sáng mờ, mục đang mở là thẻ trắng chữ xanh đậm; chân menu (tồn quỹ) và dòng ngăn cách cũng theo màu mới. Thay cho nền xám nhạt trước đó; bố cục, chữ, phím tắt không đổi.
+
 ## Phiếu thu / chi nhiều dòng, mỗi dòng một dự án (05/10/2026)
 
 - Form **Ghi thu / chi** có bảng **Các dòng của phiếu**: phần chung (ngày, số phiếu, nhà cung cấp, người nhận, ghi chú) + nhiều dòng, mỗi dòng có nội dung, **dự án**, mã vật tư, số tiền riêng. Chi ông A 100tr chia 5 dòng × 20tr gắn 5 dự án thì công nợ NCC theo từng công trình giảm đúng (trước đây một phiếu chỉ gắn được một dự án).

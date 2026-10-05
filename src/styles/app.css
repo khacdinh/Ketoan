@@ -710,6 +710,26 @@
   .bars .bar:hover { fill-opacity: 1; }
   .bars .cum { stroke: var(--color-caution); stroke-dasharray: none; stroke-width: 2; }
   .bars .cum-dot { fill: var(--color-caution); }
+  /* Menu trái xanh lá đậm như giao diện cũ: tách hẳn khỏi vùng nội dung (nền kem, khung trắng); mục đang mở là thẻ trắng chữ xanh đậm */
+  .app-sidebar { background: var(--color-cover); border-right: 0; color: #E4EEE8; }
+  .brand-name { color: #fff; }
+  .brand-org { color: #B7CFC2; }
+  .brand-mark { background: #fff; border-color: transparent; }
+  .nav-head { color: #9DBFAE; }
+  .nav-item { color: #E4EEE8; }
+  .nav-item .ph { color: #BFD6C9; }
+  .nav-item:hover { background: rgb(255 255 255 / .09); color: #fff; }
+  .nav-item:hover .ph { color: #fff; }
+  .nav-item.active, .nav-item.active:hover { background: var(--color-sheet); color: var(--color-cover); font-weight: 700; }
+  .nav-item.active .ph { color: var(--color-cover); }
+  .side-foot { border-top-color: rgb(255 255 255 / .16); }
+  .side-foot .foot-lbl { color: #B7CFC2; }
+  .side-foot .fund { color: #fff; }
+  .side-foot .fund.neg { color: #FFB4AB; }
+  .side-toggle { color: #CFE2D7; }
+  .side-toggle:hover { background: rgb(255 255 255 / .1); color: #fff; }
+  body.side-thu .nav-group + .nav-group { border-top-color: rgb(255 255 255 / .16); }
+  .app-sidebar :is(.nav-item, .side-toggle):focus-visible { outline-color: #fff; }
 }
 
 /* =====================================================================
