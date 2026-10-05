@@ -730,6 +730,10 @@
   .side-toggle:hover { background: rgb(255 255 255 / .1); color: #fff; }
   body.side-thu .nav-group + .nav-group { border-top-color: rgb(255 255 255 / .16); }
   .app-sidebar :is(.nav-item, .side-toggle):focus-visible { outline-color: #fff; }
+  /* chữ menu lớn hơn một chút */
+  .nav-item { font-size: 15.5px; height: 32px; }
+  .nav-item .ph { font-size: 19px; }
+  .nav-head { font-size: 12px; }
 }
 
 /* =====================================================================

@@ -3,6 +3,7 @@
 ## Menu trái xanh lá đậm như giao diện cũ (05/10/2026)
 
 - Menu trái đổi sang nền **xanh lá đậm** (#1E4636) để tách hẳn khỏi vùng nội dung: chữ và biểu tượng sáng, tên nhóm xanh nhạt, rê chuột nền sáng mờ, mục đang mở là thẻ trắng chữ xanh đậm; chân menu (tồn quỹ) và dòng ngăn cách cũng theo màu mới. Thay cho nền xám nhạt trước đó; bố cục, chữ, phím tắt không đổi.
+- Chữ menu lớn hơn một chút: mục 15,5px (trước 14px), biểu tượng 19px, tên nhóm 12px, mỗi mục cao 32px.
 
 ## Phiếu thu / chi nhiều dòng, mỗi dòng một dự án (05/10/2026)
 
