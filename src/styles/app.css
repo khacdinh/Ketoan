@@ -30,10 +30,10 @@
   --color-rule: #D8CBBB;        /* đường kẻ sổ */
   --color-rule-2: #C4B3A0;      /* đường kẻ đậm */
   --color-field: #968877;       /* viền ô nhập (≥ 3:1) */
-  --color-cover: #99A4C4;       /* thanh bên: xanh tím nhạt (99A4C4) */
-  --color-cover-2: #8794B8;
-  --color-cover-ink: #172A4E;
-  --color-cover-ink-2: #243055;
+  --color-cover: #CDBBA3;       /* thanh bên: cát đậm (mẫu D), mục đang mở là thẻ trắng ngà */
+  --color-cover-2: #BFAA8E;
+  --color-cover-ink: #2A2118;
+  --color-cover-ink-2: #5C4A36;
 
   --color-neutral-100: #F3EDE5; --color-neutral-200: #E3D9CF; --color-neutral-300: #D8CBBB; --color-neutral-400: #C4B3A0; --color-neutral-500: #968877;
   --color-neutral-600: #565C70; --color-neutral-700: #4D5570; --color-neutral-800: #35405A; --color-neutral-900: #172A4E;
@@ -710,25 +710,25 @@
   .bars .bar:hover { fill-opacity: 1; }
   .bars .cum { stroke: var(--color-caution); stroke-dasharray: none; stroke-width: 2; }
   .bars .cum-dot { fill: var(--color-caution); }
-  /* Menu trái xanh tím nhạt (99A4C4) trên nền be: tách hẳn khỏi vùng nội dung; chữ xanh mực; mục đang mở là thẻ trắng ngà */
+  /* Menu trái cát đậm (CDBBA3, mẫu D) trên nền be: chữ nâu đen; mục đang mở là thẻ trắng ngà */
   .app-sidebar { background: var(--color-cover); border-right: 0; color: var(--color-cover-ink); }
   .brand-name { color: var(--color-cover-ink); }
   .brand-org { color: var(--color-cover-ink-2); }
   .brand-mark { background: var(--color-sheet); border-color: transparent; }
   .nav-head { color: var(--color-cover-ink-2); }
   .nav-item { color: var(--color-cover-ink); }
-  .nav-item .ph { color: #2B3A68; }
-  .nav-item:hover { background: rgb(255 255 255 / .3); color: var(--color-cover-ink); }
+  .nav-item .ph { color: #4A3C2C; }
+  .nav-item:hover { background: rgb(255 255 255 / .35); color: var(--color-cover-ink); }
   .nav-item:hover .ph { color: var(--color-cover-ink); }
-  .nav-item.active, .nav-item.active:hover { background: var(--color-sheet); color: var(--color-cover-ink); font-weight: 700; }
-  .nav-item.active .ph { color: var(--color-cover-ink); }
-  .side-foot { border-top-color: rgb(23 42 78 / .22); }
+  .nav-item.active, .nav-item.active:hover { background: var(--color-sheet); color: #1F2A44; font-weight: 700; }
+  .nav-item.active .ph { color: #1F2A44; }
+  .side-foot { border-top-color: rgb(0 0 0 / .15); }
   .side-foot .foot-lbl { color: var(--color-cover-ink-2); }
   .side-foot .fund { color: var(--color-cover-ink); }
   .side-foot .fund.neg { color: #8E1D17; }
   .side-toggle { color: var(--color-cover-ink-2); }
-  .side-toggle:hover { background: rgb(255 255 255 / .3); color: var(--color-cover-ink); }
-  body.side-thu .nav-group + .nav-group { border-top-color: rgb(23 42 78 / .22); }
+  .side-toggle:hover { background: rgb(255 255 255 / .35); color: var(--color-cover-ink); }
+  body.side-thu .nav-group + .nav-group { border-top-color: rgb(0 0 0 / .15); }
   .app-sidebar :is(.nav-item, .side-toggle):focus-visible { outline-color: var(--color-cover-ink); }
   /* chữ menu lớn hơn một chút */
   .nav-item { font-size: 15.5px; height: 32px; }

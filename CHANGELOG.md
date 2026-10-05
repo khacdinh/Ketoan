@@ -1,5 +1,9 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Menu trái màu cát đậm (mẫu D) (05/10/2026)
+
+- Menu trái đổi từ xanh tím sang **cát đậm #CDBBA3** (mẫu D trong bản so sánh 4 phương án): chữ và biểu tượng nâu đen, tên nhóm nâu, rê chuột nền trắng mờ, mục đang mở là thẻ trắng ngà chữ đậm. Cùng tông ấm với nền trang be #E3D9CF, dịu mắt hơn.
+
 ## Đổi bảng màu nền theo bộ màu Adobe Color (05/10/2026)
 
 - Theo bộ 5 màu: #CC9889 (hồng đất), #99A4C4 (xanh tím nhạt), #E3D4C1 (cát), #D6A081 (đất nung), #E3D9CF (be).
