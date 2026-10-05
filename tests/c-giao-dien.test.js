@@ -139,6 +139,14 @@ test('UI4 sổ thu chi: tìm kiếm, nhân bản, sửa, xóa có xác nhận; t
     assert.equal(await page.locator('#so-body tr[data-id]').count(), n0);
     const firstId = await page.locator('#so-body tr[data-id]').first().getAttribute('data-id');
     await page.locator('#so-body tr[data-id="' + firstId + '"] [data-act=dup]').click();
+    // nhân bản: hỏi trước (Hủy thì không mở gì), đồng ý mới mở biểu mẫu đã điền sẵn
+    await page.waitForSelector('.modal [data-act=yes]');
+    assert.match(await page.$eval('.modal', (e) => e.innerText), /Chưa lưu gì/);
+    await page.click('.modal [data-act=no]');
+    await page.waitForFunction(() => !document.querySelector('.modal'));
+    assert.equal(await page.locator('#entry-form').count(), 0, 'Hủy thì không mở biểu mẫu');
+    await page.locator('#so-body tr[data-id="' + firstId + '"] [data-act=dup]').click();
+    await page.click('.modal [data-act=yes]');
     await page.waitForSelector('#entry-form');
     await page.waitForTimeout(120); // openModal tự chuyển tiêu điểm sau 30 ms
     await page.click('[data-act=save]');

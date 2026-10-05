@@ -1,6 +1,6 @@
 /* Phiếu nhập chi phí (tương đương sheet PHIEU_NHAP + macro GhiPhieuNhap):
  * khai báo đầu phiếu một lần, rồi nhập nhiều dòng Mã VT × Số lượng × Đơn giá (hoặc chỉ Thành tiền cho khoản khoán). */
-import { $, $$, esc, money, fdate, icon, api, toast, showError, confirmDialog, freshRoot, debounce, dateField, highlight, LS, focusInput, fieldError, busy, setPageTags, densityToggle, bindDensity } from '../ui.js';
+import { $, $$, esc, money, fdate, icon, api, toast, showError, confirmDialog, confirmCopy, freshRoot, debounce, dateField, highlight, LS, focusInput, fieldError, busy, setPageTags, densityToggle, bindDensity } from '../ui.js';
 import { printSlip } from '../print.js';
 import { hauQuaCongNo } from '../congno.js';
 import { S, costDatalists, resolveCode, resolveItem, materialByCode, itemByCode, houseByCode, projectByCode, supplierByCode, groupName, houseListOptions, allCostLedger } from '../state.js';
@@ -70,18 +70,19 @@ function lineFromCost(c, headHM) {
 
 // Dựng trạng thái phiếu theo địa chỉ: mới / sửa phiếu / nhân bản phiếu. banSaoLuu: bỏ qua bản đang sửa dở, lấy đúng dữ liệu đã lưu
 function stateKey(params) {
-  const mode = params.phieu ? 'edit' : params.nhanban ? 'dup' : 'new';
-  return mode + ':' + (params.phieu || params.nhanban || '');
+  const mode = params.phieu ? 'edit' : params.nhanban || params.nhanbandong ? 'dup' : 'new';
+  return mode + ':' + (params.phieu || params.nhanban || params.nhanbandong || '') + (params.nhanbandong ? ':dong' : '');
 }
 function initialState(params, banSaoLuu) {
-  const mode = params.phieu ? 'edit' : params.nhanban ? 'dup' : 'new';
+  const mode = params.phieu ? 'edit' : params.nhanban || params.nhanbandong ? 'dup' : 'new';
   const key = stateKey(params);
   if (!banSaoLuu && draft && draft.key === key) return draft;
   if (mode === 'new') {
     const last = LS.get('cp.lastHeader', null);
     return { key, mode, header: Object.assign({ ngay: KT.todayISO(), maCT: '', maNha: '', maNCC: '', soPhieu: '', hm: '' }, last || {}, { soPhieu: '' }), lines: [blankLine()] };
   }
-  const lines = slipLines(params.phieu || params.nhanban);
+  // nhanbandong = nhân bản MỘT dòng chi phí (từ Sổ chi phí) thành phiếu mới chưa lưu
+  const lines = params.nhanbandong ? allCostLedger().filter((c) => String(c.id) === String(params.nhanbandong)) : slipLines(params.phieu || params.nhanban);
   if (!lines.length) return { key, mode: 'missing', header: {}, lines: [] };
   // hạng mục mặc định = hạng mục xuất hiện nhiều nhất trong phiếu
   const count = new Map();
@@ -661,6 +662,13 @@ export function renderCostEntry(root) {
     if (link) {
       e.preventDefault();
       const hash = link.getAttribute('href');
+      if (/^#\/cp-nhap\?nhanban=/.test(hash)) { // nhân bản phiếu: hỏi trước, chưa lưu gì
+        const ls = slipLines(routeParams(hash).nhanban);
+        if (!ls.length) { toast('Không còn thấy phiếu này (có thể đã xóa)', 'info'); return; }
+        const tong = ls.reduce((t, c) => t + (Number(c.thanhTien) || 0), 0);
+        if (!(await confirmCopy('phiếu nhập chi phí', '<b>' + fdate(ls[0].ngay) + '</b> · ' + esc(ls[0].maCT || '') + (ls[0].maNCC ? ' · ' + esc(ls[0].tenNCC || ls[0].maNCC) : '') + (ls[0].soPhieu ? ' · ' + esc(ls[0].soPhieu) : '') +
+          '<br>' + ls.length + ' dòng, tổng <b>' + money(tong) + ' đ</b>'))) return;
+      }
       moLaiDaLuu(routeParams(hash), hash);
       return;
     }

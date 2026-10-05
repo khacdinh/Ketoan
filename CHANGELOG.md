@@ -1,5 +1,11 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Nhân bản phải xác nhận, rồi mở trang nhập (05/10/2026)
+
+- Mọi nút **Nhân bản** (dòng Sổ quỹ, dòng Sổ chi phí, phiếu nhập chi phí; cả phím **Ctrl D**) giờ hiện hộp thoại tóm tắt dữ liệu sắp chép; **Hủy** thì không làm gì, **Nhân bản và mở trang nhập** thì mở trang nhập đã điền sẵn, chưa lưu gì cho đến khi bấm Ghi sổ.
+- Trước đây nhân bản dòng ở Sổ chi phí lưu ngay một dòng mới; nay mở trang Phiếu nhập chi phí (địa chỉ `#/cp-nhap?nhanbandong=<id>`) với dòng đã chép (ngày hôm nay, số phiếu để trống) để kiểm tra rồi ghi sổ.
+- Nút “Nhân bản dòng” trong lưới của trang Phiếu nhập chi phí chỉ chép trong bảng đang soạn (chưa lưu) nên không hỏi.
+
 ## Menu trái xanh lá đậm như giao diện cũ (05/10/2026)
 
 - Menu trái đổi sang nền **xanh lá đậm** (#1E4636) để tách hẳn khỏi vùng nội dung: chữ và biểu tượng sáng, tên nhóm xanh nhạt, rê chuột nền sáng mờ, mục đang mở là thẻ trắng chữ xanh đậm; chân menu (tồn quỹ) và dòng ngăn cách cũng theo màu mới. Thay cho nền xám nhạt trước đó; bố cục, chữ, phím tắt không đổi.

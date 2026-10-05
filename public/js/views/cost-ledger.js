@@ -1,5 +1,5 @@
 /* Sổ chi phí công trình (tương đương sheet NHATKYCHUNG): lọc, tìm, sửa trực tiếp, tổng cuối bảng. */
-import { $, esc, money, fdate, icon, highlight, download, periodControls, bindPeriodControls, syncPeriodControls, refreshPeriod, freshRoot, debounce, setDateValue,
+import { $, esc, money, fdate, icon, confirmCopy, highlight, download, periodControls, bindPeriodControls, syncPeriodControls, refreshPeriod, freshRoot, debounce, setDateValue,
   api, toast, showError, confirmDialog, openModal, dateField, focusInput, fieldError, busy, LS, setPageActions, densityToggle, bindDensity } from '../ui.js';
 import { coQuyen } from '../auth.js';
 import { S, saveFilter, costProjects, costDatalists, resolveCode, resolveItem, materialByCode, itemByCode, houseByCode, projectByCode, supplierByCode, groupName, allCostLedger } from '../state.js';
@@ -133,7 +133,10 @@ export function renderCostLedger(root) {
     else if (act === 'all') { shown = Infinity; draw(true); }
     else if (act === 'edit' && c) openCostLineForm(c);
     else if (act === 'dup' && c) {
-      try { await api('POST', '/api/costs', payloadOf(c, { nguon: 'nhan ban' })); toast('Đã nhân bản dòng (cùng phiếu)'); } catch (err) { showError(err); }
+      // chỉ hỏi và mở trang nhập với dòng đã chép (chưa lưu); ghi sổ ở trang đó
+      const r = allCostLedger().find((x) => x.id === c.id) || c;
+      if (await confirmCopy('dòng chi phí', '<b>' + fdate(c.ngay) + '</b> · ' + esc(c.maCT || '') + (c.maNCC ? ' · ' + esc(r.tenNCC || c.maNCC) : '') +
+        '<br>' + esc(c.maVT ? c.maVT + ' ' + (r.tenVT || '') : c.dienGiai || '') + '<br>Thành tiền <b>' + money(c.thanhTien) + ' đ</b>')) location.hash = '#/cp-nhap?nhanbandong=' + c.id;
     } else if (act === 'del' && c) {
       if (!(await confirmDialog({ trash: true, title: 'Xóa dòng chi phí', html: 'Xóa dòng ngày <b class="text-ink">' + fdate(c.ngay) + '</b>, ' + esc(c.maVT || c.dienGiai) + ', thành tiền <b class="text-ink">' + money(c.thanhTien) + ' đ</b>?', hauQua: hauQuaCongNo(c.maNCC, -(c.thanhTien || 0), c.maCT), okText: 'Xóa dòng', danger: true }))) return;
       try { await api('DELETE', '/api/costs/' + c.id); toast('Đã xóa dòng chi phí, chuyển vào Thùng rác'); } catch (err) { showError(err); }

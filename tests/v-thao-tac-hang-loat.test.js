@@ -107,7 +107,7 @@ test('V3 Sổ chi phí, sửa trực tiếp: Tab lưu ô này rồi sang ô kế
   } finally { await browser.close(); await srv.stop(); }
 });
 
-test('V4 menu trái (bản 1a): rộng 248px, mục cao 30px có biểu tượng (không còn ô mã 2 chữ); Ctrl B thu gọn còn 56px, tên mục thành chú thích, nhớ sau khi tải lại; nhãn số ở Kiểm soát ẩn khi 0', { skip: SKIP, timeout: 180000 }, async () => {
+test('V4 menu trái (bản 1a): rộng 248px, mục cao 32px có biểu tượng (không còn ô mã 2 chữ); Ctrl B thu gọn còn 56px, tên mục thành chú thích, nhớ sau khi tải lại; nhãn số ở Kiểm soát ẩn khi 0', { skip: SKIP, timeout: 180000 }, async () => {
   const srv = await startServer({});
   const { browser, page, errors } = await openPage(srv, '#/tong-quan');
   try {
@@ -121,7 +121,7 @@ test('V4 menu trái (bản 1a): rộng 248px, mục cao 30px có biểu tượng
         foot: (document.querySelector('.foot-lbl') || {}).textContent, heads: [...document.querySelectorAll('.nav-head')].map((e) => e.textContent) };
     });
     let x = await m();
-    assert.deepEqual([x.w, x.h, x.ic, x.code, x.tip, x.side], [248, 30, true, 0, null, false]);
+    assert.deepEqual([x.w, x.h, x.ic, x.code, x.tip, x.side], [248, 32, true, 0, null, false]);
     assert.deepEqual(x.heads, ['Nhập liệu', 'Sổ sách', 'Báo cáo', 'Danh mục', 'Hệ thống']);
     assert.match(x.foot, /^Tồn quỹ hiện tại · (lưu \d\d:\d\d)?$/);
     // Ctrl B: thu gọn

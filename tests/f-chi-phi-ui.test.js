@@ -354,6 +354,9 @@ test('F2 phiếu đã nhập: sửa, nhân bản, xóa phiếu và xóa từng d
       await page.evaluate(() => { location.hash = '#/cp-nhap'; });
       await page.waitForSelector('#rc-body tr[data-phieu]');
       await page.locator('#rc-body tr', { hasText: 'P2' }).locator('a[href*="nhanban"]').click();
+      await page.waitForSelector('.modal [data-act=yes]'); // nhân bản phiếu: hỏi trước, chưa lưu gì
+      assert.match(await page.$eval('.modal', (e) => e.innerText), /Chưa lưu gì/);
+      await page.click('.modal [data-act=yes]');
       await page.waitForSelector('#cp-body tr[data-row]');
       await page.waitForTimeout(200);
       assert.equal(await page.inputValue('#cp-head input[name=soPhieu]'), '', 'nhân bản: số phiếu để trống');
@@ -525,15 +528,34 @@ test('F3b sổ chi phí: sửa trực tiếp trong bảng (bấm đúp), sửa �
     // nhân bản dòng (cùng phiếu) → tăng tổng; xóa dòng → giảm
     const n0 = (await srv.db()).costs.length;
     await rowOf('XM').locator('[data-act=dup]').click();
-    await page.waitForFunction((n) => document.querySelectorAll('#cl-body tr[data-id]').length === n + 1, n0, { timeout: 5000 });
+    await page.waitForSelector('.modal [data-act=yes]');
+    assert.match(await page.$eval('.modal', (e) => e.innerText), /Chưa lưu gì/);
+    await page.click('.modal [data-act=no]'); // Hủy: không lưu, không đi đâu
+    await page.waitForFunction(() => !document.querySelector('.modal'));
+    assert.equal((await srv.db()).costs.length, n0, 'Hủy nhân bản thì không thêm dòng');
+    await rowOf('XM').locator('[data-act=dup]').click();
+    await page.click('.modal [data-act=yes]'); // Đồng ý: mở trang nhập với dòng đã chép, CHƯA lưu
+    await page.waitForFunction(() => /^#\/cp-nhap\?nhanbandong=/.test(location.hash), null, { timeout: 4000 });
+    await page.waitForSelector('#cp-body tr[data-row]');
+    await page.waitForTimeout(200);
+    assert.equal(await page.inputValue('tr[data-row="0"] [data-col=maVT]'), 'XM', 'dòng đã chép sẵn trên trang nhập');
+    assert.equal((await srv.db()).costs.length, n0, 'chưa bấm ghi sổ thì chưa có dòng mới');
+    await page.focus('tr[data-row="0"] [data-col=maVT]');
+    await page.keyboard.press('Control+Enter'); // kiểm tra xong, ghi sổ
+    await page.waitForFunction((n) => document.querySelector('#toast-root') && /Đã ghi/.test(document.querySelector('#toast-root').textContent) && true, n0, { timeout: 6000 });
+    assert.equal((await srv.db()).costs.length, n0 + 1);
     assert.equal(await debtS1(), 1080000 + 1080000);
+    await page.evaluate(() => { location.hash = '#/cp-so'; });
+    await page.waitForSelector('#cl-body tr[data-id]');
+    await page.waitForFunction((n) => document.querySelectorAll('#cl-body tr[data-id]').length === n + 1, n0, { timeout: 5000 });
     await rowOf('XM').first().locator('[data-act=del]').click();
     await page.click('[data-act=yes]');
     await page.waitForFunction((n) => document.querySelectorAll('#cl-body tr[data-id]').length === n, n0, { timeout: 5000 });
     assert.equal(await debtS1(), 1080000);
     // mở cả phiếu từ dòng
     await rowOf('XM').locator('[data-act=slip]').click();
-    await page.waitForFunction((id) => location.hash === '#/cp-nhap?phieu=' + id, r.phieuId, { timeout: 4000 });
+    // dòng nhân bản nay là một phiếu mới (lưu từ trang nhập), nên dòng còn lại có thể thuộc phiếu gốc hoặc phiếu mới
+    await page.waitForFunction(() => /^#\/cp-nhap\?phieu=\d+$/.test(location.hash), null, { timeout: 4000 });
     assert.deepEqual(errors.filter((e) => !/status of 4/.test(e)), []);
   } finally { await browser.close(); await srv.stop(); }
 });

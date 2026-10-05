@@ -46,6 +46,7 @@ Muốn có biểu tượng trên Desktop: bấm đúp **`TaoBieuTuongDesktop.bat
 - **Chọn kỳ** giống nhau ở mọi sổ và báo cáo: **Tháng | Quý | Năm | Khoảng ngày | Toàn bộ**, mũi tên ‹ › để sang kỳ trước / sau, nhãn ghi rõ “Tháng 09/2026 · 01/09 – 30/09/2026”.
 - **Mật độ bảng Gọn / Thoáng** (lưu theo từng máy), dòng tổng luôn hiện ở đáy bảng, nút thao tác ở từng dòng luôn hiện rõ theo thứ tự **Xem → Sửa → Nhân bản → In → Xóa** (xóa luôn ở cuối, màu đỏ, vào Thùng rác).
 - **Phím trên dòng đang chọn** (bấm Tab tới dòng): **Enter** mở / sửa · **Ctrl D** nhân bản · **Delete** xóa · **Ctrl P** in phiếu.
+- **Nhân bản luôn hỏi trước và chưa lưu gì**: bấm Nhân bản (dòng sổ quỹ, dòng chi phí, phiếu nhập chi phí) hoặc **Ctrl D** thì hiện hộp thoại tóm tắt dữ liệu sắp chép. Bấm **Hủy** thì không có gì xảy ra; bấm **Nhân bản và mở trang nhập** thì mở trang nhập đã điền sẵn dữ liệu để bạn kiểm tra, sửa, rồi tự bấm **Ghi sổ**. Nhờ vậy lỡ bấm nhầm cũng không sinh ra dòng thừa.
 - Tháng đã **khóa sổ**: nút sửa / xóa của dòng thuộc tháng đó thành ổ khóa; bấm vào thì hiện hộp “Kỳ … đã khóa” giải thích và chỉ đường mở khóa (cần tài khoản Chủ và lý do).
 - **Quy ước công nợ**: **Dư Có = mình còn phải trả NCC**; **Dư Nợ = mình đã ứng trước / trả dư**. Công nợ không bao giờ hiện số âm; số dư lũy kế ghi kèm chữ Có / Nợ (Nợ màu vàng nâu).
   Nhãn **Còn nợ** là trạng thái bình thường (màu xanh thép, không đỏ); **Ứng dư** màu vàng nâu; **Đã tất toán** màu xanh lá; phiếu / dòng **Nháp** có viền đứt.

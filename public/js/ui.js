@@ -455,6 +455,18 @@ export function confirmDialog(o) {
   });
 }
 
+/* ---------------- Nhân bản: luôn hỏi trước, KHÔNG lưu gì ----------------
+   Đồng ý thì người gọi mở trang / biểu mẫu nhập với dữ liệu đã chép; chỉ khi bấm Ghi sổ ở đó mới lưu (tránh nhân bản nhầm). */
+export function confirmCopy(what, summaryHtml) {
+  return confirmDialog({
+    title: 'Nhân bản ' + what + '?',
+    html: '<div class="border-l-[3px] border-rule-2 bg-surface px-3 py-2 text-[13.5px] text-ink">' + summaryHtml + '</div>' +
+      '<p class="mt-3">Phần mềm sẽ mở trang nhập với dữ liệu đã chép. <b class="text-ink">Chưa lưu gì</b> cho đến khi bạn kiểm tra, sửa và bấm Ghi sổ.</p>',
+    okText: 'Nhân bản và mở trang nhập',
+    cancelText: 'Hủy'
+  });
+}
+
 /* ---------------- Menu thả xuống ---------------- */
 export function attachMenu(button, items) {
   let menu = null;

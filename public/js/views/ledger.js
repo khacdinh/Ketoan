@@ -1,5 +1,5 @@
 /* Sổ thu chi & tồn quỹ hàng ngày. */
-import { $, esc, money, fdate, icon, highlight, download, periodControls, bindPeriodControls, syncPeriodControls, refreshPeriod, freshRoot, debounce, setDateValue, equationHtml, api, toast, showError, confirmDialog, setPageActions, densityToggle, bindDensity } from '../ui.js';
+import { $, esc, money, fdate, icon, confirmCopy, highlight, download, periodControls, bindPeriodControls, syncPeriodControls, refreshPeriod, freshRoot, debounce, setDateValue, equationHtml, api, toast, showError, confirmDialog, setPageActions, densityToggle, bindDensity } from '../ui.js';
 import { S, saveFilter, draftLedgerRows, vouchers } from '../state.js';
 import { comboHtml, bindCombo, filterBox } from '../combo.js';
 import { openEntryForm, deleteEntry } from '../forms.js';
@@ -15,6 +15,14 @@ let visibleIds = [];
 const sel = new Set(); // các dòng đang chọn (ô tích) để ghi sổ / xóa hàng loạt
 // về lại số dòng mặc định khi chuyển màn hình (vẽ lại sau khi sửa dữ liệu thì giữ nguyên số dòng đang hiện)
 window.addEventListener('hashchange', () => { shown = PAGE; sel.clear(); });
+
+// Nhân bản dòng sổ: hỏi trước; đồng ý thì mở biểu mẫu Ghi thu / chi đã điền sẵn dữ liệu (chưa lưu)
+async function nhanBanDong(en) {
+  const sup = S.db.suppliers.find((x) => KT.keyOf(x.ma) === KT.keyOf(en.maNCC));
+  const ok = await confirmCopy('dòng sổ thu chi', '<b>' + fdate(en.ngay) + '</b>' + (en.soPhieu ? ' · ' + esc(en.soPhieu) : '') + (en.maNCC ? ' · ' + esc(sup ? sup.ten : en.maNCC) : '') +
+    '<br>' + esc(en.noiDung || '') + '<br>' + (en.chi ? 'Chi <b>' + money(en.chi) + ' đ</b>' : '') + (en.chi && en.thu ? ' · ' : '') + (en.thu ? 'Thu <b>' + money(en.thu) + ' đ</b>' : ''));
+  if (ok) openEntryForm(en, { duplicate: true });
+}
 
 function exportQuery(f) {
   const p = { from: f.from, to: f.to, duAn: f.duAn, ncc: f.ncc, loai: f.loai, q: f.q };
@@ -88,7 +96,7 @@ export function renderLedger(root) {
     else if (act === 'more') { shown += PAGE; draw(true); }
     else if (act === 'all') { shown = Infinity; draw(true); }
     else if (act === 'edit' && entry) openEntryForm(entry);
-    else if (act === 'dup' && entry) openEntryForm(entry, { duplicate: true });
+    else if (act === 'dup' && entry) nhanBanDong(entry);
     else if (act === 'del' && entry) deleteEntry(entry);
     else if (act === 'clip' && entry) openAttachList('entries', entry.id, 'Chứng từ của dòng sổ');
     else if (act === 'locked' && entry) moKyKhoa(entry.ngay, 'sửa');
@@ -132,7 +140,7 @@ export function renderLedger(root) {
     if (!en) return;
     const ctrl = e.ctrlKey || e.metaKey;
     if (e.key === 'Enter' && !ctrl) { e.preventDefault(); if (KT.isLockedDate(S.all, en.ngay)) moKyKhoa(en.ngay, 'sửa'); else openEntryForm(en); }
-    else if (ctrl && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); openEntryForm(en, { duplicate: true }); }
+    else if (ctrl && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); nhanBanDong(en); }
     else if (e.key === 'Delete') { e.preventDefault(); if (KT.isLockedDate(S.all, en.ngay)) moKyKhoa(en.ngay, 'xóa'); else deleteEntry(en); }
     else if (ctrl && (e.key === 'p' || e.key === 'P') && en.soPhieu) { e.preventDefault(); const v = vouchers().find((x) => x.key === KT.voucherKey(en.soPhieu)); if (v) printVoucher(v, S.db.settings); }
   });
