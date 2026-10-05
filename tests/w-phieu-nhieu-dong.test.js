@@ -96,7 +96,10 @@ test('W2 biểu mẫu nhiều dòng: thêm dòng, mỗi dòng một dự án, t�
     await page.fill(row(2) + ' [data-c=chi]', '40tr');
     // gợi ý số còn nợ tại dự án của dòng
     assert.match(await page.$eval(row(2), (e) => e.innerText), /NCC còn nợ tại đây: 40\.000\.000/);
-    assert.match(await page.textContent('#phieu-tong'), /2 dòng.*100\.000\.000/);
+    assert.match(await page.textContent('#phieu-tong'), /2 dòng/);
+    assert.equal(await page.textContent('#phieu-tong-chi'), '100.000.000');
+    assert.match(await page.textContent('#phieu-chu'), /Một trăm triệu đồng/);
+    assert.ok(parseFloat(await page.$eval('#phieu-tong-chi', (e) => getComputedStyle(e).fontSize)) >= 20, 'tổng phiếu chữ lớn');
     // dòng 3 lỗi: dự án lạ → báo "Dòng 3", chưa ghi
     await page.click('[data-act=them-dong]');
     await page.fill(row(3) + ' [data-c=maDuAn]', 'LA'); await page.fill(row(3) + ' [data-c=chi]', '1tr');

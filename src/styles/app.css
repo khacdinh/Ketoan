@@ -580,6 +580,12 @@
   .grid-entry .cell.warn { @apply border-dashed border-caution bg-caution-soft; }
   .grid-entry .price-warn { @apply mt-0.5 block text-right text-[11px] leading-tight; }
   .grid-entry .vt-name { @apply min-w-[150px] text-[13px]; }
+  /* gợi ý dưới ô số tiền / mã vật tư của phiếu thu chi: một dòng cố định, để bố cục không nhảy khi ô mất tiêu điểm (cú bấm nút ở dòng dưới không bị lệch) */
+  .grid-entry [data-h=chi], .grid-entry [data-h=thu], .grid-entry [data-h=vt] { display: block; min-height: 15px; overflow: hidden; padding: 0 6px; font-size: 11.5px; line-height: 15px; text-overflow: ellipsis; white-space: nowrap; }
+  .grid-entry [data-h=chi], .grid-entry [data-h=thu] { text-align: right; }
+  #phieu-dong tbody td { vertical-align: top; }
+  #phieu-dong tbody td[data-stt], #phieu-dong tbody td:nth-child(4) { padding-top: 10px; }
+  #phieu-dong tbody td.actions { padding-top: 5px; }
   .grid-entry tbody tr:last-child .cell { @apply bg-surface/60; }
 
   /* Dòng hàng có cảnh báo (vàng, ô đơn giá viền đứt) hoặc lỗi (đỏ) + dòng báo ngay dưới */

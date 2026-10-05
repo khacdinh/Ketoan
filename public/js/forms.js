@@ -26,14 +26,17 @@ let lastUsed = { ngay: '', soPhieu: '', maDuAn: '', maNCC: '', loai: 'chi' };
 const COT_DONG = ['noiDung', 'maDuAn', 'maVT', 'chi', 'thu'];
 const GOI_Y_DONG = { maDuAn: ['da-hint', 'da'], maVT: ['vt-hint', 'vt'], chi: ['chi-hint', 'chi'], thu: ['thu-hint', 'thu'] };
 
+// Lưới giống Phiếu nhập chi phí (ledger grid-entry, ô .cell): # · Nội dung · Dự án · Tên dự án (+ NCC còn nợ) · Mã vật tư · Số tiền chi · Số tiền thu
 function dongHtml(r) {
-  return '<tr data-row data-id="' + (r.id || '') + '" class="align-top">' +
-    '<td class="align-top"><div class="field"><textarea data-c="noiDung" class="input block resize-none" rows="1" placeholder="Diễn giải" aria-label="Nội dung dòng">' + esc(r.noiDung || '') + '</textarea></div></td>' +
-    '<td class="align-top"><div class="field"><input data-c="maDuAn" class="input" list="dl-projects" value="' + esc(r.maDuAn || '') + '" placeholder="Mã dự án" aria-label="Dự án của dòng"><span class="hint" data-h="da"></span></div></td>' +
-    '<td data-show="chi" class="align-top"><div class="field"><input data-c="maVT" class="input" list="dl-vt-so" value="' + esc(r.maVT || '') + '" placeholder="Mã vật tư" aria-label="Mã vật tư của dòng"><span class="hint" data-h="vt"></span></div></td>' +
-    '<td data-show="chi" class="align-top"><div class="field"><input data-c="chi" inputmode="decimal" class="input money-input" value="' + (r.chi ? money(r.chi) : '') + '" placeholder="Số tiền chi" aria-label="Số tiền chi của dòng"><span class="hint" data-h="chi"></span></div></td>' +
-    '<td data-show="thu" class="align-top"><div class="field"><input data-c="thu" inputmode="decimal" class="input money-input" value="' + (r.thu ? money(r.thu) : '') + '" placeholder="Số tiền thu" aria-label="Số tiền thu của dòng"><span class="hint" data-h="thu"></span></div></td>' +
-    '<td class="w-10 align-top"><button type="button" class="icon-btn" data-act="bo-dong" aria-label="Bỏ dòng này khỏi phiếu" title="Bỏ dòng này khỏi phiếu">' + icon('x') + '</button></td></tr>';
+  return '<tr data-row data-id="' + (r.id || '') + '">' +
+    '<td class="num text-ink-3" data-stt></td>' +
+    '<td><textarea data-c="noiDung" class="cell resize-none overflow-hidden py-[7px] leading-[16px]" rows="1" placeholder="Diễn giải" aria-label="Nội dung dòng">' + esc(r.noiDung || '') + '</textarea></td>' +
+    '<td><input data-c="maDuAn" class="cell font-semibold" list="dl-projects" value="' + esc(r.maDuAn || '') + '" placeholder="Mã dự án" aria-label="Dự án của dòng"></td>' +
+    '<td class="text-[13px] leading-snug"><span class="hint" data-h="da"></span></td>' +
+    '<td data-show="chi"><input data-c="maVT" class="cell font-semibold" list="dl-vt-so" value="' + esc(r.maVT || '') + '" placeholder="Mã vật tư" aria-label="Mã vật tư của dòng"><span class="hint" data-h="vt"></span></td>' +
+    '<td data-show="chi"><input data-c="chi" inputmode="decimal" class="cell text-right font-semibold tabular-nums" value="' + (r.chi ? money(r.chi) : '') + '" placeholder="Số tiền chi" aria-label="Số tiền chi của dòng"><span class="hint" data-h="chi"></span></td>' +
+    '<td data-show="thu"><input data-c="thu" inputmode="decimal" class="cell text-right font-semibold tabular-nums" value="' + (r.thu ? money(r.thu) : '') + '" placeholder="Số tiền thu" aria-label="Số tiền thu của dòng"><span class="hint" data-h="thu"></span></td>' +
+    '<td class="actions"><button type="button" class="icon-btn danger" data-act="bo-dong" tabindex="-1" aria-label="Bỏ dòng này khỏi phiếu" title="Bỏ dòng này khỏi phiếu">' + icon('x') + '</button></td></tr>';
 }
 
 export function openEntryForm(entry, opts) {
@@ -73,15 +76,20 @@ export function openEntryForm(entry, opts) {
     '<span class="hint" id="ncc-hint"></span></label>' +
     '<label class="field"><span class="label">Người nhận, người nộp</span><input name="nguoiNhan" class="input" value="' + esc(e.nguoiNhan) + '" placeholder="Để trống thì lấy theo nhà cung cấp khi in"></label>' +
     '<label class="field col-span-2 max-sm:col-span-1"><span class="label">Ghi chú</span><input name="ghiChu" class="input" value="' + esc(e.ghiChu) + '"></label>' +
-    '<section class="col-span-2 max-sm:col-span-1" aria-label="Các dòng của phiếu">' +
-    '<div class="mb-2 flex items-center gap-3"><h3 class="text-[14px] font-semibold text-ink">Các dòng của phiếu</h3>' +
-    '<span class="text-[12.5px] text-ink-3">Mỗi dòng gắn một dự án riêng để công nợ nhà cung cấp tách đúng theo dự án.</span>' +
-    '<span class="flex-1"></span><button type="button" class="btn btn-secondary btn-sm" data-act="them-dong">' + icon('plus') + 'Thêm dòng</button></div>' +
-    '<div class="overflow-x-auto"><table class="w-full min-w-[640px] border-separate border-spacing-x-2 border-spacing-y-1 text-left" id="phieu-dong"><thead><tr class="text-[12.5px] font-medium text-ink-2">' +
-    '<th class="w-[34%] pb-1 font-medium">Nội dung <b class="req">*</b></th><th class="pb-1 font-medium">Dự án</th><th data-show="chi" class="pb-1 font-medium">Mã vật tư</th>' +
-    '<th data-show="chi" class="pb-1 font-medium">Số tiền chi</th><th data-show="thu" class="pb-1 font-medium">Số tiền thu</th><th class="w-10"><span class="sr-only">Bỏ dòng</span></th></tr></thead>' +
-    '<tbody>' + dongDau.map(dongHtml).join('') + '</tbody></table></div>' +
-    '<p class="mt-2 text-[13.5px] text-ink-2" id="phieu-tong" aria-live="polite"></p></section>' +
+    '<section class="sheet col-span-2 overflow-hidden max-sm:col-span-1" aria-labelledby="h-dong-phieu">' +
+    '<div class="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-rule px-4 py-2"><h3 id="h-dong-phieu" class="sheet-title">Các dòng của phiếu</h3>' +
+    '<span class="min-w-0 flex-1 text-[12px] text-ink-3">Mỗi dòng gắn một dự án riêng để công nợ nhà cung cấp tách đúng theo dự án.</span>' +
+    '<button type="button" class="btn btn-secondary btn-sm" data-act="them-dong">' + icon('plus') + 'Thêm dòng</button></div>' +
+    '<div class="scroll-x overflow-x-auto"><table class="ledger grid-entry" id="phieu-dong"><thead><tr>' +
+    '<th class="num w-8">#</th><th class="min-w-[200px]">Nội dung <b class="req">*</b></th><th class="w-[120px] min-w-[100px]">Dự án</th><th class="w-[190px] min-w-[150px]">Tên dự án · NCC còn nợ</th>' +
+    '<th data-show="chi" class="w-[120px] min-w-[100px]">Mã vật tư</th><th data-show="chi" class="num money w-[140px] min-w-[120px]">Số tiền chi</th><th data-show="thu" class="num money w-[140px] min-w-[120px]">Số tiền thu</th><th class="w-10"><span class="sr-only">Bỏ dòng</span></th></tr></thead>' +
+    '<tbody>' + dongDau.map(dongHtml).join('') + '</tbody>' +
+    '<tfoot><tr><td colspan="4" class="text-[15px]" id="phieu-tong" aria-live="polite">Tổng phiếu</td>' +
+    '<td data-show="chi" class="num money text-[22px]"></td>' + // ô trống: chỉ để cột khớp khi Mã vật tư hiện
+    '<td data-show="chi" class="num money"><span class="dbl text-[22px]" id="phieu-tong-chi">0</span></td>' +
+    '<td data-show="thu" class="num money"><span class="dbl text-[22px]" id="phieu-tong-thu">0</span></td><td></td></tr></tfoot></table></div>' +
+    '<p class="border-t border-rule px-4 py-2 text-[16px] font-semibold text-ink" id="phieu-chu" aria-live="polite"></p>' +
+    '<p class="form-error mx-4 mb-3" id="phieu-loi" role="alert" hidden></p></section>' +
     '<p class="col-span-2 text-[12.5px] leading-relaxed text-ink-3 max-sm:col-span-1">' + icon('keyboard', 'mr-1 align-[-3px] text-[15px]') +
     'Ô số tiền nhận <b class="font-medium text-ink-2">1.250.000</b>, <b class="font-medium text-ink-2">50tr</b>, <b class="font-medium text-ink-2">300k</b> hoặc phép tính <b class="font-medium text-ink-2">58000+11000</b>. ' +
     'Nội dung dòng để trống thì lấy theo dòng đầu. Enter ở ô cuối của dòng cuối sẽ thêm dòng mới. ' +
@@ -206,24 +214,27 @@ export function openEntryForm(entry, opts) {
           const g = GOI_Y_DONG[k];
           if (g) { const h = gy(tr, g[1]); if (i === 0) h.id = g[0]; else h.removeAttribute('id'); }
         });
+        tr.querySelector('[data-stt]').textContent = i + 1;
         const bo = tr.querySelector('[data-act=bo-dong]');
         bo.hidden = rows().length === 1 || lockedRec;
       });
     }
 
     function tong() {
-      let chi = 0, thu = 0, n = 0, loi = false;
+      let chi = 0, thu = 0, loi = false;
       rows().forEach((tr) => {
         const st = rowState.get(tr);
         const c = loai === 'thu' ? 0 : st.getChi(), t = loai === 'chi' ? 0 : st.getThu();
         if (isNaN(c) || isNaN(t)) { loi = true; return; }
-        chi += c; thu += t; n++;
+        chi += c; thu += t;
       });
-      const parts = [];
-      if (loai !== 'thu') parts.push('Tổng chi <b class="font-semibold tabular-nums">' + money(chi) + ' đ</b>');
-      if (loai !== 'chi') parts.push('Tổng thu <b class="font-semibold tabular-nums">' + money(thu) + ' đ</b>');
-      const words = loai === 'chi' && chi ? ' · ' + esc(KT.docTienBangChu(chi)) : loai === 'thu' && thu ? ' · ' + esc(KT.docTienBangChu(thu)) : '';
-      $('#phieu-tong', el).innerHTML = rows().length + ' dòng · ' + parts.join(' · ') + words + (loi ? ' <span class="text-alert">(có ô số tiền chưa hợp lệ)</span>' : '');
+      $('#phieu-tong', el).innerHTML = 'Tổng phiếu · ' + rows().length + ' dòng' + (loi ? ' <span class="text-[13px] font-medium text-alert">(có ô số tiền chưa hợp lệ)</span>' : '');
+      $('#phieu-tong-chi', el).textContent = money(chi);
+      $('#phieu-tong-thu', el).textContent = money(thu);
+      const chu = [];
+      if (loai !== 'thu' && chi) chu.push((loai === 'ca-hai' ? 'Chi: ' : '') + KT.docTienBangChu(chi));
+      if (loai !== 'chi' && thu) chu.push((loai === 'ca-hai' ? 'Thu: ' : '') + KT.docTienBangChu(thu));
+      $('#phieu-chu', el).textContent = chu.join(' · ');
     }
 
     function bindDong(tr, goc) {
@@ -459,6 +470,18 @@ export function openEntryForm(entry, opts) {
 
     // Lỗi hiện ngay dưới ô (không che nút Ghi sổ như thông báo góc màn hình)
     function fail(input, msg) {
+      if (input.closest('#phieu-dong')) { // ô trong bảng dòng không có chỗ dưới ô: báo ở khung lỗi dưới bảng
+        focusInput(input);
+        input.classList.add('invalid');
+        input.setAttribute('aria-invalid', 'true');
+        const box = $('#phieu-loi', el);
+        box.innerHTML = icon('warn') + '<span>' + esc(msg) + '</span>';
+        box.hidden = false;
+        const off = () => { input.classList.remove('invalid'); input.removeAttribute('aria-invalid'); box.hidden = true; };
+        input.addEventListener('input', off, { once: true });
+        input.addEventListener('change', off, { once: true });
+        return;
+      }
       if (!fieldError(input, msg)) toast(msg, 'error');
     }
 

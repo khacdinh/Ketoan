@@ -4,6 +4,7 @@
 
 - Form **Ghi thu / chi** có bảng **Các dòng của phiếu**: phần chung (ngày, số phiếu, nhà cung cấp, người nhận, ghi chú) + nhiều dòng, mỗi dòng có nội dung, **dự án**, mã vật tư, số tiền riêng. Chi ông A 100tr chia 5 dòng × 20tr gắn 5 dự án thì công nợ NCC theo từng công trình giảm đúng (trước đây một phiếu chỉ gắn được một dự án).
 - Thêm dòng bằng nút **Thêm dòng** hoặc Enter ở ô cuối dòng cuối; bấm × để bỏ dòng; có tổng phiếu (kèm số bằng chữ); ô Dự án hiện số NCC còn nợ tại dự án đó; nội dung dòng để trống thì lấy theo dòng đầu.
+- Bảng dòng dựng giống lưới **Phiếu nhập chi phí** (ô gõ thẳng trong bảng, cột #, tên dự án và số NCC còn nợ ngay cạnh mã dự án); phần **Tổng phiếu** chữ lớn (22px, gạch đôi) kèm số tiền bằng chữ cỡ 16px.
 - Dữ liệu không đổi lược đồ: mỗi dòng vẫn là một dòng sổ thu chi, các dòng cùng số phiếu được gộp khi in và ở Phiếu thu / chi như trước.
 - **Sửa cả phiếu**: từ form sửa một dòng, liên kết “Sửa cả phiếu (N dòng)” mở mọi dòng cùng số phiếu để sửa, thêm, bỏ (dòng bỏ vào Thùng rác).
 - API mới `POST /api/entries/phieu { rows, xoa }` (quyền “ghi”): thêm / sửa / bỏ nhiều dòng trong **một lần lưu**, kiểm tra hết mới ghi (một dòng sai thì không ghi dòng nào, lỗi nêu rõ “Dòng N”), tôn trọng khóa sổ, ghi nhật ký từng dòng.
