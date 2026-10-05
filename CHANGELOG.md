@@ -1,5 +1,13 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Bảng màu hợp mệnh Kim (nữ 1993 – Quý Dậu, Kiếm Phong Kim) (05/10/2026)
+
+- Theo ngũ hành: mệnh Kim hợp **trắng, xám, bạc, vàng ánh kim**; Thổ sinh Kim nên dùng thêm **vàng nhạt / be**; tránh Hỏa (đỏ, cam, hồng, tím) khắc Kim.
+- **Nền trang** trắng xám ấm #ECEAE5, khung / bảng trắng #FDFDFB, đầu cột bảng vàng champagne #E8E0CB, đường kẻ xám ấm.
+- **Menu trái** xám than chì #3E4248 (kim loại), chữ trắng ngà, tên nhóm và vạch mục đang mở vàng đồng; mục đang mở là thẻ trắng ngà.
+- **Màu nhấn** (liên kết, nút phụ, viền chọn, biểu đồ cột, thẻ) chuyển từ xanh tím sang dải **vàng đồng**; nút chính xám than. Cột Chi của biểu đồ vàng đồng (bỏ cam / đất nung), tiền thu vẫn xanh lá. Chỉ cảnh báo lỗi / xóa còn dùng đỏ vì cần nổi bật.
+- Không đổi bố cục, chữ, dữ liệu.
+
 ## Menu trái màu cát đậm (mẫu D) (05/10/2026)
 
 - Menu trái đổi từ xanh tím sang **cát đậm #CDBBA3** (mẫu D trong bản so sánh 4 phương án): chữ và biểu tượng nâu đen, tên nhóm nâu, rê chuột nền trắng mờ, mục đang mở là thẻ trắng ngà chữ đậm. Cùng tông ấm với nền trang be #E3D9CF, dịu mắt hơn.

@@ -20,38 +20,38 @@
   --font-print: "Times New Roman", Times, serif;
 
   /* Giấy & mực (bảng màu của giao diện cũ: giấy sổ xanh lá nhạt, mực xanh đen) */
-  --color-paper: #E3D9CF;       /* nền trang: be ấm (bảng màu Adobe Color: E3D9CF) */
-  --color-sheet: #FCFAF7;       /* mặt bảng, thẻ, hộp thoại: trắng ngà */
-  --color-surface: #F3EDE5;     /* dòng tổng, ô phụ */
-  --color-head: #E3D4C1;        /* đầu cột bảng: cát (E3D4C1) */
-  --color-ink: #172A4E;         /* mực xanh đen: chữ chính, nút chính */
-  --color-ink-2: #4D5570;       /* chữ phụ */
-  --color-ink-3: #565C70;       /* chữ mờ (vẫn đạt tương phản 4.5:1) */
-  --color-rule: #D8CBBB;        /* đường kẻ sổ */
-  --color-rule-2: #C4B3A0;      /* đường kẻ đậm */
-  --color-field: #968877;       /* viền ô nhập (≥ 3:1) */
-  --color-cover: #CDBBA3;       /* thanh bên: cát đậm (mẫu D), mục đang mở là thẻ trắng ngà */
-  --color-cover-2: #BFAA8E;
-  --color-cover-ink: #2A2118;
-  --color-cover-ink-2: #5C4A36;
+  --color-paper: #ECEAE5;       /* nền trang: trắng xám ấm (hành Kim) */
+  --color-sheet: #FDFDFB;       /* mặt bảng, thẻ, hộp thoại: trắng */
+  --color-surface: #F4F2EC;       /* dòng tổng, ô phụ */
+  --color-head: #E8E0CB;       /* đầu cột bảng: vàng champagne nhạt (Thổ sinh Kim) */
+  --color-ink: #25282D;       /* mực xám than: chữ chính, nút chính */
+  --color-ink-2: #4A4F56;       /* chữ phụ */
+  --color-ink-3: #5A5F66;       /* chữ mờ (vẫn đạt tương phản 4.5:1) */
+  --color-rule: #D9D6CD;       /* đường kẻ sổ */
+  --color-rule-2: #C2BEB2;       /* đường kẻ đậm */
+  --color-field: #8E8B83;       /* viền ô nhập (≥ 3:1) */
+  --color-cover: #3E4248;       /* thanh bên: xám than chì (kim loại), điểm nhấn vàng đồng */
+  --color-cover-2: #33373C;
+  --color-cover-ink: #F1EEE6;
+  --color-cover-ink-2: #BDB8AA;
 
-  --color-neutral-100: #F3EDE5; --color-neutral-200: #E3D9CF; --color-neutral-300: #D8CBBB; --color-neutral-400: #C4B3A0; --color-neutral-500: #968877;
-  --color-neutral-600: #565C70; --color-neutral-700: #4D5570; --color-neutral-800: #35405A; --color-neutral-900: #172A4E;
-  --color-accent-100: #E6E9F3; --color-accent-200: #D0D6E8; --color-accent-300: #B8C0DB; --color-accent-400: #99A4C4; --color-accent-500: #7684B0;
-  --color-accent-600: #55649A; --color-accent-700: #44527E; --color-accent-800: #333F66; --color-accent-900: #172A4E;
+  --color-neutral-100: #F4F2EC; --color-neutral-200: #E8E5DD; --color-neutral-300: #D9D6CD; --color-neutral-400: #C2BEB2; --color-neutral-500: #8E8B83;
+  --color-neutral-600: #5A5F66; --color-neutral-700: #4A4F56; --color-neutral-800: #34383E; --color-neutral-900: #25282D;
+  --color-accent-100: #F6F0DD; --color-accent-200: #EBDFBC; --color-accent-300: #DDCB96; --color-accent-400: #CDB26A; --color-accent-500: #B8963F;
+  --color-accent-600: #8F7230; --color-accent-700: #705A26; --color-accent-800: #50411B; --color-accent-900: #25282D;
 
   /* Xanh bút: liên kết, viền focus, dữ liệu biểu đồ */
-  --color-pen: #4A5B93;
-  --color-pen-hover: #3A4A7C;
-  --color-pen-soft: #E6E9F3;
+  --color-pen: #7A5F22;
+  --color-pen-hover: #5F4A19;
+  --color-pen-soft: #F6F0DD;
   /* Màu trạng thái nghiệp vụ: luôn kèm biểu tượng + chữ */
   --color-alert: #B3261E;       /* mực đỏ: âm, vượt ngân sách, xóa */
   --color-alert-soft: #F8E6E0;
-  --color-caution: #8A5200;     /* cảnh báo, ứng dư, nghi trùng */
-  --color-caution-soft: #F7E8C8;
+  --color-caution: #7A5A12;     /* cảnh báo, ứng dư, nghi trùng */
+  --color-caution-soft: #F3E7C4;
   --color-income: #1D6B47;      /* tiền thu, đã tất toán */
   --color-income-soft: #E0EBDD;
-  --color-highlight: #F2D5C2;   /* bút dạ quang */
+  --color-highlight: #F1E6BF;   /* bút dạ quang */
 
   /* Vuông góc (bản vẽ nét) */
   --radius-xs: 0; --radius-sm: 0; --radius-md: 0; --radius-lg: 0; --radius-xl: 0; --radius-2xl: 0; --radius-3xl: 0; --radius-4xl: 0;
@@ -654,16 +654,16 @@
   .btn { font-family: var(--font-sans); height: 36px; font-size: 14px; }
   .btn-sm { height: 32px; font-size: 13px; }
   .btn-primary { background: var(--color-ink); border-color: var(--color-ink); color: #fff; }
-  .btn-primary:hover:not(:disabled) { background: #0D1C38; }
-  .btn-primary:active:not(:disabled) { background: #0A1730; }
+  .btn-primary:hover:not(:disabled) { background: #15171A; }
+  .btn-primary:active:not(:disabled) { background: #0C0D0F; }
   .btn-primary kbd { border-color: rgb(255 255 255 / .35); background: rgb(255 255 255 / .1); color: rgb(255 255 255 / .85); }
   .btn-secondary { background: var(--color-sheet); border-color: var(--color-field); }
   .btn-secondary:hover:not(:disabled) { background: var(--color-paper); }
   .btn-ghost { color: var(--color-ink-2); }
-  .btn-ghost:hover:not(:disabled) { background: rgb(23 42 78 / .06); color: var(--color-ink); }
+  .btn-ghost:hover:not(:disabled) { background: rgb(37 40 45 / .06); color: var(--color-ink); }
   .btn-danger:hover:not(:disabled) { background: #8E1D17; }
   .icon-btn { color: var(--color-ink-2); }
-  .icon-btn:hover { background: rgb(23 42 78 / .07); color: var(--color-ink); }
+  .icon-btn:hover { background: rgb(37 40 45 / .07); color: var(--color-ink); }
   .icon-btn.danger { color: var(--color-alert); }
   .icon-btn.danger:hover { background: var(--color-alert-soft); }
   /* Ô nhập: nền trắng, viền xám xanh */
@@ -677,59 +677,59 @@
   .period-nav { border-color: var(--color-field); }
   .combo-list { background: var(--color-sheet); }
   /* Nút gạt nhiều lựa chọn: nền xám xanh, mục chọn là thẻ trắng */
-  .seg { background: #D9CCBC; border-color: transparent; padding: 3px; gap: 2px; }
+  .seg { background: #DAD6CC; border-color: transparent; padding: 3px; gap: 2px; }
   .seg-item + .seg-item { border-left: 0; }
   .seg-item span { height: auto; padding: 6px 14px; font-size: 13.5px; font-weight: 500; color: var(--color-ink-2); }
   .seg-item:hover span { background: transparent; color: var(--color-ink); }
-  .seg-item input:checked + span { background: var(--color-sheet); color: var(--color-ink); font-weight: 600; box-shadow: 0 1px 2px rgb(23 42 78 / .12); }
+  .seg-item input:checked + span { background: var(--color-sheet); color: var(--color-ink); font-weight: 600; box-shadow: 0 1px 2px rgb(37 40 45 / .12); }
   .seg-sm .seg-item span { padding: 4px 10px; font-size: 13px; }
   /* Khung, bảng, đẳng thức */
   .sheet-title { font-size: 16px; font-stretch: 108%; letter-spacing: -0.005em; }
   .sheet-note { font-size: 13px; color: var(--color-ink-3); }
   .ledger { font-size: 13.5px; font-stretch: 94%; }
   .ledger th { background: var(--color-head); color: var(--color-ink-2); font-size: 12.5px; }
-  .ledger tbody tr:hover > td { background: #F5EEE5; }
-  .ledger tfoot td { background: #F3EDE5; border-top-color: var(--color-ink); }
+  .ledger tbody tr:hover > td { background: #F4F2EC; }
+  .ledger tfoot td { background: #F1EFE9; border-top-color: var(--color-ink); }
   .eq-label { font-size: 12.5px; color: var(--color-ink-3); }
   .eq-value { font-size: 19px; font-stretch: 106%; }
   .stat-value { font-size: 19px; font-stretch: 106%; }
   .balance { font-stretch: 118%; }
   .modal-head h2 { font-size: 17px; font-stretch: 108%; }
-  .modal-foot { background: #F5EFE7; }
+  .modal-foot { background: #F4F2ED; }
   .auth-card h1 { font-stretch: 110%; }
   /* Mặt giấy: nền trắng như giao diện cũ (khung vẫn vuông, có dấu góc) */
   .sheet, .equation, .att-box, .user-box { background: var(--color-sheet); }
   .stat { background: var(--color-sheet); }
   .nav-item.active, .nav-item.active:hover { background: var(--color-ink); color: #fff; }
   /* Biểu đồ: màu thu / chi của giao diện cũ */
-  .flow, .flow-legend { --thu: #2A8A66; --chi: #D08A5B; }
+  .flow, .flow-legend { --thu: #2A8A66; --chi: #B8963F; }
   .sw-thu { background: #2A8A66; }
-  .sw-chi { background: #D08A5B; }
+  .sw-chi { background: #B8963F; }
   .flow .hl { fill: var(--color-pen-soft); }
   .bars .bar { fill: var(--color-pen); fill-opacity: .85; }
   .bars .bar:hover { fill-opacity: 1; }
   .bars .cum { stroke: var(--color-caution); stroke-dasharray: none; stroke-width: 2; }
   .bars .cum-dot { fill: var(--color-caution); }
-  /* Menu trái cát đậm (CDBBA3, mẫu D) trên nền be: chữ nâu đen; mục đang mở là thẻ trắng ngà */
+  /* Menu trái xám than chì (kim loại) + vàng đồng: hợp mệnh Kim (xám, vàng ánh kim; Thổ sinh Kim); mục đang mở là thẻ trắng ngà có vạch vàng */
   .app-sidebar { background: var(--color-cover); border-right: 0; color: var(--color-cover-ink); }
   .brand-name { color: var(--color-cover-ink); }
   .brand-org { color: var(--color-cover-ink-2); }
   .brand-mark { background: var(--color-sheet); border-color: transparent; }
-  .nav-head { color: var(--color-cover-ink-2); }
-  .nav-item { color: var(--color-cover-ink); }
-  .nav-item .ph { color: #4A3C2C; }
-  .nav-item:hover { background: rgb(255 255 255 / .35); color: var(--color-cover-ink); }
-  .nav-item:hover .ph { color: var(--color-cover-ink); }
-  .nav-item.active, .nav-item.active:hover { background: var(--color-sheet); color: #1F2A44; font-weight: 700; }
-  .nav-item.active .ph { color: #1F2A44; }
-  .side-foot { border-top-color: rgb(0 0 0 / .15); }
+  .nav-head { color: var(--color-accent-400); }
+  .nav-item { color: #E9E5DA; }
+  .nav-item .ph { color: #C9C3B3; }
+  .nav-item:hover { background: rgb(255 255 255 / .09); color: #fff; }
+  .nav-item:hover .ph { color: #fff; }
+  .nav-item.active, .nav-item.active:hover { background: #F4F1E8; color: var(--color-ink); font-weight: 700; box-shadow: inset 3px 0 0 var(--color-accent-500); }
+  .nav-item.active .ph { color: var(--color-accent-700); }
+  .side-foot { border-top-color: rgb(255 255 255 / .14); }
   .side-foot .foot-lbl { color: var(--color-cover-ink-2); }
-  .side-foot .fund { color: var(--color-cover-ink); }
-  .side-foot .fund.neg { color: #8E1D17; }
+  .side-foot .fund { color: #fff; }
+  .side-foot .fund.neg { color: #F3B3A8; }
   .side-toggle { color: var(--color-cover-ink-2); }
-  .side-toggle:hover { background: rgb(255 255 255 / .35); color: var(--color-cover-ink); }
-  body.side-thu .nav-group + .nav-group { border-top-color: rgb(0 0 0 / .15); }
-  .app-sidebar :is(.nav-item, .side-toggle):focus-visible { outline-color: var(--color-cover-ink); }
+  .side-toggle:hover { background: rgb(255 255 255 / .1); color: #fff; }
+  body.side-thu .nav-group + .nav-group { border-top-color: rgb(255 255 255 / .14); }
+  .app-sidebar :is(.nav-item, .side-toggle):focus-visible { outline-color: var(--color-accent-400); }
   /* chữ menu lớn hơn một chút */
   .nav-item { font-size: 15.5px; height: 32px; }
   .nav-item .ph { font-size: 19px; }

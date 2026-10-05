@@ -417,7 +417,7 @@ function stat(label, value, sub) {
 }
 
 // Nhiều nhà cung cấp trên một biểu đồ: màu của giao diện cũ, kèm kiểu nét (liền / đứt) để phân biệt không chỉ bằng màu
-const SERIES = [{ c: '#4A5B93', d: '' }, { c: '#B3261E', d: '6 3' }, { c: '#1D6B47', d: '' }, { c: '#8A5200', d: '2 3' }, { c: '#172A4E', d: '9 3 2 3' }, { c: '#667085', d: '' }];
+const SERIES = [{ c: '#8F7230', d: '' }, { c: '#6B7078', d: '6 3' }, { c: '#1D6B47', d: '' }, { c: '#B8963F', d: '2 3' }, { c: '#25282D', d: '9 3 2 3' }, { c: '#9A9DA3', d: '' }];
 
 function drawPriceChart(el, legend, byNcc) {
   const all = [];
