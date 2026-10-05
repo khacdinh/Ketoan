@@ -1,6 +1,6 @@
 # KẾ TOÁN CÔNG TRÌNH — Hướng dẫn sử dụng
 
-(Tên cũ: Sổ Thu Chi. Logo công ty Điền Thủy hiện ở đầu menu bên trái và màn hình đăng nhập. Giao diện mới theo bản thiết kế “Industry”: chữ Barlow, màu xanh thép, khung nét mảnh có dấu + ở góc.)
+(Tên cũ: Sổ Thu Chi. Logo công ty Điền Thủy hiện ở đầu menu bên trái và màn hình đăng nhập. Giao diện bố cục mới (menu trái, thanh công trình, thanh kỳ), màu nền và chữ Archivo như bản cũ; khung nét mảnh có dấu + ở góc.)
 
 Phần mềm kế toán gồm hai phần chạy chung một chỗ, **không cần Internet**, dữ liệu lưu trong thư mục `data`:
 

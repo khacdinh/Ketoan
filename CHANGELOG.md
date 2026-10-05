@@ -1,5 +1,12 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Màu nền, chữ và cỡ chữ trở lại như giao diện cũ (05/10/2026)
+
+- Giữ nguyên bố cục và thao tác của giao diện mới (menu trái, thanh công trình, thanh kỳ, phím tắt); chỉ đổi lại **màu nền, font và cỡ chữ** theo bản cũ.
+- **Màu**: nền trang xanh nhạt #f4f6f1, khung / bảng trắng, viền xanh lá nhạt, chữ xanh mực #172a4e; nút chính và mục menu đang mở màu xanh mực; biểu đồ lại dùng thu xanh lá, chi cam, đường lũy kế nâu vàng. Menu trái vẫn nền xám nhạt như đã chọn.
+- **Chữ**: font Archivo (biến thiên, có tiếng Việt, đóng gói sẵn) thay Barlow; tiêu đề trang 26px, chữ thường 14px, bảng 13.5px, nút 36px (nút nhỏ 32px), ô nhập 36px, số tổng 19px.
+- Góc vuông và dấu “+” ở góc khung giữ như giao diện mới. Không đổi dữ liệu, công thức, API, lược đồ.
+
 ## Menu trái nền xám nhạt (04/10/2026)
 
 - Theo bản cập nhật menu 1a (phương án “Xám nhạt”): nền menu neutral-200 #e7e7ea, đường kẻ neutral-300, tên nhóm và chữ phụ neutral-800, rê chuột neutral-300; mục đang mở giữ nền xanh thép accent-700.

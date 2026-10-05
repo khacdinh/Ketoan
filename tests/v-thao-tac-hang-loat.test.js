@@ -204,12 +204,14 @@ test('V6 phiếu chi có mục Mã vật tư: chọn theo mã hoặc tên, lưu 
     await page.click('.modal label.seg-item:has(input[value=thu])');
     assert.equal(await page.$eval('.modal [name=maVT]', (e) => e.closest('label').hidden), true);
     await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('.modal')); // chờ hộp thoại cũ đóng hẳn trước khi mở hộp thoại sửa
     // sửa: bỏ mã vật tư
     const id = db.entries[1].id;
     await page.dblclick('#view tr[data-id="' + id + '"]');
     await page.waitForSelector('#entry-form');
+    await page.waitForTimeout(150); // qua mốc tự focus 40 ms của biểu mẫu
     assert.equal(await page.inputValue('.modal [name=maVT]'), 'XM');
-    await page.fill('.modal [name=maVT]', '');
+    await page.click('.modal [name=maVT]'); await page.fill('.modal [name=maVT]', '');
     await page.keyboard.press('Control+Enter');
     await page.waitForFunction(() => !document.querySelector('.modal'));
     db = readStored(srv.dataDir);

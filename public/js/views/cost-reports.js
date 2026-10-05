@@ -416,8 +416,8 @@ function stat(label, value, sub) {
   return '<div class="stat"><div class="stat-label">' + esc(label) + '</div><div class="stat-value">' + value + '</div>' + (sub ? '<div class="stat-sub">' + sub + '</div>' : '') + '</div>';
 }
 
-// Nhiều nhà cung cấp trên một biểu đồ: chỉ dùng thang xanh thép và xám, phân biệt bằng nét (liền / đứt) chứ không bằng màu trạng thái
-const SERIES = [{ c: '#416180', d: '' }, { c: '#1d1f20', d: '6 3' }, { c: '#749dc4', d: '' }, { c: '#7a7a7d', d: '2 3' }, { c: '#2c455d', d: '9 3 2 3' }, { c: '#98989b', d: '' }];
+// Nhiều nhà cung cấp trên một biểu đồ: màu của giao diện cũ, kèm kiểu nét (liền / đứt) để phân biệt không chỉ bằng màu
+const SERIES = [{ c: '#2F5DAA', d: '' }, { c: '#B3261E', d: '6 3' }, { c: '#1D6B47', d: '' }, { c: '#8A5200', d: '2 3' }, { c: '#172A4E', d: '9 3 2 3' }, { c: '#667085', d: '' }];
 
 function drawPriceChart(el, legend, byNcc) {
   const all = [];

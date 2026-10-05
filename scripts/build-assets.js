@@ -1,10 +1,10 @@
 'use strict';
 /*
  * Chuẩn bị tài nguyên giao diện chạy offline:
- *  - Font Barlow (400/500/700) và Barlow Condensed (400/600), có tiếng Việt — gói woff2 vào public/vendor/fonts
+ *  - Font Archivo (biến thiên, có tiếng Việt) có sẵn trong public/vendor/fonts — script chỉ đếm, không chép
  *  - Icon Lucide (nét 1.5): chỉ giữ các icon thực sự được dùng trong public/ (quét tên "ph-..."), vẽ bằng CSS mask
  *    nên mã giao diện vẫn viết <i class="ph ph-plus"> như trước. Tên ph-... cũ được đổi sang icon Lucide tương ứng (BANG_DOI).
- * Nguồn: node_modules (devDependencies @fontsource/barlow, @fontsource/barlow-condensed, lucide-static)
+ * Nguồn icon: node_modules (devDependencies lucide-static)
  *        hoặc thư mục trong biến môi trường KETOAN_NGUON_TAI_NGUYEN (chứa các gói đã giải nén: <tên-gói>/package/...).
  * Chạy: npm run build:assets  (npm run build = assets + Tailwind CSS). File sinh ra được đưa vào git nên máy dùng phần mềm không cần chạy lệnh này.
  */
@@ -25,24 +25,9 @@ function pkgDir(name) {
   throw new Error('Không tìm thấy gói ' + name + ' (đã tìm: ' + cands.join(', ') + ')');
 }
 
-/* ---------- Font Barlow ---------- */
+/* ---------- Font Archivo (đã đóng gói sẵn trong public/vendor/fonts, không cần sinh lại) ---------- */
 ensure(path.join(VENDOR, 'fonts'));
-const FONTS = [
-  ['@fontsource/barlow', 'barlow', ['400', '500', '700']],
-  ['@fontsource/barlow-condensed', 'barlow-condensed', ['400', '600']]
-];
-let nFont = 0;
-for (const [pkg, base, weights] of FONTS) {
-  const dir = path.join(pkgDir(pkg), 'files');
-  for (const subset of ['latin', 'latin-ext', 'vietnamese']) {
-    for (const w of weights) {
-      const name = base + '-' + subset + '-' + w + '-normal.woff2';
-      fs.copyFileSync(path.join(dir, name), path.join(VENDOR, 'fonts', name));
-      nFont++;
-    }
-  }
-}
-fs.copyFileSync(path.join(pkgDir('@fontsource/barlow'), 'LICENSE'), path.join(VENDOR, 'fonts', 'OFL.txt'));
+const nFont = fs.readdirSync(path.join(VENDOR, 'fonts')).filter((f) => f.startsWith('archivo-')).length;
 
 /* ---------- Icon Lucide ---------- */
 function walk(dir, out) {
@@ -96,6 +81,5 @@ fs.writeFileSync(path.join(VENDOR, 'lucide', 'icons.css'),
   '  -webkit-mask: var(--ph) center / contain no-repeat; mask: var(--ph) center / contain no-repeat;\n}\n' + rules.join('\n') + '\n');
 // thư mục cũ của Phosphor không còn dùng
 fs.rmSync(path.join(VENDOR, 'phosphor'), { recursive: true, force: true });
-for (const f of fs.readdirSync(path.join(VENDOR, 'fonts'))) if (f.startsWith('archivo-')) fs.rmSync(path.join(VENDOR, 'fonts', f));
 
-console.log('Đã chép ' + nFont + ' file font Barlow và ' + rules.length + ' icon Lucide vào public/vendor' + (thieu.length ? '. Bỏ qua (không phải icon): ' + thieu.join(', ') : ''));
+console.log('Đã chép ' + nFont + ' file font Archivo (có sẵn) và ' + rules.length + ' icon Lucide vào public/vendor' + (thieu.length ? '. Bỏ qua (không phải icon): ' + thieu.join(', ') : ''));

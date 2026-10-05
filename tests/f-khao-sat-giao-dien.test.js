@@ -216,17 +216,17 @@ test('F11 chữ tiếng Việt hiển thị đúng: font cục bộ có tập k�
       const fam = getComputedStyle(document.body).fontFamily;
       // đo bề rộng: nếu ký tự tiếng Việt rơi về font dự phòng thì bề rộng khác font chính
       const c = document.createElement('canvas').getContext('2d');
-      c.font = '16px "Barlow"';
+      c.font = '16px "Archivo Variable"';
       const w1 = c.measureText(probe).width;
       c.font = '16px monospace';
       const w2 = c.measureText(probe).width;
-      return { loaded, fam, w1, w2, check: document.fonts.check('16px "Barlow"', probe), hasViet: [...document.fonts].some((f) => /Barlow/.test(f.family) && f.status === 'loaded') };
+      return { loaded, fam, w1, w2, check: document.fonts.check('16px "Archivo Variable"', probe), hasViet: [...document.fonts].some((f) => /Archivo/.test(f.family) && f.status === 'loaded') };
     });
-    assert.match(info.fam, /Barlow/, 'font của giao diện: ' + info.fam);
-    assert.ok(info.hasViet && info.check, 'font Barlow (tập tiếng Việt) chưa nạp được: ' + JSON.stringify(info.loaded));
+    assert.match(info.fam, /Archivo/, 'font của giao diện: ' + info.fam);
+    assert.ok(info.hasViet && info.check, 'font Archivo (tập tiếng Việt) chưa nạp được: ' + JSON.stringify(info.loaded));
     assert.notEqual(Math.round(info.w1), Math.round(info.w2), 'chữ có dấu đang hiển thị bằng font dự phòng');
     // tệp font nằm cục bộ và tải được
-    for (const f of ['barlow-vietnamese-400-normal.woff2', 'barlow-latin-ext-400-normal.woff2', 'barlow-latin-400-normal.woff2', 'barlow-vietnamese-700-normal.woff2']) {
+    for (const f of ['archivo-vietnamese-standard-normal.woff2', 'archivo-latin-ext-standard-normal.woff2', 'archivo-latin-standard-normal.woff2']) {
       const r = await srv.call('GET', '/vendor/fonts/' + f);
       assert.equal(r.status, 200); assert.ok(r.body.length > 5000, f);
     }
