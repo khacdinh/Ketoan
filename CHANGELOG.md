@@ -1,5 +1,13 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Đổi bảng màu nền theo bộ màu Adobe Color (05/10/2026)
+
+- Theo bộ 5 màu: #CC9889 (hồng đất), #99A4C4 (xanh tím nhạt), #E3D4C1 (cát), #D6A081 (đất nung), #E3D9CF (be).
+- **Nền trang** be #E3D9CF, khung / bảng / hộp thoại trắng ngà #FCFAF7, đầu cột bảng màu cát #E3D4C1, đường kẻ và viền ô nhập nâu be.
+- **Menu trái** xanh tím nhạt #99A4C4, chữ và biểu tượng xanh mực, mục đang mở là thẻ trắng ngà.
+- **Màu nhấn** (liên kết, viền chọn, biểu đồ cột, nút phụ, thẻ) chuyển sang dải xanh tím; nút chính vẫn xanh mực. Bút dạ quang / dòng vừa ghi màu đất nung nhạt, cột Chi của biểu đồ màu đất nung (#D08A5B). Tiền thu vẫn xanh lá.
+- Không đổi bố cục, chữ, dữ liệu.
+
 ## Nhân bản phải xác nhận, rồi mở trang nhập (05/10/2026)
 
 - Mọi nút **Nhân bản** (dòng Sổ quỹ, dòng Sổ chi phí, phiếu nhập chi phí; cả phím **Ctrl D**) giờ hiện hộp thoại tóm tắt dữ liệu sắp chép; **Hủy** thì không làm gì, **Nhân bản và mở trang nhập** thì mở trang nhập đã điền sẵn, chưa lưu gì cho đến khi bấm Ghi sổ.
