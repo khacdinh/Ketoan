@@ -1,13 +1,5 @@
 # Nhật ký phiên bản (CHANGELOG)
 
-## Màu dịu mắt, dễ tìm cho menu, nút, bảng (05/10/2026)
-
-- **Một quy ước màu**: xanh dương = chỗ bấm được và “đang ở đây”; xanh lá = tiền thu; cam nâu = tiền chi (cột Chi ở Sổ quỹ); đỏ = xóa / lỗi.
-- **Menu trái**: tên nhóm màu xanh đậm, biểu tượng xanh dương, mục đang mở nền xanh nhạt + vạch xanh bên trái + chữ đậm (thay khối xanh đen nặng mắt), rê chuột nền xám xanh nhạt; chữ 14,5px.
-- **Nút**: nút chính xanh dương (rê chuột đậm hơn); nút phụ viền và chữ xanh trên nền trắng; nút ghost, biểu tượng thao tác ở dòng cũng xanh; nút xóa vẫn đỏ. Vòng tiêu điểm xanh rõ khi dùng bàn phím.
-- **Bảng**: dòng xen kẽ nền xanh rất nhạt, rê chuột nền xanh nhạt để mắt theo được từng dòng; khung trắng ngà (#FCFDFB) đỡ chói hơn trắng tinh; chữ phụ đậm hơn một nấc (#596376) cho dễ đọc.
-- Không đổi bố cục, chữ, dữ liệu.
-
 ## Phiếu thu / chi nhiều dòng, mỗi dòng một dự án (05/10/2026)
 
 - Form **Ghi thu / chi** có bảng **Các dòng của phiếu**: phần chung (ngày, số phiếu, nhà cung cấp, người nhận, ghi chú) + nhiều dòng, mỗi dòng có nội dung, **dự án**, mã vật tư, số tiền riêng. Chi ông A 100tr chia 5 dòng × 20tr gắn 5 dự án thì công nợ NCC theo từng công trình giảm đúng (trước đây một phiếu chỉ gắn được một dự án).
