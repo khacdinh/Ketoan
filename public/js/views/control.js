@@ -216,7 +216,7 @@ function renderTrash(el) {
 
 /* ============================== CẦN XỬ LÝ ============================== */
 
-const ANOM_ICON = { trung: 'copy', gia: 'tag', ngay: 'calendar', vt: 'package', thieu: 'warnTri', nhap: 'draft', tien: 'coins', quy: 'money' };
+const ANOM_ICON = { trung: 'copy', gia: 'tag', ngay: 'calendar', vt: 'package', thieu: 'warnTri', nhap: 'draft', tien: 'coins', quy: 'money', congno: 'scales', thuchi: 'receipt', chiphi: 'book' };
 const cxl = { loai: '', showIgnored: false, more: {} };
 
 // Mở đúng chỗ để sửa bản ghi của cảnh báo
@@ -234,6 +234,11 @@ export function openTarget(t) {
     if (m) openMaterialForm(m);
   } else if (t.kind === 'cashCounts') {
     location.hash = '#/kiem-soat?tab=kiem-quy';
+  } else if (t.kind === 'ncc') {
+    // công nợ của một nhà cung cấp: mở Sổ chi tiết NCC (từng phiếu nhập, từng lần trả) để tìm dòng sai rồi bấm sửa
+    LS.set('sct.ncc', t.ma);
+    LS.set('cp.cn.sel', t.ma);
+    location.hash = '#/so-chi-tiet-ncc';
   }
 }
 
@@ -267,6 +272,8 @@ function renderIssues(el) {
     '<form id="cxl-nguong" class="flex flex-wrap items-end gap-2 text-[13px]" autocomplete="off">' +
     '<label class="field w-[150px]"><span class="label">Giá lệch quá (%)</span><input name="nguongLechGia" class="input input-sm text-right" inputmode="numeric" value="' + esc(st.nguongLechGia) + '"></label>' +
     '<label class="field w-[150px]"><span class="label">Nháp để quá (ngày)</span><input name="soNgayNhapTon" class="input input-sm text-right" inputmode="numeric" value="' + esc(st.soNgayNhapTon) + '"></label>' +
+    '<label class="field w-[150px]"><span class="label">Nợ NCC lâu quá (ngày)</span><input name="soNgayNoLau" class="input input-sm text-right" inputmode="numeric" value="' + esc(st.soNgayNoLau) + '"></label>' +
+    '<label class="field w-[170px]"><span class="label">Khoản chi lớn từ (đồng)</span><input name="nguongChiLon" class="input input-sm text-right" inputmode="numeric" value="' + esc(money(st.nguongChiLon)) + '"></label>' +
     '<button type="submit" class="btn btn-secondary btn-sm">' + icon('save') + 'Lưu ngưỡng</button></form></div>' +
     '<div class="flex flex-wrap items-center gap-2 px-5 pb-4">' + chip('', 'Tất cả', cxl.showIgnored ? a.items.length : a.open) +
     Object.keys(KT.ANOMALY_TYPES).filter((k) => a.counts[k] || (cxl.showIgnored && a.items.some((x) => x.loai === k))).map((k) => chip(k, KT.ANOMALY_TYPES[k], cxl.showIgnored ? a.items.filter((x) => x.loai === k).length : a.counts[k])).join('') +
@@ -320,7 +327,10 @@ function renderIssues(el) {
   $('#cxl-nguong', el).addEventListener('submit', async (e) => {
     e.preventDefault();
     const fm = e.target;
-    const data = { nguongLechGia: Number(fm.elements.nguongLechGia.value), soNgayNhapTon: Number(fm.elements.soNgayNhapTon.value) };
+    const data = { nguongLechGia: Number(fm.elements.nguongLechGia.value), soNgayNhapTon: Number(fm.elements.soNgayNhapTon.value),
+      soNgayNoLau: Number(fm.elements.soNgayNoLau.value), nguongChiLon: KT.parseAmount(fm.elements.nguongChiLon.value) };
+    if (!Number.isInteger(data.soNgayNoLau) || data.soNgayNoLau < 7 || data.soNgayNoLau > 3650) return fieldError(fm.elements.soNgayNoLau, 'Nhập số ngày từ 7 đến 3650');
+    if (!Number.isInteger(data.nguongChiLon) || data.nguongChiLon < 0) return fieldError(fm.elements.nguongChiLon, 'Nhập số tiền, ví dụ 5tr');
     if (!Number.isInteger(data.nguongLechGia) || data.nguongLechGia < 1 || data.nguongLechGia > 1000) return fieldError(fm.elements.nguongLechGia, 'Nhập số từ 1 đến 1000');
     if (!Number.isInteger(data.soNgayNhapTon) || data.soNgayNhapTon < 1 || data.soNgayNhapTon > 365) return fieldError(fm.elements.soNgayNhapTon, 'Nhập số từ 1 đến 365');
     try { await api('PUT', '/api/settings', data); toast('Đã lưu ngưỡng kiểm tra'); } catch (err) { showError(err); }

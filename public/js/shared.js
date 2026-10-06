@@ -1295,9 +1295,12 @@
     thieu: 'Thiếu hạng mục hoặc mã chưa có trong danh mục',
     nhap: 'Phiếu nháp để lâu chưa ghi sổ',
     tien: 'Số tiền âm hoặc bằng 0',
-    quy: 'Kiểm quỹ có chênh lệch'
+    quy: 'Kiểm quỹ có chênh lệch',
+    congno: 'Công nợ nhà cung cấp cần xem lại',
+    thuchi: 'Sổ thu chi cần xem lại',
+    chiphi: 'Sổ chi phí cần xem lại'
   };
-  const ANOMALY_DEFAULTS = { nguongLechGia: 30, soNgayNhapTon: 7, soNgayTuongLai: 7, soNgayLechNhap: 180 };
+  const ANOMALY_DEFAULTS = { nguongLechGia: 30, soNgayNhapTon: 7, soNgayTuongLai: 7, soNgayLechNhap: 180, soNgayNoLau: 90, nguongChiLon: 5000000 };
 
   function addDays(iso, n) {
     const d = new Date(iso + 'T00:00:00Z');
@@ -1497,6 +1500,96 @@
       push({ key: 'quy:' + k.id + ':' + cl, loai: 'quy', ngay: k.ngay, soTien: cl,
         tieuDe: 'Kiểm quỹ ngày ' + fmtDate(k.ngay) + ' ' + (cl > 0 ? 'thừa ' : 'thiếu ') + fmtMoney(Math.abs(cl)) + ' đ',
         chiTiet: 'Thực tế ' + moneyTxt(k.thucTe) + ', theo sổ ' + moneyTxt(so), target: { kind: 'cashCounts', id: k.id } });
+    });
+
+    // (i) công nợ nhà cung cấp (chỉ dòng đã ghi sổ)
+    const P = postedDb(db);
+    const nccCoCP = new Set(P.costs.map(function (c) { return keyOf(c.maNCC); }).filter(Boolean));
+    const capCP = new Set(P.costs.map(function (c) { return keyOf(c.maNCC) + '|' + keyOf(c.maCT); }));
+    const ctName = function (ma) { const p = x.p.get(keyOf(ma)); return p ? ma + ' – ' + p.ten : ma; };
+    P.entries.forEach(function (e) {
+      const tra = (e.chi || 0) - (e.thu || 0);
+      if (!(tra > 0) || !e.maNCC || !nccCoCP.has(keyOf(e.maNCC))) return;
+      if (!e.maDuAn) {
+        push({ key: 'congno:khongct:' + e.id, loai: 'congno', ngay: e.ngay, soTien: tra,
+          tieuDe: 'Trả ' + nccName(e.maNCC) + ' ' + moneyTxt(tra) + ' nhưng chưa ghi công trình',
+          chiTiet: (e.soPhieu ? e.soPhieu + ' · ' : '') + (e.noiDung || '') + ' — khoản trả không trừ vào công nợ công trình nào; chọn công trình (hoặc chia nhiều dòng)', target: { kind: 'entries', id: e.id } });
+      } else if (!capCP.has(keyOf(e.maNCC) + '|' + keyOf(e.maDuAn))) {
+        push({ key: 'congno:saict:' + e.id + ':' + keyOf(e.maDuAn), loai: 'congno', ngay: e.ngay, soTien: tra,
+          tieuDe: 'Trả ' + nccName(e.maNCC) + ' cho công trình ' + e.maDuAn + ' nhưng NCC này không có chi phí ở công trình đó',
+          chiTiet: (e.soPhieu ? e.soPhieu + ' · ' : '') + (e.noiDung || '') + ' · ' + moneyTxt(tra) + ' — có ghi nhầm công trình?', target: { kind: 'entries', id: e.id } });
+      }
+    });
+    const noLau = addDays(today, -(Number(st.soNgayNoLau) || ANOMALY_DEFAULTS.soNgayNoLau));
+    supplierDebt(P, {}).rows.forEach(function (r) {
+      if (!r.inCatalog && !x.s.get(keyOf(r.ma))) return;
+      if (r.conLai < 0) {
+        push({ key: 'congno:ungdu:' + keyOf(r.ma) + ':' + r.conLai, loai: 'congno', ngay: '', soTien: -r.conLai,
+          tieuDe: 'Đã trả ' + nccName(r.ma) + ' nhiều hơn chi phí ' + moneyTxt(-r.conLai) + ' (Dư Nợ)',
+          chiTiet: 'Chi phí ' + moneyTxt(r.phatSinh + (r.dauKy || 0)) + ', đã trả ' + moneyTxt(r.daTra) + ' — thiếu phiếu nhập chi phí, hay trả nhầm / ghi trùng?', target: { kind: 'ncc', ma: r.ma } });
+        return;
+      }
+      if (!(r.conLai > 0)) return;
+      const tra = P.entries.filter(function (e) { return keyOf(e.maNCC) === keyOf(r.ma) && (e.chi || 0) > (e.thu || 0); }).map(function (e) { return e.ngay; })
+        .concat((P.extPayments || []).filter(function (p) { return keyOf(p.maNCC) === keyOf(r.ma); }).map(function (p) { return p.ngay; })).sort();
+      const lanCuoi = tra.length ? tra[tra.length - 1] : '';
+      const cpCu = P.costs.filter(function (c) { return keyOf(c.maNCC) === keyOf(r.ma); }).map(function (c) { return c.ngay; }).sort()[0] || '';
+      if (cpCu && cpCu < noLau && (!lanCuoi || lanCuoi < noLau)) {
+        push({ key: 'congno:nolau:' + keyOf(r.ma) + ':' + (lanCuoi || '-'), loai: 'congno', ngay: lanCuoi || cpCu, soTien: r.conLai,
+          tieuDe: 'Còn nợ ' + nccName(r.ma) + ' ' + moneyTxt(r.conLai) + ', ' + (lanCuoi ? 'lần trả gần nhất ' + fmtDate(lanCuoi) : 'chưa trả lần nào'),
+          chiTiet: 'Quá ' + (Number(st.soNgayNoLau) || ANOMALY_DEFAULTS.soNgayNoLau) + ' ngày chưa thanh toán; chi phí từ ' + fmtDate(cpCu), target: { kind: 'ncc', ma: r.ma } });
+      }
+    });
+
+    // (k) sổ thu chi
+    const chiLon = Number(st.nguongChiLon) || ANOMALY_DEFAULTS.nguongChiLon;
+    ent.forEach(function (e) {
+      if (isDraft(e)) return;
+      if (e.soPhieu) {
+        const t = voucherType(e.soPhieu);
+        if ((t === 'thu' && e.chi > 0 && !(e.thu > 0)) || (t === 'chi' && e.thu > 0 && !(e.chi > 0))) {
+          push({ key: 'thuchi:loai:' + e.id + ':' + voucherKey(e.soPhieu), loai: 'thuchi', ngay: e.ngay, soTien: e.chi || e.thu,
+            tieuDe: 'Số phiếu ' + e.soPhieu + ' là phiếu ' + t + ' nhưng dòng là khoản ' + (t === 'thu' ? 'chi' : 'thu'),
+            chiTiet: (e.noiDung || '') + ' · ' + moneyTxt(e.chi || e.thu) + ' — phiếu in ra sẽ sai loại; đổi số phiếu (PC… cho chi, PT… cho thu)', target: { kind: 'entries', id: e.id } });
+        }
+      } else if (e.chi > 0) {
+        push({ key: 'thuchi:sophieu:' + e.id, loai: 'thuchi', ngay: e.ngay, soTien: e.chi, tieuDe: 'Khoản chi ' + moneyTxt(e.chi) + ' ngày ' + fmtDate(e.ngay) + ' chưa có số phiếu',
+          chiTiet: (e.noiDung || '') + (e.maNCC ? ' · ' + nccName(e.maNCC) : '') + ' — không in được phiếu chi; bấm “Số mới” để lấy số', target: { kind: 'entries', id: e.id } });
+      }
+      if (e.chi >= chiLon && !e.maNCC && !e.maDuAn) {
+        push({ key: 'thuchi:doituong:' + e.id, loai: 'thuchi', ngay: e.ngay, soTien: e.chi, tieuDe: 'Khoản chi lớn ' + moneyTxt(e.chi) + ' chưa ghi nhà cung cấp / đối tượng và công trình',
+          chiTiet: (e.soPhieu ? e.soPhieu + ' · ' : '') + (e.noiDung || '') + ' — không tính vào công nợ hay chi phí công trình nào', target: { kind: 'entries', id: e.id } });
+      }
+    });
+    // tồn quỹ âm: báo dòng đầu tiên làm quỹ âm của mỗi lần âm
+    let amTruoc = false;
+    buildLedger(P).forEach(function (r) {
+      const am = r.ton < 0;
+      if (am && !amTruoc) {
+        push({ key: 'thuchi:am:' + r.id + ':' + r.ton, loai: 'thuchi', ngay: r.ngay, soTien: r.ton, tieuDe: 'Tồn quỹ âm ' + moneyTxt(r.ton) + ' sau dòng ngày ' + fmtDate(r.ngay),
+          chiTiet: (r.soPhieu ? r.soPhieu + ' · ' : '') + (r.noiDung || '') + ' — chi nhiều hơn tiền có trong quỹ: thiếu khoản thu, hoặc sai số tiền / ngày?', target: { kind: 'entries', id: r.id } });
+      }
+      amTruoc = am;
+    });
+
+    // (l) sổ chi phí
+    costs.forEach(function (c) {
+      const m = c.maVT ? x.m.get(keyOf(c.maVT)) : null;
+      const it = m && m.maHM ? x.i.get(keyOf(m.maHM)) : null;
+      if (it && keyOf(it.ma) !== keyOf(c.maHM)) {
+        push({ key: 'chiphi:hm:' + c.id + ':' + keyOf(c.maHM) + '>' + keyOf(it.ma), loai: 'chiphi', ngay: c.ngay, soTien: c.thanhTien,
+          tieuDe: 'Dòng ' + c.maVT + ' ngày ' + fmtDate(c.ngay) + ' nằm ở hạng mục khác hạng mục của vật tư',
+          chiTiet: 'Dòng: ' + (x.i.get(keyOf(c.maHM)) ? x.i.get(keyOf(c.maHM)).ten : c.maHM || '(trống)') + ' · vật tư: ' + it.ten + ' — mở để lưu lại theo hạng mục của vật tư', target: { kind: 'costs', id: c.id, phieuId: c.phieuId } });
+      }
+      if (!c.maCT) {
+        push({ key: 'chiphi:ct:' + c.id, loai: 'chiphi', ngay: c.ngay, soTien: c.thanhTien, tieuDe: 'Dòng chi phí chưa có công trình',
+          chiTiet: (c.maVT || c.dienGiai || '') + ' · ' + nccName(c.maNCC) + ' · ' + moneyTxt(c.thanhTien), target: { kind: 'costs', id: c.id, phieuId: c.phieuId } });
+      }
+      if (!isKhoan(c) && c.soLuong > 0 && c.donGia > 0 && Math.abs(costAmount(c.soLuong, c.donGia) - c.thanhTien) > 1) {
+        push({ key: 'chiphi:tt:' + c.id + ':' + c.thanhTien, loai: 'chiphi', ngay: c.ngay, soTien: c.thanhTien,
+          tieuDe: 'Thành tiền ' + fmtMoney(c.thanhTien) + ' khác Số lượng × Đơn giá (' + fmtMoney(costAmount(c.soLuong, c.donGia)) + ')',
+          chiTiet: (c.maVT || c.dienGiai || '') + ' · ' + fmtQty(c.soLuong) + ' × ' + fmtMoney(c.donGia) + ' · ngày ' + fmtDate(c.ngay), target: { kind: 'costs', id: c.id, phieuId: c.phieuId } });
+      }
     });
 
     const counts = {};

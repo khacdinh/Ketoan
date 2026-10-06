@@ -1,5 +1,13 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Cảnh báo mới: công nợ, sổ thu chi, sổ chi phí (06/10/2026)
+
+Ở **Kiểm soát › Cần xử lý** (và ô “Cần chú ý hôm nay” ở Tổng quan) có thêm 3 nhóm; mỗi cảnh báo có nút **Mở để sửa** tới đúng chỗ sửa, hoặc **Bỏ qua** nếu đúng thật:
+- **Công nợ nhà cung cấp**: trả NCC (có chi phí công trình) nhưng chưa ghi công trình → khoản trả không trừ vào công nợ công trình nào; trả NCC cho công trình mà NCC đó không có chi phí (ghi nhầm công trình); đã trả nhiều hơn chi phí (Dư Nợ); còn nợ quá N ngày chưa trả (mặc định 90). Mở dòng sổ quỹ trên trang Ghi thu / chi, hoặc mở Sổ chi tiết NCC.
+- **Sổ thu chi**: số phiếu PT… mà là khoản chi (hoặc PC… mà là khoản thu); khoản chi chưa có số phiếu (không in được); khoản chi lớn (mặc định từ 5 triệu) chưa ghi NCC / đối tượng và công trình; tồn quỹ âm (báo dòng làm quỹ âm).
+- **Sổ chi phí**: dòng có hạng mục khác hạng mục của vật tư (mở form sửa dòng, hạng mục tự theo vật tư, bấm Lưu); dòng chưa có công trình; Thành tiền khác Số lượng × Đơn giá.
+- Hai ngưỡng mới chỉnh được ngay trên màn hình: **Nợ NCC lâu quá (ngày)**, **Khoản chi lớn từ (đồng)**.
+
 ## Ghi thu / chi thành một trang riêng (06/10/2026)
 
 - Phiếu thu / chi không còn mở trong hộp thoại: F3, menu **Ghi thu / chi**, nút trên thanh trên, Sửa / Nhân bản dòng ở Sổ quỹ, Phiếu thu / chi, Kiểm soát… đều mở **trang `#/ghi-thu-chi`** (rộng hết khung, thanh nút Ghi sổ / Lưu nháp / Hủy dính ở đáy). Mục Ghi thu / chi trên menu sáng lên khi đang ở trang.

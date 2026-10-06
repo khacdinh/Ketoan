@@ -520,7 +520,7 @@ async function handleApi(req, res, url) {
     });
     if (b.hienKeToanTruong !== undefined) s.hienKeToanTruong = !!b.hienKeToanTruong;
     // ngưỡng kiểm tra bất thường (màn hình Cần xử lý)
-    [['nguongLechGia', 1, 1000], ['soNgayNhapTon', 1, 365]].forEach(([k, lo, hi]) => {
+    [['nguongLechGia', 1, 1000], ['soNgayNhapTon', 1, 365], ['soNgayNoLau', 7, 3650], ['nguongChiLon', 0, 1e12]].forEach(([k, lo, hi]) => {
       if (b[k] === undefined) return;
       const n = Number(b[k]);
       if (!Number.isInteger(n) || n < lo || n > hi) throw new HttpError(400, 'Ngưỡng không hợp lệ (' + lo + '–' + hi + ')');
