@@ -6,7 +6,7 @@ import { openEntryForm, deleteEntry } from '../forms.js';
 import { printView, printVoucher } from '../print.js';
 import { clipHtml, openAttachList } from '../attach.js';
 import { moKyKhoa } from '../khoa.js';
-import { datCongTrinh } from '../ctpick.js';
+import { datCongTrinh, veChonCongTrinh } from '../ctpick.js';
 
 const KT = window.KT;
 const PAGE = 500; // số dòng vẽ mỗi lần (bảng lớn vẽ chậm); bấm "Hiện thêm" để xem tiếp, in thì hiện hết
@@ -89,6 +89,7 @@ export function renderLedger(root) {
     if (act === 'clear') {
       Object.assign(f, { period: 'tat-ca', from: '', to: '', rel: false, duAn: '', ncc: '', loai: '', q: '', trangThai: '' });
       datCongTrinh('', true);
+      veChonCongTrinh(); // nhãn công trình ở thanh trên đổi ngay (bảng vẽ lại tại chỗ, không đổi route)
       saveFilter('so');
       renderLedger(root);
     } else if (act === 'export') download('/api/export/ledger?' + exportQuery(f));

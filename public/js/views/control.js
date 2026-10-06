@@ -237,8 +237,12 @@ export function openTarget(t) {
     location.hash = '#/kiem-soat?tab=kiem-quy';
   } else if (t.kind === 'ncc') {
     // công nợ của một nhà cung cấp: mở Sổ chi tiết NCC (từng phiếu nhập, từng lần trả) để tìm dòng sai rồi bấm sửa
+    // cảnh báo tính trên mọi công trình, mọi kỳ → mở sổ không lọc công trình, kỳ Toàn bộ để thấy đúng số được báo
     LS.set('sct.ncc', t.ma);
     LS.set('cp.cn.sel', t.ma);
+    datCongTrinh('', true);
+    S.filters.sct = Object.assign(S.filters.sct || {}, { period: 'tat-ca', from: '', to: '', rel: false });
+    saveFilter('sct');
     location.hash = '#/so-chi-tiet-ncc';
   }
 }

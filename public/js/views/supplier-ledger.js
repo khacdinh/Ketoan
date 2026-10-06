@@ -19,7 +19,7 @@ export function renderSupplierLedger(root) {
   const f = S.filters.sct || (S.filters.sct = { period: 'tat-ca', from: '', to: '', tatCa: false });
   if (!f.period) f.period = 'tat-ca';
   refreshPeriod(f);
-  const ct = S.ct || '';
+  const ct = S.ct === '__none__' ? '' : S.ct || ''; // "Chưa gán công trình" chỉ có nghĩa ở Sổ quỹ: ở đây coi như tất cả
   // NCC đang xem: lấy từ lần chọn trước; chưa có thì NCC có số dư lớn nhất
   const ds = KT.supplierPeriod(S.db, { from: f.from, to: f.to, ct }).rows.filter((r) => r.coSoLieu).sort((a, b) => b.cuoiKy - a.cuoiKy);
   let ma = LS.get('sct.ncc', '');

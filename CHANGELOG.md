@@ -1,5 +1,19 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Sửa lỗi sau rà soát (06/10/2026)
+
+- **Sổ chi tiết NCC**: chọn “Chưa gán công trình” ở Sổ quỹ rồi mở sổ này, mọi số không còn về 0 (lựa chọn đó chỉ có nghĩa ở Sổ quỹ). Bấm cảnh báo công nợ sẽ mở sổ cho mọi công trình, kỳ Toàn bộ, để thấy đúng số được báo.
+- **Sổ quỹ**:
+  - Nút Bỏ lọc đổi ngay nhãn công trình ở thanh trên.
+  - “Xem nháp” ở Tổng quan và bấm một dòng sổ quỹ trong Ctrl K không còn bị ẩn do đang lọc công trình.
+- **Cảnh báo** bớt báo nhầm:
+  - Ngưỡng “Khoản chi lớn” đặt 0 nay được tôn trọng (trước đây bị đổi lại thành 5 triệu).
+  - Trả NCC theo công trình của số dư đầu kỳ hoặc khoản trả ngoài quỹ không còn bị coi là ghi nhầm công trình.
+  - “Còn nợ quá N ngày” tính theo khoản nợ còn lại, tiền trả trừ vào khoản cũ nhất trước. NCC đã trả hết nợ cũ, chỉ còn nợ mới thì không bị báo. Số dư đầu kỳ chưa trả cũng được báo.
+  - Tồn quỹ âm xét theo tồn cuối ngày.
+  - Phần tính cảnh báo công nợ nhanh hơn khi dữ liệu lớn: chỉ đọc dữ liệu một lượt.
+- **Đổi / gán hạng mục cho vật tư**: các dòng chi phí cũ của vật tư tự chuyển theo (trừ tháng đã khóa sổ), không còn hàng trăm cảnh báo “nằm ở hạng mục khác” phải sửa từng dòng.
+
 ## Danh mục vật tư dạng cây khoản mục (06/10/2026)
 
 - **Danh mục › Vật tư** chia hai phần. Bên trái là cây **Khoản mục chi phí**: Tất cả vật tư → nhóm chi phí → hạng mục, mỗi mục có số vật tư, bấm mũi tên để mở / thu gọn nhóm. Bên phải là bảng vật tư của mục đang chọn, có tiêu đề là tên mục.

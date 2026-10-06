@@ -91,7 +91,7 @@ export function renderDashboard(root) {
       if (a.dataset.act === 'export') download('/api/export/projects?' + qs({ from: f.from, to: f.to }));
       if (a.dataset.act === 'print') printView('TÌNH HÌNH QUỸ VÀ CHI PHÍ THEO CÔNG TRÌNH', KT.describeRange(f.from, f.to), S.db.settings);
       if (a.dataset.act === 'go-voucher') { e.preventDefault(); S.selectedVoucher = a.dataset.key; location.hash = '#/phieu'; }
-      if (a.dataset.act === 'go-nhap') { Object.assign(S.filters.so, { period: 'tat-ca', from: '', to: '', rel: false, trangThai: 'nhap', duAn: '', ncc: '', loai: '', q: '' }); saveFilter('so'); }
+      if (a.dataset.act === 'go-nhap') { Object.assign(S.filters.so, { period: 'tat-ca', from: '', to: '', rel: false, trangThai: 'nhap', duAn: '', ncc: '', loai: '', q: '' }); datCongTrinh('', true); saveFilter('so'); }
       return;
     }
     const row = e.target.closest('[data-ma]');
@@ -133,7 +133,7 @@ function renderDashboardPhone(root) {
     const b = e.target.closest('[data-act]');
     if (!b) return;
     if (b.dataset.act === 'm-ghi') import('../forms.js').then((m) => m.openEntryForm(null));
-    if (b.dataset.act === 'go-nhap') { Object.assign(S.filters.so, { period: 'tat-ca', from: '', to: '', rel: false, trangThai: 'nhap', duAn: '', ncc: '', loai: '', q: '' }); saveFilter('so'); }
+    if (b.dataset.act === 'go-nhap') { Object.assign(S.filters.so, { period: 'tat-ca', from: '', to: '', rel: false, trangThai: 'nhap', duAn: '', ncc: '', loai: '', q: '' }); datCongTrinh('', true); saveFilter('so'); }
   });
 }
 

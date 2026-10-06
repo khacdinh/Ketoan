@@ -432,6 +432,19 @@ Phần mềm tự rà soát và đếm số việc (con số vàng trên menu �
 - **Vật tư chưa xác định** (mã XX-CHUAXACDINH) hoặc vật tư đang dùng mà chưa gán hạng mục.
 - **Thiếu hạng mục** hoặc mã NCC / dự án / công trình chưa có trong danh mục.
 - **Phiếu nháp để lâu** chưa ghi sổ; **số tiền âm hoặc bằng 0**; **kiểm quỹ có chênh lệch**.
+- **Công nợ NCC**:
+  - Trả NCC nhưng chưa ghi công trình.
+  - Trả NCC cho một công trình mà NCC đó không có chi phí, số dư đầu kỳ hay khoản trả ngoài quỹ ở công trình ấy.
+  - Đã trả nhiều hơn chi phí.
+  - **Còn nợ quá N ngày** (mặc định 90): tiền đã trả được trừ vào khoản nợ cũ nhất trước. Phần mềm chỉ báo phần nợ thật sự quá hạn và ghi ngày của khoản nợ đó. Số dư đầu kỳ chưa trả cũng được tính.
+  - Bấm Mở để sửa sẽ mở Sổ chi tiết NCC cho mọi công trình, kỳ Toàn bộ.
+- **Sổ thu chi**:
+  - Số phiếu sai loại (PT cho khoản chi, PC cho khoản thu).
+  - Khoản chi chưa có số phiếu.
+  - Khoản chi lớn chưa ghi NCC / công trình: ngưỡng chỉnh được, đặt 0 để báo mọi khoản.
+  - **Tồn quỹ cuối ngày âm**: trong ngày ghi khoản chi trước khoản thu thì không bị báo.
+- **Sổ chi phí**: dòng nằm khác hạng mục của vật tư, dòng chưa có công trình, Thành tiền ≠ SL × ĐG.
+  Khi đổi hoặc gán hạng mục cho một vật tư, mọi dòng chi phí của vật tư đó tự chuyển sang hạng mục mới, trừ các dòng thuộc tháng đã khóa sổ.
 
 Mỗi cảnh báo có nút **Mở để sửa** (mở đúng dòng / phiếu), **Xem trong sổ** (với nghi trùng) và **Bỏ qua** (khi đúng thật, có thể ghi chú;
 có lưu nhật ký, không nhắc lại; muốn xem lại tick “Hiện cả cảnh báo đã bỏ qua” rồi **Theo dõi lại**).

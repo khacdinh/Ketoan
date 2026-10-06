@@ -106,3 +106,101 @@ test('Z3 chỉ một ô lọc Công trình: Sổ quỹ không còn ô riêng, d�
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });
+
+test('Z4 cảnh báo không báo nhầm: ngưỡng chi lớn 0 hợp lệ; trả theo công trình của số dư đầu kỳ / trả ngoài quỹ không bị coi là nhầm công trình; nợ lâu tính theo khoản còn nợ (trả trước trừ khoản cũ trước), số dư đầu kỳ chưa trả cũng báo; tồn quỹ xét cuối ngày', () => {
+  const T = '2026-10-06';
+  const has = (db, k) => KT.anomalies(db, { today: T }).items.filter((i) => i.key.startsWith(k));
+  // ngưỡng 0: mọi khoản chi không đối tượng
+  const a = seed();
+  a.entries.push({ id: 900, seq: 99, ngay: '2026-01-11', soPhieu: 'PC009/01', maDuAn: '', maNCC: '', noiDung: 'chi nhỏ', thu: 0, chi: 1000, nguoiNhan: '', ghiChu: '' });
+  a.settings = { nguongChiLon: 0 };
+  assert.equal(has(a, 'thuchi:doituong:900').length, 1, 'ngưỡng 0 báo cả khoản 1.000 đ');
+  // số dư đầu kỳ ở CT2 → trả A ở CT2 là đúng
+  const b = seed();
+  b.soDuDauKy = [{ id: 950, ngay: '2025-12-31', maNCC: 'A', maDuAn: 'CT2', soTien: 500000, ghiChu: '' }];
+  assert.equal(has(b, 'congno:saict').length, 0, 'có số dư đầu kỳ A ở CT2');
+  const b2 = seed();
+  b2.extPayments = [{ id: 951, ngay: '2026-01-02', maNCC: 'A', maDuAn: 'CT2', soTien: 1, nguon: 'x', ghiChu: '' }];
+  assert.equal(has(b2, 'congno:saict').length, 0, 'có khoản trả ngoài quỹ A ở CT2');
+  // nợ lâu: khoản cũ đã trả hết, chỉ còn khoản mới 5 ngày → không báo
+  let id = 1;
+  const base = () => ({ schema: 7, settings: {}, vouchers: {}, trash: [], locks: [], attachments: [], cashCounts: [], ignoredWarnings: {}, extPayments: [], soDuDauKy: [],
+    projects: [{ id: id++, ma: 'CT1', ten: 'CT 1' }], suppliers: [{ id: id++, ma: 'A', ten: 'NCC A' }], costGroups: [], costItems: [], materials: [], houses: [], costs: [], entries: [] });
+  const cp = (db, ngay, tien) => db.costs.push({ id: id++, seq: id, phieuId: id, ngay, maCT: 'CT1', maNCC: 'A', maHM: '', maVT: '', dienGiai: 'x', soLuong: null, donGia: null, thanhTien: tien });
+  const tra = (db, ngay, tien) => db.entries.push({ id: id++, seq: id, ngay, soPhieu: 'PC' + id, maDuAn: 'CT1', maNCC: 'A', noiDung: 'trả', thu: 0, chi: tien });
+  const c = base();
+  c.entries.push({ id: id++, seq: 1, ngay: '2024-01-01', soPhieu: 'PT1', maDuAn: '', maNCC: '', noiDung: 'nộp quỹ', thu: 1e9, chi: 0 });
+  cp(c, '2024-10-01', 30000000); tra(c, '2026-06-28', 30000000); cp(c, '2026-10-01', 10000000);
+  assert.equal(has(c, 'congno:nolau').length, 0, 'nợ còn lại mới 5 ngày');
+  // trả một phần: còn 10tr của khoản cũ → báo đúng phần quá hạn và ngày của khoản đó
+  const d = base();
+  d.entries.push({ id: id++, seq: 1, ngay: '2024-01-01', soPhieu: 'PT1', maDuAn: '', maNCC: '', noiDung: 'nộp quỹ', thu: 1e9, chi: 0 });
+  cp(d, '2025-01-10', 30000000); tra(d, '2026-09-01', 20000000); cp(d, '2026-10-01', 5000000);
+  const nl = has(d, 'congno:nolau');
+  assert.equal(nl.length, 1);
+  assert.equal(nl[0].soTien, 10000000);
+  assert.equal(nl[0].ngay, '2025-01-10');
+  // chỉ có số dư đầu kỳ, chưa trả lần nào trong 1 năm → báo
+  const e = base();
+  e.soDuDauKy = [{ id: id++, ngay: '2025-06-30', maNCC: 'A', maDuAn: 'CT1', soTien: 7000000, ghiChu: '' }];
+  assert.equal(has(e, 'congno:nolau').length, 1, 'số dư đầu kỳ chưa trả');
+  // tồn quỹ: trong ngày ghi chi trước thu nhưng cuối ngày dương → không báo; cuối ngày âm → báo một lần
+  const f = base();
+  f.entries.push({ id: id++, seq: 1, ngay: '2026-10-04', soPhieu: 'PT1', maDuAn: '', maNCC: '', noiDung: 'nộp', thu: 5000000, chi: 0 });
+  f.entries.push({ id: id++, seq: 2, ngay: '2026-10-05', soPhieu: 'PC2', maDuAn: 'CT1', maNCC: '', noiDung: 'chi trước', thu: 0, chi: 20000000 });
+  f.entries.push({ id: id++, seq: 3, ngay: '2026-10-05', soPhieu: 'PT3', maDuAn: '', maNCC: '', noiDung: 'thu sau', thu: 50000000, chi: 0 });
+  assert.equal(has(f, 'thuchi:am').length, 0, 'cuối ngày dương');
+  const chiAm = id++;
+  f.entries.push({ id: chiAm, seq: 4, ngay: '2026-10-06', soPhieu: 'PC4', maDuAn: 'CT1', maNCC: '', noiDung: 'chi lớn', thu: 0, chi: 40000000 });
+  f.entries.push({ id: id++, seq: 5, ngay: '2026-10-06', soPhieu: 'PC5', maDuAn: 'CT1', maNCC: '', noiDung: 'chi nhỏ', thu: 0, chi: 1000000 });
+  const am = has(f, 'thuchi:am');
+  assert.equal(am.length, 1);
+  assert.equal(am[0].soTien, -6000000);
+  assert.equal(am[0].target.id, chiAm, 'mở khoản chi lớn nhất trong ngày');
+});
+
+test('Z5 đổi / gán hạng mục cho vật tư: các dòng chi phí của vật tư chuyển theo (trừ tháng đã khóa sổ), cảnh báo “hạng mục khác” hết', async () => {
+  const db0 = seed();
+  db0.locks = [{ id: 990, thang: '2026-02', ngayKhoa: '2026-03-01T00:00:00.000Z' }];
+  db0.costs.push(Object.assign({}, db0.costs[0], { id: 991, seq: 50, ngay: '2026-02-03', maHM: 'HM1' }));
+  const srv = await startServer({ seed: db0 });
+  try {
+    const xm = db0.materials[0];
+    const r = await srv.ok('PUT', '/api/materials/' + xm.id, Object.assign({}, xm, { maHM: 'HM2' }));
+    const db = await srv.db();
+    const cps = db.costs.filter((c) => c.maVT === 'XM');
+    assert.deepEqual(cps.filter((c) => c.ngay.startsWith('2026-01')).map((c) => c.maHM), ['HM2', 'HM2', 'HM2']);
+    assert.equal(cps.find((c) => c.id === 991).maHM, 'HM1', 'tháng 02 đã khóa: giữ nguyên');
+    assert.equal(r.theoHM, 2, 'hai dòng HM1 tháng 01 được chuyển (dòng đã ở HM2 giữ nguyên)');
+    const hm = KT.anomalies(db, { today: '2026-10-06' }).items.filter((i) => i.key.startsWith('chiphi:hm'));
+    assert.deepEqual(hm.map((i) => i.target.id), [991], 'chỉ còn dòng ở tháng khóa');
+  } finally { await srv.stop(); }
+});
+
+test('Z6 lọc công trình: “Chưa gán công trình” chọn ở Sổ quỹ không làm Sổ chi tiết NCC về 0; Xóa lọc ở Sổ quỹ đổi ngay nhãn ở thanh trên; cảnh báo công nợ mở sổ không lọc', { skip: SKIP, timeout: 120000 }, async () => {
+  const srv = await startServer({ seed: seed() });
+  const { browser, page, errors } = await openPage(srv, '#/so-thu-chi');
+  try {
+    await page.waitForSelector('#so-body tr');
+    await page.click('#tb-ct'); await page.waitForSelector('#ct-q');
+    await page.click('#ct-list [data-ma="__none__"]'); await settle(page);
+    assert.match(await page.textContent('#tb-ct-val'), /Chưa gán/);
+    await page.evaluate(() => { localStorage.setItem('stc.sct.ncc', JSON.stringify('A')); location.hash = '#/so-chi-tiet-ncc'; }); await settle(page);
+    await page.waitForSelector('#sct-foot tr');
+    assert.match(await page.textContent('#sct-foot'), /1\.400\.000/, 'NCC A còn nợ 1.400.000 (không bị lọc thành 0)');
+    // Xóa lọc ở Sổ quỹ: nhãn thanh trên về “Tất cả công trình” ngay
+    await page.evaluate(() => { location.hash = '#/so-thu-chi'; }); await settle(page);
+    await page.click('#tb-ct'); await page.fill('#ct-q', 'CT1'); await page.press('#ct-q', 'Enter'); await settle(page);
+    assert.match(await page.textContent('#tb-ct-val'), /^CT1/);
+    await page.click('#so-clear'); await settle(page);
+    assert.match(await page.textContent('#tb-ct-val'), /Tất cả công trình/);
+    // đang lọc CT2, mở cảnh báo công nợ → Sổ chi tiết NCC không lọc công trình
+    await page.click('#tb-ct'); await page.fill('#ct-q', 'CT2'); await page.press('#ct-q', 'Enter'); await settle(page);
+    await page.evaluate(() => { location.hash = '#/kiem-soat'; }); await settle(page);
+    await page.locator('#view li[data-key]').filter({ hasText: /nhiều hơn chi phí/ }).first().locator('[data-act=mo]').click();
+    await page.waitForFunction(() => location.hash === '#/so-chi-tiet-ncc'); await settle(page);
+    assert.match(await page.textContent('#tb-ct-val'), /Tất cả công trình/);
+    assert.match(await page.textContent('#sct-foot'), /150\.000/);
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); await srv.stop(); }
+});

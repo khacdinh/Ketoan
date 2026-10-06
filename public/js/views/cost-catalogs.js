@@ -67,7 +67,7 @@ function catalogForm(o) {
         const done = busy(el.querySelector('[data-act=save]'), 'Đang lưu…');
         try {
           const r = isEdit ? await api('PUT', o.endpoint + '/' + v.id, data) : await api('POST', o.endpoint, data);
-          toast((isEdit ? 'Đã lưu ' : 'Đã thêm ') + data.ma + (r.renamed ? ', cập nhật mã trên ' + r.renamed + ' chỗ đang dùng' : ''));
+          toast((isEdit ? 'Đã lưu ' : 'Đã thêm ') + data.ma + (r.renamed ? ', cập nhật mã trên ' + r.renamed + ' chỗ đang dùng' : '') + (r.theoHM ? ', chuyển ' + r.theoHM + ' dòng chi phí sang hạng mục mới' : ''));
           h.close();
           if (o.onSaved) o.onSaved(Object.assign({}, data, { ma: r.ma || data.ma }));
         } catch (err) { done(); showError(err); }
@@ -197,6 +197,8 @@ function actions(label, extra) {
    f.vtSel: '' = tất cả, 'g:<mã nhóm>' (g: = chưa có nhóm), 'h:<mã hạng mục>' (h: = vật tư chưa có hạng mục); f.vtMo: các nhóm đang mở. */
 function vtTree(tree, f, match) {
   const items = S.db.costItems;
+  const iIdx = KT.indexBy(items); // tra một lần, không dựng lại chỉ mục cho từng vật tư
+  const itOf = (ma) => iIdx.get(KT.keyOf(ma));
   const itemKeys = new Set(items.map((i) => KT.keyOf(i.ma)));
   const groupKeys = new Set(S.db.costGroups.map((g) => KT.keyOf(g.ma)));
   const nhomCua = (i) => (groupKeys.has(KT.keyOf(i.maNhom)) ? KT.keyOf(i.maNhom) : '');
@@ -204,7 +206,7 @@ function vtTree(tree, f, match) {
   const nItem = new Map();
   let nAll = 0;
   S.db.materials.forEach((m) => {
-    if (!match(m.ma + ' ' + m.ten + ' ' + ((itemByCode(m.maHM) || {}).ten || '') + ' ' + (m.ghiChu || ''))) return;
+    if (!match(m.ma + ' ' + m.ten + ' ' + ((itOf(m.maHM) || {}).ten || '') + ' ' + (m.ghiChu || ''))) return;
     nAll++;
     const k = hmCua(m);
     nItem.set(k, (nItem.get(k) || 0) + 1);
@@ -220,7 +222,7 @@ function vtTree(tree, f, match) {
   const kind = v.slice(0, 1);
   const key = KT.keyOf(v.slice(2));
   const mo = new Set((f.vtMo || []).map(KT.keyOf));
-  if (kind === 'h' && key) { const it = itemByCode(key); if (it) mo.add(nhomCua(it)); }
+  if (kind === 'h' && key) { const it = itOf(key); if (it) mo.add(nhomCua(it)); }
 
   const node = (sel, attrs, inner, n, cls) => '<button type="button" class="tree-node ' + (cls || '') + (sel ? ' is-on' : '') + '"' + attrs + (sel ? ' aria-current="true"' : '') + '>' + inner +
     '<span class="tree-n">' + n + '</span></button>';
@@ -249,7 +251,7 @@ function vtTree(tree, f, match) {
     const g = groups.find((x) => x.k === key);
     sel = { k: 'g', ma: g.ma, ten: g.ten, sub: 'Cả nhóm · ' + g.items.length + ' hạng mục' };
   } else if (key) {
-    const it = itemByCode(key);
+    const it = itOf(key);
     sel = { k: 'h', ma: it.ma, ten: it.ten, sub: it.ma + ' · ' + (groupName(it.maNhom) || 'Chưa có nhóm') };
   } else sel = { k: 'h', ma: '', ten: 'Vật tư chưa có hạng mục', sub: 'Gán hạng mục để chi phí vào đúng nhóm trong báo cáo' };
   const inSel = (m) => {
@@ -257,9 +259,9 @@ function vtTree(tree, f, match) {
     const h = hmCua(m);
     if (kind === 'h') return h === key;
     if (!h) return false;
-    return nhomCua(itemByCode(h)) === key;
+    return nhomCua(itOf(h)) === key;
   };
-  return { sel, inSel };
+  return { sel, inSel, itOf };
 }
 
 // menu trái có hai mục trỏ vào màn này: "Vật tư" (tab vật tư, nhà/khu) và "Hạng mục, nhóm CP" (tab hạng mục, nhóm)
@@ -344,7 +346,7 @@ export function renderCostCatalogs(root) {
       const stats = new Map(KT.materialStats(S.db).map((m) => [KT.keyOf(m.ma), m]));
       const cay = vtTree(tree, f, match);
       const sel = cay.sel;
-      const list = S.db.materials.filter((m) => cay.inSel(m) && match(m.ma + ' ' + m.ten + ' ' + ((itemByCode(m.maHM) || {}).ten || '') + ' ' + (m.ghiChu || '')));
+      const list = S.db.materials.filter((m) => cay.inSel(m) && match(m.ma + ' ' + m.ten + ' ' + ((cay.itOf(m.maHM) || {}).ten || '') + ' ' + (m.ghiChu || '')));
       const shown = list.slice(0, 600);
       const motNhom = sel.k === 'h';
       table.innerHTML = '<thead><tr>' + pk + '<th>Mã vật tư</th><th>Tên vật tư</th><th>ĐVT</th><th>Khoản mục mặc định</th>' +
@@ -352,7 +354,7 @@ export function renderCostCatalogs(root) {
         '<th class="num" title="Số dòng chi phí đang dùng mã này; rê chuột xem tổng tiền đã mua">Đang dùng</th><th class="no-print"></th></tr></thead><tbody>' +
         (shown.map((m) => {
           const st = stats.get(KT.keyOf(m.ma));
-          const it = itemByCode(m.maHM);
+          const it = cay.itOf(m.maHM);
           const gia = st && st.binhQuan ? '<span title="' + esc('Thấp nhất ' + money(st.min) + ' · cao nhất ' + money(st.max) + (st.last != null ? ' · gần nhất ' + money(st.last) : '') + (st.lastNgay ? ' (' + KT.fmtDate(st.lastNgay) + ')' : '')) + '">' + money(st.binhQuan) + '</span>' : '';
           return '<tr data-id="' + m.id + '">' + pc(m.ma) + '<td class="code dm-ma">' + highlight(m.ma, f.q).replace(/-/g, '-<wbr>') + '</td><td class="min-w-[160px] font-medium">' + highlight(m.ten, f.q) + '</td><td>' + esc(m.dvt || '') + '</td>' +
             '<td class="text-ink-2">' + (it ? esc(it.ten) + (motNhom ? '' : '<div class="text-[12px] text-ink-3">' + esc(groupName(it.maNhom) || '') + '</div>') : '<span class="pill">Chưa có hạng mục</span>') + '</td>' +

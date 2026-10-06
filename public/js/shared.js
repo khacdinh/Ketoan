@@ -1504,8 +1504,12 @@
 
     // (i) công nợ nhà cung cấp (chỉ dòng đã ghi sổ)
     const P = postedDb(db);
-    const nccCoCP = new Set(P.costs.map(function (c) { return keyOf(c.maNCC); }).filter(Boolean));
-    const capCP = new Set(P.costs.map(function (c) { return keyOf(c.maNCC) + '|' + keyOf(c.maCT); }));
+    // NCC có công nợ (chi phí hoặc số dư đầu kỳ) và các cặp NCC|công trình hợp lệ (chi phí, số dư đầu kỳ, khoản trả ngoài quỹ)
+    const soDu = db.soDuDauKy || [];
+    const nccCoCP = new Set(P.costs.map(function (c) { return keyOf(c.maNCC); }).concat(soDu.map(function (r) { return keyOf(r.maNCC); })).filter(Boolean));
+    const capCP = new Set(P.costs.map(function (c) { return keyOf(c.maNCC) + '|' + keyOf(c.maCT); })
+      .concat(soDu.map(function (r) { return keyOf(r.maNCC) + '|' + keyOf(r.maDuAn); }))
+      .concat((P.extPayments || []).map(function (r) { return keyOf(r.maNCC) + '|' + keyOf(r.maDuAn); })));
     const ctName = function (ma) { const p = x.p.get(keyOf(ma)); return p ? ma + ' – ' + p.ten : ma; };
     P.entries.forEach(function (e) {
       const tra = (e.chi || 0) - (e.thu || 0);
@@ -1520,7 +1524,22 @@
           chiTiet: (e.soPhieu ? e.soPhieu + ' · ' : '') + (e.noiDung || '') + ' · ' + moneyTxt(tra) + ' — có ghi nhầm công trình?', target: { kind: 'entries', id: e.id } });
       }
     });
-    const noLau = addDays(today, -(Number(st.soNgayNoLau) || ANOMALY_DEFAULTS.soNgayNoLau));
+    const soNgayNo = Number(st.soNgayNoLau) || ANOMALY_DEFAULTS.soNgayNoLau;
+    const noLau = addDays(today, -soNgayNo);
+    // một lượt qua dữ liệu: các khoản ghi nợ (chi phí, số dư đầu kỳ dương) và lần trả gần nhất của từng NCC
+    const ghiNo = new Map();
+    const lanTra = new Map();
+    const themNo = function (ma, ngay, tien) {
+      const k = keyOf(ma);
+      if (!k || !(tien > 0)) return;
+      if (!ghiNo.has(k)) ghiNo.set(k, []);
+      ghiNo.get(k).push({ ngay: ngay || '', tien: tien });
+    };
+    P.costs.forEach(function (c) { themNo(c.maNCC, c.ngay, c.thanhTien || 0); });
+    soDu.forEach(function (r) { themNo(r.maNCC, r.ngay, Number(r.soTien) || 0); });
+    const ghiTra = function (ma, ngay) { const k = keyOf(ma); if (k && ngay && !(lanTra.get(k) >= ngay)) lanTra.set(k, ngay); };
+    P.entries.forEach(function (e) { if ((e.chi || 0) > (e.thu || 0)) ghiTra(e.maNCC, e.ngay); });
+    (P.extPayments || []).forEach(function (p) { ghiTra(p.maNCC, p.ngay); });
     supplierDebt(P, {}).rows.forEach(function (r) {
       if (!r.inCatalog && !x.s.get(keyOf(r.ma))) return;
       if (r.conLai < 0) {
@@ -1530,19 +1549,26 @@
         return;
       }
       if (!(r.conLai > 0)) return;
-      const tra = P.entries.filter(function (e) { return keyOf(e.maNCC) === keyOf(r.ma) && (e.chi || 0) > (e.thu || 0); }).map(function (e) { return e.ngay; })
-        .concat((P.extPayments || []).filter(function (p) { return keyOf(p.maNCC) === keyOf(r.ma); }).map(function (p) { return p.ngay; })).sort();
-      const lanCuoi = tra.length ? tra[tra.length - 1] : '';
-      const cpCu = P.costs.filter(function (c) { return keyOf(c.maNCC) === keyOf(r.ma); }).map(function (c) { return c.ngay; }).sort()[0] || '';
-      if (cpCu && cpCu < noLau && (!lanCuoi || lanCuoi < noLau)) {
-        push({ key: 'congno:nolau:' + keyOf(r.ma) + ':' + (lanCuoi || '-'), loai: 'congno', ngay: lanCuoi || cpCu, soTien: r.conLai,
-          tieuDe: 'Còn nợ ' + nccName(r.ma) + ' ' + moneyTxt(r.conLai) + ', ' + (lanCuoi ? 'lần trả gần nhất ' + fmtDate(lanCuoi) : 'chưa trả lần nào'),
-          chiTiet: 'Quá ' + (Number(st.soNgayNoLau) || ANOMALY_DEFAULTS.soNgayNoLau) + ' ngày chưa thanh toán; chi phí từ ' + fmtDate(cpCu), target: { kind: 'ncc', ma: r.ma } });
-      }
+      // tuổi nợ kiểu nhập trước trả trước: tiền đã trả trừ dần vào các khoản ghi nợ cũ nhất, phần còn lại là nợ chưa trả
+      const ds = (ghiNo.get(keyOf(r.ma)) || []).slice().sort(function (a, b) { return a.ngay < b.ngay ? -1 : a.ngay > b.ngay ? 1 : 0; });
+      let daTru = ds.reduce(function (t, d) { return t + d.tien; }, 0) - r.conLai;
+      let quaHan = 0;
+      let tuNgay = '';
+      ds.forEach(function (d) {
+        const con = Math.max(0, d.tien - Math.max(0, daTru));
+        daTru -= d.tien;
+        if (con > 0 && d.ngay && d.ngay < noLau) { quaHan += con; if (!tuNgay) tuNgay = d.ngay; }
+      });
+      if (!(quaHan > 0)) return;
+      const lanCuoi = lanTra.get(keyOf(r.ma)) || '';
+      push({ key: 'congno:nolau:' + keyOf(r.ma) + ':' + tuNgay, loai: 'congno', ngay: tuNgay, soTien: Math.min(quaHan, r.conLai),
+        tieuDe: 'Còn nợ ' + nccName(r.ma) + ' ' + moneyTxt(Math.min(quaHan, r.conLai)) + ' quá ' + soNgayNo + ' ngày (từ ' + fmtDate(tuNgay) + ')',
+        chiTiet: 'Tổng còn nợ ' + moneyTxt(r.conLai) + '; ' + (lanCuoi ? 'lần trả gần nhất ' + fmtDate(lanCuoi) : 'chưa trả lần nào'), target: { kind: 'ncc', ma: r.ma } });
     });
 
     // (k) sổ thu chi
-    const chiLon = Number(st.nguongChiLon) || ANOMALY_DEFAULTS.nguongChiLon;
+    // ngưỡng 0 hợp lệ (báo mọi khoản chi không đối tượng): chỉ dùng mặc định khi chưa đặt
+    const chiLon = st.nguongChiLon !== '' && st.nguongChiLon != null && isFinite(Number(st.nguongChiLon)) ? Number(st.nguongChiLon) : ANOMALY_DEFAULTS.nguongChiLon;
     ent.forEach(function (e) {
       if (isDraft(e)) return;
       if (e.soPhieu) {
@@ -1561,13 +1587,19 @@
           chiTiet: (e.soPhieu ? e.soPhieu + ' · ' : '') + (e.noiDung || '') + ' — không tính vào công nợ hay chi phí công trình nào', target: { kind: 'entries', id: e.id } });
       }
     });
-    // tồn quỹ âm: báo dòng đầu tiên làm quỹ âm của mỗi lần âm
+    // tồn quỹ âm: xét tồn cuối ngày (trong ngày ghi khoản chi trước khoản thu không tính là âm); báo ngày đầu tiên của mỗi lần âm
     let amTruoc = false;
-    buildLedger(P).forEach(function (r) {
+    const so = buildLedger(P);
+    so.forEach(function (r, i) {
+      if (so[i + 1] && so[i + 1].ngay === r.ngay) return; // chưa phải dòng cuối ngày
       const am = r.ton < 0;
       if (am && !amTruoc) {
-        push({ key: 'thuchi:am:' + r.id + ':' + r.ton, loai: 'thuchi', ngay: r.ngay, soTien: r.ton, tieuDe: 'Tồn quỹ âm ' + moneyTxt(r.ton) + ' sau dòng ngày ' + fmtDate(r.ngay),
-          chiTiet: (r.soPhieu ? r.soPhieu + ' · ' : '') + (r.noiDung || '') + ' — chi nhiều hơn tiền có trong quỹ: thiếu khoản thu, hoặc sai số tiền / ngày?', target: { kind: 'entries', id: r.id } });
+        // mở dòng chi lớn nhất trong ngày để sửa
+        let j = i;
+        let dong = r;
+        while (j >= 0 && so[j].ngay === r.ngay) { if ((so[j].chi || 0) > (dong.chi || 0)) dong = so[j]; j--; }
+        push({ key: 'thuchi:am:' + r.ngay + ':' + r.ton, loai: 'thuchi', ngay: r.ngay, soTien: r.ton, tieuDe: 'Tồn quỹ cuối ngày ' + fmtDate(r.ngay) + ' âm ' + moneyTxt(-r.ton),
+          chiTiet: 'Khoản chi lớn nhất trong ngày: ' + (dong.soPhieu ? dong.soPhieu + ' · ' : '') + (dong.noiDung || '') + ' — chi nhiều hơn tiền có trong quỹ: thiếu khoản thu, hoặc sai số tiền / ngày?', target: { kind: 'entries', id: dong.id } });
       }
       amTruoc = am;
     });
