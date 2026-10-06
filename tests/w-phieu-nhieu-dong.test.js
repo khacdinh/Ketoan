@@ -320,3 +320,39 @@ test('W7 Ghi thu / chi bắt buộc Nhà cung cấp / đối tượng và Công 
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });
+
+test('W8 mở Ghi thu / chi từ Phiếu nhập chi phí (F3) rồi Ghi sổ / Ctrl+Enter: chỉ ghi phiếu thu chi, không chạy lệnh lưu của phiếu nhập chi phí (không báo lỗi, phiếu đang nhập dở không bị ghi)', { skip: SKIP, timeout: 120000 }, async () => {
+  const srv = await startServer({ seed: seed() });
+  await srv.ok('POST', '/api/materials', { ma: 'XM', ten: 'Xi măng', dvt: 'bao', maHM: 'HM01' });
+  const { browser, page, errors } = await openPage(srv, '#/tong-quan');
+  try {
+    // phiếu nhập chi phí đang nhập dở: đã chọn NCC và có một dòng hợp lệ (chưa bấm Ghi)
+    await page.evaluate(() => {
+      localStorage.setItem('stc.cp.draft', JSON.stringify({ key: 'new:', mode: 'new', header: { ngay: new Date().toISOString().slice(0, 10), maNCC: 'ONGA', soPhieu: '', maCT: '', maNha: '' },
+        lines: [{ ct: 'CT1', nha: '', maVT: 'XM', dienGiai: '', soLuong: '2', donGia: '100000', thanhTien: '', ttTuDong: true, dgTuDong: false, hmCu: '', goiY: '' }] }));
+    });
+    await page.reload(); await settle(page); // tải lại để phần mềm đọc phiếu dở, rồi mới mở trang
+    await page.evaluate(() => { location.hash = '#/cp-nhap'; });
+    await page.waitForSelector('#cp-head'); await settle(page);
+    assert.equal(await page.inputValue('#cp-head input[name=maNCC]'), 'ONGA');
+    const cp0 = readStored(srv.dataDir).costs.length;
+    for (const cach of ['nut', 'phim']) {
+      await page.keyboard.press('F3');
+      await page.waitForSelector('#entry-form'); await page.waitForTimeout(150);
+      await page.click('#entry-page [name=noiDung]'); await page.fill('#entry-page [name=noiDung]', 'Ghi từ phiếu nhập ' + cach);
+      await page.fill('#entry-page [name=chi]', '1234');
+      await page.fill('#entry-page input[name=maNCC]', 'ONGA'); await page.locator('#entry-page input[name=maNCC]').dispatchEvent('change');
+      await page.fill('#entry-page [name=maDuAn]', 'CT1'); await page.locator('#entry-page [name=maDuAn]').dispatchEvent('change');
+      if (cach === 'nut') await page.click('#entry-page [data-act=save]'); else await page.keyboard.press('Control+Enter');
+      await page.waitForFunction(() => !document.querySelector('#entry-page'), null, { timeout: 8000 });
+      await page.waitForSelector('#cp-head'); await settle(page); await page.waitForTimeout(300);
+      assert.match(await page.$eval('#toast-root', (e) => e.innerText), /Đã ghi sổ khoản chi 1\.234/);
+      assert.deepEqual(await page.$$eval('#toast-root .toast.error', (t) => t.map((x) => x.innerText)), [], 'không có thông báo lỗi (' + cach + ')');
+      assert.equal(readStored(srv.dataDir).costs.length, cp0, 'phiếu nhập chi phí đang nhập dở không bị ghi (' + cach + ')');
+      await page.evaluate(() => { document.querySelector('#toast-root').innerHTML = ''; });
+    }
+    assert.equal(readStored(srv.dataDir).entries.filter((e) => /^Ghi từ phiếu nhập/.test(e.noiDung)).length, 2, 'mỗi lần ghi đúng một dòng sổ quỹ');
+    assert.equal(await page.inputValue('#cp-body tr:first-child [data-f=maVT], #cp-body tr:first-child input[name=maVT]').catch(() => 'XM'), 'XM', 'dòng nhập dở vẫn còn');
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); await srv.stop(); }
+});

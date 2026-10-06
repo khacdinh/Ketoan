@@ -1,6 +1,6 @@
 /* Biểu mẫu: ghi thu/chi, công trình, nhà cung cấp. */
 import { hauQuaCongNo } from './congno.js';
-import { $, esc, api, openModal, toast, setPageTitle, showError, bindMoneyInput, money, confirmDialog, icon, dateField, focusInput, fieldError, busy } from './ui.js';
+import { $, esc, api, openModal, toast, setPageTitle, showError, bindMoneyInput, money, confirmDialog, icon, dateField, focusInput, fieldError, busy, freshRoot } from './ui.js';
 import { S, datalists, resolveCode, projectByCode, supplierByCode } from './state.js';
 import { openHistory } from './views/control.js';
 import { attachBlock, bindAttach, pendingBlock, bindPending, pendingFiles, clearPending, uploadFiles } from './attach.js';
@@ -57,7 +57,9 @@ export function renderEntryPage(root) {
   if (cur && cur.dataset.k === String(k)) { setPageTitle(cur.dataset.title); return; }
   const p = entryPending && entryPending.k === k ? entryPending : { entry: null, opts: {} };
   entryPending = null;
-  mountEntryForm(root, p.entry, p.opts, k);
+  // khung #view mới: bỏ các trình xử lý bấm / phím của màn trước còn gắn trên khung cũ (vd Phiếu nhập chi phí:
+  // Ctrl+Enter, nút Ghi sổ ở trang này từng chạy luôn lệnh lưu phiếu nhập chi phí → báo "Phiếu chưa có dòng hàng nào", hoặc ghi mất phiếu đang nhập dở)
+  mountEntryForm(freshRoot(root), p.entry, p.opts, k);
 }
 function entryGoBack() {
   const to = entryBack && !/^#\/ghi-thu-chi/.test(entryBack) ? entryBack : '#/so-thu-chi';

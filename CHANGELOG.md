@@ -1,5 +1,13 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Sửa lỗi: ghi phiếu thu chi xong vẫn báo lỗi (06/10/2026)
+
+- Lỗi: mở **Ghi thu / chi** từ một màn khác (nhất là **Phiếu nhập chi phí**, bấm F3) rồi bấm Ghi sổ hoặc Ctrl+Enter. Lệnh lưu của màn trước cũng chạy theo:
+  - phiếu thu chi vẫn được ghi, nhưng hiện thêm thông báo lỗi như “Phiếu chưa có dòng hàng nào”, “Chọn nhà cung cấp”;
+  - nếu phiếu nhập chi phí đang nhập dở và đủ thông tin, phiếu đó **bị ghi luôn** mà không hỏi.
+- Đã sửa: trang Ghi thu / chi không còn giữ trình xử lý phím / nút của màn trước. Có test W8.
+- Nên mở **Kiểm soát › Nhật ký** xem lại các phiếu nhập chi phí được ghi cùng lúc với một phiếu thu chi trước bản này; phiếu nào ghi nhầm thì xóa.
+
 ## Phiếu thu / chi bắt buộc Nhà cung cấp và Công trình (06/10/2026)
 
 - Trang **Ghi thu / chi** bắt buộc **Nhà cung cấp, đối tượng** và **Công trình** của từng dòng; cả hai ô có dấu *. Thiếu thì báo ngay tại ô (nhiều dòng thì ghi rõ “Dòng N”), chưa ghi gì.
