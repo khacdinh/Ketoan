@@ -1,5 +1,9 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Thanh tab chữ lớn hơn (06/10/2026)
+
+- Các thanh tab / nút gạt (Tháng · Quý · Năm · Khoảng ngày · Toàn bộ, Theo NCC · Theo công trình, Thu và chi · Thu · Chi, Mọi trạng thái · Đã ghi sổ · Nháp…) chữ 15px (trước 13,5px); mục đang chọn chữ đậm, nền trắng và có vạch vàng ở dưới để dễ phân biệt.
+
 ## Chỉ còn một ô lọc Công trình (06/10/2026)
 
 - **Sổ quỹ thu chi** bỏ ô “Công trình” riêng trong trang: ô **Công trình ở thanh trên** là ô lọc công trình duy nhất, dùng chung cho Sổ quỹ, Sổ chi phí, Tổng hợp chi phí, Chi phí theo nhóm, Công nợ NCC theo kỳ, Sổ chi tiết NCC (chọn một lần, sang màn khác vẫn giữ). Ở Sổ quỹ ô này có thêm lựa chọn **Chưa gán công trình**.

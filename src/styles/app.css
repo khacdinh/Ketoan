@@ -683,6 +683,10 @@
   .seg-item:hover span { background: transparent; color: var(--color-ink); }
   .seg-item input:checked + span { background: var(--color-sheet); color: var(--color-ink); font-weight: 600; box-shadow: 0 1px 2px rgb(37 40 45 / .12); }
   .seg-sm .seg-item span { padding: 4px 10px; font-size: 13px; }
+  /* Thanh tab (Tháng / Quý / Năm…, Theo NCC / Theo công trình…): chữ lớn hơn, mục đang chọn đậm + vạch vàng dưới để dễ phân biệt */
+  .seg-item span { padding: 7px 16px; font-size: 15px; }
+  .seg-item input:checked + span { font-weight: 700; color: var(--color-ink); box-shadow: 0 1px 2px rgb(37 40 45 / .14), inset 0 -2px 0 var(--color-accent-500); }
+  .seg-sm .seg-item span { padding: 5px 12px; font-size: 14px; }
   /* Khung, bảng, đẳng thức */
   .sheet-title { font-size: 16px; font-stretch: 108%; letter-spacing: -0.005em; }
   .sheet-note { font-size: 13px; color: var(--color-ink-3); }
