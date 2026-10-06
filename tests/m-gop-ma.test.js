@@ -902,7 +902,11 @@ test('M0 nâng cấp lược đồ 4 → mới nhất: file lược đồ 4 mở
     assert.equal(db.schema, require('../lib/db').DB_VERSION);
     assert.deepEqual(db.extPayments, []); assert.deepEqual(db.aliases, []); assert.deepEqual(db.mergeLog, []);
     assert.deepEqual(summarize(db), so4, 'mọi số liệu báo cáo giữ nguyên sau nâng cấp');
-    ['projects', 'suppliers', 'entries', 'costs', 'costItems', 'materials', 'houses'].forEach((k) => assert.deepEqual(db[k], v4[k], 'bảng ' + k + ' giữ nguyên'));
+    ['projects', 'suppliers', 'entries', 'costs', 'materials', 'houses'].forEach((k) => assert.deepEqual(db[k], v4[k], 'bảng ' + k + ' giữ nguyên'));
+    // hạng mục: giữ nguyên, chỉ thêm Loại chi phí điền theo dữ liệu cũ (lược đồ 8)
+    const goiY = KT.goiYLoaiCPHangMuc(v4);
+    assert.deepEqual(db.costItems.map((i) => { const x = Object.assign({}, i); delete x.loaiCP; return x; }), v4.costItems, 'bảng costItems giữ nguyên');
+    assert.ok(db.costItems.every((i) => (i.loaiCP || '') === (goiY.get(i.ma) || '')), 'Loại chi phí điền theo dữ liệu cũ');
     const bks = fs.readdirSync(path.join(dir, 'backups')).filter((f) => /truoc-nang-cap-luoc-do-\d/.test(f));
     assert.equal(bks.length, 1, 'có đúng một bản sao lưu trước nâng cấp');
     const bk = require('./helpers').readBackupFile(path.join(dir, 'backups', bks[0]));

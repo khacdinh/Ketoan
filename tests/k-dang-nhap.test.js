@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { DatabaseSync } = require('node:sqlite');
-const { startServer, readStored } = require('./helpers');
+const { KT, startServer, readStored } = require('./helpers');
 const { MK_CHU, goi, layCookie, batDangNhap, dangNhap, dongHo } = require('./auth-helpers');
 const MK = require('../lib/matKhau');
 
@@ -253,7 +253,11 @@ test('K8 nâng cấp lược đồ 5 → 6: tự sao lưu, thêm bảng / cột,
     assert.match(srv.log, new RegExp('lược đồ ' + DB_VERSION));
     const db = readStored(dir);
     assert.equal(db.schema, DB_VERSION);
-    ['projects', 'suppliers', 'entries', 'costs', 'costItems', 'materials', 'houses'].forEach((k) => assert.deepEqual(db[k], v5[k], k));
+    ['projects', 'suppliers', 'entries', 'costs', 'materials', 'houses'].forEach((k) => assert.deepEqual(db[k], v5[k], k));
+    // hạng mục: giữ nguyên, chỉ thêm Loại chi phí điền theo dữ liệu cũ (lược đồ 8)
+    const goiY = KT.goiYLoaiCPHangMuc(v5);
+    assert.deepEqual(db.costItems.map((i) => { const x = Object.assign({}, i); delete x.loaiCP; return x; }), v5.costItems, 'costItems');
+    assert.ok(db.costItems.every((i) => (i.loaiCP || '') === (goiY.get(i.ma) || '')), 'Loại chi phí điền theo dữ liệu cũ');
     assert.ok(db.entries.every((e) => e.nguoiTao === undefined), 'dữ liệu cũ: không có người tạo (hiển thị "Dữ liệu cũ")');
     assert.equal(fs.readdirSync(path.join(dir, 'backups')).filter((f) => new RegExp('truoc-nang-cap-luoc-do-' + DB_VERSION).test(f)).length, 1);
     assert.equal((await srv.call('GET', '/api/auth/trang-thai')).json.bat, false);
