@@ -18,7 +18,7 @@ export function nguoiThaoTacHtml(r) {
 }
 
 let soForm = 0;
-let lastUsed = { ngay: '', soPhieu: '', maDuAn: '', maNCC: '', loai: 'chi' };
+let lastUsed = { ngay: '', soPhieu: '', maDuAn: '', maNCC: '', loai: 'chi', loaiSo: 'chi' };
 
 /* Phiếu nhiều dòng: phần chung (ngày, số phiếu, đối tượng, người nhận, ghi chú) + bảng các dòng, mỗi dòng có nội dung, công trình, mã vật tư, số tiền riêng.
    Mỗi dòng là một dòng sổ thu chi (cùng số phiếu) nên công nợ NCC tách đúng theo công trình. Dòng đầu tiên giữ thuộc tính name (noiDung, maDuAn, maVT, chi, thu)
@@ -99,6 +99,9 @@ function mountEntryForm(root, entry, opts, pageKey) {
   const coChi = dongCu.length ? dongCu.some((x) => x.chi > 0) : e.chi > 0;
   let loai = coThu && coChi ? 'ca-hai' : coThu ? 'thu' : (entry && entry.id) ? 'chi' : (opts.loai || lastUsed.loai || 'chi');
   const dongDau = dongCu.length ? dongCu : [e];
+  // số phiếu chi đang theo mẫu Ủy nhiệm chi (chuyển khoản) hay Phiếu chi; phiếu mới tự đánh số theo trang Đánh số chứng từ
+  const tienToUnc = KT.keyOf(KT.danhSoCfg(S.all, 'unc').tienTo);
+  const loaiSo0 = e.soPhieu ? (tienToUnc && KT.keyOf(e.soPhieu).startsWith(tienToUnc) ? 'unc' : 'chi') : (lastUsed.loaiSo || 'chi');
 
   const body =
     '<form id="entry-form" class="grid grid-cols-2 gap-x-5 gap-y-4 max-sm:grid-cols-1" novalidate autocomplete="off">' +
@@ -110,8 +113,10 @@ function mountEntryForm(root, entry, opts, pageKey) {
     '</div></div>' +
     '<label class="field"><span class="label">Ngày chứng từ <b class="req">*</b></span>' + dateField({ name: 'ngay', value: e.ngay, required: true, label: 'Ngày chứng từ' }) + '</label>' +
     '<div class="field"><span class="label">Số phiếu</span><div class="flex gap-2">' +
-    '<input name="soPhieu" class="input" value="' + esc(e.soPhieu) + '" placeholder="VD: PC045/09" aria-label="Số phiếu">' +
-    '<button type="button" class="btn btn-secondary flex-none" data-act="so-moi" title="Lấy số phiếu kế tiếp trong tháng">Số mới</button></div>' +
+    '<select name="loaiSo" class="input w-auto flex-none" data-show="chi" aria-label="Loại chứng từ chi" title="Phiếu chi (tiền mặt) hay Ủy nhiệm chi (chuyển khoản): đổi mẫu số phiếu">' +
+    [['chi', 'Phiếu chi'], ['unc', 'Ủy nhiệm chi']].map(([v, l]) => '<option value="' + v + '"' + (loaiSo0 === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
+    '<input name="soPhieu" class="input min-w-0" value="' + esc(e.soPhieu) + '" placeholder="VD: PC045/09" aria-label="Số phiếu">' +
+    '<button type="button" class="btn btn-secondary flex-none" data-act="so-moi" title="Lấy số chứng từ kế tiếp (theo trang Đánh số chứng từ)">Số mới</button></div>' +
     '<span class="hint" id="so-hint"></span></div>' +
     '<label class="field"><span class="label">Nhà cung cấp, đối tượng <b class="req">*</b></span><input name="maNCC" class="input" list="dl-suppliers" value="' + esc(e.maNCC) + '" placeholder="Gõ mã hoặc tên">' +
     '<span class="hint" id="ncc-hint"></span></label>' +
@@ -148,7 +153,7 @@ function mountEntryForm(root, entry, opts, pageKey) {
     '<span class="flex-1"></span>' +
     '<button type="button" class="btn btn-ghost" data-act="cancel">Hủy</button>' +
     (canDraft ? '<button type="button" class="btn btn-secondary" data-act="save-draft" title="Lưu lại để làm tiếp; dòng Nháp chưa tính vào tồn quỹ, báo cáo, công nợ">' + icon('draft') + 'Lưu nháp</button>' : '') +
-    (isEdit ? '' : '<button type="button" class="btn btn-secondary" data-act="save-next" title="Ghi sổ rồi giữ lại ngày, số phiếu, nhà cung cấp để ghi phiếu tiếp theo (Ctrl Shift Enter)">Ghi sổ và ghi tiếp<kbd>Ctrl Shift Enter</kbd></button>') +
+    (isEdit ? '' : '<button type="button" class="btn btn-secondary" data-act="save-next" title="Ghi sổ rồi giữ lại ngày, nhà cung cấp để ghi phiếu tiếp theo; số phiếu tự đánh thì sang số kế tiếp, số gõ tay thì giữ nguyên (Ctrl Shift Enter)">Ghi sổ và ghi tiếp<kbd>Ctrl Shift Enter</kbd></button>') +
     (lockedRec ? '' : '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon(isEdit && !isDraftRec ? 'save' : 'check') + (isEdit && !isDraftRec ? 'Lưu thay đổi' : 'Ghi sổ') + '<kbd>Ctrl Enter</kbd></button>');
 
   const title = isDraftRec ? 'Sửa dòng nháp (chưa ghi sổ)' : dongPhieu ? 'Sửa phiếu ' + e.soPhieu + ' (' + dongPhieu.length + ' dòng)' : isEdit ? 'Sửa dòng sổ thu chi' : opts.duplicate ? 'Nhân bản dòng sổ thu chi' : 'Ghi thu / chi';
@@ -172,6 +177,11 @@ function mountEntryForm(root, entry, opts, pageKey) {
     const xoaIds = []; // dòng cũ bị bỏ khỏi phiếu
     const dirty = { nguoiNhan: false, ghiChu: false }; // chỉ ghi đè người nhận / ghi chú của từng dòng khi người dùng sửa ô chung
     let curRow = null;
+    // phiếu mới: số phiếu tự điền và tự đổi theo ngày / thu-chi / PC-UNC cho tới khi người dùng gõ số khác
+    let soTuDong = !isEdit && !e.soPhieu;
+    const loaiSo = () => (loai === 'thu' ? 'thu' : get('loaiSo').value === 'unc' ? 'unc' : 'chi');
+    const soMoi = () => KT.soChungTuTiep(S.all, loaiSo(), get('ngay').value).soPhieu;
+    function tuDanhSo() { if (soTuDong) { get('soPhieu').value = soMoi(); updateSoHint(); } }
     ['nguoiNhan', 'ghiChu'].forEach((n) => get(n).addEventListener('input', () => { dirty[n] = true; }));
     if (dongPhieu) {
       const khac = (n) => new Set(dongPhieu.map((x) => x[n] || '')).size > 1;
@@ -185,6 +195,7 @@ function mountEntryForm(root, entry, opts, pageKey) {
         x.hidden = !(loai === 'ca-hai' || x.dataset.show === loai);
       });
       rows().forEach(daHint); // cảnh báo NCC / công trình chỉ áp cho khoản chi
+      tuDanhSo();
       updateSoHint();
       tong();
     }
@@ -341,11 +352,15 @@ function mountEntryForm(root, entry, opts, pageKey) {
       const mine = new Set(dongCu.map((x) => x.id));
       const others = S.all.entries.filter((x) => KT.voucherKey(x.soPhieu) === KT.voucherKey(so) && !mine.has(x.id));
       let txt = t === 'thu' ? 'Phiếu thu' : 'Phiếu chi';
+      if (soTuDong) txt += ', số tự đánh (sửa ở trang Đánh số chứng từ)';
       if (others.length) txt += ', đã có ' + others.length + ' dòng cùng số (sẽ gộp khi in)';
       if (t === 'thu' && loai === 'chi') txt += '. Lưu ý: số phiếu PT dành cho khoản thu';
       h.textContent = txt;
     }
-    get('soPhieu').addEventListener('input', updateSoHint);
+    get('soPhieu').addEventListener('input', () => { soTuDong = false; updateSoHint(); });
+    get('loaiSo').addEventListener('change', () => { soTuDong = true; tuDanhSo(); });
+    get('soPhieu').addEventListener('focus', () => { if (soTuDong) get('soPhieu').select(); }); // gõ số khác thì thay hẳn số tự đánh
+    ['change', 'input'].forEach((t) => get('ngay').addEventListener(t, tuDanhSo));
 
     el.addEventListener('click', async (ev) => {
       const a = ev.target.closest('[data-act]');
@@ -360,11 +375,12 @@ function mountEntryForm(root, entry, opts, pageKey) {
         c.dispatchEvent(new Event('input'));
         c.focus();
       } else if (act === 'so-moi') {
-        get('soPhieu').value = KT.nextVoucherNo(S.all, loai === 'thu' ? 'thu' : 'chi', get('ngay').value);
-        updateSoHint();
+        soTuDong = true;
+        tuDanhSo();
       } else if (act === 'so-truoc') {
         ev.preventDefault();
         get('soPhieu').value = lastUsed.soPhieu;
+        soTuDong = false;
         updateSoHint();
       } else if (act === 'them-dong') {
         themDong();
@@ -421,6 +437,7 @@ function mountEntryForm(root, entry, opts, pageKey) {
     async function save(next, asDraft) {
       if (saving) return;
       if (lockedRec) return;
+      if (soTuDong) get('soPhieu').value = soMoi(); // lấy lại số mới nhất (phòng số đã bị phiếu khác dùng trong lúc đang nhập)
       const chung = {
         trangThai: asDraft ? 'nhap' : '',
         ngay: get('ngay').value,
@@ -502,7 +519,7 @@ function mountEntryForm(root, entry, opts, pageKey) {
             if (box) { box.outerHTML = pendingBlock(choKey, 'Ghi sổ (hoặc Lưu nháp)'); bindPending(el); }
           }
         }
-        lastUsed = { ngay: chung.ngay, soPhieu: chung.soPhieu, maDuAn: lines[0].maDuAn, maNCC: chung.maNCC, loai };
+        lastUsed = { ngay: chung.ngay, soPhieu: chung.soPhieu, maDuAn: lines[0].maDuAn, maNCC: chung.maNCC, loai, loaiSo: get('loaiSo').value };
         const tongTien = lines.reduce((s, x) => s + (x.chi || x.thu), 0);
         toast(asDraft ? 'Đã lưu nháp (chưa ghi sổ, chưa tính vào tồn quỹ)' : isDraftRec ? 'Đã ghi sổ dòng nháp' : isEdit ? 'Đã lưu thay đổi' :
           lines.length > 1 ? 'Đã ghi sổ phiếu ' + lines.length + ' dòng, tổng ' + money(tongTien) + ' đ' :
@@ -517,6 +534,7 @@ function mountEntryForm(root, entry, opts, pageKey) {
           vtHint(tr0);
           ['nguoiNhan', 'ghiChu'].forEach((n) => { get(n).value = ''; });
           danhSo();
+          tuDanhSo(); // số đang tự đánh thì sang số kế tiếp cho phiếu sau; số gõ tay thì giữ để ghi thêm dòng vào cùng phiếu
           updateSoHint();
           nccHint();
           tong();

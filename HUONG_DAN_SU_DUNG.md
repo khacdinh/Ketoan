@@ -101,14 +101,17 @@ Mục **Kiểm soát** (con số màu vàng = số việc cần xử lý): **C�
   - Khi bấm Ghi sổ thì hỏi lại: **Xem lại** để sửa công trình, **Vẫn ghi** nếu đúng như vậy.
 - Chọn **Chi tiền / Thu tiền / Thu & chi cùng lúc** (loại thứ ba dùng cho các khoản "đã thanh toán trước, thực tế không có thu" như trong file cũ).
 - **Ngày** luôn nhập dạng ngày/tháng/năm: gõ `29/9` là đủ (tự hiểu năm nay), hoặc `29/09/2026`, `290926`. Phím ↑ ↓ để tăng/giảm 1 ngày.
-- **Số phiếu**: bấm **Số mới** để lấy số kế tiếp trong tháng (VD `PC045/09`). Nhiều dòng dùng chung một số phiếu sẽ được gộp khi in.
+- **Số phiếu tự đánh**: phiếu mới tự có số kế tiếp theo trang **Đánh số chứng từ** (mặc định `PC045/09` cho phiếu chi, `PT022/09` cho phiếu thu, `UNC013/09` cho ủy nhiệm chi). Ô chọn cạnh số phiếu đổi giữa **Phiếu chi** (tiền mặt) và **Ủy nhiệm chi** (chuyển khoản).
+  - Số tự đổi theo ngày chứng từ và theo Chi / Thu. Muốn dùng số khác thì bấm vào ô rồi gõ (số cũ được chọn sẵn nên gõ là thay); từ đó số không tự đổi nữa.
+  - **Số mới** quay lại số tự đánh. Khi ghi, phần mềm lấy lại số mới nhất, phòng trường hợp số vừa bị một phiếu khác dùng.
+  - Nhiều dòng dùng chung một số phiếu sẽ được gộp khi in.
 - **Phiếu nhiều dòng**: phần trên của form là thông tin chung của cả phiếu (ngày, số phiếu, nhà cung cấp / đối tượng, người nhận, ghi chú); bên dưới là bảng **Các dòng của phiếu**, mỗi dòng có **Nội dung · Dự án · Mã vật tư · Số tiền** riêng. Ví dụ chi cho ông A 100 triệu nhưng muốn tính cho 5 công trình: chọn ông A, bấm **Thêm dòng** (hoặc Enter ở ô cuối của dòng cuối) cho đủ 5 dòng, mỗi dòng chọn một dự án và nhập 20tr. Ô Dự án hiện luôn **số NCC còn nợ tại dự án đó** để chia cho đúng; dưới bảng là tổng phiếu. Nội dung dòng để trống thì lấy theo dòng đầu. Mỗi dòng là một dòng sổ cùng số phiếu nên **Công nợ NCC theo công trình** giảm đúng từng dự án (phiếu không gắn dự án thì công trình vẫn còn nợ). Ghi sổ ghi **cả phiếu trong một lần**: một dòng sai thì không ghi dòng nào và báo rõ “Dòng N”. Bấm × cuối dòng để bỏ dòng.
 - **Sửa phiếu nhiều dòng**: mở một dòng của phiếu từ Sổ quỹ, bấm liên kết **Sửa cả phiếu (N dòng)** để sửa, thêm, bỏ dòng cùng lúc (dòng bỏ khỏi phiếu vào Thùng rác).
 - **Mã dự án / Mã NCC**: gõ mã **hoặc gõ tên** rồi chọn trong danh sách gợi ý. Nếu chưa có, bấm “thêm mới” ngay trong form.
 - **Mã vật tư** (không bắt buộc, chỉ khi Chi tiền, mỗi dòng một mã): chọn vật tư mà phiếu chi này trả tiền — gõ mã **hoặc tên**, dưới ô hiện tên và đơn vị tính. Mã được lưu trong dòng sổ, hiện ở Sổ quỹ (dòng “Vật tư: …”), ở danh sách dòng của Phiếu thu / chi, trên **phiếu in 2 liên** (dòng “Vật tư:”), trong file Excel sổ thu chi (cột **Mã Vật Tư**, nhập lại được) và tìm kiếm được. Vật tư chưa có thì thêm ở Danh mục › Vật tư trước. Đổi mã vật tư thì dòng sổ đi theo; vật tư đã có dòng sổ không xóa được (dùng Gộp mã).
 - Khi chọn nhà cung cấp có chi phí công trình, dưới ô hiện luôn **công nợ còn lại** (theo dự án đang chọn) và nút **Điền số này**.
 - **Số tiền** gõ được: `1.250.000`, `1250000`, `50tr`, `1,5tr`, `300k`, hoặc phép tính `58000+11000` (giống cách ghi công thức trong Excel cũ). Cách ghi dính như `2tr5` hoặc `1tr250k` bị từ chối (phần mềm không đoán ý) — hãy viết `2,5tr` hoặc `1tr+250k`. Bên dưới hiện luôn số tiền bằng chữ để đối chiếu.
-- Bấm **Ghi sổ** (hoặc **Ctrl + Enter**) để ghi vào sổ; **Esc** để đóng. Nút **Ghi sổ và ghi tiếp** giữ lại ngày, số phiếu, NCC (và để trống các dòng) để ghi phiếu hoặc dòng kế tiếp của cùng số phiếu.
+- Bấm **Ghi sổ** (hoặc **Ctrl + Enter**) để ghi vào sổ; **Esc** để đóng. Nút **Ghi sổ và ghi tiếp** giữ lại ngày, NCC và để trống các dòng. Số phiếu đang tự đánh thì sang số kế tiếp (phiếu mới); số gõ tay thì giữ nguyên, để ghi thêm dòng vào cùng phiếu.
 - Nếu còn thiếu hoặc sai (chưa có nội dung, số tiền không hợp lệ, mã chưa có trong danh mục...), lời nhắc **hiện ngay dưới ô bị sai** và con trỏ nhảy vào ô đó; sửa xong lời nhắc tự mất.
 - Dòng vừa ghi hoặc vừa sửa được **tô vàng** trong sổ vài giây để dễ kiểm tra lại.
 - Bấm đúp vào một dòng trong sổ để sửa.
@@ -132,6 +135,23 @@ báo và giữ bộ lọc cũ. Xóa trắng ô rồi Enter (hoặc bấm dấu �
 Tên Giám đốc, Thủ quỹ… in dưới chữ ký được đặt trong **Cài đặt & dữ liệu**. Phiếu thu/chi chỉ có chỗ ký Giám đốc, người nộp/nhận tiền và Thủ quỹ (không có Kế toán trưởng).
 
 ---
+
+## 4a. Đánh số chứng từ
+
+Menu **Hệ thống › Đánh số chứng từ**. Bảng gồm 5 loại: Phiếu thu (PT), Phiếu chi (PC), Ủy nhiệm chi (UNC), Mua vật tư, dịch vụ (MH, là số phiếu nhập chi phí) và Biên bản đối chiếu (ĐC-).
+
+- Số chứng từ = **Tiền tố** + số thứ tự đệm 0 cho đủ **Độ dài** + **Hậu tố**. Ví dụ PC + 045 + /09 = `PC045/09`.
+- Hậu tố dùng các mẫu sau, lấy theo ngày chứng từ:
+  - `MM` tháng, `YYYY` / `YY` năm, `DD` ngày;
+  - `NCC` là mã nhà cung cấp.
+- Hậu tố có `MM` thì mỗi tháng số chạy lại từ 1. Chỉ có năm thì mỗi năm chạy lại. Không có mẫu ngày thì chạy liên tục.
+- **Số tiếp theo** = số lớn nhất đã dùng trong kỳ + 1. Xóa phiếu cuối thì số đó được dùng lại. Muốn bắt đầu từ số lớn hơn (ví dụ tiếp nối sổ giấy), bấm biểu tượng bút ở dòng đó, sửa ô **Số tiếp theo**. Số này chỉ áp dụng cho kỳ hiện tại và không được nhỏ hơn số đã dùng.
+- Biên bản đối chiếu không có số thứ tự. Mặc định số là `ĐC-<tháng>/<năm cuối kỳ đối chiếu>-<mã NCC>`, ví dụ `ĐC-09/2026-XT`.
+- Quy tắc:
+  - Phiếu thu phải bắt đầu bằng **PT**, và các loại khác thì không, vì phần mềm nhận phiếu thu nhờ chữ PT.
+  - Mỗi loại một tiền tố riêng.
+  - Hậu tố của loại có số thứ tự phải bắt đầu bằng dấu `/` hoặc `-`, để không dính vào số.
+- Chỉ tài khoản Chủ đổi được (khi bật đăng nhập). Đổi cách đánh số không sửa số của các phiếu đã ghi.
 
 ## 5. Xuất Excel
 
@@ -220,7 +240,8 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
 
 ## 10. Phiếu nhập chi phí
 
-- **Đầu phiếu**: Ngày, Nhà cung cấp, Số phiếu / chuyến. Công trình, Nhà / khu ghi ở từng dòng; hạng mục lấy theo vật tư.
+- **Đầu phiếu**: Ngày, Nhà cung cấp, Số phiếu. Công trình, Nhà / khu ghi ở từng dòng; hạng mục lấy theo vật tư.
+  Phiếu mới (và phiếu nhân bản) tự có **số phiếu mua vật tư, dịch vụ** theo trang Đánh số chứng từ, mặc định `MH0210/10`. Muốn ghi số phiếu giao hàng / số chuyến thì bấm vào ô rồi gõ đè; **Số mới** quay lại số tự đánh.
   Ô **Ngày** mặc định là **hôm nay**. Chọn ngày khác thì giữ trong lúc đang nhập phiếu đó; rời trang rồi quay lại (hoặc mở lại phần mềm) thì ngày trở về hôm nay, các dòng đang nhập dở vẫn còn.
 - **Các dòng hàng**: Mã VT → tự hiện **Tên vật tư, ĐVT**; gõ Số lượng, Đơn giá → **Thành tiền tự tính**, tổng phiếu
   và số tiền bằng chữ hiện ở cuối bảng.

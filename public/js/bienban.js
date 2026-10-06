@@ -16,7 +16,8 @@ export function bienBanHtml(ma, o) {
   const d = soChiTiet(ma, o);
   const today = KT.todayISO();
   const ky = o.from || o.to ? 'từ ngày ' + (o.from ? fdate(o.from) : '…') + ' đến ngày ' + (o.to ? fdate(o.to) : fdate(today)) : 'từ đầu đến ngày ' + fdate(o.to || today);
-  const so = 'ĐC-' + today.replace(/-/g, '').slice(0, 8) + '/' + String(ma).toUpperCase().slice(0, 12);
+  // số biên bản theo trang Đánh số chứng từ: mặc định ĐC-<tháng>/<năm cuối kỳ>-<mã NCC>, vd ĐC-09/2026-XT
+  const so = KT.soChungTuTiep(S.db, 'dc', o.to || today, sup.ma).soPhieu;
   const cuoi = d.cuoiKy;
   return (
     '<div class="bb-head"><div><div class="vc-company">' + esc(s.tenDonVi || '') + '</div><div>' + esc(s.diaChi || '') + '</div><div class="mt-2">Số: ' + esc(so) + '</div></div>' +

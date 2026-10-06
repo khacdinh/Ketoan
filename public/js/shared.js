@@ -495,20 +495,95 @@
     return list;
   }
 
-  // Số phiếu kế tiếp dạng PC045/09 (đánh số theo tháng của ngày chứng từ).
-  function nextVoucherNo(db, loai, ngay) {
-    const prefix = loai === 'thu' ? 'PT' : 'PC';
+  /* ---------------- Đánh số chứng từ ----------------
+   * Mỗi loại chứng từ: Tiền tố + số thứ tự (đệm 0 cho đủ Độ dài) + Hậu tố. Hậu tố nhận mẫu MM (tháng), YYYY / YY (năm), DD (ngày),
+   * NCC (mã nhà cung cấp) theo ngày chứng từ. Có MM thì số chạy lại từ 1 mỗi tháng, chỉ có năm thì mỗi năm, không có thì chạy mãi.
+   * Số tiếp theo = số lớn nhất đã dùng trong kỳ + 1 (phiếu thu / chi / UNC tìm trong sổ thu chi, MH trong chi phí công trình),
+   * hoặc số người dùng đặt ở trang Đánh số chứng từ nếu lớn hơn (chỉ áp cho kỳ lúc đặt). Biên bản đối chiếu không có số thứ tự. */
+  const DANH_SO = {
+    thu: { ten: 'Phiếu thu', tienTo: 'PT', doDai: 3, hauTo: '/MM' },
+    chi: { ten: 'Phiếu chi', tienTo: 'PC', doDai: 3, hauTo: '/MM' },
+    unc: { ten: 'Ủy nhiệm chi', tienTo: 'UNC', doDai: 3, hauTo: '/MM' },
+    mh: { ten: 'Mua vật tư, dịch vụ', tienTo: 'MH', doDai: 4, hauTo: '/MM' },
+    dc: { ten: 'Biên bản đối chiếu', tienTo: 'ĐC-', doDai: 0, hauTo: 'MM/YYYY-NCC' }
+  };
+  const LOAI_SO = ['thu', 'chi', 'unc', 'mh', 'dc'];
+
+  // cấu hình đang dùng của một loại (mặc định + phần người dùng đã sửa trong settings.danhSo)
+  function danhSoCfg(db, loai) {
+    const goc = DANH_SO[loai] || DANH_SO.chi;
+    const r = Object.assign({ loai: DANH_SO[loai] ? loai : 'chi' }, goc);
+    const ds = db && db.settings && db.settings.danhSo && db.settings.danhSo[r.loai];
+    if (ds && typeof ds === 'object') {
+      if (typeof ds.tienTo === 'string') r.tienTo = ds.tienTo;
+      if (Number.isInteger(ds.doDai) && ds.doDai >= 0 && ds.doDai <= 10) r.doDai = ds.doDai;
+      if (typeof ds.hauTo === 'string') r.hauTo = ds.hauTo;
+      if (Number.isInteger(ds.soTiep) && ds.soTiep > 0) { r.soTiep = ds.soTiep; r.ky = String(ds.ky || ''); }
+    }
+    if (r.loai === 'dc') r.doDai = 0;
+    return r;
+  }
+
+  // điền mẫu trong hậu tố theo ngày chứng từ (và mã NCC)
+  function hauToTheoNgay(hauTo, ngay, ncc) {
     const iso = isISODate(ngay) ? ngay : todayISO();
-    const yyyy = iso.slice(0, 4);
-    const mm = iso.slice(5, 7);
-    const re = new RegExp('^' + prefix + '(\\d+)\\s*/\\s*' + mm + '$', 'i');
+    return String(hauTo || '').replace(/YYYY|YY|MM|DD|NCC/g, function (t) {
+      if (t === 'YYYY') return iso.slice(0, 4);
+      if (t === 'YY') return iso.slice(2, 4);
+      if (t === 'MM') return iso.slice(5, 7);
+      if (t === 'DD') return iso.slice(8, 10);
+      return String(ncc || '').trim().toUpperCase();
+    });
+  }
+
+  // kỳ đánh lại số của một ngày: tháng (hậu tố có MM), năm (chỉ có YYYY / YY), '' = không bao giờ đánh lại
+  function kyDanhSo(cfg, ngay) {
+    const iso = isISODate(ngay) ? ngay : todayISO();
+    const h = String(cfg.hauTo || '');
+    if (/MM/.test(h)) return iso.slice(0, 7);
+    if (/YY/.test(h)) return iso.slice(0, 4);
+    return '';
+  }
+
+  function soChungTu(cfg, so, ngay, ncc) {
+    return String(cfg.tienTo || '') + (cfg.doDai > 0 ? pad(so, cfg.doDai) : '') + hauToTheoNgay(cfg.hauTo, ngay, ncc);
+  }
+
+  function escRe(t) { return String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+  // số lớn nhất đã dùng (trong cùng kỳ) của một loại chứng từ
+  function soDaDung(db, cfg, ngay, ncc) {
+    if (!(cfg.doDai > 0)) return 0;
+    const iso = isISODate(ngay) ? ngay : todayISO();
+    const bo = function (t) { return String(t || '').replace(/\s+/g, ''); };
+    const re = new RegExp('^' + escRe(bo(cfg.tienTo)) + '(\\d+)' + escRe(bo(hauToTheoNgay(cfg.hauTo, iso, ncc))) + '$', 'i');
+    // hậu tố có năm thì chính số phiếu đã phân biệt năm; chỉ có tháng thì chỉ xét chứng từ cùng năm (PC001/09 năm trước không tính)
+    const h = String(cfg.hauTo || '');
+    const cungNam = /MM/.test(h) && !/YY/.test(h) ? iso.slice(0, 4) : '';
+    const list = cfg.loai === 'mh' ? db.costs || [] : db.entries || [];
     let max = 0;
-    (db.entries || []).forEach(function (e) {
-      if (!e.ngay || e.ngay.slice(0, 4) !== yyyy) return;
-      const m = re.exec(String(e.soPhieu || '').trim());
+    list.forEach(function (e) {
+      if (!e.soPhieu) return;
+      if (cungNam && String(e.ngay || '').slice(0, 4) !== cungNam) return;
+      const m = re.exec(bo(e.soPhieu));
       if (m) max = Math.max(max, parseInt(m[1], 10));
     });
-    return prefix + pad(max + 1, 3) + '/' + mm;
+    return max;
+  }
+
+  // { so, soPhieu, daDung, cfg }: số chứng từ kế tiếp của loai (thu / chi / unc / mh / dc) cho ngày chứng từ
+  function soChungTuTiep(db, loai, ngay, ncc) {
+    const cfg = danhSoCfg(db, loai);
+    if (!(cfg.doDai > 0)) return { so: 0, daDung: 0, soPhieu: soChungTu(cfg, 0, ngay, ncc), cfg: cfg };
+    const daDung = soDaDung(db, cfg, ngay, ncc);
+    let so = daDung + 1;
+    if (cfg.soTiep && cfg.ky === kyDanhSo(cfg, ngay)) so = Math.max(so, cfg.soTiep);
+    return { so: so, daDung: daDung, soPhieu: soChungTu(cfg, so, ngay, ncc), cfg: cfg };
+  }
+
+  // Số phiếu kế tiếp dạng PC045/09 (theo cấu hình Đánh số chứng từ)
+  function nextVoucherNo(db, loai, ngay) {
+    return soChungTuTiep(db, loai === 'thu' || loai === 'unc' ? loai : 'chi', ngay).soPhieu;
   }
 
   /* ---------------- Kỳ báo cáo ---------------- */
@@ -1705,6 +1780,13 @@
     voucherType: voucherType,
     buildVouchers: buildVouchers,
     nextVoucherNo: nextVoucherNo,
+    DANH_SO: DANH_SO,
+    LOAI_SO: LOAI_SO,
+    danhSoCfg: danhSoCfg,
+    hauToTheoNgay: hauToTheoNgay,
+    kyDanhSo: kyDanhSo,
+    soChungTu: soChungTu,
+    soChungTuTiep: soChungTuTiep,
     periodRange: periodRange,
     periodUnit: periodUnit,
     periodShift: periodShift,

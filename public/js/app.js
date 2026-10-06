@@ -20,6 +20,7 @@ import { renderUsers } from './views/users.js';
 import { renderOpeningBalances } from './sodudau.js';
 import { renderSupplierLedger } from './views/supplier-ledger.js';
 import { renderImportPage } from './views/settings.js';
+import { renderNumbering } from './views/numbering.js';
 import { A, napTrangThai, dangNhap, doiMatKhauBatBuoc, coQuyen, onAuthChange, khoaManHinh } from './auth.js';
 
 const KT = window.KT;
@@ -32,6 +33,7 @@ const ROUTES = {
   'ncc': { title: 'Nhà cung cấp và đối tượng', sub: 'Nhà cung cấp, thầu phụ, nhân viên, người nhận tiền', render: renderSuppliers },
   'tong-hop-ncc': { title: 'Công nợ nhà cung cấp theo kỳ', sub: 'Số dư đầu kỳ + phát sinh − thanh toán = số dư cuối kỳ', render: renderDebt },
   'cai-dat': { title: 'Cài đặt và dữ liệu', sub: 'Thông tin in trên phiếu, sao lưu, khôi phục, xóa dữ liệu', render: renderSettings },
+  'danh-so': { title: 'Đánh số chứng từ', sub: 'Tiền tố, số tiếp theo, độ dài, hậu tố của phiếu thu, phiếu chi, ủy nhiệm chi, phiếu mua vật tư, biên bản', render: renderNumbering },
   'nhap-excel': { title: 'Nhập từ Excel', sub: 'Đưa dữ liệu từ file Excel vào sổ (xem trước, rồi mới ghi)', render: renderImportPage },
   'so-du-dau': { title: 'Số dư đầu kỳ nhà cung cấp', sub: 'Công nợ có từ trước khi ghi sổ trong phần mềm: còn nợ hoặc đã ứng trước', render: renderOpeningBalances },
   'so-chi-tiet-ncc': { title: 'Sổ chi tiết công nợ', sub: 'Từng chứng từ của một nhà cung cấp, số dư lũy kế', render: renderSupplierLedger },
@@ -56,7 +58,7 @@ const NAV = [
   { head: 'Sổ sách', items: [['so-thu-chi', 'ph-wallet', 'Sổ quỹ thu chi'], ['phieu', 'ph-receipt', 'Phiếu thu / chi'], ['cp-so', 'ph-book-open', 'Sổ chi phí'], ['so-chi-tiet-ncc', 'ph-list', 'Sổ chi tiết NCC']] },
   { head: 'Báo cáo', items: [['cp-chi-tiet', 'ph-chart-pie', 'Chi phí theo nhóm'], ['cp-tong-hop', 'ph-target', 'Tổng hợp chi phí'], ['cp-cong-no', 'ph-scale', 'Công nợ NCC theo kỳ'], ['cp-gia', 'ph-trending-up', 'Giá vật tư']] },
   { head: 'Danh mục', items: [['du-an', 'ph-building-2', 'Công trình, nhà/lô'], ['ncc', 'ph-truck', 'NCC, đối tượng'], ['cp-danh-muc', 'ph-package', 'Vật tư, hạng mục', '', 'vat-tu'], ['gop-ma', 'ph-merge', 'Gộp mã']] },
-  { head: 'Hệ thống', items: [['kiem-soat', 'ph-shield-check', 'Kiểm soát'], ['cai-dat', 'ph-database', 'Cài đặt, sao lưu'], ['nguoi-dung', 'ph-users', 'Người dùng']] }
+  { head: 'Hệ thống', items: [['kiem-soat', 'ph-shield-check', 'Kiểm soát'], ['cai-dat', 'ph-database', 'Cài đặt, sao lưu'], ['danh-so', 'ph-file-text', 'Đánh số chứng từ'], ['nguoi-dung', 'ph-users', 'Người dùng']] }
 ];
 // Màn hình cần quyền riêng (đăng nhập bật). Không có quyền: ẩn khỏi menu, mở bằng đường dẫn thì báo không có quyền.
 const QUYEN_MAN = { 'gop-ma': 'gop-ma', 'cp-nhap': 'ghi', 'ghi-thu-chi': 'ghi', 'nguoi-dung': 'quan-ly-nguoi-dung', 'nhap-excel': 'nhap-excel' };

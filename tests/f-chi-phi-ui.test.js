@@ -106,7 +106,7 @@ test('F1 phiếu nhập chi phí: nhập toàn bộ bằng bàn phím (Enter san
     await page.waitForTimeout(200);
     assert.equal(await page.inputValue('tr[data-row="0"] [data-col=ct]'), 'CT1', 'phiếu sau gợi ý công trình của phiếu vừa ghi');
     assert.equal(await page.inputValue('#cp-head input[name=maNCC]'), 'S1');
-    assert.equal(await page.inputValue('#cp-head input[name=soPhieu]'), '');
+    assert.equal(await page.inputValue('#cp-head input[name=soPhieu]'), 'MH0001/' + KT.todayISO().slice(5, 7), 'số phiếu mới tự đánh (số GH-77 gõ tay không theo mẫu MH nên không tính)');
     assert.equal(await page.locator('#cp-body input[data-col=maVT]').count(), 1, 'chỉ còn 1 dòng trống');
     a = await active(page);
     assert.deepEqual([a.col, a.row], ['maVT', '0']);
@@ -344,7 +344,7 @@ test('F2 phiếu đã nhập: sửa, nhân bản, xóa phiếu và xóa từng d
       await page.click('.modal [data-act=yes]');
       await page.waitForSelector('#cp-body tr[data-row]');
       await page.waitForTimeout(200);
-      assert.equal(await page.inputValue('#cp-head input[name=soPhieu]'), '', 'nhân bản: số phiếu để trống');
+      assert.equal(await page.inputValue('#cp-head input[name=soPhieu]'), 'MH0001/' + KT.todayISO().slice(5, 7), 'nhân bản: không chép số phiếu cũ, tự đánh số mới');
       assert.equal(await page.inputValue('#cp-head input[name=maNCC]'), 'S2');
       assert.equal(await page.inputValue('#cp-head input[name=ngay]'), KT.todayISO(), 'nhân bản: ngày là hôm nay');
       await page.focus('tr[data-row="0"] [data-col=maVT]');

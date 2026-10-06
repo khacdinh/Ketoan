@@ -1,5 +1,20 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Đánh số chứng từ tự động (06/10/2026)
+
+- Trang mới **Hệ thống › Đánh số chứng từ**: tiền tố, số tiếp theo, độ dài, hậu tố và ví dụ cho 5 loại chứng từ, bấm biểu tượng bút để sửa (chỉ Chủ). Các loại:
+  - Phiếu thu `PT022/09`, Phiếu chi `PC045/09`, Ủy nhiệm chi `UNC013/09`;
+  - Mua vật tư, dịch vụ `MH0210/10`;
+  - Biên bản đối chiếu `ĐC-09/2026-XT`.
+- Hậu tố nhận các mẫu MM / YYYY / YY / DD / NCC. Có MM thì mỗi tháng đánh lại từ 1.
+- Số tiếp theo = số lớn nhất đã dùng trong kỳ + 1, hoặc số đặt tay nếu lớn hơn (chỉ cho kỳ hiện tại).
+- **Ghi thu / chi**: phiếu mới tự điền số. Số đổi theo ngày, Chi / Thu và ô chọn mới **Phiếu chi / Ủy nhiệm chi**.
+  - Gõ số khác thì giữ nguyên số đó.
+  - **Ghi sổ và ghi tiếp** sang số kế tiếp nếu số đang tự đánh.
+- **Phiếu nhập chi phí**: phiếu mới và phiếu nhân bản tự có số MH. Gõ đè được bằng số phiếu giao hàng; có nút **Số mới**.
+- **Biên bản đối chiếu công nợ**: số biên bản lấy theo cấu hình. Trước đây là `ĐC-<ngày in>/<mã NCC>`.
+- Cấu hình lưu trong cài đặt (`settings.danhSo`), đi theo bản sao lưu. API `PUT /api/danh-so/:loai` (quyền Cài đặt). Có test DS1–DS4.
+
 ## Cảnh báo NCC không khớp công trình khi ghi phiếu chi (06/10/2026)
 
 - **Ghi thu / chi**: khoản chi cho một nhà cung cấp mà NCC đó **chưa có chi phí** (phiếu nhập chi phí, số dư đầu kỳ hay khoản trả ngoài quỹ) ở công trình của dòng:

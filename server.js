@@ -531,6 +531,46 @@ async function handleApi(req, res, url) {
     return ok(res);
   }
 
+  /* ----- Đánh số chứng từ: tiền tố, độ dài, hậu tố, số tiếp theo của từng loại (settings.danhSo) ----- */
+  if (seg[1] === 'danh-so' && seg.length === 3 && m === 'PUT') {
+    const loai = seg[2];
+    if (!KT.LOAI_SO.includes(loai)) throw new HttpError(400, 'Loại chứng từ không hợp lệ');
+    const b = await readJson(req);
+    const goc = KT.DANH_SO[loai];
+    const tienTo = str(b.tienTo, 50).replace(/\s+/g, '');
+    const hauTo = str(b.hauTo, 50).replace(/\s+/g, '');
+    const doDai = loai === 'dc' ? 0 : Number(b.doDai);
+    if (!tienTo) throw new HttpError(400, 'Nhập tiền tố, ví dụ ' + goc.tienTo);
+    if (tienTo.length > 10) throw new HttpError(400, 'Tiền tố tối đa 10 ký tự');
+    if (hauTo.length > 20) throw new HttpError(400, 'Hậu tố tối đa 20 ký tự');
+    const kyTu = /^[\p{L}\p{N}/\-._]*$/u;
+    if (!kyTu.test(tienTo) || !kyTu.test(hauTo)) throw new HttpError(400, 'Tiền tố, hậu tố chỉ gồm chữ, số và các dấu / - . _');
+    if (/\d$/.test(tienTo) && doDai > 0) throw new HttpError(400, 'Tiền tố không được kết thúc bằng chữ số (sẽ dính vào số thứ tự). Thêm dấu - hoặc /, ví dụ ' + tienTo + '-');
+    if (doDai > 0 && /^(\d|YY|MM|DD)/.test(hauTo)) throw new HttpError(400, 'Hậu tố cần bắt đầu bằng dấu / hoặc - (nếu không sẽ dính vào số thứ tự), ví dụ /MM');
+    if (loai !== 'dc' && (!Number.isInteger(doDai) || doDai < 1 || doDai > 10)) throw new HttpError(400, 'Độ dài số thứ tự từ 1 đến 10 chữ số');
+    // phần mềm nhận phiếu thu nhờ số bắt đầu bằng PT (phiếu chi, UNC, MH thì không được)
+    if (loai === 'thu' && !/^PT/i.test(tienTo)) throw new HttpError(400, 'Tiền tố phiếu thu phải bắt đầu bằng PT để phần mềm nhận ra phiếu thu');
+    if (loai !== 'thu' && /^PT/i.test(tienTo)) throw new HttpError(400, 'Chỉ phiếu thu được bắt đầu bằng PT (phần mềm coi số PT… là phiếu thu)');
+    const trung = KT.LOAI_SO.find((k) => k !== loai && KT.keyOf(KT.danhSoCfg(db, k).tienTo) === KT.keyOf(tienTo));
+    if (trung) throw new HttpError(400, 'Tiền tố ' + tienTo + ' đang dùng cho ' + KT.DANH_SO[trung].ten.toLowerCase() + '. Mỗi loại chứng từ cần tiền tố riêng');
+    const s = db.settings;
+    const before = trace.clone(s.danhSo || null);
+    const moi = { tienTo, doDai, hauTo };
+    if (b.soTiep !== undefined && b.soTiep !== null && b.soTiep !== '' && loai !== 'dc') {
+      const n = Number(b.soTiep);
+      if (!Number.isInteger(n) || n < 1 || n > 1e9) throw new HttpError(400, 'Số tiếp theo phải là số nguyên dương');
+      const thu = Object.assign({}, s, { danhSo: Object.assign({}, s.danhSo, { [loai]: moi }) });
+      const hom = KT.todayISO();
+      const tiep = KT.soChungTuTiep(Object.assign({}, db, { settings: thu }), loai, hom);
+      if (n <= tiep.daDung) throw new HttpError(400, 'Số ' + KT.soChungTu(tiep.cfg, tiep.daDung, hom) + ' đã dùng trong kỳ này. Số tiếp theo phải từ ' + (tiep.daDung + 1) + ' trở lên');
+      if (n > tiep.daDung + 1) { moi.soTiep = n; moi.ky = KT.kyDanhSo(tiep.cfg, hom); }
+    }
+    s.danhSo = Object.assign({}, s.danhSo, { [loai]: moi });
+    trace.log(req, 'cai-dat', 'settings', 'danhSo', before, s.danhSo, { label: 'Đánh số ' + goc.ten.toLowerCase() });
+    store.save();
+    return ok(res);
+  }
+
   /* ----- Nhập Excel ----- */
   if (p === '/api/import' && m === 'POST') {
     const buf = await readBody(req, 60 * 1024 * 1024);

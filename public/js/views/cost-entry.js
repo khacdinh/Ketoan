@@ -24,6 +24,7 @@ function ngayVeHomNay() {
   if (LS.get('cp.draft', null)) LS.set('cp.draft', draft);
 }
 ngayVeHomNay();
+const soMH = (ngay) => KT.soChungTuTiep(S.all, 'mh', ngay).soPhieu;
 const trangCua = (url) => String(url || '').split('#')[1] ? String(url).split('#')[1].replace(/^\/?/, '').split('?')[0] : '';
 window.addEventListener('hashchange', (e) => { if (trangCua(e.oldURL) === 'cp-nhap' && trangCua(e.newURL) !== 'cp-nhap') ngayVeHomNay(); });
 let pendingFocus = null;
@@ -109,18 +110,18 @@ function initialState(params, banSaoLuu) {
     // công trình gợi ý cho dòng đầu: công trình đang chọn ở thanh trên, không thì công trình của phiếu trước
     const goiY = projectByCode(S.ct || '') ? projectByCode(S.ct).ma : last && last.ct && projectByCode(last.ct) ? projectByCode(last.ct).ma : '';
     // ngày phiếu mới luôn là hôm nay (không lấy ngày của phiếu trước)
-    return { key, mode, header: Object.assign({ ngay: KT.todayISO(), maNCC: '', soPhieu: '' }, last ? { maNCC: last.maNCC || '' } : {}, { maCT: '', maNha: '', soPhieu: '' }), lines: [Object.assign(blankLine(), { ct: goiY, nha: chungCua(goiY) })] };
+    return { key, mode, header: Object.assign({ ngay: KT.todayISO(), maNCC: '', soPhieu: '' }, last ? { maNCC: last.maNCC || '' } : {}, { maCT: '', maNha: '', soPhieu: '', soTuDong: true }), lines: [Object.assign(blankLine(), { ct: goiY, nha: chungCua(goiY) })] };
   }
   // nhanbandong = nhân bản MỘT dòng chi phí (từ Sổ chi phí) thành phiếu mới chưa lưu
   const lines = params.nhanbandong ? allCostLedger().filter((c) => String(c.id) === String(params.nhanbandong)) : slipLines(params.phieu || params.nhanban);
   if (!lines.length) return { key, mode: 'missing', header: {}, lines: [] };
   const header = Object.assign(headerFromLine(lines[0]), { maCT: '', maNha: '' }); // công trình, nhà / khu ghi ở từng dòng
-  if (mode === 'dup') { header.ngay = KT.todayISO(); header.soPhieu = ''; }
+  if (mode === 'dup') { header.ngay = KT.todayISO(); header.soPhieu = ''; header.soTuDong = true; }
   return { key, mode, phieuId: params.phieu || null, nhap: mode === 'edit' && KT.isDraft(lines[0]), header, lines: lines.map((c) => lineFromCost(c, '')).concat([blankLine()]) };
 }
 
 // Phiếu sửa / nhân bản đang có thay đổi chưa lưu (so với dữ liệu đã lưu): vd đã bấm × xóa một dòng
-const noiDung = (st) => JSON.stringify({ h: st.header, l: st.lines.filter((l) => !isBlank(l)).map((l) => [l.ct, l.maVT, l.dienGiai, l.soLuong, l.donGia, l.thanhTien, l.hmCu, l.nha]) });
+const noiDung = (st) => JSON.stringify({ h: Object.assign({}, st.header, st.header.soTuDong ? { soPhieu: '' } : {}), l: st.lines.filter((l) => !isBlank(l)).map((l) => [l.ct, l.maVT, l.dienGiai, l.soLuong, l.donGia, l.thanhTien, l.hmCu, l.nha]) });
 function coThayDoi(params) {
   const key = stateKey(params);
   if (!draft || draft.key !== key || draft.mode === 'new') return false;
@@ -157,6 +158,8 @@ export function renderCostEntry(root) {
   const h = st.header;
   const editing = st.mode === 'edit';
   const editingPosted = editing && !st.nhap;
+  // phiếu mới / nhân bản: số phiếu tự đánh theo trang Đánh số chứng từ (MH0210/10) cho tới khi người dùng gõ số khác
+  if (!editing && (h.soTuDong || (h.soTuDong === undefined && !h.soPhieu))) { h.soTuDong = true; h.soPhieu = soMH(h.ngay); }
   const lockedSlip = editing && KT.isLockedDate(S.all, h.ngay); // phiếu thuộc tháng đã khóa sổ: chỉ xem // phiếu đã ghi sổ: chỉ Lưu thay đổi; phiếu mới / nháp: Lưu nháp hoặc Ghi sổ
 
   root.innerHTML =
@@ -172,7 +175,8 @@ export function renderCostEntry(root) {
     '<form id="cp-head" class="grid grid-cols-2 gap-x-3 gap-y-2.5 px-3 py-3 md:gap-x-4 md:px-4 lg:grid-cols-3" novalidate autocomplete="off">' +
     '<label class="field"><span class="label">Ngày <b class="req">*</b></span>' + dateField({ name: 'ngay', value: h.ngay, required: true, label: 'Ngày' }) + '<span class="hint"></span></label>' +
     headField('maNCC', 'Nhà cung cấp', h.maNCC, 'dl-suppliers', 'Gõ mã hoặc tên', true) +
-    '<label class="field"><span class="label">Số phiếu / chuyến</span><input name="soPhieu" class="input" value="' + esc(h.soPhieu) + '" placeholder="Số phiếu giao hàng, số chuyến..."><span class="hint"></span></label>' +
+    '<div class="field"><span class="label">Số phiếu</span><div class="flex gap-2"><input name="soPhieu" class="input min-w-0" value="' + esc(h.soPhieu) + '" placeholder="VD: MH0210/10, số phiếu giao hàng" aria-label="Số phiếu">' +
+    (lockedSlip ? '' : '<button type="button" class="btn btn-secondary flex-none" data-act="so-moi" title="Lấy số phiếu kế tiếp (theo trang Đánh số chứng từ)">Số mới</button>') + '</div><span class="hint"></span></div>' +
     '</form></section>' +
 
     '<section class="sheet overflow-hidden" aria-labelledby="h-dong">' +
@@ -220,8 +224,13 @@ export function renderCostEntry(root) {
     h.ngay = get('ngay').value;
     if (h.ngay !== ngayCu) refreshTags();
     h.maNCC = get('maNCC').value.trim();
-    h.soPhieu = get('soPhieu').value.trim();
+    const so = get('soPhieu').value.trim();
+    if (so !== h.soPhieu) h.soTuDong = false; // người dùng gõ số khác (số phiếu giao hàng…): thôi tự đánh
+    h.soPhieu = so;
+    if (h.soTuDong && h.ngay !== ngayCu) { h.soPhieu = soMH(h.ngay); get('soPhieu').value = h.soPhieu; }
+    hintSo();
   }
+  function hintSo() { setHint('soPhieu', h.soTuDong ? 'Số tự đánh. Gõ số khác nếu cần (vd số phiếu giao hàng)' : ''); }
   function hintOf(name) { return get(name).closest('.field').querySelector('.hint'); }
   // Không ghi lại khi nội dung y hệt: bấm vào liên kết trong gợi ý làm ô nhập mất tiêu điểm → sự kiện change vẽ lại gợi ý
   // ngay giữa lúc nhấn chuột, liên kết bị thay mới và cú bấm không tới được.
@@ -248,6 +257,7 @@ export function renderCostEntry(root) {
   }
 
   form.addEventListener('input', () => { readHeader(); saveDraft(st); });
+  get('soPhieu').addEventListener('focus', () => { if (h.soTuDong) get('soPhieu').select(); }); // gõ số phiếu giao hàng thì thay hẳn số tự đánh
   form.addEventListener('change', (e) => {
     const n = e.target.name;
     if (n === 'maNCC') get('maNCC').value = resolveCode(S.db.suppliers, get('maNCC').value);
@@ -604,6 +614,7 @@ export function renderCostEntry(root) {
       lines.push(Object.assign({ _row: i + 1, maVT: m ? m.ma : '', dienGiai: l.dienGiai.trim(), maHM: hm, maCT: lct.ma, maNha: lnha ? lnha.ma : '' }, so.nhap));
     }
     if (!lines.length) return fail('Phiếu chưa có dòng hàng nào', 0, 'maVT');
+    if (h.soTuDong) { h.soPhieu = soMH(h.ngay); get('soPhieu').value = h.soPhieu; } // số mới nhất (phòng số đã bị phiếu khác dùng)
     const payload = { header: { ngay: h.ngay, maCT: '', maNha: '', maNCC: ncc.ma, soPhieu: h.soPhieu, trangThai: asDraft ? 'nhap' : '' }, lines };
     saving = true;
     const done = busy(root.querySelector(asDraft ? '[data-act=save-draft]' : '[data-act=save]'), editing || asDraft ? 'Đang lưu…' : 'Đang ghi…');
@@ -691,6 +702,7 @@ export function renderCostEntry(root) {
     };
     if (act === 'save') save();
     else if (act === 'save-draft') save(true);
+    else if (act === 'so-moi') { h.soTuDong = true; h.soPhieu = soMH(h.ngay); get('soPhieu').value = h.soPhieu; hintSo(); saveDraft(st); }
     else if (act === 'history') openHistory(st.phieuId);
     else if (act === 'add-row') { st.lines.push(blankLine()); drawRows(); focusCell(st.lines.length - 1, 'maVT'); }
     else if (act === 'del-row') removeRow(Number(a.closest('tr').dataset.row));
@@ -727,6 +739,7 @@ export function renderCostEntry(root) {
   bindPending(root);
 
   refreshHeaderHints();
+  hintSo();
   refreshVtList();
   drawRows();
   saveDraft(st);
