@@ -13,7 +13,7 @@ import { renderCostEntry } from './views/cost-entry.js';
 import { renderCostLedger } from './views/cost-ledger.js';
 import { renderCostDashboard, renderCostDetail, renderPrices } from './views/cost-reports.js';
 import { renderDebt } from './views/debt.js';
-import { renderCostCatalogs, menuTabDanhMuc } from './views/cost-catalogs.js';
+import { renderCostCatalogs } from './views/cost-catalogs.js';
 import { renderControl } from './views/control.js';
 import { renderMerge } from './merge.js';
 import { renderUsers } from './views/users.js';
@@ -55,7 +55,7 @@ const NAV = [
   { head: 'Nhập liệu', items: [['cp-nhap', 'ph-file-plus', 'Phiếu nhập chi phí', 'F2'], ['ghi-thu-chi', 'ph-arrow-left-right', 'Ghi thu / chi', 'F3'], ['so-du-dau', 'ph-flag', 'Số dư đầu kỳ NCC'], ['nhap-excel', 'ph-file-spreadsheet', 'Nhập từ Excel']] },
   { head: 'Sổ sách', items: [['so-thu-chi', 'ph-wallet', 'Sổ quỹ thu chi'], ['phieu', 'ph-receipt', 'Phiếu thu / chi'], ['cp-so', 'ph-book-open', 'Sổ chi phí'], ['so-chi-tiet-ncc', 'ph-list', 'Sổ chi tiết NCC']] },
   { head: 'Báo cáo', items: [['cp-chi-tiet', 'ph-chart-pie', 'Chi phí theo nhóm'], ['cp-tong-hop', 'ph-target', 'Tổng hợp chi phí'], ['cp-cong-no', 'ph-scale', 'Công nợ NCC theo kỳ'], ['cp-gia', 'ph-trending-up', 'Giá vật tư']] },
-  { head: 'Danh mục', items: [['du-an', 'ph-building-2', 'Công trình, nhà/lô'], ['ncc', 'ph-truck', 'NCC, đối tượng'], ['cp-danh-muc', 'ph-package', 'Vật tư', '', 'vat-tu'], ['cp-danh-muc', 'ph-folder-tree', 'Hạng mục, nhóm CP', '', 'hang-muc'], ['gop-ma', 'ph-merge', 'Gộp mã']] },
+  { head: 'Danh mục', items: [['du-an', 'ph-building-2', 'Công trình, nhà/lô'], ['ncc', 'ph-truck', 'NCC, đối tượng'], ['cp-danh-muc', 'ph-package', 'Vật tư, hạng mục', '', 'vat-tu'], ['gop-ma', 'ph-merge', 'Gộp mã']] },
   { head: 'Hệ thống', items: [['kiem-soat', 'ph-shield-check', 'Kiểm soát'], ['cai-dat', 'ph-database', 'Cài đặt, sao lưu'], ['nguoi-dung', 'ph-users', 'Người dùng']] }
 ];
 // Màn hình cần quyền riêng (đăng nhập bật). Không có quyền: ẩn khỏi menu, mở bằng đường dẫn thì báo không có quyền.
@@ -191,7 +191,7 @@ function render() {
   const k = current();
   const r = ROUTES[k];
   document.querySelectorAll('.nav-item').forEach((a) => {
-    const on = a.dataset.route === k && (!a.dataset.tab || a.dataset.tab === menuTabDanhMuc());
+    const on = a.dataset.route === k;
     a.classList.toggle('active', on);
     if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   });

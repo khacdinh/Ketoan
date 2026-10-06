@@ -38,7 +38,7 @@ Muốn có biểu tượng trên Desktop: bấm đúp **`TaoBieuTuongDesktop.bat
 
 - **Menu bên trái** chia theo trình tự công việc: *Tổng quan* · **Nhập liệu** (Phiếu nhập chi phí, Ghi thu / chi, Số dư đầu kỳ NCC, Nhập từ Excel) ·
   **Sổ sách** (Sổ quỹ thu chi, Phiếu thu / chi, Sổ chi phí, Sổ chi tiết NCC) · **Báo cáo** (Chi phí theo nhóm, Tổng hợp chi phí, Công nợ NCC theo kỳ, Giá vật tư) ·
-  **Danh mục** (Công trình nhà/lô, NCC đối tượng, Vật tư, Hạng mục nhóm CP, Gộp mã) · **Hệ thống** (Kiểm soát, Cài đặt sao lưu, Người dùng). Mỗi mục có biểu tượng riêng; mục Kiểm soát có nhãn số việc cần xử lý (ẩn khi bằng 0).
+  **Danh mục** (Công trình nhà/lô, NCC đối tượng, Vật tư hạng mục, Gộp mã) · **Hệ thống** (Kiểm soát, Cài đặt sao lưu, Người dùng). Mỗi mục có biểu tượng riêng; mục Kiểm soát có nhãn số việc cần xử lý (ẩn khi bằng 0).
   Cuối menu là **tồn quỹ hiện tại**, giờ lưu gần nhất và nút thu gọn. **Ctrl B** thu gọn menu (rộng 248px → 56px) chỉ còn logo và biểu tượng, rê chuột vào biểu tượng để xem tên mục; trạng thái này được nhớ theo từng người dùng.
 - **Thanh trên cùng**: ô **Công trình** (chọn một công trình thì mọi sổ chi phí, báo cáo, công nợ chỉ hiện công trình đó; chọn “Tất cả công trình” để bỏ lọc), ô **Tìm** toàn cục
   (**Ctrl K**: gõ số phiếu, tên NCC, vật tư, nội dung hoặc số tiền như `45tr`), nút **Nhập phiếu chi phí** (**F2**), nút **Ghi thu / chi** (**F3**), và (khi bật đăng nhập) tên người dùng + nút khóa màn hình (**Ctrl L**).
@@ -78,7 +78,7 @@ Nhóm **Chi phí công trình**:
 | **Sổ chi tiết NCC** | (mới) | Một NCC: số dư đầu kỳ, **từng chứng từ** (mỗi phiếu nhập một dòng, bấm để bung các dòng hàng; khoản chi sổ quỹ và khoản trả ngoài quỹ nền xanh nhạt), số dư lũy kế kèm Có / Nợ, dòng cộng cuối bảng. **Alt ↑ ↓** chuyển NCC khác. Nút **Ghi thanh toán**, **Biên bản đối chiếu**, In sổ. |
 | **Biên bản đối chiếu công nợ** | (mới) | A4 dọc, đen trắng: đầu đơn vị, quốc hiệu, Bên A / Bên B, bảng 4 mục (đầu kỳ + phát sinh − thanh toán = cuối kỳ), bằng chữ, bảng kê chứng từ có lũy kế, điều khoản 07 ngày, chỗ ký. Xem trước rồi bấm **In biên bản**. |
 | **Giá vật tư** | (mới) | Lịch sử đơn giá từng vật tư theo NCC, giá thấp / cao / gần nhất, biểu đồ giá; mỗi dòng có nút mở phiếu nhập, xem trong sổ chi phí, sửa đơn giá. |
-| **Vật tư / Hạng mục, nhóm CP** | `DM_NHOM`, `DM_HANGMUC`, `DM_VATTU`, `DM_NHA` | Danh mục chi phí (cùng một màn, hai mục menu mở sẵn tab Vật tư hoặc tab Hạng mục). |
+| **Vật tư, hạng mục** | `DM_NHOM`, `DM_HANGMUC`, `DM_VATTU`, `DM_NHA` | Danh mục chi phí: tab **Vật tư** (cây nhóm chi phí → hạng mục bên trái, bảng vật tư bên phải) và tab **Nhà / khu**. |
 
 Mục **Kiểm soát** (con số màu vàng = số việc cần xử lý): **Cần xử lý**, **Kiểm quỹ**, **Khóa sổ**,
 **Nhật ký thay đổi**, **Thùng rác** — xem mục 16.
@@ -317,6 +317,8 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
 
 ## 13. Danh mục chi phí
 
+Màn hình có hai tab: **Vật tư** và **Nhà / khu**. Nhóm chi phí và hạng mục được quản lý ngay trên cây **Khoản mục chi phí** của tab Vật tư (không còn tab riêng).
+
 - **Nhóm chi phí** (6 nhóm lớn như file mẫu): đổi tên thoải mái, mọi hạng mục và báo cáo tự đổi theo.
   Nên giữ số thứ tự ở đầu tên (`1. `, `2. `...) để báo cáo xếp đúng thứ tự.
 - **Hạng mục**: mã HM, tên, thuộc nhóm. **Đổi tên / chuyển nhóm** thì sổ chi phí và báo cáo tự cập nhật
@@ -324,7 +326,12 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
 - **Vật tư** (menu Danh mục › Vật tư) chia hai phần:
   - Bên trái là cây **Khoản mục chi phí**: **Tất cả vật tư**, rồi các nhóm chi phí (1. Chi phí ban đầu, 2. Chi phí phần thô…). Bấm mũi tên ở đầu nhóm để mở / thu gọn các hạng mục của nhóm. Số bên phải mỗi mục là số vật tư trong mục đó. Nếu có vật tư chưa gắn hạng mục, cây có thêm mục **Vật tư chưa có hạng mục** để gắn bổ sung.
   - Bấm một nhóm hoặc hạng mục: bảng bên phải chỉ hiện vật tư của mục đó, tiêu đề ghi tên mục. Ô tìm kiếm cũng chỉ tìm trong mục đang chọn; muốn tìm toàn bộ thì chọn Tất cả vật tư. Phần mềm nhớ mục đang chọn cho lần mở sau.
-  - Các nút dưới cây: **+ Hạng mục** (thêm hạng mục, điền sẵn nhóm đang chọn), **+ Nhóm**, **Sửa** (sửa nhóm / hạng mục đang chọn).
+  - Các nút dưới cây:
+    - **+ Hạng mục** (thêm hạng mục, điền sẵn nhóm đang chọn) và **+ Nhóm**.
+    - **Sửa**: sửa nhóm / hạng mục đang chọn.
+    - **Gộp**: gộp hạng mục đang chọn vào hạng mục khác.
+    - **Xóa**: chỉ xóa được nhóm không còn hạng mục, hoặc hạng mục không còn vật tư hay dòng chi phí nào.
+  - Khi chọn một nhóm hoặc hạng mục, góc phải tiêu đề có số dòng và tổng tiền trong sổ chi phí của mục đó.
   - Khi đang chọn một hạng mục, bấm **Thêm vật tư** thì ô Hạng mục trong hộp thêm đã điền sẵn.
   - Bảng gồm các cột: Mã vật tư, Tên vật tư, ĐVT, **Khoản mục mặc định** (hạng mục, kèm nhóm), **Giá thường** và **Đang dùng**. Giá thường là đơn giá bình quân các lần mua; rê chuột vào để xem giá thấp nhất, cao nhất và gần nhất. Đang dùng là số dòng trong sổ chi phí; rê chuột vào để xem tổng đã mua. Cuối mỗi dòng có các nút Lịch sử giá, Sửa và Xóa.
 - **Nhà / khu**: thuộc công trình nào; đánh dấu “Dùng chung cả công trình”.
@@ -562,9 +569,10 @@ Dùng khi **cùng một thứ** đang có **nhiều mã** (vd NCC `NCC_ThienHai`
 tổng chi phí, tổng thu, tổng chi, tồn quỹ, công nợ luôn giữ nguyên, chỉ dồn về một mã.
 
 ### 19.1 Gộp mã
-1. Mở danh mục: **Nhà cung cấp**, **Dự án**, hoặc **Danh mục chi phí** (tab Hạng mục / Vật tư / Nhà và khu). Tích ô đầu dòng các mã cần
+1. Mở danh mục: **Nhà cung cấp**, **Dự án**, hoặc **Danh mục chi phí** (tab Vật tư / Nhà và khu). Tích ô đầu dòng các mã cần
    gộp — **mã tích đầu tiên là mã giữ lại (mã đích)** — rồi bấm **Gộp mã**. Hoặc vào màn **Gộp mã** (menu bên trái, nhóm Kiểm soát)
    → bấm loại mã ở “Gộp mã mới”, gõ chọn mã nguồn (bị gộp, chọn được nhiều) và mã đích.
+   Hạng mục: chọn hạng mục trên cây Khoản mục chi phí (tab Vật tư) rồi bấm **Gộp**, gõ chọn hạng mục đích.
 2. Bấm **Xem trước**: phần mềm cho biết mỗi mã nguồn có bao nhiêu dòng sổ thu chi / dòng chi phí / vật tư / nhà / khoản trả ngoài quỹ
    (kể cả dòng trong Thùng rác) và số tiền liên quan; bảng **Thông tin giữ lại** cho chọn giữ tên, loại, địa chỉ… của mã nào (mặc định giữ
    của mã đích; mã đích để trống thì lấy của mã nguồn).

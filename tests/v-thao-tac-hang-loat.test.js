@@ -38,7 +38,7 @@ test('V1 danh mục NCC: tích 3 mã → thanh "Đã chọn 3"; Bỏ chọn xóa
   } finally { await browser.close(); await srv.stop(); }
 });
 
-test('V2 danh mục vật tư: xóa nhiều mã vật tư chưa dùng; thanh chọn hiện đúng ở tab Vật tư', { skip: SKIP, timeout: 180000 }, async () => {
+test('V2 danh mục vật tư: xóa nhiều mã vật tư chưa dùng; thanh chọn hiện đúng ở tab Vật tư; chỉ còn tab Vật tư, Nhà / khu', { skip: SKIP, timeout: 180000 }, async () => {
   const srv = await startServer({});
   const db0 = await srv.db();
   const hm = db0.costItems[0].ma;
@@ -54,14 +54,8 @@ test('V2 danh mục vật tư: xóa nhiều mã vật tư chưa dùng; thanh ch�
     await page.waitForFunction(() => !document.querySelector('[data-pick="V1"]') && !document.querySelector('[data-pick="V2"]'), null, { timeout: 10000 });
     await settle(page);
     assert.deepEqual(readStored(srv.dataDir).materials, []);
-    // tab Nhóm chi phí: có ô tích và thanh chọn, nhưng không có nút Gộp mã; nhóm còn hạng mục thì không xóa được
-    await page.click('label:has(input[name=dm-tab][value=nhom])');
-    await page.waitForSelector('#dm-table [data-pick]');
-    const nhoms = await page.$$eval('#dm-table [data-pick]', (c) => c.slice(0, 2).map((x) => x.dataset.pick));
-    for (const m of nhoms) await page.check('[data-pick="' + m + '"]');
-    await page.waitForSelector('#sel-bar');
-    assert.equal(await page.locator('#sel-bar [data-bar=merge]').count(), 0, 'nhóm chi phí không có Gộp mã');
-    assert.equal(await page.locator('#sel-bar [data-bar=del]').count(), 1);
+    // tab Nhà / khu: không có cây khoản mục; hạng mục và nhóm chỉ còn quản lý trên cây (không còn tab riêng)
+    assert.deepEqual(await page.$$eval('input[name=dm-tab]', (r) => r.map((x) => x.value)), ['vat-tu', 'nha']);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });

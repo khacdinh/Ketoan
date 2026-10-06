@@ -929,20 +929,21 @@ test('F7 Giá vật tư và Danh mục chi phí: chọn vật tư, lịch sử �
     // ---- Danh mục ----
     await page.evaluate(() => { location.hash = '#/cp-danh-muc'; });
     await page.waitForSelector('#dm-table tr[data-id]');
-    const tabs = { 'hang-muc': db.costItems.length, nhom: db.costGroups.length, 'vat-tu': db.materials.length, nha: db.houses.length };
+    const tabs = { 'vat-tu': db.materials.length, nha: db.houses.length }; // hạng mục, nhóm: quản lý trên cây của tab Vật tư
     for (const t of Object.keys(tabs)) {
       await page.check('input[name=dm-tab][value="' + t + '"]', { force: true });
       await settle(page);
       assert.equal(await page.locator('#dm-table tbody tr[data-id]').count(), Math.min(tabs[t], 600), 'tab ' + t);
     }
     // tìm kiếm (không dấu)
-    await page.check('input[name=dm-tab][value="hang-muc"]', { force: true });
+    await page.check('input[name=dm-tab][value="vat-tu"]', { force: true });
     await page.fill('#dm-q', 'be tong'); await page.waitForTimeout(300);
-    assert.equal(await page.locator('#dm-table tbody tr[data-id]').count(), db.costItems.filter((i) => /be tong/.test(KT.normalizeText(i.ma + ' ' + i.ten))).length);
+    const tenHM = (m) => (db.costItems.find((i) => KT.keyOf(i.ma) === KT.keyOf(m.maHM)) || {}).ten || '';
+    assert.equal(await page.locator('#dm-table tbody tr[data-id]').count(), db.materials.filter((m) => KT.normalizeText(m.ma + ' ' + m.ten + ' ' + tenHM(m) + ' ' + (m.ghiChu || '')).includes('be tong')).length);
     await page.fill('#dm-q', '');
     await page.waitForTimeout(300);
-    // thêm hạng mục
-    await page.click('[data-act=add]');
+    // thêm hạng mục (nút + Hạng mục dưới cây Khoản mục chi phí)
+    await page.click('#dm-tree [data-act=tree-add-hm]');
     await page.waitForSelector('#modal-root form'); await page.waitForTimeout(150);
     await page.fill('#modal-root input[name=ten]', 'Hạng mục kiểm thử giao diện');
     await page.fill('#modal-root input[name=maNhom]', db.costGroups[1].ma);
@@ -952,7 +953,7 @@ test('F7 Giá vật tư và Danh mục chi phí: chọn vật tư, lịch sử �
     const created = (await srv.db()).costItems.find((i) => i.ten === 'Hạng mục kiểm thử giao diện');
     assert.ok(created);
     // trùng tên bị từ chối
-    await page.click('[data-act=add]');
+    await page.click('#dm-tree [data-act=tree-add-hm]');
     await page.waitForSelector('#modal-root form'); await page.waitForTimeout(150);
     await page.fill('#modal-root input[name=ma]', 'HM_TRUNG'); await page.fill('#modal-root input[name=ten]', 'hạng mục KIỂM THỬ giao diện');
     await page.fill('#modal-root input[name=maNhom]', db.costGroups[1].ma);
@@ -962,7 +963,13 @@ test('F7 Giá vật tư và Danh mục chi phí: chọn vật tư, lịch sử �
     await page.click('[data-act=cancel]');
     // đổi tên hạng mục đang có dòng chi phí → sổ chi phí hiện tên mới
     const used = db.costItems.find((i) => db.costs.some((c) => c.maHM === i.ma));
-    await page.locator('#dm-table tr[data-id="' + used.id + '"] [data-act=edit]').click();
+    const chonHM = async (it) => {
+      const g = db.costGroups.find((x) => KT.keyOf(x.ma) === KT.keyOf(it.maNhom));
+      await page.click('#dm-tree [data-tree="g:' + g.ma + '"]'); await settle(page);
+      await page.click('#dm-tree [data-tree="h:' + it.ma + '"]'); await settle(page);
+    };
+    await chonHM(used);
+    await page.click('#dm-tree [data-act=tree-edit]');
     await page.waitForSelector('#modal-root form'); await page.waitForTimeout(150);
     await page.fill('#modal-root input[name=ten]', 'TÊN MỚI ' + used.ten);
     await page.keyboard.press('Enter');
@@ -975,13 +982,16 @@ test('F7 Giá vật tư và Danh mục chi phí: chọn vật tư, lịch sử �
     assert.ok((await page.$eval('#view', (e) => e.innerText)).includes('TÊN MỚI ' + used.ten), 'bảng điều khiển hiện tên mới');
     // xóa: hạng mục đang dùng bị chặn, hạng mục mới thì xóa được
     await page.evaluate(() => { location.hash = '#/cp-danh-muc'; });
-    await page.waitForSelector('#dm-table tr[data-id]');
-    await page.locator('#dm-table tr[data-id="' + used.id + '"] [data-act=del]').click();
+    await page.waitForSelector('#dm-tree');
+    await chonHM(used);
+    await page.click('#dm-tree [data-act=tree-del]');
     await page.click('[data-act=yes]');
     await page.waitForFunction(() => /Không thể xóa/.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
-    await page.locator('#dm-table tr[data-id="' + created.id + '"] [data-act=del]').click();
+    await chonHM(created);
+    await page.click('#dm-tree [data-act=tree-del]');
     await page.click('[data-act=yes]');
-    await page.waitForFunction((id) => !document.querySelector('#dm-table tr[data-id="' + id + '"]'), created.id, { timeout: 4000 });
+    await page.waitForFunction((ma) => !document.querySelector('#dm-tree [data-tree="h:' + ma + '"]'), created.ma, { timeout: 4000 });
+    assert.equal((await srv.db()).costItems.some((i) => i.id === created.id), false);
     assert.deepEqual(orphanErrors(await srv.db()), []);
     assert.deepEqual(errors.filter((e) => !/status of 4/.test(e)), []);
   } finally { await browser.close(); await srv.stop(); }

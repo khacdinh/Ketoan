@@ -1,5 +1,11 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Bỏ tab Hạng mục, Nhóm chi phí (06/10/2026)
+
+- Danh mục chi phí chỉ còn tab **Vật tư** và **Nhà / khu**. Hạng mục và nhóm chi phí quản lý trên cây **Khoản mục chi phí** của tab Vật tư.
+- Dưới cây có thêm **Gộp** (gộp hạng mục đang chọn vào hạng mục khác) và **Xóa** (nhóm / hạng mục không còn dùng). Tiêu đề bảng có số dòng và tổng tiền trong sổ chi phí của nhóm / hạng mục đang chọn, thay cho cột Tổng chi phí của tab cũ.
+- Menu trái gộp hai mục “Vật tư” và “Hạng mục, nhóm CP” thành **Vật tư, hạng mục**.
+
 ## Sửa lỗi sau rà soát (06/10/2026)
 
 - **Sổ chi tiết NCC**: chọn “Chưa gán công trình” ở Sổ quỹ rồi mở sổ này, mọi số không còn về 0 (lựa chọn đó chỉ có nghĩa ở Sổ quỹ). Bấm cảnh báo công nợ sẽ mở sổ cho mọi công trình, kỳ Toàn bộ, để thấy đúng số được báo.

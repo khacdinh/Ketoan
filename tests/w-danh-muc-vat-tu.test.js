@@ -59,10 +59,10 @@ test('DV1 cây khoản mục: Tất cả → nhóm → hạng mục lọc đúng
     await page.click('#dm-tree [data-tree-mo="' + KT.keyOf(g.ma) + '"]'); await settle(page);
     assert.equal(await page.$eval('#dm-tree .tree-node.is-on', (e) => e.dataset.tree), 'g:' + g.ma);
     assert.equal(await page.locator('#dm-tree [data-tree="h:' + h1.ma + '"]').count(), 0, 'nhóm đã thu gọn');
-    // tab khác thì không có cây; menu trái chuyển sang "Hạng mục, nhóm CP"
-    await page.click('label:has(input[name=dm-tab][value=nhom])'); await settle(page);
+    // tab Nhà / khu thì không có cây; menu trái vẫn sáng "Vật tư, hạng mục"
+    await page.click('label:has(input[name=dm-tab][value=nha])'); await settle(page);
     assert.equal(await page.locator('#dm-tree').isVisible(), false);
-    assert.match(await page.$eval('.nav-item.active', (e) => e.textContent), /Hạng mục, nhóm CP/);
+    assert.match(await page.$eval('.nav-item.active', (e) => e.textContent), /Vật tư, hạng mục/);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });

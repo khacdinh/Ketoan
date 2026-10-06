@@ -131,16 +131,23 @@ function seedHM() {
   return db;
 }
 
-test('MU3 gộp hạng mục từ Danh mục chi phí (tích 2 dòng → Gộp mã → xác nhận → kết quả) và tách mã hạng mục ở màn Gộp mã: tạo hạng mục mới, bỏ tích một dòng ở xem trước, đổi đúng các dòng còn tích, Hoàn tác ngay tại chỗ', { skip: SKIP, timeout: 180000 }, async () => {
+test('MU3 gộp hạng mục từ cây Khoản mục chi phí (chọn hạng mục → Gộp → chọn đích → xác nhận → kết quả) và tách mã hạng mục ở màn Gộp mã: tạo hạng mục mới, bỏ tích một dòng ở xem trước, đổi đúng các dòng còn tích, Hoàn tác ngay tại chỗ', { skip: SKIP, timeout: 180000 }, async () => {
   const srv = await startServer({ seed: seedHM() });
   const { browser, page, errors } = await openPage(srv, '#/cp-danh-muc');
   try {
     const start = readStored(srv.dataDir);
-    // gộp HM02 → HM01 ở tab Hạng mục
-    await page.waitForSelector('[data-pick="HM01"]');
-    await page.check('[data-pick="HM01"]');
-    await page.check('[data-pick="HM02"]');
-    await page.click('[data-act=merge]');
+    // gộp HM02 → HM01 trên cây Khoản mục chi phí: chọn HM02 → Gộp → chọn đích HM01 → Xem trước
+    await page.waitForSelector('#dm-tree');
+    const hm2 = start.costItems.find((i) => i.ma === 'HM02');
+    const g2 = start.costGroups.find((g) => KT.keyOf(g.ma) === KT.keyOf(hm2.maNhom));
+    await page.click('#dm-tree [data-tree="g:' + g2.ma + '"]'); await settle(page);
+    await page.click('#dm-tree [data-tree="h:HM02"]'); await settle(page);
+    await page.click('#dm-tree [data-act=tree-merge]');
+    await page.waitForSelector('#mg-chips .filter-chip[data-ma="HM02"]');
+    await page.fill('#mg-dich', 'HM01');
+    await page.press('#mg-dich', 'Enter');
+    await page.waitForFunction(() => document.querySelector('#mg-dich').value === 'HM01');
+    await page.click('.modal [data-act=preview]');
     await page.waitForSelector('#mg-table');
     assert.match(await page.$eval('#mg-table', (e) => e.innerText), /2 dòng chi phí/);
     await page.click('.modal [data-act=merge]:not([disabled])');

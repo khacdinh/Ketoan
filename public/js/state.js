@@ -21,7 +21,7 @@ export const S = {
     cpCt: LS.get('filter.cpCt', { period: 'tat-ca', from: '', to: '', ct: '', nha: '', loai: '', ncc: '', level: 3 }),
     cpCn: LS.get('filter.cpCn', { ct: '', nccs: [], tt: '', to: '', pham: 'ct', sort: 'conLai' }),
     cpGia: LS.get('filter.cpGia', { q: '', ncc: '', hm: '', vt: '' }),
-    cpDm: LS.get('filter.cpDm', { tab: 'hang-muc', q: '' })
+    cpDm: LS.get('filter.cpDm', { tab: 'vat-tu', q: '' })
   },
   ct: LS.get('ct', ''), // công trình đang chọn ở thanh trên ('' = tất cả): áp dụng cho mọi sổ và báo cáo
   selectedVoucher: null,

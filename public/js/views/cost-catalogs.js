@@ -2,7 +2,7 @@
 import { $, esc, money, icon, api, toast, showError, confirmDialog, openModal, freshRoot, debounce, highlight, download, fieldError, busy } from '../ui.js';
 import { S, saveFilter, groupName, itemByCode, costProjects, selectOptions } from '../state.js';
 import { comboHtml, comboResolve, bindCombo } from '../combo.js';
-import { mergeToolbarHtml, bindMergeUI, pickHead, pickCell, mergedRecords, mergedChip } from '../merge.js';
+import { mergeToolbarHtml, bindMergeUI, pickHead, pickCell, mergedRecords, mergedChip, openMergeDialog } from '../merge.js';
 
 const KT = window.KT;
 
@@ -168,9 +168,8 @@ export function openHouseForm(h, onSaved) {
 
 /* ============================== MÀN HÌNH DANH MỤC ============================== */
 
+// Hạng mục và nhóm chi phí quản lý ngay trên cây "Khoản mục chi phí" của tab Vật tư (không còn tab riêng)
 const TABS = [
-  ['hang-muc', 'Hạng mục', 'list'],
-  ['nhom', 'Nhóm chi phí', 'stack'],
   ['vat-tu', 'Vật tư', 'package'],
   ['nha', 'Nhà / khu', 'house']
 ];
@@ -242,17 +241,20 @@ function vtTree(tree, f, match) {
   html += '</div><div class="dm-tree-foot">' +
     '<button type="button" class="btn btn-secondary btn-sm" data-act="tree-add-hm" title="Thêm hạng mục vào nhóm đang chọn">' + icon('plus') + 'Hạng mục</button>' +
     '<button type="button" class="btn btn-secondary btn-sm" data-act="tree-add-nhom">' + icon('plus') + 'Nhóm</button>' +
-    '<button type="button" class="btn btn-secondary btn-sm" data-act="tree-edit"' + ((kind === 'h' && key) || (kind === 'g' && key) ? '' : ' disabled') + ' title="Sửa nhóm / hạng mục đang chọn">' + icon('edit') + 'Sửa</button></div>';
+    '<button type="button" class="btn btn-secondary btn-sm" data-act="tree-edit"' + (key ? '' : ' disabled') + ' title="Sửa nhóm / hạng mục đang chọn">' + icon('edit') + 'Sửa</button>' +
+    '<button type="button" class="btn btn-secondary btn-sm" data-act="tree-merge"' + (kind === 'h' && key ? '' : ' disabled') + ' title="Gộp hạng mục đang chọn vào một hạng mục khác (mọi dòng chi phí, vật tư chuyển theo)">' + icon('merge') + 'Gộp</button>' +
+    '<button type="button" class="btn btn-secondary btn-sm text-alert" data-act="tree-del"' + (key ? '' : ' disabled') + ' title="Xóa nhóm / hạng mục đang chọn (chỉ khi không còn dùng)">' + icon('trash') + 'Xóa</button></div>';
   tree.innerHTML = html;
 
   let sel;
   if (!v) sel = { k: '', ten: 'Tất cả vật tư', sub: S.db.costGroups.length + ' nhóm chi phí · ' + items.length + ' hạng mục' };
   else if (kind === 'g') {
     const g = groups.find((x) => x.k === key);
-    sel = { k: 'g', ma: g.ma, ten: g.ten, sub: 'Cả nhóm · ' + g.items.length + ' hạng mục' };
+    const gr = S.db.costGroups.find((y) => KT.keyOf(y.ma) === g.k);
+    sel = { k: 'g', ma: g.ma, ten: g.ten, sub: (g.ma ? g.ma + ' · ' : '') + 'Cả nhóm · ' + g.items.length + ' hạng mục' + (gr && gr.ghiChu ? ' · ' + gr.ghiChu : '') };
   } else if (key) {
     const it = itOf(key);
-    sel = { k: 'h', ma: it.ma, ten: it.ten, sub: it.ma + ' · ' + (groupName(it.maNhom) || 'Chưa có nhóm') };
+    sel = { k: 'h', ma: it.ma, ten: it.ten, sub: it.ma + ' · ' + (groupName(it.maNhom) || 'Chưa có nhóm') + (it.ghiChu ? ' · ' + it.ghiChu : '') };
   } else sel = { k: 'h', ma: '', ten: 'Vật tư chưa có hạng mục', sub: 'Gán hạng mục để chi phí vào đúng nhóm trong báo cáo' };
   const inSel = (m) => {
     if (!v) return true;
@@ -264,20 +266,10 @@ function vtTree(tree, f, match) {
   return { sel, inSel, itOf };
 }
 
-// menu trái có hai mục trỏ vào màn này: "Vật tư" (tab vật tư, nhà/khu) và "Hạng mục, nhóm CP" (tab hạng mục, nhóm)
-export const menuTabDanhMuc = () => (['hang-muc', 'nhom'].includes(S.filters.cpDm.tab) ? 'hang-muc' : 'vat-tu');
-function dongBoMenu() {
-  document.querySelectorAll('.nav-item[data-route="cp-danh-muc"][data-tab]').forEach((a) => {
-    const on = a.dataset.tab === menuTabDanhMuc();
-    a.classList.toggle('active', on);
-    if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
-  });
-}
-
 export function renderCostCatalogs(root) {
   root = freshRoot(root);
   const f = S.filters.cpDm;
-  if (!TABS.some((t) => t[0] === f.tab)) f.tab = 'hang-muc';
+  if (!TABS.some((t) => t[0] === f.tab)) f.tab = 'vat-tu'; // tab Hạng mục / Nhóm cũ → cây ở tab Vật tư
   root.innerHTML =
     '<div class="no-print flex flex-wrap items-center gap-2">' +
     '<div class="seg" role="radiogroup" aria-label="Loại danh mục">' + TABS.map(([k, l]) =>
@@ -291,7 +283,7 @@ export function renderCostCatalogs(root) {
     '<section class="sheet min-w-0 overflow-hidden"><div class="dm-head" id="dm-head" hidden></div><p class="border-b border-rule px-4 py-2.5 text-[13px] text-ink-2" id="dm-count"></p>' +
     '<div class="table-scroll max-h-[calc(100vh-250px)] overflow-auto"><table class="ledger" id="dm-table"></table></div></section></div>';
 
-  const TAB_LOAI = { 'hang-muc': 'hm', 'vat-tu': 'vt', nha: 'nha' };
+  const TAB_LOAI = { 'vat-tu': 'vt', nha: 'nha' };
   const draw = () => {
     const q = KT.normalizeText(f.q).trim();
     const match = (s) => !q || KT.normalizeText(s).includes(q);
@@ -303,7 +295,7 @@ export function renderCostCatalogs(root) {
     // mã đã gộp (ẩn mặc định): chỉ để tra cứu; muốn dùng lại thì hoàn tác ở màn Gộp mã
     const mergedRows = (cols) => (showMerged ? mergedRecords(loai).filter((x) => match(x.ma + ' ' + x.ten + ' ' + x.gopVao)).map((x) =>
       '<tr class="text-ink-3"><td class="no-print"></td><td class="code">' + esc(x.ma) + '</td><td>' + esc(x.ten || '') + '</td><td colspan="' + (cols - 3) + '">' + mergedChip(x) + '</td></tr>').join('') : '');
-    $('#dm-add-label', root).textContent = { 'hang-muc': 'Thêm hạng mục', nhom: 'Thêm nhóm', 'vat-tu': 'Thêm vật tư', nha: 'Thêm nhà' }[f.tab];
+    $('#dm-add-label', root).textContent = { 'vat-tu': 'Thêm vật tư', nha: 'Thêm nhà' }[f.tab];
     const table = $('#dm-table', root);
     const head = $('#dm-head', root);
     const tree = $('#dm-tree', root);
@@ -312,37 +304,7 @@ export function renderCostCatalogs(root) {
     $('#dm-split', root).classList.toggle('has-tree', f.tab === 'vat-tu');
     if (f.tab !== 'vat-tu') tree.innerHTML = '';
     let count = '';
-    if (f.tab === 'nhom') {
-      const byItem = usageMap('maHM');
-      const list = S.db.costGroups.filter((g) => match(g.ma + ' ' + g.ten + ' ' + (g.ghiChu || '')));
-      table.innerHTML = '<thead><tr>' + pickHead + '<th>Mã nhóm</th><th>Tên nhóm chi phí</th><th class="num">Số hạng mục</th><th class="num money">Tổng chi phí</th><th>Ghi chú</th><th class="no-print"></th></tr></thead><tbody>' +
-        (list.map((g) => {
-          const items = S.db.costItems.filter((i) => KT.keyOf(i.maNhom) === KT.keyOf(g.ma));
-          const tien = items.reduce((t, i) => t + ((byItem.get(KT.keyOf(i.ma)) || {}).tien || 0), 0);
-          return '<tr data-id="' + g.id + '">' + pickCell(g.ma) + '<td class="code">' + highlight(g.ma, f.q) + '</td><td class="font-medium">' + highlight(g.ten, f.q) + '</td>' +
-            '<td class="num">' + items.length + '</td><td class="num money">' + money(tien) + '</td><td class="text-[12.5px] text-ink-2">' + esc(g.ghiChu || '') + '</td>' + actions(g.ma) + '</tr>';
-        }).join('') || '<tr><td colspan="7" class="empty">Không có nhóm nào khớp.</td></tr>') + '</tbody>';
-      count = S.db.costGroups.length + ' nhóm lớn. Đổi tên nhóm: mọi hạng mục và báo cáo tự đổi theo.';
-    } else if (f.tab === 'hang-muc') {
-      const use = usageMap('maHM');
-      let html = '<thead><tr>' + pk + '<th>Mã HM</th><th>Hạng mục</th><th>Nhóm chi phí</th><th class="num">Số dòng</th><th class="num money">Tổng chi phí</th><th>Ghi chú</th><th class="no-print"></th></tr></thead><tbody>';
-      let n = 0;
-      const groups = S.db.costGroups.concat([{ ma: '', ten: '(Chưa có nhóm)' }]);
-      groups.forEach((g) => {
-        const items = S.db.costItems.filter((i) => (g.ma ? KT.keyOf(i.maNhom) === KT.keyOf(g.ma) : !S.db.costGroups.some((x) => KT.keyOf(x.ma) === KT.keyOf(i.maNhom))) &&
-          match(i.ma + ' ' + i.ten + ' ' + g.ten + ' ' + (i.ghiChu || '')));
-        if (!items.length) return;
-        html += '<tr class="group-row"><td colspan="8">' + esc(g.ten) + ' <span class="font-normal text-ink-3">· ' + items.length + ' hạng mục</span></td></tr>';
-        items.forEach((i) => {
-          n++;
-          const u = use.get(KT.keyOf(i.ma)) || { n: 0, tien: 0 };
-          html += '<tr data-id="' + i.id + '">' + pc(i.ma) + '<td class="code">' + highlight(i.ma, f.q) + '</td><td>' + highlight(i.ten, f.q) + '</td><td class="text-ink-2">' + esc(groupName(i.maNhom) || '') + '</td>' +
-            '<td class="num">' + (u.n || '') + '</td><td class="num money' + (u.tien ? ' font-semibold' : ' text-ink-3') + '">' + money(u.tien) + '</td><td class="text-[12.5px] text-ink-2">' + esc(i.ghiChu || '') + '</td>' + actions(i.ma) + '</tr>';
-        });
-      });
-      table.innerHTML = html + (n ? '' : '<tr><td colspan="8" class="empty">Không có hạng mục nào khớp.</td></tr>') + mergedRows(8) + '</tbody>';
-      count = n + ' trên ' + S.db.costItems.length + ' hạng mục. Đổi tên hoặc chuyển nhóm: sổ chi phí và báo cáo tự cập nhật.';
-    } else if (f.tab === 'vat-tu') {
+    if (f.tab === 'vat-tu') {
       const stats = new Map(KT.materialStats(S.db).map((m) => [KT.keyOf(m.ma), m]));
       const cay = vtTree(tree, f, match);
       const sel = cay.sel;
@@ -364,8 +326,16 @@ export function renderCostCatalogs(root) {
         }).join('') || '<tr><td colspan="8" class="empty">' + (q && sel.k ? 'Không có vật tư nào khớp trong mục này. Chọn “Tất cả vật tư” để tìm trong toàn bộ danh mục.' : sel.k ? 'Mục này chưa có vật tư nào. Bấm “Thêm vật tư” để thêm vào đây.' : 'Không có vật tư nào khớp.') + '</td></tr>') +
         (list.length > shown.length ? '<tr><td colspan="8" class="text-[12.5px] text-ink-3">Đang hiện ' + shown.length + ' / ' + list.length + ' mã. Gõ từ khóa để lọc.</td></tr>' : '') + mergedRows(8) + '</tbody>';
       head.hidden = false;
+      // tổng chi phí của nhóm / hạng mục đang chọn (thay cho cột "Tổng chi phí" của tab Hạng mục, Nhóm cũ)
+      let tongCP = '';
+      if (sel.k && sel.ma) {
+        const use = usageMap('maHM');
+        const hms = sel.k === 'h' ? [sel.ma] : S.db.costItems.filter((i) => KT.keyOf(i.maNhom) === KT.keyOf(sel.ma)).map((i) => i.ma);
+        const u = hms.reduce((t, ma) => { const x = use.get(KT.keyOf(ma)); if (x) { t.n += x.n; t.tien += x.tien; } return t; }, { n: 0, tien: 0 });
+        tongCP = '<span class="pill" title="Số dòng và tổng tiền trong sổ chi phí">' + u.n + ' dòng · ' + money(u.tien) + ' đ</span>';
+      }
       head.innerHTML = '<div class="min-w-0"><div class="dm-head-title">' + esc(sel.ten) + '</div>' + (sel.sub ? '<div class="text-[12.5px] text-ink-3">' + esc(sel.sub) + '</div>' : '') + '</div>' +
-        '<span class="pill">' + list.length + ' vật tư</span>';
+        '<span class="flex flex-wrap items-center gap-2">' + tongCP + '<span class="pill">' + list.length + ' vật tư</span></span>';
       count = (sel.k ? list.length + ' vật tư trong mục này' : list.length + ' trên ' + S.db.materials.length + ' mã vật tư') + '. Giá thường = đơn giá bình quân các lần mua; Đang dùng = số dòng trong sổ chi phí.';
     } else {
       const use = usageMap('maNha');
@@ -382,13 +352,13 @@ export function renderCostCatalogs(root) {
     $('#dm-count', root).textContent = count;
   };
 
-  root.querySelectorAll('input[name=dm-tab]').forEach((r) => r.addEventListener('change', () => { f.tab = r.value; saveFilter('cpDm'); draw(); dongBoMenu(); }));
-  bindMergeUI(root, () => TAB_LOAI[f.tab], (v) => { f.merged = v; saveFilter('cpDm'); draw(); }, { noun: 'mã', coGop: () => !!TAB_LOAI[f.tab], list: () => listOf(), endpoint: () => ({ nhom: '/api/cost-groups', 'hang-muc': '/api/cost-items', 'vat-tu': '/api/materials', nha: '/api/houses' }[f.tab]) });
+  root.querySelectorAll('input[name=dm-tab]').forEach((r) => r.addEventListener('change', () => { f.tab = r.value; saveFilter('cpDm'); draw(); }));
+  bindMergeUI(root, () => TAB_LOAI[f.tab], (v) => { f.merged = v; saveFilter('cpDm'); draw(); }, { noun: 'mã', coGop: () => !!TAB_LOAI[f.tab], list: () => listOf(), endpoint: () => ({ 'vat-tu': '/api/materials', nha: '/api/houses' }[f.tab]) });
   $('#dm-q', root).addEventListener('input', debounce((e) => { f.q = e.target.value; saveFilter('cpDm'); draw(); }, 120));
 
-  const listOf = () => ({ nhom: S.db.costGroups, 'hang-muc': S.db.costItems, 'vat-tu': S.db.materials, nha: S.db.houses }[f.tab]);
-  const openForm = (x) => ({ nhom: openGroupForm, 'hang-muc': openItemForm, 'vat-tu': openMaterialForm, nha: openHouseForm }[f.tab])(x);
-  const endpoint = () => ({ nhom: '/api/cost-groups', 'hang-muc': '/api/cost-items', 'vat-tu': '/api/materials', nha: '/api/houses' }[f.tab]);
+  const listOf = () => ({ 'vat-tu': S.db.materials, nha: S.db.houses }[f.tab]);
+  const openForm = (x) => ({ 'vat-tu': openMaterialForm, nha: openHouseForm }[f.tab])(x);
+  const endpoint = () => ({ 'vat-tu': '/api/materials', nha: '/api/houses' }[f.tab]);
 
   root.addEventListener('click', async (e) => {
     const mo = e.target.closest('[data-tree-mo]');
@@ -429,7 +399,19 @@ export function renderCostCatalogs(root) {
       const it = v.startsWith('h:') && v.length > 2 ? itemByCode(v.slice(2)) : null;
       openItemForm({ maNhom: v.startsWith('g:') ? v.slice(2) : it ? it.maNhom : '' });
     } else if (act === 'tree-add-nhom') openGroupForm(null);
-    else if (act === 'tree-edit') {
+    else if (act === 'tree-merge') {
+      const v = f.vtSel || '';
+      const it = v.startsWith('h:') && v.length > 2 ? itemByCode(v.slice(2)) : null;
+      if (it) openMergeDialog('hm', { nguon: [it.ma] });
+    } else if (act === 'tree-del') {
+      const v = f.vtSel || '';
+      const nhom = v.startsWith('g:');
+      const x = nhom ? S.db.costGroups.find((g) => KT.keyOf(g.ma) === KT.keyOf(v.slice(2))) : itemByCode(v.slice(2));
+      if (!x) return;
+      if (!(await confirmDialog({ trash: true, title: nhom ? 'Xóa nhóm chi phí' : 'Xóa hạng mục', html: 'Xóa ' + (nhom ? 'nhóm' : 'hạng mục') + ' <b class="text-ink">' + esc(x.ten) + '</b> (' + esc(x.ma) + ')?' +
+        '<p class="mt-2 text-[13px] text-ink-3">Chỉ xóa được khi ' + (nhom ? 'nhóm không còn hạng mục nào' : 'không còn vật tư hay dòng chi phí nào dùng hạng mục này (chuyển đi hoặc dùng Gộp)') + '.</p>', okText: 'Xóa', danger: true }))) return;
+      try { await api('DELETE', (nhom ? '/api/cost-groups/' : '/api/cost-items/') + x.id); f.vtSel = ''; saveFilter('cpDm'); toast('Đã xóa ' + x.ma + ', chuyển vào Thùng rác'); } catch (err) { showError(err); }
+    } else if (act === 'tree-edit') {
       const v = f.vtSel || '';
       if (v.startsWith('h:')) { const it = itemByCode(v.slice(2)); if (it) openItemForm(it); }
       else if (v.startsWith('g:')) { const g = S.db.costGroups.find((x) => KT.keyOf(x.ma) === KT.keyOf(v.slice(2))); if (g) openGroupForm(g); }
