@@ -1,5 +1,11 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Ghi thu / chi thành một trang riêng (06/10/2026)
+
+- Phiếu thu / chi không còn mở trong hộp thoại: F3, menu **Ghi thu / chi**, nút trên thanh trên, Sửa / Nhân bản dòng ở Sổ quỹ, Phiếu thu / chi, Kiểm soát… đều mở **trang `#/ghi-thu-chi`** (rộng hết khung, thanh nút Ghi sổ / Lưu nháp / Hủy dính ở đáy). Mục Ghi thu / chi trên menu sáng lên khi đang ở trang.
+- **Hủy**, **Esc** hoặc **Ghi sổ** quay lại đúng màn hình trước đó; “Ghi sổ và ghi tiếp” ở lại trang. Dữ liệu tải lại giữa chừng (thêm nhanh công trình / NCC) không làm mất những gì đang gõ.
+- Nội dung form, phím tắt, kiểm tra dữ liệu, phiếu nhiều dòng giữ nguyên như trước.
+
 ## Phiếu nhập: bỏ Công trình ở đầu phiếu; thống nhất gọi “Công trình” (06/10/2026)
 
 - **Phiếu nhập chi phí**: đầu phiếu chỉ còn Ngày, Nhà cung cấp, Số phiếu. Mỗi dòng có cột **Công trình** (bắt buộc) và **Nhà / khu** (tự điền nhà dùng chung của công trình, sửa được). Dòng mới tự chép công trình, nhà / khu của dòng trên; Enter ở ô cuối đầu phiếu / cuối dòng dừng ở ô Công trình nếu dòng chưa có. Phiếu mới gợi ý công trình đang chọn ở thanh trên, không thì công trình của phiếu vừa ghi.

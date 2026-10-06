@@ -1,6 +1,6 @@
 /* Biểu mẫu: ghi thu/chi, công trình, nhà cung cấp. */
 import { hauQuaCongNo } from './congno.js';
-import { $, esc, api, openModal, toast, showError, bindMoneyInput, money, confirmDialog, icon, dateField, focusInput, fieldError, busy } from './ui.js';
+import { $, esc, api, openModal, toast, setPageTitle, showError, bindMoneyInput, money, confirmDialog, icon, dateField, focusInput, fieldError, busy } from './ui.js';
 import { S, datalists, resolveCode, projectByCode, supplierByCode } from './state.js';
 import { openHistory } from './views/control.js';
 import { attachBlock, bindAttach, pendingBlock, bindPending, pendingFiles, clearPending, uploadFiles } from './attach.js';
@@ -39,7 +39,32 @@ function dongHtml(r) {
     '<td class="actions"><button type="button" class="icon-btn danger" data-act="bo-dong" tabindex="-1" aria-label="Bỏ dòng này khỏi phiếu" title="Bỏ dòng này khỏi phiếu">' + icon('x') + '</button></td></tr>';
 }
 
+/* Ghi thu / chi là MỘT TRANG (#/ghi-thu-chi), không còn là hộp thoại. openEntryForm() giữ nguyên cách gọi cũ: ghi nhớ dòng cần mở
+   rồi chuyển sang trang; Hủy / Ghi sổ quay về màn hình trước đó. k = số lần mở, để mở lại (F3, Sửa cả phiếu) luôn vẽ trang mới. */
+let entryBack = '#/so-thu-chi';
+let entryPending = null;
+let entrySeq = 0;
 export function openEntryForm(entry, opts) {
+  const cur = location.hash || '';
+  if (!/^#\/ghi-thu-chi/.test(cur)) entryBack = cur || '#/so-thu-chi';
+  entryPending = { entry: entry || null, opts: opts || {}, k: ++entrySeq };
+  location.hash = '#/ghi-thu-chi?k=' + entrySeq;
+}
+// Vẽ trang; dữ liệu tải lại (sau khi thêm nhanh dự án / NCC...) thì giữ nguyên những gì đang nhập
+export function renderEntryPage(root) {
+  const k = Number((/[?&]k=(\d+)/.exec(location.hash) || [])[1] || 0);
+  const cur = root.querySelector('#entry-page');
+  if (cur && cur.dataset.k === String(k)) { setPageTitle(cur.dataset.title); return; }
+  const p = entryPending && entryPending.k === k ? entryPending : { entry: null, opts: {} };
+  entryPending = null;
+  mountEntryForm(root, p.entry, p.opts, k);
+}
+function entryGoBack() {
+  const to = entryBack && !/^#\/ghi-thu-chi/.test(entryBack) ? entryBack : '#/so-thu-chi';
+  if (location.hash !== to) location.hash = to;
+}
+
+function mountEntryForm(root, entry, opts, pageKey) {
   opts = opts || {};
   const isEdit = !!(entry && entry.id && !opts.duplicate);
   const choKey = 'so-moi-' + (++soForm); // danh sách file chờ của dòng mới (riêng cho mỗi lần mở form)
@@ -109,15 +134,16 @@ export function openEntryForm(entry, opts) {
     (isEdit ? '' : '<button type="button" class="btn btn-secondary" data-act="save-next" title="Ghi sổ rồi giữ lại ngày, số phiếu, nhà cung cấp để ghi phiếu tiếp theo (Ctrl Shift Enter)">Ghi sổ và ghi tiếp<kbd>Ctrl Shift Enter</kbd></button>') +
     (lockedRec ? '' : '<button type="button" class="btn btn-primary" data-act="save" title="Ctrl + Enter">' + icon(isEdit && !isDraftRec ? 'save' : 'check') + (isEdit && !isDraftRec ? 'Lưu thay đổi' : 'Ghi sổ') + '<kbd>Ctrl Enter</kbd></button>');
 
-  const m = openModal({
-    title: isDraftRec ? 'Sửa dòng nháp (chưa ghi sổ)' : dongPhieu ? 'Sửa phiếu ' + e.soPhieu + ' (' + dongPhieu.length + ' dòng)' : isEdit ? 'Sửa dòng sổ thu chi' : opts.duplicate ? 'Nhân bản dòng sổ thu chi' : 'Ghi thu / chi',
-    size: 'wide phieu',
-    body,
-    footer,
-    dismissible: false,
-    onMount(el) { bindEntryForm(el); bindAttach(el); bindPending(el); },
-    onClose() { clearPending(choKey); }
-  });
+  const title = isDraftRec ? 'Sửa dòng nháp (chưa ghi sổ)' : dongPhieu ? 'Sửa phiếu ' + e.soPhieu + ' (' + dongPhieu.length + ' dòng)' : isEdit ? 'Sửa dòng sổ thu chi' : opts.duplicate ? 'Nhân bản dòng sổ thu chi' : 'Ghi thu / chi';
+  root.innerHTML = '<div id="entry-page" class="sheet" data-k="' + pageKey + '" data-title="' + esc(title) + '">' +
+    '<div class="px-5 py-4 max-sm:px-3">' + body + '</div>' +
+    '<div class="sticky bottom-0 z-[5] flex flex-wrap items-center gap-2 border-t border-rule bg-surface px-5 py-3 max-sm:px-3">' + footer + '</div></div>';
+  setPageTitle(title);
+  const pageEl = root.querySelector('#entry-page');
+  const m = { el: pageEl, close() { clearPending(choKey); entryGoBack(); } };
+  bindEntryForm(pageEl); bindAttach(pageEl); bindPending(pageEl);
+  // Esc = Hủy (như hộp thoại trước đây), trừ khi đang có hộp thoại con mở
+  pageEl.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !document.querySelector('.modal, #auth-root .auth-screen, #auth-root .modal')) { ev.preventDefault(); m.close(); } });
 
   function bindEntryForm(el) {
     const f = $('#entry-form', el);
@@ -341,7 +367,7 @@ export function openEntryForm(entry, opts) {
       } else if (act === 'sua-phieu') {
         ev.preventDefault();
         const all = [entry].concat(cungPhieu).sort((x, y) => (x.seq || 0) - (y.seq || 0) || x.id - y.id);
-        m.close();
+        clearPending(choKey);
         openEntryForm(all[0], { phieu: all, onSaved: opts.onSaved });
       } else if (act === 'history') {
         m.close();

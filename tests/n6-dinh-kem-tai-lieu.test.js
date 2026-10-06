@@ -129,15 +129,15 @@ test('TL3 Ghi thu / chi (dòng mới): chọn ảnh trước khi ghi → Ghi s�
     const { browser, page, errors } = await openPage(srv, '#/so-thu-chi');
     try {
       await page.keyboard.press('F3');
-      await page.waitForSelector('.modal [data-att-pending-input]', { state: 'attached' });
-      await page.click('.modal [name=noiDung]');
-      await page.fill('.modal [name=noiDung]', 'Mua vật tư lẻ');
-      await page.fill('.modal [name=chi]', '250000');
-      await page.setInputFiles('.modal [data-att-pending-input]', [f1, f2]);
-      await page.waitForFunction(() => document.querySelectorAll('.modal [data-att-pending] .att-item').length === 2);
-      await page.click('.modal [data-act=save-next]');
+      await page.waitForSelector('#entry-page [data-att-pending-input]', { state: 'attached' });
+      await page.click('#entry-page [name=noiDung]');
+      await page.fill('#entry-page [name=noiDung]', 'Mua vật tư lẻ');
+      await page.fill('#entry-page [name=chi]', '250000');
+      await page.setInputFiles('#entry-page [data-att-pending-input]', [f1, f2]);
+      await page.waitForFunction(() => document.querySelectorAll('#entry-page [data-att-pending] .att-item').length === 2);
+      await page.click('#entry-page [data-act=save-next]');
       await page.waitForFunction(() => /Đã đính kèm 2 \/ 2 file/.test(document.querySelector('#toast-root').textContent), null, { timeout: 10000 });
-      await page.waitForFunction(() => document.querySelectorAll('.modal [data-att-pending] .att-item').length === 0);
+      await page.waitForFunction(() => document.querySelectorAll('#entry-page [data-att-pending] .att-item').length === 0);
       const st = readStored(srv.dataDir);
       const e = st.entries.find((x) => x.noiDung === 'Mua vật tư lẻ');
       assert.ok(e);

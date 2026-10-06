@@ -151,9 +151,9 @@ test('F9 cửa sổ hẹp và rộng: không tràn ngang toàn trang, điều h�
         // form nhập thu chi trên cửa sổ hẹp: hộp thoại nằm gọn trong màn hình
         await page.keyboard.press('F3');
         await page.waitForSelector('#entry-form'); await page.waitForTimeout(300);
-        const box = await page.$eval('#modal-root .modal', (e) => { const b = e.getBoundingClientRect(); return { l: b.left, r: b.right, w: window.innerWidth, t: b.top, b: b.bottom, h: window.innerHeight }; });
+        const box = await page.$eval('#entry-page', (e) => { const b = e.getBoundingClientRect(); return { l: b.left, r: b.right, w: window.innerWidth, t: b.top, b: b.bottom, h: window.innerHeight }; });
         if (box.l < -1 || box.r > box.w + 1) bad.push(w + 'px: hộp thoại ghi thu chi vượt chiều ngang (' + Math.round(box.l) + '..' + Math.round(box.r) + ' / ' + box.w + ')');
-        const saveBtn = await page.locator('#modal-root [data-act=save]').boundingBox();
+        const saveBtn = await page.locator('#entry-page [data-act=save]').boundingBox();
         if (!saveBtn || saveBtn.x + saveBtn.width > w + 1) bad.push(w + 'px: nút Lưu nằm ngoài màn hình');
         if (w === 768) await page.screenshot({ path: path.join(SHOTS, 'form-thu-chi-768.png') });
         await page.keyboard.press('Escape');

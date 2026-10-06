@@ -83,11 +83,11 @@ test('W2 biểu mẫu nhiều dòng: thêm dòng, mỗi dòng một dự án, t�
     assert.equal(await page.locator(row(1) + ' [data-act=bo-dong]').isHidden(), true, 'một dòng thì chưa có nút bỏ dòng');
     await page.fill('input[name=soPhieu]', 'PC050/07');
     await page.fill('input[name=maNCC]', 'ONGA'); await page.locator('input[name=maNCC]').dispatchEvent('change');
-    await page.click('.modal [name=noiDung]'); await page.fill('.modal [name=noiDung]', 'Thanh toán ông A đợt 1');
-    await page.fill('.modal [name=maDuAn]', 'CT1'); await page.locator('.modal [name=maDuAn]').dispatchEvent('change');
-    await page.fill('.modal [name=chi]', '60tr');
+    await page.click('#entry-page [name=noiDung]'); await page.fill('#entry-page [name=noiDung]', 'Thanh toán ông A đợt 1');
+    await page.fill('#entry-page [name=maDuAn]', 'CT1'); await page.locator('#entry-page [name=maDuAn]').dispatchEvent('change');
+    await page.fill('#entry-page [name=chi]', '60tr');
     // Enter ở ô cuối của dòng cuối → thêm dòng mới
-    await page.locator('.modal [name=chi]').press('Enter');
+    await page.locator('#entry-page [name=chi]').press('Enter');
     await page.waitForSelector(row(2));
     assert.equal(await page.evaluate(() => document.activeElement.getAttribute('data-c')), 'noiDung', 'tiêu điểm sang nội dung dòng mới');
     assert.equal(await page.locator('#phieu-dong tbody tr[data-row]').count(), 2);
@@ -105,13 +105,13 @@ test('W2 biểu mẫu nhiều dòng: thêm dòng, mỗi dòng một dự án, t�
     await page.fill(row(3) + ' [data-c=maDuAn]', 'LA'); await page.fill(row(3) + ' [data-c=chi]', '1tr');
     await page.keyboard.press('Control+Enter');
     await settle(page);
-    assert.match(await page.$eval('.modal', (e) => e.innerText), /Dòng 3: Mã công trình chưa có/);
+    assert.match(await page.$eval('#entry-page', (e) => e.innerText), /Dòng 3: Mã công trình chưa có/);
     assert.equal(readStored(srv.dataDir).entries.filter((x) => x.soPhieu === 'PC050/07').length, 0, 'chưa ghi dòng nào');
     // bỏ dòng 3 rồi ghi sổ
     await page.click(row(3) + ' [data-act=bo-dong]');
     assert.equal(await page.locator('#phieu-dong tbody tr[data-row]').count(), 2);
     await page.keyboard.press('Control+Enter');
-    await page.waitForFunction(() => !document.querySelector('.modal'), null, { timeout: 8000 }).catch(async (e) => { throw new Error(e.message + ' | ' + (await page.$eval('.modal', (m) => m.innerText).catch(() => '')).slice(0, 600)); });
+    await page.waitForFunction(() => !document.querySelector('#entry-page'), null, { timeout: 8000 }).catch(async (e) => { throw new Error(e.message + ' | ' + (await page.$eval('#entry-page', (m) => m.innerText).catch(() => '')).slice(0, 600)); });
     let db = readStored(srv.dataDir);
     let rec = db.entries.filter((x) => x.soPhieu === 'PC050/07');
     assert.deepEqual(rec.map((x) => [x.maDuAn, x.chi, x.noiDung, x.maNCC]), [['CT1', 60000000, 'Thanh toán ông A đợt 1', 'ONGA'], ['CT2', 40000000, 'Thanh toán ông A đợt 1', 'ONGA']]);
@@ -124,7 +124,7 @@ test('W2 biểu mẫu nhiều dòng: thêm dòng, mỗi dòng một dự án, t�
     await page.waitForTimeout(150);
     assert.equal(await page.locator('#phieu-dong tbody tr').count(), 1, 'sửa một dòng chỉ hiện dòng đó');
     await page.click('[data-act=sua-phieu]');
-    await page.waitForFunction(() => /Sửa phiếu PC050\/07 \(2 dòng\)/.test(document.querySelector('.modal h2') && document.querySelector('.modal h2').textContent));
+    await page.waitForFunction(() => /Sửa phiếu PC050\/07 \(2 dòng\)/.test(document.querySelector('#page-title') && document.querySelector('#page-title').textContent));
     await page.waitForFunction(() => document.querySelectorAll('#phieu-dong tbody tr').length === 2);
     await page.waitForTimeout(150);
     assert.equal(await page.inputValue(row(2) + ' [data-c=maDuAn]'), 'CT2');
@@ -134,7 +134,7 @@ test('W2 biểu mẫu nhiều dòng: thêm dòng, mỗi dòng một dự án, t�
     await page.click('[data-act=them-dong]');
     await page.fill(row(2) + ' [data-c=maDuAn]', 'CT3'); await page.fill(row(2) + ' [data-c=chi]', '10tr');
     await page.keyboard.press('Control+Enter');
-    await page.waitForFunction(() => !document.querySelector('.modal'));
+    await page.waitForFunction(() => !document.querySelector('#entry-page'));
     db = readStored(srv.dataDir);
     rec = db.entries.filter((x) => x.soPhieu === 'PC050/07');
     assert.deepEqual(rec.map((x) => [x.maDuAn, x.chi]), [['CT1', 50000000], ['CT3', 10000000]]);

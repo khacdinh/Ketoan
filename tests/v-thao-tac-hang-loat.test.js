@@ -183,37 +183,37 @@ test('V6 phiếu chi có mục Mã vật tư: chọn theo mã hoặc tên, lưu 
     await page.keyboard.press('F3');
     await page.waitForSelector('#entry-form');
     await page.waitForTimeout(150);
-    await page.click('.modal [name=noiDung]'); await page.fill('.modal [name=noiDung]', 'Chi mua xi măng đợt 2');
-    await page.fill('.modal [name=chi]', '2tr');
-    await page.fill('.modal [name=maVT]', 'Xi măng');
-    await page.locator('.modal [name=maVT]').dispatchEvent('change');
+    await page.click('#entry-page [name=noiDung]'); await page.fill('#entry-page [name=noiDung]', 'Chi mua xi măng đợt 2');
+    await page.fill('#entry-page [name=chi]', '2tr');
+    await page.fill('#entry-page [name=maVT]', 'Xi măng');
+    await page.locator('#entry-page [name=maVT]').dispatchEvent('change');
     assert.match(await page.$eval('#vt-hint', (e) => e.textContent), /Xi măng · bao/);
     // mã vật tư lạ: báo lỗi tại ô, không ghi
-    await page.fill('.modal [name=maVT]', 'LA');
+    await page.fill('#entry-page [name=maVT]', 'LA');
     await page.keyboard.press('Control+Enter');
     await settle(page);
     assert.equal(readStored(srv.dataDir).entries.length, 1, 'mã lạ thì chưa ghi');
-    await page.fill('.modal [name=maVT]', 'Xi măng');
-    await page.locator('.modal [name=maVT]').dispatchEvent('change');
+    await page.fill('#entry-page [name=maVT]', 'Xi măng');
+    await page.locator('#entry-page [name=maVT]').dispatchEvent('change');
     await page.keyboard.press('Control+Enter');
-    await page.waitForFunction(() => !document.querySelector('.modal'));
+    await page.waitForFunction(() => !document.querySelector('#entry-page'));
     let db = readStored(srv.dataDir);
     assert.deepEqual(db.entries.map((e) => e.maVT), ['XM', 'XM']);
     // loại Thu: ô Mã vật tư ẩn
     await page.keyboard.press('F3'); await page.waitForSelector('#entry-form');
-    await page.click('.modal label.seg-item:has(input[value=thu])');
-    assert.equal(await page.$eval('.modal [name=maVT]', (e) => e.closest('[data-show]').hidden), true);
+    await page.click('#entry-page label.seg-item:has(input[value=thu])');
+    assert.equal(await page.$eval('#entry-page [name=maVT]', (e) => e.closest('[data-show]').hidden), true);
     await page.keyboard.press('Escape');
-    await page.waitForFunction(() => !document.querySelector('.modal')); // chờ hộp thoại cũ đóng hẳn trước khi mở hộp thoại sửa
+    await page.waitForFunction(() => !document.querySelector('#entry-page')); // chờ hộp thoại cũ đóng hẳn trước khi mở hộp thoại sửa
     // sửa: bỏ mã vật tư
     const id = db.entries[1].id;
     await page.dblclick('#view tr[data-id="' + id + '"]');
     await page.waitForSelector('#entry-form');
     await page.waitForTimeout(150); // qua mốc tự focus 40 ms của biểu mẫu
-    assert.equal(await page.inputValue('.modal [name=maVT]'), 'XM');
-    await page.click('.modal [name=maVT]'); await page.fill('.modal [name=maVT]', '');
+    assert.equal(await page.inputValue('#entry-page [name=maVT]'), 'XM');
+    await page.click('#entry-page [name=maVT]'); await page.fill('#entry-page [name=maVT]', '');
     await page.keyboard.press('Control+Enter');
-    await page.waitForFunction(() => !document.querySelector('.modal'));
+    await page.waitForFunction(() => !document.querySelector('#entry-page'));
     db = readStored(srv.dataDir);
     assert.equal(db.entries.find((e) => e.id === id).maVT, undefined, 'bỏ mã thì không còn trường');
     // đổi mã vật tư: dòng sổ đi theo; xóa vật tư đang dùng: bị chặn

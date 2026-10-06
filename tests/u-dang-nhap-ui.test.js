@@ -32,8 +32,8 @@ async function dangNhapUI(page, ten, mk) {
 // chạm vào — gõ ngay (page.fill) có thể bị con trỏ kéo sang ô ngày giữa chừng
 async function moFormGhi(page) {
   await page.keyboard.press('F3');
-  await page.waitForSelector('.modal [name=noiDung]');
-  await page.click('.modal [name=noiDung]');
+  await page.waitForSelector('#entry-page [name=noiDung]');
+  await page.click('#entry-page [name=noiDung]');
 }
 const hien = (page, sel) => page.$$eval(sel, (els) => els.filter((e) => e.offsetParent !== null || getComputedStyle(e).position === 'fixed').length);
 
@@ -55,7 +55,7 @@ test('U1 vai trò ở giao diện: Chỉ xem không thấy nút thêm / sửa / 
     await page.keyboard.press('F3');
     await page.dblclick('#view tr[data-id]');
     await settle(page);
-    assert.equal(await page.locator('.modal').count(), 0, 'F2 / bấm đúp không mở form');
+    assert.equal(await page.locator('.modal, #entry-page').count(), 0, 'F2 / bấm đúp không mở form');
     await page.evaluate(() => { location.hash = '#/gop-ma'; });
     await page.waitForFunction(() => /không có quyền mở màn hình/.test(document.querySelector('#view').innerText));
     await page.evaluate(() => { location.hash = '#/cai-dat'; });
@@ -91,10 +91,10 @@ test('U1 vai trò ở giao diện: Chỉ xem không thấy nút thêm / sửa / 
     await page.waitForSelector('#imp-file', { state: 'attached' });
     // Kế toán ghi một dòng bằng form
     await moFormGhi(page);
-    await page.fill('.modal [name=noiDung]', 'kế toán ghi');
-    await page.fill('.modal [name=chi]', '5000');
+    await page.fill('#entry-page [name=noiDung]', 'kế toán ghi');
+    await page.fill('#entry-page [name=chi]', '5000');
     await page.keyboard.press('Control+Enter');
-    await page.waitForFunction(() => !document.querySelector('.modal'));
+    await page.waitForFunction(() => !document.querySelector('#entry-page'));
     const e = readStored(srv.dataDir).entries.find((x) => x.noiDung === 'kế toán ghi');
     assert.ok(e, 'đã ghi');
     // Chủ
@@ -169,44 +169,44 @@ test('U3 hết phiên không mất dữ liệu: 2 phút trước khi hết hiệ
     assert.equal(await page.locator('#phien-bar').count(), 0, 'chưa đến lúc cảnh báo');
     // đang gõ dở một dòng
     await moFormGhi(page);
-    await page.fill('.modal [name=noiDung]', 'đang gõ dở khi hết phiên');
-    await page.fill('.modal [name=chi]', '7000');
+    await page.fill('#entry-page [name=noiDung]', 'đang gõ dở khi hết phiên');
+    await page.fill('#entry-page [name=chi]', '7000');
     // 58 phút không thao tác (60 phút mới hết): cảnh báo, đếm ngược, nằm trên hộp thoại đang mở
     await page.clock.fastForward(58 * PHUT);
     await page.waitForSelector('#phien-bar[data-loai=cho]');
     assert.match(await page.$eval('#phien-bar', (e) => e.innerText), /Phiên đăng nhập sẽ hết sau [12]:\d\d/);
     await page.click('#phien-bar [data-act=tiep-tuc]');
     await page.waitForSelector('#phien-bar', { state: 'detached' });
-    assert.equal(await page.locator('.modal [name=noiDung]').inputValue(), 'đang gõ dở khi hết phiên',
-      'form vẫn còn — số hộp thoại: ' + (await page.locator('.modal').count()) + ', dòng đã ghi: ' + JSON.stringify(readStored(srv.dataDir).entries.map((x) => x.noiDung)));
+    assert.equal(await page.locator('#entry-page [name=noiDung]').inputValue(), 'đang gõ dở khi hết phiên',
+      'form vẫn còn — số hộp thoại: ' + (await page.locator('#entry-page').count()) + ', dòng đã ghi: ' + JSON.stringify(readStored(srv.dataDir).entries.map((x) => x.noiDung)));
     // không thao tác tiếp 61 phút (cả máy chủ và trình duyệt): hết phiên thật
     dh.tien(61 * PHUT);
     await page.clock.fastForward(61 * PHUT);
     await page.waitForSelector('#auth-root .auth-screen.lai #dn-form');
     assert.match(await page.$eval('#auth-root', (e) => e.innerText), /Dữ liệu bạn đang nhập vẫn còn nguyên/);
     await page.press('#dn-form [name=mk]', 'Escape');
-    assert.equal(await page.locator('.modal [name=noiDung]').count(), 1, 'Esc trên hộp đăng nhập lại không đóng form bên dưới');
-    assert.equal(await page.locator('.modal [name=noiDung]').inputValue(), 'đang gõ dở khi hết phiên');
+    assert.equal(await page.locator('#entry-page [name=noiDung]').count(), 1, 'Esc trên hộp đăng nhập lại không đóng form bên dưới');
+    assert.equal(await page.locator('#entry-page [name=noiDung]').inputValue(), 'đang gõ dở khi hết phiên');
     assert.equal(await page.locator('#dn-form [name=ten]').inputValue(), 'ketoan1', 'điền sẵn tên');
     await page.fill('#dn-form [name=mk]', 'kế toán mật khẩu 1');
     await page.press('#dn-form [name=mk]', 'Enter');
     await page.waitForSelector('#auth-root .auth-screen', { state: 'detached' });
-    await page.click('.modal [data-act=save]');
-    await page.waitForFunction(() => !document.querySelector('.modal'));
+    await page.click('#entry-page [data-act=save]');
+    await page.waitForFunction(() => !document.querySelector('#entry-page'));
     let rows = readStored(srv.dataDir).entries.filter((x) => x.noiDung === 'đang gõ dở khi hết phiên');
     assert.equal(rows.length, 1);
     assert.equal(rows[0].chi, 7000);
     assert.equal(rows[0].nguoiTao, String(kt.id));
     // phiên hết mà trình duyệt chưa biết (máy ngủ...): bấm lưu → 401 → đăng nhập lại → tự gửi tiếp đúng một lần
     await moFormGhi(page);
-    await page.fill('.modal [name=noiDung]', 'lưu khi phiên đã hết');
-    await page.fill('.modal [name=chi]', '8000');
+    await page.fill('#entry-page [name=noiDung]', 'lưu khi phiên đã hết');
+    await page.fill('#entry-page [name=chi]', '8000');
     dh.tien(61 * PHUT);
-    await page.click('.modal [data-act=save]');
+    await page.click('#entry-page [data-act=save]');
     await page.waitForSelector('#auth-root .auth-screen.lai #dn-form');
     await page.fill('#dn-form [name=mk]', 'kế toán mật khẩu 1');
     await page.press('#dn-form [name=mk]', 'Enter');
-    await page.waitForFunction(() => !document.querySelector('.modal') && !document.querySelector('#auth-root .auth-screen'));
+    await page.waitForFunction(() => !document.querySelector('#entry-page') && !document.querySelector('#auth-root .auth-screen'));
     rows = readStored(srv.dataDir).entries.filter((x) => x.noiDung === 'lưu khi phiên đã hết');
     assert.equal(rows.length, 1, 'ghi đúng một lần');
     assert.equal(rows[0].chi, 8000);
