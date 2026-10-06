@@ -1,17 +1,22 @@
-/* Chọn công trình ở thanh trên: áp dụng cho các sổ và báo cáo chi phí (thay cho ô "Công trình" riêng ở từng màn hình).
+/* Chọn công trình ở thanh trên: Ô LỌC CÔNG TRÌNH DUY NHẤT của phần mềm (không màn hình nào có ô "Công trình" riêng nữa).
  * Giá trị nằm ở S.ct; để các màn hình cũ vẫn chạy, mỗi lần đổi ta ghi cùng mã vào bộ lọc công trình của từng màn hình.
- * Sổ quỹ thu chi giữ ô "Công trình" riêng của nó (có cả "Chưa gán công trình") nên không nằm trong danh sách này. */
+ * Sổ quỹ thu chi có thêm lựa chọn "Chưa gán công trình" (S.ct = '__none__'); các sổ chi phí coi lựa chọn đó là "Tất cả".
+ * Ô chỉ hiện ở các màn hình có lọc theo công trình (CT_ROUTES); màn hình khác ẩn để khỏi tưởng là đang lọc. */
 import { $, esc, LS, icon } from './ui.js';
 import { S, saveFilter, costProjects } from './state.js';
 
 const KT = window.KT;
 // [tên bộ lọc, tên trường chứa mã công trình]
-const LOC = [['cpSo', 'ct'], ['cpTh', 'ct'], ['cpCt', 'ct'], ['cpCn', 'ct']];
+const LOC = [['so', 'duAn'], ['cpSo', 'ct'], ['cpTh', 'ct'], ['cpCt', 'ct'], ['cpCn', 'ct']];
+export const CT_ROUTES = new Set(['so-thu-chi', 'cp-so', 'cp-tong-hop', 'cp-chi-tiet', 'cp-cong-no', 'so-chi-tiet-ncc']);
+const NONE = '__none__';
+const giaTri = (f) => (S.ct === NONE && f !== 'so' ? '' : S.ct); // "Chưa gán" chỉ có nghĩa ở sổ quỹ
+const route = () => location.hash.replace(/^#\/?/, '').split('?')[0];
 
 export function datCongTrinh(ma, nhanh) {
   S.ct = ma || '';
   LS.set('ct', S.ct);
-  LOC.forEach(([f, k]) => { if (S.filters[f] && S.filters[f][k] !== S.ct) { S.filters[f][k] = S.ct; saveFilter(f); } });
+  LOC.forEach(([f, k]) => { if (S.filters[f] && (S.filters[f][k] || '') !== giaTri(f)) { S.filters[f][k] = giaTri(f); saveFilter(f); } });
   if (!nhanh) { veChonCongTrinh(); S.listeners.forEach((fn) => fn()); }
 }
 
@@ -19,10 +24,12 @@ export function datCongTrinh(ma, nhanh) {
 export function veChonCongTrinh() {
   const el = $('#tb-ct-val');
   if (!el || !S.db) return;
-  if (S.ct && !S.db.projects.some((p) => KT.keyOf(p.ma) === KT.keyOf(S.ct))) { S.ct = ''; LS.set('ct', ''); }
-  LOC.forEach(([f, k]) => { if (S.filters[f] && (S.filters[f][k] || '') !== S.ct && S.filters[f][k] !== '__none__') { S.filters[f][k] = S.ct; saveFilter(f); } });
+  if (S.ct && S.ct !== NONE && !S.db.projects.some((p) => KT.keyOf(p.ma) === KT.keyOf(S.ct))) { S.ct = ''; LS.set('ct', ''); }
+  LOC.forEach(([f, k]) => { if (S.filters[f] && (S.filters[f][k] || '') !== giaTri(f)) { S.filters[f][k] = giaTri(f); saveFilter(f); } });
   const p = S.ct && S.db.projects.find((x) => KT.keyOf(x.ma) === KT.keyOf(S.ct));
-  el.textContent = p ? p.ma + ' – ' + p.ten : 'Tất cả công trình';
+  el.textContent = p ? p.ma + ' – ' + p.ten : S.ct === NONE && route() === 'so-thu-chi' ? 'Chưa gán công trình' : 'Tất cả công trình';
+  const btn = $('#tb-ct');
+  if (btn) btn.hidden = !CT_ROUTES.has(route());
   el.title = el.textContent;
 }
 
@@ -52,11 +59,11 @@ export function moChonCongTrinh() {
   let items = [];
   const ve = () => {
     const q = KT.normalizeText($('#ct-q', pop).value.trim());
-    const all = [{ ma: '', ten: 'Tất cả công trình', sub: 'Không lọc theo công trình' }].concat(costProjects().map((p) => ({ ma: p.ma, ten: p.ten, sub: p.ma })));
-    items = all.filter((x) => !q || KT.normalizeText(x.ma + ' ' + x.ten).includes(q));
+    const all = [{ ma: '', ten: 'Tất cả công trình', sub: 'Không lọc theo công trình' }].concat(route() === 'so-thu-chi' ? [{ ma: NONE, ten: 'Chưa gán công trình', sub: 'Dòng sổ quỹ chưa ghi công trình' }] : [], costProjects().map((p) => ({ ma: p.ma, ten: p.ten, sub: p.ma })));
+    items = all.filter((x) => !q || KT.normalizeText((x.ma === NONE ? '' : x.ma) + ' ' + x.ten).includes(q));
     if (act >= items.length) act = Math.max(0, items.length - 1);
     $('#ct-list', pop).innerHTML = items.map((x, i) => '<button type="button" role="option" class="flex w-full cursor-pointer items-baseline gap-2 px-3 py-1.5 text-left hover:bg-accent-100' + (i === act ? ' bg-accent-100' : '') + '" data-ma="' + esc(x.ma) + '" aria-selected="' + (KT.keyOf(x.ma) === KT.keyOf(S.ct)) + '">' +
-      '<span class="min-w-0 flex-1"><b class="block truncate font-bold">' + esc(x.ten) + '</b>' + (x.ma ? '<span class="text-[11.5px] text-ink-3">' + esc(x.sub) + '</span>' : '<span class="text-[11.5px] text-ink-3">' + esc(x.sub) + '</span>') + '</span>' +
+      '<span class="min-w-0 flex-1"><b class="block truncate font-bold">' + esc(x.ten) + '</b>' + (x.ma && x.ma !== NONE ? '<span class="text-[11.5px] text-ink-3">' + esc(x.sub) + '</span>' : '<span class="text-[11.5px] text-ink-3">' + esc(x.sub) + '</span>') + '</span>' +
       (KT.keyOf(x.ma) === KT.keyOf(S.ct) ? icon('check', 'text-pen') : '') + '</button>').join('') || '<div class="px-3 py-3 text-ink-3">Không có công trình nào khớp.</div>';
   };
   const chon = (ma) => { dong(); datCongTrinh(ma); };

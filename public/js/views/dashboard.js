@@ -2,6 +2,7 @@
 import { $, esc, money, fdate, fmtShort, icon, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, equationHtml, setPageActions } from '../ui.js';
 import { S, saveFilter, vouchers, anomalies } from '../state.js';
 import { printView } from '../print.js';
+import { datCongTrinh } from '../ctpick.js';
 
 const KT = window.KT;
 const dm = (iso) => (iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) : '');
@@ -138,6 +139,7 @@ function renderDashboardPhone(root) {
 
 function openProjectLedger(ma, f) {
   Object.assign(S.filters.so, { duAn: ma, ncc: '', loai: '', q: '', period: f.period, from: f.from, to: f.to });
+  datCongTrinh(ma, true);
   saveFilter('so');
   location.hash = '#/so-thu-chi';
 }

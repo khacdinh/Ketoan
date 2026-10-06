@@ -3,6 +3,7 @@
 import { esc, money, icon, openModal } from './ui.js';
 import { S, saveFilter } from './state.js';
 import { comboHtml, bindCombo, comboResolve } from './combo.js';
+import { datCongTrinh } from './ctpick.js';
 
 const KT = window.KT;
 
@@ -28,6 +29,7 @@ export function goCostLedger(ma, ct) {
 }
 export function goCashLedger(ma, ct) {
   Object.assign(S.filters.so, { duAn: ct || '', ncc: ma, loai: '', q: '', period: 'tat-ca', from: '', to: '', rel: false });
+  datCongTrinh(ct || '', true);
   saveFilter('so');
   location.hash = '#/so-thu-chi';
 }

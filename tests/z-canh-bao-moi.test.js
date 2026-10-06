@@ -79,3 +79,30 @@ test('Z2 Cần xử lý trên giao diện: có nhóm Công nợ / Sổ thu chi /
     assert.deepEqual(errors.filter((e) => !/status of 4/.test(e)), []);
   } finally { await browser.close(); await srv.stop(); }
 });
+
+test('Z3 chỉ một ô lọc Công trình: Sổ quỹ không còn ô riêng, dùng ô ở thanh trên (có “Chưa gán công trình”); ô ở thanh trên ẩn ở màn hình không lọc theo công trình', { skip: SKIP, timeout: 120000 }, async () => {
+  const srv = await startServer({ seed: seed() });
+  const { browser, page, errors } = await openPage(srv, '#/so-thu-chi');
+  const hien = () => page.isVisible('#tb-ct');
+  try {
+    await page.waitForSelector('#so-body tr');
+    assert.equal(await page.locator('#view [aria-label="Lọc theo công trình"], #so-duan').count(), 0);
+    assert.equal(await hien(), true);
+    // chọn CT2 ở thanh trên → Sổ quỹ chỉ còn dòng CT2
+    await page.click('#tb-ct'); await page.fill('#ct-q', 'CT2'); await page.press('#ct-q', 'Enter'); await settle(page);
+    assert.deepEqual(await page.$$eval('#so-body tr[data-id]', (t) => t.length), 1);
+    // sang Sổ chi phí: vẫn CT2 (dùng chung)
+    await page.evaluate(() => { location.hash = '#/cp-so'; }); await settle(page);
+    assert.match(await page.textContent('#tb-ct-val'), /^CT2/);
+    // màn hình không lọc theo công trình: ẩn ô
+    for (const h of ['#/tong-quan', '#/phieu', '#/cp-nhap', '#/ghi-thu-chi', '#/du-an', '#/kiem-soat', '#/cai-dat']) {
+      await page.evaluate((x) => { location.hash = x; }, h); await settle(page);
+      assert.equal(await hien(), false, 'ẩn ở ' + h);
+    }
+    for (const h of ['#/so-thu-chi', '#/cp-so', '#/cp-tong-hop', '#/cp-chi-tiet', '#/cp-cong-no', '#/so-chi-tiet-ncc']) {
+      await page.evaluate((x) => { location.hash = x; }, h); await settle(page);
+      assert.equal(await hien(), true, 'hiện ở ' + h);
+    }
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); await srv.stop(); }
+});

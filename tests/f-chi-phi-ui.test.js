@@ -814,14 +814,16 @@ test('F8 ô lọc gõ tìm thay dropdown: gõ mã / tên / “chưa gán”, ch�
     const count = () => page.$eval('#so-count', (e) => e.innerText);
     const led = KT.buildLedger(posted);
     const p = db.projects.find((x) => db.entries.some((e) => e.maDuAn === x.ma));
-    assert.equal(await page.$eval('#so-duan', (e) => e.tagName + e.getAttribute('role')), 'INPUTcombobox');
-    // gõ đúng tên dự án (không dấu, chữ thường vẫn khớp theo normalizeText) rồi Enter
-    await pick(page, '#so-duan', p.ten);
-    assert.equal(await page.inputValue('#so-duan'), p.ma, 'sau khi lọc ô hiện mã');
+    // công trình: chỉ còn MỘT ô chọn ở thanh trên (không còn ô Công trình riêng trong trang)
+    assert.equal(await page.locator('#so-duan').count(), 0, 'không còn ô Công trình thứ hai trong Sổ quỹ');
+    assert.equal(await page.isVisible('#tb-ct'), true);
+    await chonCongTrinh(page, p.ma);
+    assert.match(await page.textContent('#tb-ct-val'), new RegExp('^' + p.ma));
     const nP = KT.filterLedger(led, { duAn: p.ma }).rows.length;
     assert.match(await count(), new RegExp('\\b' + nP + '\\b'));
     // lựa chọn "chưa gán dự án"
-    await pick(page, '#so-duan', '(Chưa gán công trình)');
+    await page.click('#tb-ct'); await page.waitForSelector('#ct-list [data-ma="__none__"]'); await page.click('#ct-list [data-ma="__none__"]'); await settle(page);
+    assert.equal(await page.textContent('#tb-ct-val'), 'Chưa gán công trình');
     const nNone = KT.filterLedger(led, { duAn: '__none__' }).rows.length;
     assert.match(await count(), new RegExp('\\b' + nNone + '\\b'));
     // gõ sai: báo lỗi, giữ bộ lọc cũ
@@ -836,7 +838,7 @@ test('F8 ô lọc gõ tìm thay dropdown: gõ mã / tên / “chưa gán”, ch�
     await settle(page);
     assert.match(await count(), new RegExp('\\b' + KT.filterLedger(led, { duAn: '__none__', ncc: s0.ma }).rows.length + '\\b'));
     // xóa trắng rồi Enter: bỏ lọc
-    await pick(page, '#so-duan', ''); await pick(page, '#so-ncc', '');
+    await chonCongTrinh(page, ''); await pick(page, '#so-ncc', '');
     assert.match(await count(), new RegExp('\\b' + KT.filterLedger(led, {}).rows.length + '\\b'));
     // sổ chi phí: nhóm gõ tên → ô hiện tên; hạng mục chỉ gợi ý hạng mục của nhóm đó
     await page.evaluate(() => { location.hash = '#/cp-so'; });

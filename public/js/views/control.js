@@ -6,6 +6,7 @@ import { openEntryForm } from '../forms.js';
 import { openCostLineForm } from './cost-ledger.js';
 import { openMaterialForm } from './cost-catalogs.js';
 import { renderCashCount } from './cash-count.js';
+import { datCongTrinh } from '../ctpick.js';
 
 const KT = window.KT;
 
@@ -247,6 +248,7 @@ function showInLedger(it) {
   const t = it.target;
   if (t.kind === 'entries') {
     Object.assign(S.filters.so, { period: 'tuy-chon', from: it.ngay, to: it.ngay, duAn: '', ncc: '', loai: '', q: '', trangThai: '' });
+    datCongTrinh('', true);
     saveFilter('so');
     location.hash = '#/so-thu-chi';
   } else {

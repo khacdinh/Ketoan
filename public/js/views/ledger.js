@@ -6,6 +6,7 @@ import { openEntryForm, deleteEntry } from '../forms.js';
 import { printView, printVoucher } from '../print.js';
 import { clipHtml, openAttachList } from '../attach.js';
 import { moKyKhoa } from '../khoa.js';
+import { datCongTrinh } from '../ctpick.js';
 
 const KT = window.KT;
 const PAGE = 500; // số dòng vẽ mỗi lần (bảng lớn vẽ chậm); bấm "Hiện thêm" để xem tiếp, in thì hiện hết
@@ -33,7 +34,6 @@ export function renderLedger(root) {
   root = freshRoot(root);
   const f = refreshPeriod(S.filters.so);
   // ô gõ tìm thay cho danh sách chọn (xem combo.js)
-  const cbDa = { id: 'so-duan', list: S.db.projects, value: f.duAn, none: '(Chưa gán công trình)', noun: 'công trình', placeholder: 'Tất cả', label: 'Lọc theo công trình' };
   const cbNcc = { id: 'so-ncc', list: S.db.suppliers.map((x) => ({ ma: x.ma, ten: x.ten, sub: x.loai })), value: f.ncc, none: '(Chưa gán NCC)', noun: 'nhà cung cấp',
     placeholder: 'Tất cả', label: 'Lọc theo nhà cung cấp' };
 
@@ -46,7 +46,7 @@ export function renderLedger(root) {
     '<div class="print-only" id="print-head"></div>' +
     '<div class="no-print flex flex-wrap items-center gap-2.5">' +
     periodControls(f, 'so') +
-    filterBox('Công trình', cbDa) + filterBox('NCC', cbNcc) +
+    filterBox('NCC', cbNcc) + // công trình: chọn ở thanh trên (ô lọc công trình duy nhất)
     '<div class="seg" role="radiogroup" aria-label="Loại">' +
     [['', 'Thu và chi'], ['thu', 'Thu'], ['chi', 'Chi']].map(([v, l]) => '<label class="seg-item"><input type="radio" name="so-loai" value="' + v + '"' + ((f.loai || '') === v ? ' checked' : '') + '><span>' + l + '</span></label>').join('') +
     '</div></div>' +
@@ -74,7 +74,6 @@ export function renderLedger(root) {
     syncPeriodControls(root, f, 'so');
   };
   bindPeriodControls(root, f, 'so', () => { saveFilter('so'); syncInputs(); draw(); });
-  bindCombo($('#so-duan', root), cbDa, (v) => { f.duAn = v; saveFilter('so'); draw(); });
   bindCombo($('#so-ncc', root), cbNcc, (v) => { f.ncc = v; saveFilter('so'); draw(); });
   root.querySelectorAll('input[name=so-loai]').forEach((r) => r.addEventListener('change', () => { f.loai = r.value; saveFilter('so'); draw(); }));
   root.querySelectorAll('input[name=so-tt]').forEach((r) => r.addEventListener('change', () => { f.trangThai = r.value; saveFilter('so'); draw(); }));
@@ -89,6 +88,7 @@ export function renderLedger(root) {
     if (act === 'toggle-card') { const c = a.closest('.crow'); const x = c.querySelector('.cr-actions'); x.hidden = !x.hidden; a.setAttribute('aria-expanded', String(!x.hidden)); return; }
     if (act === 'clear') {
       Object.assign(f, { period: 'tat-ca', from: '', to: '', rel: false, duAn: '', ncc: '', loai: '', q: '', trangThai: '' });
+      datCongTrinh('', true);
       saveFilter('so');
       renderLedger(root);
     } else if (act === 'export') download('/api/export/ledger?' + exportQuery(f));

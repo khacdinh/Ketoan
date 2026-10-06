@@ -15,6 +15,7 @@ const usedNcc = (ma) => S.all.costs.filter((x) => KT.keyOf(x.maNCC) === KT.keyOf
 
 function goLedger(field, ma) {
   Object.assign(S.filters.so, { duAn: '', ncc: '', loai: '', q: '', period: 'tat-ca', from: '', to: '' });
+  datCongTrinh(field === 'duAn' ? ma : '', true); // công trình đi qua ô chọn ở thanh trên
   S.filters.so[field] = ma;
   saveFilter('so');
   location.hash = '#/so-thu-chi';
@@ -267,6 +268,7 @@ export function renderSupplierReport(root) {
   $('#th-sort', root).addEventListener('change', (e) => { f.sort = e.target.value; saveFilter('thncc'); draw(); });
   const open = (ma) => {
     Object.assign(S.filters.so, { duAn: '', ncc: ma, loai: '', q: '', period: f.period, from: f.from, to: f.to });
+    datCongTrinh('', true);
     saveFilter('so');
     location.hash = '#/so-thu-chi';
   };

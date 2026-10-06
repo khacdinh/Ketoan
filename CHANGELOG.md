@@ -1,5 +1,11 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Chỉ còn một ô lọc Công trình (06/10/2026)
+
+- **Sổ quỹ thu chi** bỏ ô “Công trình” riêng trong trang: ô **Công trình ở thanh trên** là ô lọc công trình duy nhất, dùng chung cho Sổ quỹ, Sổ chi phí, Tổng hợp chi phí, Chi phí theo nhóm, Công nợ NCC theo kỳ, Sổ chi tiết NCC (chọn một lần, sang màn khác vẫn giữ). Ở Sổ quỹ ô này có thêm lựa chọn **Chưa gán công trình**.
+- Rà soát các màn hình khác: không màn nào còn ô Công trình thứ hai. Ô ở thanh trên **ẩn** ở các màn hình không lọc theo công trình (Tổng quan, Phiếu thu / chi, Phiếu nhập chi phí, Ghi thu / chi, danh mục, Kiểm soát, Cài đặt…) để khỏi tưởng là đang lọc.
+- Bấm từ công trình / NCC / cảnh báo sang Sổ quỹ (lọc theo công trình) nay đặt ô ở thanh trên; nút Xóa lọc của Sổ quỹ cũng bỏ chọn công trình.
+
 ## Cảnh báo mới: công nợ, sổ thu chi, sổ chi phí (06/10/2026)
 
 Ở **Kiểm soát › Cần xử lý** (và ô “Cần chú ý hôm nay” ở Tổng quan) có thêm 3 nhóm; mỗi cảnh báo có nút **Mở để sửa** tới đúng chỗ sửa, hoặc **Bỏ qua** nếu đúng thật:
