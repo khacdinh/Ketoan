@@ -13,7 +13,7 @@ import { renderCostEntry } from './views/cost-entry.js';
 import { renderCostLedger } from './views/cost-ledger.js';
 import { renderCostDashboard, renderCostDetail, renderPrices } from './views/cost-reports.js';
 import { renderDebt } from './views/debt.js';
-import { renderCostCatalogs } from './views/cost-catalogs.js';
+import { renderCostCatalogs, menuTabDanhMuc } from './views/cost-catalogs.js';
 import { renderControl } from './views/control.js';
 import { renderMerge } from './merge.js';
 import { renderUsers } from './views/users.js';
@@ -191,7 +191,7 @@ function render() {
   const k = current();
   const r = ROUTES[k];
   document.querySelectorAll('.nav-item').forEach((a) => {
-    const on = a.dataset.route === k && (!a.dataset.tab || a.dataset.tab === S.filters.cpDm.tab || (k === 'cp-danh-muc' && a.dataset.tab === 'vat-tu' && !['vat-tu', 'hang-muc'].includes(S.filters.cpDm.tab)));
+    const on = a.dataset.route === k && (!a.dataset.tab || a.dataset.tab === menuTabDanhMuc());
     a.classList.toggle('active', on);
     if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   });

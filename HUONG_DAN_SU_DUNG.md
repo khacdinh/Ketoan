@@ -321,7 +321,12 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
   Nên giữ số thứ tự ở đầu tên (`1. `, `2. `...) để báo cáo xếp đúng thứ tự.
 - **Hạng mục**: mã HM, tên, thuộc nhóm. **Đổi tên / chuyển nhóm** thì sổ chi phí và báo cáo tự cập nhật
   (sổ chỉ lưu mã hạng mục, không lưu tên).
-- **Vật tư**: Mã VT, tên, ĐVT chuẩn, hạng mục hay dùng, loại CP mặc định; **số lần đã mua, tổng đã mua** tự tính.
+- **Vật tư** (menu Danh mục › Vật tư) chia hai phần:
+  - Bên trái là cây **Khoản mục chi phí**: **Tất cả vật tư**, rồi các nhóm chi phí (1. Chi phí ban đầu, 2. Chi phí phần thô…). Bấm mũi tên ở đầu nhóm để mở / thu gọn các hạng mục của nhóm. Số bên phải mỗi mục là số vật tư trong mục đó. Nếu có vật tư chưa gắn hạng mục, cây có thêm mục **Vật tư chưa có hạng mục** để gắn bổ sung.
+  - Bấm một nhóm hoặc hạng mục: bảng bên phải chỉ hiện vật tư của mục đó, tiêu đề ghi tên mục. Ô tìm kiếm cũng chỉ tìm trong mục đang chọn; muốn tìm toàn bộ thì chọn Tất cả vật tư. Phần mềm nhớ mục đang chọn cho lần mở sau.
+  - Các nút dưới cây: **+ Hạng mục** (thêm hạng mục, điền sẵn nhóm đang chọn), **+ Nhóm**, **Sửa** (sửa nhóm / hạng mục đang chọn).
+  - Khi đang chọn một hạng mục, bấm **Thêm vật tư** thì ô Hạng mục trong hộp thêm đã điền sẵn.
+  - Bảng gồm các cột: Mã vật tư, Tên vật tư, ĐVT, **Khoản mục mặc định** (hạng mục, kèm nhóm), **Giá thường** và **Đang dùng**. Giá thường là đơn giá bình quân các lần mua; rê chuột vào để xem giá thấp nhất, cao nhất và gần nhất. Đang dùng là số dòng trong sổ chi phí; rê chuột vào để xem tổng đã mua. Cuối mỗi dòng có các nút Lịch sử giá, Sửa và Xóa.
 - **Nhà / khu**: thuộc công trình nào; đánh dấu “Dùng chung cả công trình”.
 - Đổi mã ở bất kỳ danh mục nào (kể cả dự án, NCC) thì mọi dòng đang dùng mã cũ được đổi theo.
   Không xóa được mã đang được dùng.

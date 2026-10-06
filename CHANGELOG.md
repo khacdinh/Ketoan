@@ -1,5 +1,17 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Danh mục vật tư dạng cây khoản mục (06/10/2026)
+
+- **Danh mục › Vật tư** chia hai phần. Bên trái là cây **Khoản mục chi phí**: Tất cả vật tư → nhóm chi phí → hạng mục, mỗi mục có số vật tư, bấm mũi tên để mở / thu gọn nhóm. Bên phải là bảng vật tư của mục đang chọn, có tiêu đề là tên mục.
+- Cây có thêm mục **Vật tư chưa có hạng mục** khi có vật tư chưa gắn hạng mục. Dưới cây có các nút **+ Hạng mục** (điền sẵn nhóm đang chọn), **+ Nhóm** và **Sửa** (nhóm / hạng mục đang chọn).
+- Đang chọn một hạng mục mà bấm **Thêm vật tư** thì hạng mục đã điền sẵn. Mục đang chọn và các nhóm đang mở được nhớ cho lần sau.
+- Cột bảng: Mã vật tư · Tên vật tư · ĐVT · **Khoản mục mặc định** · **Giá thường** · **Đang dùng** · Lịch sử giá / Sửa / Xóa.
+  - Giá thường là đơn giá bình quân; rê chuột xem thấp nhất, cao nhất và gần nhất.
+  - Đang dùng là số dòng chi phí; rê chuột xem tổng đã mua.
+  - Bỏ cột Loại CP.
+- Tích chọn nhiều dòng, Gộp mã, Xóa nhiều vẫn như cũ.
+- Menu trái sáng đúng mục khi đổi tab: tab Hạng mục / Nhóm chi phí sáng “Hạng mục, nhóm CP”, tab Vật tư / Nhà-khu sáng “Vật tư”. Trước đây tab Nhóm chi phí lại sáng mục Vật tư.
+
 ## Thanh tab chữ lớn hơn (06/10/2026)
 
 - Các thanh tab / nút gạt (Tháng · Quý · Năm · Khoảng ngày · Toàn bộ, Theo NCC · Theo công trình, Thu và chi · Thu · Chi, Mọi trạng thái · Đã ghi sổ · Nháp…) chữ 15px (trước 13,5px); mục đang chọn chữ đậm, nền trắng và có vạch vàng ở dưới để dễ phân biệt.

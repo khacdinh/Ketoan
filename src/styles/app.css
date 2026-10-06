@@ -741,6 +741,37 @@
   .nav-item { font-size: 15.5px; height: 32px; }
   .nav-item .ph { font-size: 19px; }
   .nav-head { font-size: 12px; }
+  /* Danh mục vật tư: cây "Khoản mục chi phí" bên trái, bảng vật tư bên phải */
+  .dm-split { display: grid; gap: 12px; align-items: start; }
+  .dm-split.has-tree { grid-template-columns: minmax(230px, 270px) minmax(0, 1fr); }
+  @media (max-width: 1023px) { .dm-split.has-tree { grid-template-columns: minmax(0, 1fr); } }
+  .dm-tree { display: flex; flex-direction: column; max-height: calc(100vh - 170px); position: sticky; top: 8px; }
+  .dm-tree-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--color-rule); background: var(--color-head); font-weight: 700; font-size: 14.5px; color: var(--color-ink); }
+  .dm-tree-head .ph { font-size: 17px; color: var(--color-accent-700); }
+  .dm-tree-body { flex: 1; overflow: auto; padding: 6px; }
+  .dm-tree-foot { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; border-top: 1px solid var(--color-rule); background: #F4F2ED; }
+  .dm-tree-foot .btn { flex: 1 1 auto; justify-content: center; }
+  .tree-row { display: flex; align-items: stretch; }
+  .tree-caret { display: grid; place-items: center; width: 24px; flex: none; color: var(--color-ink-3); cursor: pointer; transition: transform .12s; }
+  .tree-caret:hover { color: var(--color-ink); }
+  .tree-caret.open { transform: rotate(90deg); }
+  .tree-node { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; padding: 6px 8px; text-align: left; font-size: 14px; color: var(--color-ink-2); cursor: pointer; border-left: 3px solid transparent; }
+  .tree-node:hover { background: #F1EEE5; color: var(--color-ink); }
+  .tree-node .ph { font-size: 16px; color: var(--color-ink-3); }
+  .tree-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tree-n { flex: none; min-width: 26px; padding: 0 6px; text-align: center; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--color-ink-3); background: var(--color-surface); border: 1px solid var(--color-rule); }
+  .tree-all, .tree-g { font-weight: 700; color: var(--color-ink); }
+  .tree-all { margin-bottom: 2px; }
+  .tree-warn .ph { color: var(--color-caution); }
+  .tree-kids { margin: 0 0 4px 24px; border-left: 1px solid var(--color-rule); }
+  .tree-h { padding-left: 12px; }
+  .tree-empty { padding: 4px 12px; font-size: 12.5px; color: var(--color-ink-3); }
+  .tree-node.is-on, .tree-node.is-on:hover { background: #F6EFD9; color: var(--color-ink); font-weight: 700; border-left-color: var(--color-accent-500); }
+  .tree-node.is-on .tree-n { background: var(--color-accent-500); border-color: var(--color-accent-500); color: #fff; }
+  .dm-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--color-rule); }
+  .dm-head-title { font-size: 16px; font-weight: 700; font-stretch: 106%; color: var(--color-ink); }
+  .ledger td.dm-ma { white-space: normal; max-width: 150px; }
+  .dm-use { display: inline-block; min-width: 28px; padding: 0 6px; text-align: center; background: #EEF5F0; color: #2A6B52; font-weight: 600; }
 }
 
 /* =====================================================================
