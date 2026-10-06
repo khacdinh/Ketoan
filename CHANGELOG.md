@@ -1,5 +1,10 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Cột Nội dung gọn lại (06/10/2026)
+
+- **Ghi thu / chi**: cột Nội dung rộng cố định khoảng 300px, trước đây giãn hết bề ngang. Cột Công trình, Mã vật tư, Số tiền rộng hơn; phần còn lại dành cho Tên công trình · NCC còn nợ.
+- **Phiếu nhập chi phí**: Tên vật tư và Diễn giải / quy cách có độ rộng cố định. Phần dư dành cho Mã vật tư và Nhóm › Hạng mục; Công trình, Nhà / khu cũng rộng hơn.
+
 ## Sửa lỗi: ghi phiếu thu chi xong vẫn báo lỗi (06/10/2026)
 
 - Lỗi: mở **Ghi thu / chi** từ một màn khác (nhất là **Phiếu nhập chi phí**, bấm F3) rồi bấm Ghi sổ hoặc Ctrl+Enter. Lệnh lưu của màn trước cũng chạy theo:

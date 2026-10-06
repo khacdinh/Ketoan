@@ -109,8 +109,9 @@ function mountEntryForm(root, entry, opts, pageKey) {
     '<span class="min-w-0 flex-1 text-[12px] text-ink-3">Mỗi dòng gắn một công trình riêng để công nợ nhà cung cấp tách đúng theo công trình.</span>' +
     '<button type="button" class="btn btn-secondary btn-sm" data-act="them-dong">' + icon('plus') + 'Thêm dòng</button></div>' +
     '<div class="scroll-x overflow-x-auto"><table class="ledger grid-entry" id="phieu-dong"><thead><tr>' +
-    '<th class="num w-8">#</th><th class="min-w-[200px]">Nội dung <b class="req">*</b></th><th class="w-[120px] min-w-[100px]">Công trình <b class="req">*</b></th><th class="w-[190px] min-w-[150px]">Tên công trình · NCC còn nợ</th>' +
-    '<th data-show="chi" class="w-[120px] min-w-[100px]">Mã vật tư</th><th data-show="chi" class="num money w-[140px] min-w-[120px]">Số tiền chi</th><th data-show="thu" class="num money w-[140px] min-w-[120px]">Số tiền thu</th><th class="w-10"><span class="sr-only">Bỏ dòng</span></th></tr></thead>' +
+    // Nội dung giữ độ rộng vừa phải (không giãn hết bề ngang); phần dư dành cho Tên công trình · NCC còn nợ, Mã vật tư
+    '<th class="num w-8">#</th><th class="w-[300px] min-w-[200px]">Nội dung <b class="req">*</b></th><th class="w-[170px] min-w-[120px]">Công trình <b class="req">*</b></th><th class="min-w-[220px]">Tên công trình · NCC còn nợ</th>' +
+    '<th data-show="chi" class="w-[240px] min-w-[160px]">Mã vật tư</th><th data-show="chi" class="num money w-[180px] min-w-[130px]">Số tiền chi</th><th data-show="thu" class="num money w-[180px] min-w-[130px]">Số tiền thu</th><th class="w-10"><span class="sr-only">Bỏ dòng</span></th></tr></thead>' +
     '<tbody>' + dongDau.map(dongHtml).join('') + '</tbody>' +
     '<tfoot><tr><td colspan="4" class="text-[15px]" id="phieu-tong" aria-live="polite">Tổng phiếu</td>' +
     '<td data-show="chi" class="num money text-[22px]"></td>' + // ô trống: chỉ để cột khớp khi Mã vật tư hiện
