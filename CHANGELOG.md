@@ -1,5 +1,16 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Loại chi phí đặt theo hạng mục (06/10/2026)
+
+- Bỏ ô **Loại CP mặc định** ở hộp sửa vật tư. Thay vào đó mỗi **hạng mục** có ô **Loại chi phí** (Vật tư / Nhân công / Dịch vụ-Phí / Tự xác định).
+- Mọi dòng chi phí theo loại của hạng mục:
+  - Phiếu mới lấy loại của hạng mục.
+  - Đổi loại của hạng mục thì các dòng đang có đổi theo, trừ tháng đã khóa sổ.
+  - Vật tư chuyển sang hạng mục khác thì dòng lấy loại của hạng mục mới.
+  - Sổ chi phí không cho đổi loại riêng từng dòng của hạng mục đã đặt loại.
+- Dữ liệu nâng lên **lược đồ 8**. Trước khi nâng, phần mềm tự sao lưu. Loại của từng hạng mục được điền sẵn theo dữ liệu cũ (loại chiếm nhiều tiền nhất); hạng mục chưa có dòng mà tên bắt đầu “Nhân công” thì là Nhân công. Không dòng chi phí nào bị đổi khi nâng.
+- Excel: sheet DM_HANGMUC có thêm cột **Loại chi phí**, nhập lại được. Hạng mục mới nhập mà file không ghi loại thì được điền theo dữ liệu.
+
 ## Bỏ tab Hạng mục, Nhóm chi phí (06/10/2026)
 
 - Danh mục chi phí chỉ còn tab **Vật tư** và **Nhà / khu**. Hạng mục và nhóm chi phí quản lý trên cây **Khoản mục chi phí** của tab Vật tư.

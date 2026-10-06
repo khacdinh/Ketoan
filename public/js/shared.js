@@ -745,10 +745,12 @@
   }
 
   // Loại CP gợi ý cho 1 dòng: theo vật tư -> theo hạng mục "Nhân công..." -> có mã VT là Vật tư, không có là Dịch vụ-Phí
+  // Loại CP của dòng: theo hạng mục (lược đồ 8: mỗi hạng mục có Loại chi phí), rồi giá trị cũ ở vật tư, rồi đoán theo tên / có vật tư hay không
   function defaultLoaiCP(db, maVT, maHM) {
+    const it = indexBy(db.costItems).get(keyOf(maHM));
+    if (it && normLoaiCP(it.loaiCP)) return normLoaiCP(it.loaiCP);
     const m = indexBy(db.materials).get(keyOf(maVT));
     if (m && normLoaiCP(m.loaiCP)) return normLoaiCP(m.loaiCP);
-    const it = indexBy(db.costItems).get(keyOf(maHM));
     if (it && normalizeText(it.ten).indexOf('nhan cong') === 0) return 'Nhân công';
     return String(maVT || '').trim() ? 'Vật tư' : 'Dịch vụ-Phí';
   }
@@ -1133,6 +1135,29 @@
   }
 
   // Thống kê mua vật tư: số lần, tổng SL, giá thấp/cao/gần nhất, bình quân gia quyền
+  // Gợi ý Loại chi phí cho từng hạng mục theo dữ liệu đang có: loại chiếm nhiều tiền nhất trong các dòng của hạng mục;
+  // hạng mục chưa có dòng nào mà tên bắt đầu "Nhân công" → Nhân công; còn lại không gợi ý (để Tự xác định). Trả Map mã → loại.
+  function goiYLoaiCPHangMuc(db) {
+    const acc = new Map();
+    (db.costs || []).forEach(function (c) {
+      const l = normLoaiCP(c.loaiCP);
+      const k = keyOf(c.maHM);
+      if (!l || !k) return;
+      const a = acc.get(k) || {};
+      a[l] = (a[l] || 0) + Math.abs(Number(c.thanhTien) || 0) + 0.001; // + một chút theo số dòng để phân xử khi bằng tiền
+      acc.set(k, a);
+    });
+    const out = new Map();
+    (db.costItems || []).forEach(function (it) {
+      const a = acc.get(keyOf(it.ma));
+      let best = '';
+      if (a) best = Object.keys(a).sort(function (x, y) { return a[y] - a[x] || (x < y ? -1 : 1); })[0];
+      else if (normalizeText(it.ten).indexOf('nhan cong') === 0) best = 'Nhân công';
+      if (best) out.set(it.ma, best);
+    });
+    return out;
+  }
+
   function materialStats(db, f) {
     f = f || {};
     const acc = new Map();
@@ -1713,6 +1738,7 @@
     supplierPeriod: supplierPeriod,
     projectDebtSummary: projectDebtSummary,
     materialStats: materialStats,
+    goiYLoaiCPHangMuc: goiYLoaiCPHangMuc,
     priceHistory: priceHistory,
     lastPrice: lastPrice,
     costSlips: costSlips,

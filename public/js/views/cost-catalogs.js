@@ -67,7 +67,7 @@ function catalogForm(o) {
         const done = busy(el.querySelector('[data-act=save]'), 'Đang lưu…');
         try {
           const r = isEdit ? await api('PUT', o.endpoint + '/' + v.id, data) : await api('POST', o.endpoint, data);
-          toast((isEdit ? 'Đã lưu ' : 'Đã thêm ') + data.ma + (r.renamed ? ', cập nhật mã trên ' + r.renamed + ' chỗ đang dùng' : '') + (r.theoHM ? ', chuyển ' + r.theoHM + ' dòng chi phí sang hạng mục mới' : ''));
+          toast((isEdit ? 'Đã lưu ' : 'Đã thêm ') + data.ma + (r.renamed ? ', cập nhật mã trên ' + r.renamed + ' chỗ đang dùng' : '') + (r.theoHM ? ', chuyển ' + r.theoHM + ' dòng chi phí sang hạng mục mới' : '') + (r.theoLoai ? ', đổi Loại CP của ' + r.theoLoai + ' dòng chi phí' : ''));
           h.close();
           if (o.onSaved) o.onSaved(Object.assign({}, data, { ma: r.ma || data.ma }));
         } catch (err) { done(); showError(err); }
@@ -112,12 +112,14 @@ export function openItemForm(it, onSaved) {
   return catalogForm({
     title: isEdit ? 'Sửa hạng mục' : 'Thêm hạng mục chi phí',
     endpoint: '/api/cost-items',
-    values: Object.assign({ ma: nextItemCode(), ten: '', maNhom: '', ghiChu: '' }, it || {}),
+    values: Object.assign({ ma: nextItemCode(), ten: '', maNhom: '', ghiChu: '', loaiCP: '' }, it || {}),
     onSaved,
     fields: [
       { name: 'ma', label: 'Mã hạng mục', required: true, hint: used ? 'Đang dùng trong ' + used + ' dòng chi phí' : '' },
       { name: 'maNhom', label: 'Thuộc nhóm', type: 'combo', combo: { list: S.db.costGroups, show: 'ten', noun: 'nhóm chi phí' }, placeholder: 'Gõ tên nhóm', required: true, hint: 'Đổi nhóm: mọi báo cáo tự xếp lại' },
       { name: 'ten', label: 'Tên hạng mục', required: true, wide: true, hint: isEdit ? 'Đổi tên: sổ chi phí và báo cáo tự đổi theo' : '' },
+      { name: 'loaiCP', label: 'Loại chi phí', type: 'select', options: [['', 'Tự xác định']].concat(KT.LOAI_CP.map((l) => [l, l])),
+        hint: 'Mọi dòng chi phí của hạng mục tính vào loại này (ô Vật tư · Nhân công · Dịch vụ-Phí ở Tổng hợp chi phí)' + (used ? '; đổi loại thì ' + used + ' dòng đang có đổi theo' : '') },
       { name: 'ghiChu', label: 'Ghi chú', wide: true }
     ]
   });
@@ -139,7 +141,6 @@ export function openMaterialForm(m, onSaved) {
       { name: 'dvt', label: 'Đơn vị tính chuẩn', list: 'dl-dvt-f', placeholder: 'cây, kg, m3, viên...' },
       { name: 'ten', label: 'Tên vật tư', required: true, wide: true },
       { name: 'hmTen', label: 'Hạng mục', required: true, list: 'dl-hm-f', placeholder: 'Gõ tên hạng mục', hint: 'Mọi dòng chi phí của vật tư này tính vào hạng mục (và nhóm chi phí) này' },
-      { name: 'loaiCP', label: 'Loại CP mặc định', type: 'select', options: [['', 'Tự xác định']].concat(KT.LOAI_CP.map((l) => [l, l])) },
       { name: 'ghiChu', label: 'Ghi chú', wide: true }
     ],
     transform(d) { d.maHM = d.hmTen; } // giữ hmTen để kiểm tra ô bắt buộc (máy chủ bỏ qua trường lạ)
@@ -254,7 +255,7 @@ function vtTree(tree, f, match) {
     sel = { k: 'g', ma: g.ma, ten: g.ten, sub: (g.ma ? g.ma + ' · ' : '') + 'Cả nhóm · ' + g.items.length + ' hạng mục' + (gr && gr.ghiChu ? ' · ' + gr.ghiChu : '') };
   } else if (key) {
     const it = itOf(key);
-    sel = { k: 'h', ma: it.ma, ten: it.ten, sub: it.ma + ' · ' + (groupName(it.maNhom) || 'Chưa có nhóm') + (it.ghiChu ? ' · ' + it.ghiChu : '') };
+    sel = { k: 'h', ma: it.ma, ten: it.ten, sub: it.ma + ' · ' + (groupName(it.maNhom) || 'Chưa có nhóm') + ' · Loại chi phí: ' + (KT.normLoaiCP(it.loaiCP) || 'tự xác định') + (it.ghiChu ? ' · ' + it.ghiChu : '') };
   } else sel = { k: 'h', ma: '', ten: 'Vật tư chưa có hạng mục', sub: 'Gán hạng mục để chi phí vào đúng nhóm trong báo cáo' };
   const inSel = (m) => {
     if (!v) return true;

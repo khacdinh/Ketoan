@@ -246,7 +246,7 @@ test('Y4 nâng cấp dữ liệu lược đồ 6 → 7: sao lưu trước, thêm
     assert.equal(db.schema, DB_VERSION);
     assert.deepEqual(db.soDuDauKy, []);
     ['projects', 'suppliers', 'entries', 'costs'].forEach((k) => assert.deepEqual(db[k], v6[k], k));
-    assert.equal(fs.readdirSync(path.join(dir, 'backups')).filter((f) => /truoc-nang-cap-luoc-do-7/.test(f)).length, 1);
+    assert.equal(fs.readdirSync(path.join(dir, 'backups')).filter((f) => new RegExp('truoc-nang-cap-luoc-do-' + DB_VERSION).test(f)).length, 1);
     await srv.ok('POST', '/api/so-du-dau', { ngay: '2026-01-01', maNCC: 'NCC_A', soTien: 1000 });
     assert.equal(readStored(dir).soDuDauKy.length, 1);
   } finally { await srv.stop(); }

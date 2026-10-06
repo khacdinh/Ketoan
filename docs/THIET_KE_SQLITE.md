@@ -196,6 +196,10 @@ lệch tổng hợp theo mã) — mã trùng được liệt kê trong báo cáo
   ghiChu, createdAt, updatedAt, by, nguoiTao, nguoiSua)` (`since: 7`; `soTien` có dấu: dương = còn nợ NCC, âm = đã ứng trước). Thuộc
   `TABLES` / kho trong bộ nhớ như `extPayments` (có trong `/api/db`, sao lưu, khôi phục). Sao lưu trước khi nâng cấp
   `truoc-nang-cap-luoc-do-7` (giữ mãi); `migrate()` tạo bảng trong một giao dịch.
+- **Lược đồ 8 (Loại chi phí theo hạng mục — 06/10/2026)**: `DB_VERSION = 8`. Thêm cột `costItems.loaiCP TEXT` (`since: 8`; '' = tự xác
+  định). Sao lưu trước khi nâng cấp `truoc-nang-cap-luoc-do-8` (giữ mãi); `migrate()` thêm cột trong một giao dịch, rồi `store.open`
+  điền một lần `loaiCP` cho hạng mục theo dữ liệu cũ (`KT.goiYLoaiCPHangMuc`: loại chiếm nhiều tiền nhất trong các dòng; chưa có dòng mà
+  tên bắt đầu “Nhân công” → Nhân công). Không dòng chi phí nào bị đổi.
 
 ### 2.5 Thiết lập kết nối
 

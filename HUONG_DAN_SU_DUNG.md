@@ -323,6 +323,12 @@ Màn hình có hai tab: **Vật tư** và **Nhà / khu**. Nhóm chi phí và h�
   Nên giữ số thứ tự ở đầu tên (`1. `, `2. `...) để báo cáo xếp đúng thứ tự.
 - **Hạng mục**: mã HM, tên, thuộc nhóm. **Đổi tên / chuyển nhóm** thì sổ chi phí và báo cáo tự cập nhật
   (sổ chỉ lưu mã hạng mục, không lưu tên).
+- **Loại chi phí** của hạng mục (Vật tư / Nhân công / Dịch vụ-Phí): quyết định dòng chi phí được tính vào ô nào trong 3 ô Vật tư · Nhân công · Dịch vụ-Phí ở Tổng hợp chi phí và Tổng quan.
+  - Đặt ở hộp Sửa hạng mục: chọn hạng mục trên cây rồi bấm Sửa. Mọi dòng chi phí của hạng mục đều theo loại này, nên ở Sổ chi phí không đổi loại riêng từng dòng được.
+  - Đổi loại thì các dòng đang có đổi theo, trừ tháng đã khóa sổ.
+  - Để **Tự xác định** thì phần mềm đoán: hạng mục có tên bắt đầu “Nhân công” → Nhân công, dòng có mã vật tư → Vật tư.
+  - Khi cập nhật lên bản này, phần mềm đã tự điền loại cho các hạng mục theo dữ liệu cũ (loại chiếm nhiều tiền nhất). Nên xem lại một lượt, nhất là các hạng mục phí hoặc dịch vụ chưa có dòng nào.
+  - Vật tư không còn ô “Loại CP mặc định”.
 - **Vật tư** (menu Danh mục › Vật tư) chia hai phần:
   - Bên trái là cây **Khoản mục chi phí**: **Tất cả vật tư**, rồi các nhóm chi phí (1. Chi phí ban đầu, 2. Chi phí phần thô…). Bấm mũi tên ở đầu nhóm để mở / thu gọn các hạng mục của nhóm. Số bên phải mỗi mục là số vật tư trong mục đó. Nếu có vật tư chưa gắn hạng mục, cây có thêm mục **Vật tư chưa có hạng mục** để gắn bổ sung.
   - Bấm một nhóm hoặc hạng mục: bảng bên phải chỉ hiện vật tư của mục đó, tiêu đề ghi tên mục. Ô tìm kiếm cũng chỉ tìm trong mục đang chọn; muốn tìm toàn bộ thì chọn Tất cả vật tư. Phần mềm nhớ mục đang chọn cho lần mở sau.

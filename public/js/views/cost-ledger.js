@@ -356,6 +356,11 @@ function inlineEdit(td) {
     const mm = materialByCode(c.maVT);
     if (mm && mm.maHM && KT.findCostItem(S.db, mm.maHM)) { toast('Hạng mục của dòng này lấy theo vật tư ' + mm.ma + '. Muốn đổi, sửa hạng mục của vật tư ở Danh mục > Vật tư.', 'info'); return; }
   }
+  // loại chi phí lấy theo hạng mục (đã đặt Loại chi phí ở danh mục): không sửa riêng từng dòng
+  if (field === 'loaiCP') {
+    const hm = KT.findCostItem(S.db, c.maHM);
+    if (hm && KT.normLoaiCP(hm.loaiCP)) { toast('Loại CP của dòng này theo hạng mục ' + hm.ten + ' (' + KT.normLoaiCP(hm.loaiCP) + '). Muốn đổi, sửa Loại chi phí của hạng mục ở Danh mục > Vật tư, hạng mục.', 'info'); return; }
+  }
   const old = td.innerHTML;
   let input;
   if (field === 'loaiCP') {
@@ -471,7 +476,16 @@ export function openCostLineForm(c) {
         const it = mm && mm.maHM ? KT.findCostItem(S.db, mm.maHM) : null;
         const f = g('maHM');
         if (it) { f.value = it.ten; f.readOnly = true; f.title = 'Theo vật tư ' + mm.ma + '. Đổi ở Danh mục > Vật tư'; } else { f.readOnly = false; f.title = ''; }
+        loaiTheoHM();
       };
+      // Loại CP theo hạng mục đã đặt Loại chi phí (hiện loại đó, không chọn được)
+      const loaiTheoHM = () => {
+        const hm = KT.findCostItem(S.db, g('maHM').value.trim());
+        const l = hm ? KT.normLoaiCP(hm.loaiCP) : '';
+        const s = g('loaiCP');
+        if (l) { s.value = l; s.disabled = true; s.title = 'Theo hạng mục ' + hm.ten + '. Đổi ở Danh mục > Vật tư, hạng mục'; } else { s.disabled = false; s.title = ''; }
+      };
+      g('maHM').addEventListener('change', loaiTheoHM);
       g('maVT').addEventListener('input', hmTheoVT);
       g('maVT').addEventListener('change', hmTheoVT);
       hmTheoVT();
