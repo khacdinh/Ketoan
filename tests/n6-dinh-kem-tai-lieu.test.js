@@ -31,7 +31,9 @@ async function seed(srv) {
   await srv.ok('POST', '/api/projects', { ma: 'CT1', ten: 'Công trình 1' });
   await srv.ok('POST', '/api/suppliers', { ma: 'MINH', ten: 'Cửa hàng điện nước Minh' });
   const db = await srv.db();
-  return db.costItems.find((i) => i.ten === 'Vật tư VLXD');
+  const hm = db.costItems.find((i) => i.ten === 'Vật tư VLXD');
+  await srv.ok('POST', '/api/materials', { ma: 'DN', ten: 'Vật tư điện nước', dvt: 'lô', maHM: hm.ma }); // phiếu nhập: hạng mục theo vật tư
+  return hm;
 }
 
 test('TL1 Word / Excel: nhận .docx .xlsx .doc .xls theo nội dung; từ chối file có macro, file giả đuôi; luôn tải về (Content-Disposition: attachment, nosniff)', async () => {
@@ -85,7 +87,8 @@ test('TL2 phiếu nhập MỚI: chọn ảnh + Excel trước khi lưu (bỏ b�
     const { browser, page, errors } = await openPage(srv, '#/cp-nhap');
     try {
       await page.waitForSelector('[data-att-pending-input]', { state: 'attached' });
-      for (const [n, v] of [['maCT', 'CT1'], ['maNCC', 'MINH'], ['hm', 'Vật tư VLXD']]) { const el = page.locator('#view [name=' + n + ']').first(); await el.fill(v); await el.press('Tab'); }
+      for (const [n, v] of [['maCT', 'CT1'], ['maNCC', 'MINH']]) { const el = page.locator('#view [name=' + n + ']').first(); await el.fill(v); await el.press('Tab'); }
+      await page.locator('[data-row="0"][data-col=maVT]').fill('DN'); await page.locator('[data-row="0"][data-col=maVT]').dispatchEvent('change');
       await page.locator('[data-row="0"][data-col=dienGiai]').click();
       await page.locator('[data-row="0"][data-col=dienGiai]').fill('HĐ điện nước Minh 17/8');
       await page.locator('[data-row="0"][data-col=thanhTien]').click();

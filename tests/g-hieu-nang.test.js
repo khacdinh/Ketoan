@@ -178,8 +178,9 @@ test('G3 giao diện với 20.000 dòng: mở từng màn hình, lọc, tìm ki�
     const c0 = db.costs[0];
     await page.fill('#cp-head input[name=maCT]', c0.maCT);
     await page.fill('#cp-head input[name=maNCC]', c0.maNCC);
-    await page.fill('#cp-head input[name=hm]', db.costItems.find((i) => i.ma === c0.maHM).ten);
-    await page.locator('#cp-head input[name=hm]').dispatchEvent('change');
+    const vt0 = db.materials.find((m) => m.maHM); // hạng mục của dòng lấy theo vật tư
+    await page.fill('#cp-body [data-row="0"][data-col=maVT]', vt0.ma);
+    await page.locator('#cp-body [data-row="0"][data-col=maVT]').dispatchEvent('change');
     await page.fill('#cp-body [data-row="0"][data-col=dienGiai]', 'phiếu đo hiệu năng');
     await page.fill('#cp-body [data-row="0"][data-col=soLuong]', '2');
     await page.fill('#cp-body [data-row="0"][data-col=donGia]', '1000');

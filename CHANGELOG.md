@@ -1,5 +1,11 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Phiếu nhập chi phí: bỏ chọn hạng mục, nhóm › hạng mục theo vật tư (06/10/2026)
+
+- Bỏ ô **Hạng mục** ở đầu phiếu và ô gõ hạng mục ở từng dòng. Cột mới **Nhóm › Hạng mục** chỉ hiển thị nhóm chi phí và hạng mục đã gắn cho mã vật tư (Danh mục › Vật tư), không sửa được, nên không còn lệch dữ liệu giữa phiếu và danh mục.
+- Mỗi dòng mới phải có **mã vật tư** (đã gắn hạng mục); dòng không có vật tư hoặc vật tư chưa gắn hạng mục bị chặn khi ghi, báo đúng dòng. Nhân công / phí / hóa đơn bán lẻ tạo thành vật tư gắn hạng mục; hộp thêm nhanh vật tư bắt buộc chọn **Hạng mục**.
+- Dòng cũ không có vật tư (nhập trước đây hoặc từ Excel) vẫn giữ hạng mục đã lưu khi mở sửa phiếu.
+
 ## Phiếu nhập chi phí: mỗi dòng một công trình (06/10/2026)
 
 - Bảng dòng hàng có thêm cột **Công trình** (để trống = công trình đầu phiếu). Một nhà cung cấp giao hàng cho nhiều công trình trong cùng một phiếu thì ghi công trình riêng ở từng dòng; đầu phiếu đổi tên “Công trình (mặc định)” và được **để trống** khi mọi dòng đều ghi công trình riêng. Gõ tên công trình thì tự đổi sang mã.

@@ -19,6 +19,8 @@ async function seed(srv) {
   const hm = (t) => db.costItems.find((i) => i.ten === t).ma;
   await srv.ok('POST', '/api/materials', { ma: 'XM', ten: 'Xi măng', dvt: 'bao', maHM: hm('Vật tư VLXD') });
   await srv.ok('POST', '/api/materials', { ma: 'CAT', ten: 'Cát xây', dvt: 'm3', maHM: hm('Vật tư VLXD') });
+  // hạng mục (và nhóm) của dòng chi phí lấy theo vật tư, nên nhân công / khoán cũng phải là vật tư gắn hạng mục
+  await srv.ok('POST', '/api/materials', { ma: 'NC', ten: 'Nhân công thợ nề', dvt: 'công', maHM: hm('Nhân công thợ nề') });
   return hm;
 }
 
@@ -46,8 +48,6 @@ test('F1 phiếu nhập chi phí: nhập toàn bộ bằng bàn phím (Enter san
     await type(page, 'S1'); await page.keyboard.press('Enter');
     assert.equal((await active(page)).name, 'soPhieu');
     await type(page, 'GH-77'); await page.keyboard.press('Enter');
-    assert.equal((await active(page)).name, 'hm');
-    await type(page, 'Vật tư VLXD'); await page.keyboard.press('Enter');
     let a = await active(page);
     assert.deepEqual([a.col, a.row], ['maVT', '0'], 'Enter ở ô cuối đầu phiếu nhảy xuống dòng hàng đầu tiên');
     // dòng 1: XM — tự điền tên, ĐVT
@@ -70,17 +70,18 @@ test('F1 phiếu nhập chi phí: nhập toàn bộ bằng bàn phím (Enter san
     await type(page, '8000'); await page.keyboard.press('Enter');
     assert.equal(await page.inputValue('tr[data-row="1"] [data-col=thanhTien]'), '1.000');
     // dòng 3: không mã VT, nhân công, SL là phép tính, đơn giá kiểu 300k
-    await page.keyboard.press('Enter'); // bỏ qua mã VT
+    await type(page, 'NC'); await page.keyboard.press('Enter'); // nhân công cũng là vật tư (hạng mục theo vật tư)
     await type(page, 'Công thợ hồ'); await page.keyboard.press('Enter');
     await type(page, '10+5'); await page.keyboard.press('Enter');
     await type(page, '300k');
-    // đổi hạng mục riêng của dòng 3 bằng bàn phím: Tab qua ô Thành tiền (đã tự tính) sang ô hạng mục riêng
+    // Tab qua ô Thành tiền (đã tự tính) sang Loại CP; cột nhóm chi phí › hạng mục chỉ hiển thị theo vật tư, không có ô gõ
     await page.keyboard.press('Tab');
     assert.equal((await active(page)).col, 'thanhTien');
     await page.keyboard.press('Tab');
-    assert.equal((await active(page)).col, 'hm');
-    await type(page, 'Nhân công thợ nề'); await page.keyboard.press('Tab');
     assert.equal((await active(page)).col, 'loaiCP');
+    assert.match(await page.$eval('tr[data-row="2"] .vt-hm', (e) => e.textContent), /Nhân công thợ nề/, 'hiện hạng mục theo vật tư');
+    assert.match(await page.$eval('tr[data-row="0"] .vt-hm', (e) => e.textContent), /Vật tư VLXD/);
+    assert.equal(await page.locator('#cp-head input[name=hm]').count(), 0, 'đầu phiếu không còn ô hạng mục');
     // kiểm tra tổng trước khi lưu
     assert.equal(await page.inputValue('tr[data-row="2"] [data-col=thanhTien]'), '4.500.000');
     assert.equal(await page.$eval('#cp-total', (e) => e.textContent.trim()), '7.626.000');
@@ -170,22 +171,6 @@ test('F1b phiếu nhập: kiểm tra dữ liệu bằng bàn phím (báo lỗi, 
     await page.waitForTimeout(300);
     assert.equal(await page.inputValue('#cp-head input[name=maNCC]'), 'NCC_MOI');
     assert.ok((await srv.db()).suppliers.some((s) => s.ma === 'NCC_MOI' && s.ten === 'Nhà cung cấp mới'));
-    // hạng mục chưa có: thêm nhanh
-    await page.fill('#cp-head input[name=hm]', 'Hạng mục mới tinh');
-    await page.locator('#cp-head input[name=hm]').dispatchEvent('change');
-    // bấm thẳng vào liên kết khi ô vẫn còn tiêu điểm (sự kiện change thật xảy ra lúc rời ô) phải vẫn được
-    await page.waitForSelector('#cp-head [data-act=add-hm]');
-    await page.click('#cp-head [data-act=add-hm]');
-    await page.waitForSelector('#modal-root form', { timeout: 5000 }).catch(async () => { await page.screenshot({ path: '/tmp/f1b-fail.png' }); throw new Error('không mở được hộp thêm hạng mục; toast: ' + (await toast(page)) + ' lỗi trang: ' + JSON.stringify(errors)); });
-    await page.waitForTimeout(150);
-    // ô Thuộc nhóm là ô gõ tìm: chọn nhóm thứ hai trong gợi ý
-    await page.focus('#modal-root input[name=maNhom]'); await page.keyboard.press('ArrowDown');
-    await page.fill('#modal-root input[name=maNhom]', await page.$eval('#modal-root .combo-list', (ul) => ul.querySelectorAll('.combo-opt b')[1].textContent));
-    await page.keyboard.press('Escape');
-    await page.keyboard.press('Enter');
-    await page.waitForSelector('#modal-root form', { state: 'detached' });
-    await page.waitForTimeout(300);
-    assert.ok((await srv.db()).costItems.some((i) => i.ten === 'Hạng mục mới tinh'));
     // mã vật tư chưa có: thêm nhanh rồi tiêu điểm sang số lượng
     await page.focus('#cp-body [data-row="0"][data-col=maVT]');
     await type(page, 'VT_MOI'); await page.keyboard.press('Tab');
@@ -196,7 +181,8 @@ test('F1b phiếu nhập: kiểm tra dữ liệu bằng bàn phím (báo lỗi, 
     await page.waitForTimeout(150);
     await page.fill('#modal-root input[name=ten]', 'Vật tư mới thêm nhanh');
     await page.fill('#modal-root input[name=dvt]', 'cái');
-    await page.keyboard.press('Enter');
+    await page.fill('#modal-root input[name=hmTen]', 'Vật tư VLXD'); // hạng mục của vật tư (dòng chi phí lấy theo)
+    await page.focus('#modal-root input[name=dvt]'); await page.keyboard.press('Enter'); // lưu bằng Enter (từ ô thường, không phải ô có danh sách gợi ý)
     await page.waitForSelector('#modal-root form', { state: 'detached' });
     await page.waitForTimeout(400);
     assert.equal(await page.inputValue('tr[data-row="0"] [data-col=maVT]'), 'VT_MOI');
@@ -245,10 +231,9 @@ test('F1c phiếu nhập: dòng chỉ có Thành tiền (khoán, không SL / ĐG
     await page.waitForTimeout(150);
     await page.fill('#cp-head input[name=maCT]', 'CT1');
     await page.fill('#cp-head input[name=maNCC]', 'S1');
-    await page.fill('#cp-head input[name=hm]', 'Nhân công thợ nề');
-    await page.dispatchEvent('#cp-head input[name=hm]', 'change');
-    // dòng 1: khoán — Enter qua Số lượng, Đơn giá để trống, gõ Thành tiền
-    await page.focus('#cp-body [data-row="0"][data-col=dienGiai]');
+    // dòng 1: khoán (vật tư NC = nhân công) — Enter qua Số lượng, Đơn giá để trống, gõ Thành tiền
+    await page.focus('#cp-body [data-row="0"][data-col=maVT]');
+    await type(page, 'NC'); await page.keyboard.press('Enter');
     await type(page, 'Khoán nhân công đợt 1'); await page.keyboard.press('Enter');
     assert.equal((await active(page)).col, 'soLuong'); await page.keyboard.press('Enter');
     assert.equal((await active(page)).col, 'donGia'); await page.keyboard.press('Enter');
@@ -260,7 +245,7 @@ test('F1c phiếu nhập: dòng chỉ có Thành tiền (khoán, không SL / ĐG
     assert.equal(await page.inputValue('tr[data-row="0"] [data-col=thanhTien]'), '12.000.000');
     assert.equal(await page.$eval('#cp-total', (e) => e.textContent.trim()), '12.000.000');
     // dòng 2: Số lượng + Thành tiền → Đơn giá tự tính
-    await page.keyboard.press('Enter');
+    await type(page, 'NC'); await page.keyboard.press('Enter');
     await type(page, 'Công phụ'); await page.keyboard.press('Enter');
     await type(page, '4'); await page.keyboard.press('Enter'); await page.keyboard.press('Enter');
     assert.equal((await active(page)).col, 'thanhTien');
@@ -272,7 +257,8 @@ test('F1c phiếu nhập: dòng chỉ có Thành tiền (khoán, không SL / ĐG
     assert.equal(await page.inputValue('tr[data-row="1"] [data-col=donGia]'), '200.000');
     assert.equal(await page.inputValue('tr[data-row="1"] [data-col=thanhTien]'), '1.000.000');
     // dòng 3: SL × ĐG như cũ, Thành tiền tự tính; không chia chẵn → Đơn giá để máy chủ tính tới 0,01
-    await page.focus('#cp-body [data-row="2"][data-col=dienGiai]');
+    await page.focus('#cp-body [data-row="2"][data-col=maVT]');
+    await type(page, 'NC'); await page.keyboard.press('Enter');
     await type(page, 'Công lẻ'); await page.keyboard.press('Enter');
     await type(page, '3'); await page.keyboard.press('Enter'); await page.keyboard.press('Enter');
     await type(page, '160.000');

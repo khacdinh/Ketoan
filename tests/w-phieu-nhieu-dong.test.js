@@ -183,14 +183,16 @@ function seedDb() { return seed(); }
 
 test('W4 phiếu nhập chi phí trên giao diện: cột Công trình riêng, đầu phiếu trống công trình, ghi nhiều công trình; mở lại phiếu giữ đúng công trình từng dòng; danh sách phiếu ghi “+N công trình”', { skip: SKIP, timeout: 180000 }, async () => {
   const srv = await startServer({ seed: seed() });
+  await srv.ok('POST', '/api/materials', { ma: 'XM', ten: 'Xi măng', dvt: 'bao', maHM: 'HM01' });
+  await srv.ok('POST', '/api/materials', { ma: 'CAT', ten: 'Cát', dvt: 'm3', maHM: 'HM01' });
   const { browser, page, errors } = await openPage(srv, '#/cp-nhap');
   const cell = (row, col) => 'tr[data-row="' + row + '"] [data-col=' + col + ']';
   try {
     await page.waitForSelector('#cp-body tr[data-row]');
     assert.equal(await page.locator('#cp-lines thead th', { hasText: 'Công trình' }).count(), 1, 'có cột Công trình');
     await page.fill('#cp-head input[name=maNCC]', 'ONGA'); await page.locator('#cp-head input[name=maNCC]').dispatchEvent('change');
-    await page.fill('#cp-head input[name=hm]', 'Vật tư'); await page.locator('#cp-head input[name=hm]').dispatchEvent('change');
     // dòng chưa có công trình, đầu phiếu trống → báo lỗi tại ô Công trình của dòng
+    await page.fill(cell(0, 'maVT'), 'XM'); await page.locator(cell(0, 'maVT')).dispatchEvent('change');
     await page.fill(cell(0, 'dienGiai'), 'Xi măng'); await page.fill(cell(0, 'thanhTien'), '5tr'); await page.locator(cell(0, 'thanhTien')).dispatchEvent('change');
     await page.focus(cell(0, 'thanhTien'));
     await page.keyboard.press('Control+Enter');
@@ -199,6 +201,7 @@ test('W4 phiếu nhập chi phí trên giao diện: cột Công trình riêng, �
     await page.fill(cell(0, 'ct'), 'CT1'); await page.locator(cell(0, 'ct')).dispatchEvent('change');
     await page.fill(cell(1, 'ct'), 'công trình 2'); await page.locator(cell(1, 'ct')).dispatchEvent('change');
     assert.equal(await page.inputValue(cell(1, 'ct')), 'CT2', 'gõ tên thì đổi sang mã');
+    await page.fill(cell(1, 'maVT'), 'CAT'); await page.locator(cell(1, 'maVT')).dispatchEvent('change');
     await page.fill(cell(1, 'dienGiai'), 'Cát'); await page.fill(cell(1, 'thanhTien'), '3tr'); await page.locator(cell(1, 'thanhTien')).dispatchEvent('change');
     await page.focus(cell(1, 'thanhTien'));
     await page.keyboard.press('Control+Enter');
@@ -247,29 +250,34 @@ test('W5 hạng mục theo vật tư: dòng có mã vật tư luôn lấy hạng
   } finally { await srv.stop(); }
 });
 
-test('W6 phiếu nhập chi phí trên giao diện: ô Hạng mục của dòng có vật tư tự hiện hạng mục của vật tư và không sửa được; đầu phiếu không bắt buộc hạng mục', { skip: SKIP, timeout: 180000 }, async () => {
+test('W6 phiếu nhập chi phí trên giao diện: không còn ô hạng mục ở đầu phiếu; cột Nhóm chi phí › Hạng mục chỉ hiển thị theo vật tư; dòng không có vật tư bị chặn', { skip: SKIP, timeout: 180000 }, async () => {
   const srv = await startServer({ seed: seed() });
   await srv.ok('POST', '/api/cost-items', { ma: 'HM02', ten: 'Nhân công', maNhom: 'G1' });
   await srv.ok('POST', '/api/materials', { ma: 'XM', ten: 'Xi măng', dvt: 'bao', maHM: 'HM01' });
+  await srv.ok('POST', '/api/materials', { ma: 'NC', ten: 'Công thợ', dvt: 'công', maHM: 'HM02' });
   const { browser, page, errors } = await openPage(srv, '#/cp-nhap');
   const cell = (row, col) => 'tr[data-row="' + row + '"] [data-col=' + col + ']';
   try {
     await page.waitForSelector('#cp-body tr[data-row]');
-    assert.equal(await page.locator('#cp-head label:has(input[name=hm]) .req').count(), 0, 'đầu phiếu: hạng mục không còn dấu * bắt buộc');
+    assert.equal(await page.locator('#cp-head input[name=hm]').count(), 0, 'đầu phiếu không còn ô hạng mục');
+    assert.equal(await page.locator('#cp-body [data-col=hm]').count(), 0, 'dòng không còn ô gõ hạng mục');
     await page.fill('#cp-head input[name=maCT]', 'CT1'); await page.locator('#cp-head input[name=maCT]').dispatchEvent('change');
     await page.fill('#cp-head input[name=maNCC]', 'ONGA'); await page.locator('#cp-head input[name=maNCC]').dispatchEvent('change');
     await page.fill(cell(0, 'maVT'), 'XM'); await page.locator(cell(0, 'maVT')).dispatchEvent('change');
     await page.fill(cell(0, 'soLuong'), '10'); await page.fill(cell(0, 'donGia'), '95k'); await page.locator(cell(0, 'donGia')).dispatchEvent('change');
-    assert.equal(await page.inputValue(cell(0, 'hm')), 'Vật tư', 'hiện hạng mục của vật tư');
-    assert.equal(await page.getAttribute(cell(0, 'hm'), 'readonly'), '', 'không sửa được');
-    // dòng không có vật tư: nhập được hạng mục riêng
+    assert.match(await page.$eval('tr[data-row="0"] .vt-hm', (e) => e.textContent), /Vật liệu.*›.*Vật tư/, 'hiện nhóm › hạng mục của vật tư');
+    // dòng không có mã vật tư → không ghi, báo cần mã vật tư
     await page.fill(cell(1, 'dienGiai'), 'Công thợ'); await page.fill(cell(1, 'thanhTien'), '2tr'); await page.locator(cell(1, 'thanhTien')).dispatchEvent('change');
-    assert.equal(await page.getAttribute(cell(1, 'hm'), 'readonly'), null);
-    await page.fill(cell(1, 'hm'), 'Nhân công'); await page.locator(cell(1, 'hm')).dispatchEvent('change');
+    await page.focus(cell(1, 'thanhTien'));
+    await page.keyboard.press('Control+Enter');
+    await page.waitForFunction(() => /Dòng 2: cần Mã vật tư/.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
+    assert.equal((await srv.db()).costs.filter((x) => x.maVT === 'XM').length, 0, 'chưa ghi');
+    await page.fill(cell(1, 'maVT'), 'NC'); await page.locator(cell(1, 'maVT')).dispatchEvent('change');
+    assert.match(await page.$eval('tr[data-row="1"] .vt-hm', (e) => e.textContent), /Nhân công/);
     await page.focus(cell(1, 'thanhTien'));
     await page.keyboard.press('Control+Enter');
     await page.waitForFunction(() => /Đã ghi 2 dòng/.test(document.querySelector('#toast-root').textContent), null, { timeout: 6000 });
-    const cs = (await srv.db()).costs.filter((x) => x.maVT === 'XM' || x.dienGiai === 'Công thợ');
+    const cs = (await srv.db()).costs.filter((x) => x.maVT === 'XM' || x.maVT === 'NC');
     assert.deepEqual(cs.map((x) => x.maHM).sort(), ['HM01', 'HM02']);
     assert.deepEqual(errors.filter((e) => !/status of 4/.test(e)), []);
   } finally { await browser.close(); await srv.stop(); }

@@ -138,11 +138,11 @@ export function openMaterialForm(m, onSaved) {
       { name: 'ma', label: 'Mã vật tư', required: true, placeholder: 'VD: ST-D16, VL-CATXAY', hint: used ? 'Đổi mã sẽ cập nhật ' + used + ' dòng chi phí' : 'Tiền tố hạng mục + tên viết tắt không dấu' },
       { name: 'dvt', label: 'Đơn vị tính chuẩn', list: 'dl-dvt-f', placeholder: 'cây, kg, m3, viên...' },
       { name: 'ten', label: 'Tên vật tư', required: true, wide: true },
-      { name: 'hmTen', label: 'Hạng mục hay dùng', list: 'dl-hm-f', placeholder: 'Gõ tên hạng mục', hint: 'Phiếu nhập đưa vật tư của hạng mục này lên đầu gợi ý' },
+      { name: 'hmTen', label: 'Hạng mục', required: true, list: 'dl-hm-f', placeholder: 'Gõ tên hạng mục', hint: 'Mọi dòng chi phí của vật tư này tính vào hạng mục (và nhóm chi phí) này' },
       { name: 'loaiCP', label: 'Loại CP mặc định', type: 'select', options: [['', 'Tự xác định']].concat(KT.LOAI_CP.map((l) => [l, l])) },
       { name: 'ghiChu', label: 'Ghi chú', wide: true }
     ],
-    transform(d) { d.maHM = d.hmTen; delete d.hmTen; }
+    transform(d) { d.maHM = d.hmTen; } // giữ hmTen để kiểm tra ô bắt buộc (máy chủ bỏ qua trường lạ)
   });
 }
 
