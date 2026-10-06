@@ -233,6 +233,7 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
     đồng thì ô Đơn giá để trống (chữ “tự tính”), khi lưu phần mềm tính đơn giá tới 2 số lẻ sao cho Số lượng × Đơn giá đúng
     bằng Thành tiền.
   - **Nhóm › Hạng mục**: không chọn tay nữa. Mỗi dòng phải có **mã vật tư**; cột Nhóm › Hạng mục tự hiện nhóm chi phí và hạng mục đã gắn cho vật tư ở Danh mục › Vật tư, không sửa được ở phiếu (nhờ vậy một vật tư không bao giờ nằm ở hai hạng mục / hai nhóm). Nhân công, phí, hóa đơn bán lẻ… cũng tạo thành vật tư (ví dụ “Nhân công thợ nề”, ĐVT công) gắn hạng mục tương ứng; vật tư chưa có thì bấm **Thêm** ngay ở dòng, ô Hạng mục trong hộp thêm vật tư là bắt buộc. Dòng cũ không có vật tư vẫn giữ hạng mục đã lưu khi sửa lại phiếu.
+  - **Loại CP** (Vật tư / Nhân công / Dịch vụ-Phí…) không chọn ở phiếu nhập: tự xác định theo vật tư (loại mặc định của vật tư, nếu không có thì theo hạng mục).
     hạng mục tên “Nhân công…” → Nhân công; có mã VT → Vật tư; không có mã VT → Dịch vụ-Phí) hoặc chọn tay.
   - Mã chưa có trong danh mục: ô báo đỏ kèm nút **Thêm** để thêm nhanh ngay trong phiếu.
 - **Phím tắt**: **Enter** sang ô kế tiếp (Mã VT → Diễn giải → Số lượng → Đơn giá → dòng sau; Đơn giá để trống thì
