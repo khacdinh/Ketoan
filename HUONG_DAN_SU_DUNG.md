@@ -94,6 +94,8 @@ Mục **Kiểm soát** (con số màu vàng = số việc cần xử lý): **C�
 
 - Bấm **Ghi thu / chi** (hoặc phím **F3**): mở **trang Ghi thu / chi** (không còn là hộp thoại). **Hủy** hoặc **Esc** quay lại màn hình trước; ghi sổ xong cũng tự quay lại.
   Ô **Ngày** luôn mặc định là **hôm nay**, kể cả sau khi vừa ghi một phiếu ngày khác hoặc rời trang rồi mở lại.
+  Bắt buộc chọn **Nhà cung cấp, đối tượng** (đầu phiếu) và **Công trình** cho **từng dòng**; thiếu thì phần mềm báo ngay tại ô và chưa ghi.
+  Người nộp quỹ, thợ, chủ nhà… cũng thêm vào danh mục NCC, đối tượng. Khoản chung hay văn phòng thì chọn công trình chung (ví dụ VP).
 - Chọn **Chi tiền / Thu tiền / Thu & chi cùng lúc** (loại thứ ba dùng cho các khoản "đã thanh toán trước, thực tế không có thu" như trong file cũ).
 - **Ngày** luôn nhập dạng ngày/tháng/năm: gõ `29/9` là đủ (tự hiểu năm nay), hoặc `29/09/2026`, `290926`. Phím ↑ ↓ để tăng/giảm 1 ngày.
 - **Số phiếu**: bấm **Số mới** để lấy số kế tiếp trong tháng (VD `PC045/09`). Nhiều dòng dùng chung một số phiếu sẽ được gộp khi in.

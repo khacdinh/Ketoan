@@ -64,4 +64,10 @@ async function chonKy(page, prefix, kind, from, to) {
   }
 }
 
-module.exports = { chromium, SKIP, openPage, settle, num, pick, chonCongTrinh, chonKy };
+// Trang Ghi thu / chi: điền hai ô bắt buộc — Nhà cung cấp / đối tượng (đầu phiếu) và Công trình (dòng 1)
+async function dienBatBuoc(page, ncc, ct) {
+  if (ncc) { await page.fill('#entry-page input[name=maNCC]', ncc); await page.locator('#entry-page input[name=maNCC]').dispatchEvent('change'); }
+  if (ct) { await page.fill('#entry-page [name=maDuAn]', ct); await page.locator('#entry-page [name=maDuAn]').dispatchEvent('change'); }
+}
+
+module.exports = { chromium, SKIP, openPage, settle, num, pick, chonCongTrinh, chonKy, dienBatBuoc };

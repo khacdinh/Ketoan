@@ -8,7 +8,7 @@ const path = require('path');
 const JSZip = require('jszip');
 const ExcelJS = require('exceljs');
 const { startServer, readStored, tmpDir } = require('./helpers');
-const { SKIP, openPage, settle } = require('./ui-helpers');
+const { SKIP, openPage, settle, dienBatBuoc } = require('./ui-helpers');
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 const up = (srv, owner, id, buf, name) => srv.call('POST', '/api/attachments?owner=' + owner + '&id=' + id, buf, { 'X-Ten-File': encodeURIComponent(name) });
@@ -125,6 +125,8 @@ test('TL3 Ghi thu / chi (dòng mới): chọn ảnh trước khi ghi → Ghi s�
   const dir = tmpDir('tl3');
   const f1 = path.join(dir, 'hoa don 1.png'); fs.writeFileSync(f1, PNG);
   const f2 = path.join(dir, 'bang ke.xlsx'); fs.writeFileSync(f2, await xlsx());
+  await srv.ok('POST', '/api/projects', { ma: 'CT1', ten: 'Công trình 1' });
+  await srv.ok('POST', '/api/suppliers', { ma: 'NCC1', ten: 'NCC 1' });
   try {
     const { browser, page, errors } = await openPage(srv, '#/so-thu-chi');
     try {
@@ -133,6 +135,7 @@ test('TL3 Ghi thu / chi (dòng mới): chọn ảnh trước khi ghi → Ghi s�
       await page.click('#entry-page [name=noiDung]');
       await page.fill('#entry-page [name=noiDung]', 'Mua vật tư lẻ');
       await page.fill('#entry-page [name=chi]', '250000');
+      await dienBatBuoc(page, 'NCC1', 'CT1');
       await page.setInputFiles('#entry-page [data-att-pending-input]', [f1, f2]);
       await page.waitForFunction(() => document.querySelectorAll('#entry-page [data-att-pending] .att-item').length === 2);
       await page.click('#entry-page [data-act=save-next]');

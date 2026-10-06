@@ -282,3 +282,41 @@ test('W6 phiếu nhập chi phí trên giao diện: không còn ô hạng mục 
     assert.deepEqual(errors.filter((e) => !/status of 4/.test(e)), []);
   } finally { await browser.close(); await srv.stop(); }
 });
+
+test('W7 Ghi thu / chi bắt buộc Nhà cung cấp / đối tượng và Công trình (mỗi dòng): thiếu thì báo ngay tại ô, không ghi', { skip: SKIP, timeout: 120000 }, async () => {
+  const srv = await startServer({ seed: seed() });
+  const { browser, page, errors } = await openPage(srv, '#/so-thu-chi');
+  const row = (n) => '#phieu-dong tbody tr:nth-child(' + n + ')';
+  try {
+    await page.waitForSelector('#view tr[data-id]');
+    const truoc = readStored(srv.dataDir).entries.length;
+    await page.keyboard.press('F3');
+    await page.waitForSelector('#entry-form'); await page.waitForTimeout(150);
+    assert.match(await page.$eval('#entry-page', (e) => e.innerText), /Nhà cung cấp, đối tượng \*/);
+    assert.match(await page.$eval('#phieu-dong thead', (e) => e.innerText), /Công trình \*/);
+    await page.click('#entry-page [name=noiDung]'); await page.fill('#entry-page [name=noiDung]', 'Thiếu thông tin');
+    await page.fill('#entry-page [name=chi]', '1tr');
+    // thiếu NCC
+    await page.keyboard.press('Control+Enter'); await settle(page);
+    assert.match(await page.$eval('#entry-page', (e) => e.innerText), /Chọn nhà cung cấp \/ đối tượng/);
+    assert.equal(await page.evaluate(() => document.activeElement.name), 'maNCC', 'con trỏ về ô NCC');
+    // có NCC, thiếu công trình
+    await page.fill('#entry-page input[name=maNCC]', 'ONGA'); await page.locator('#entry-page input[name=maNCC]').dispatchEvent('change');
+    await page.keyboard.press('Control+Enter'); await settle(page);
+    assert.match(await page.$eval('#entry-page', (e) => e.innerText), /Chọn công trình cho dòng này/);
+    // dòng 2 thiếu công trình → báo "Dòng 2"
+    await page.fill('#entry-page [name=maDuAn]', 'CT1'); await page.locator('#entry-page [name=maDuAn]').dispatchEvent('change');
+    await page.click('[data-act=them-dong]');
+    await page.fill(row(2) + ' [data-c=chi]', '2tr');
+    await page.keyboard.press('Control+Enter'); await settle(page);
+    assert.match(await page.$eval('#entry-page', (e) => e.innerText), /Dòng 2: Chọn công trình cho dòng này/);
+    assert.equal(readStored(srv.dataDir).entries.length, truoc, 'chưa ghi dòng nào');
+    // đủ thì ghi được
+    await page.fill(row(2) + ' [data-c=maDuAn]', 'CT2'); await page.locator(row(2) + ' [data-c=maDuAn]').dispatchEvent('change');
+    await page.keyboard.press('Control+Enter');
+    await page.waitForFunction(() => !document.querySelector('#entry-page'), null, { timeout: 8000 });
+    const moi = readStored(srv.dataDir).entries.filter((e) => e.noiDung === 'Thiếu thông tin');
+    assert.deepEqual(moi.map((e) => [e.maNCC, e.maDuAn, e.chi]), [['ONGA', 'CT1', 1000000], ['ONGA', 'CT2', 2000000]]);
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); await srv.stop(); }
+});

@@ -4,7 +4,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { KT, startServer, readStored } = require('./helpers');
-const { SKIP, openPage, settle } = require('./ui-helpers');
+const { SKIP, openPage, settle, dienBatBuoc } = require('./ui-helpers');
 
 const chonNgay = async (page, scope, txt) => {
   await page.click(scope + ' .date-text');
@@ -38,6 +38,8 @@ test('NG1 phiếu nhập chi phí: mặc định hôm nay; chọn ngày khác �
 
 test('NG2 Ghi thu / chi: mặc định hôm nay; ghi một phiếu ngày khác rồi mở phiếu mới → hôm nay; chọn ngày khác, rời trang, mở lại → hôm nay', { skip: SKIP, timeout: 120000 }, async () => {
   const srv = await startServer({});
+  await srv.ok('POST', '/api/projects', { ma: 'CT1', ten: 'Công trình 1' });
+  await srv.ok('POST', '/api/suppliers', { ma: 'NCC1', ten: 'NCC 1' });
   const { browser, page, errors } = await openPage(srv, '#/so-thu-chi');
   const ngay = () => page.inputValue('#entry-page input[name=ngay]');
   try {
@@ -49,6 +51,7 @@ test('NG2 Ghi thu / chi: mặc định hôm nay; ghi một phiếu ngày khác r
     assert.equal(await ngay(), '2026-03-10');
     await page.click('#entry-page [name=noiDung]'); await page.fill('#entry-page [name=noiDung]', 'Chi thử ngày khác');
     await page.fill('#entry-page [name=chi]', '100000');
+    await dienBatBuoc(page, 'NCC1', 'CT1');
     await page.keyboard.press('Control+Enter');
     await page.waitForFunction(() => !document.querySelector('#entry-page'), null, { timeout: 8000 });
     assert.ok(readStored(srv.dataDir).entries.some((e) => e.ngay === '2026-03-10' && e.noiDung === 'Chi thử ngày khác'));

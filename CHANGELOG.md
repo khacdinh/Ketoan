@@ -1,5 +1,11 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Phiếu thu / chi bắt buộc Nhà cung cấp và Công trình (06/10/2026)
+
+- Trang **Ghi thu / chi** bắt buộc **Nhà cung cấp, đối tượng** và **Công trình** của từng dòng; cả hai ô có dấu *. Thiếu thì báo ngay tại ô (nhiều dòng thì ghi rõ “Dòng N”), chưa ghi gì.
+- Khoản chung / văn phòng: chọn công trình chung (ví dụ VP). Người nộp quỹ, thợ, chủ nhà…: thêm vào danh mục NCC, đối tượng.
+- Dữ liệu cũ và dữ liệu nhập từ Excel không bị chặn. Các dòng còn thiếu vẫn hiện ở Kiểm soát › Cần xử lý; sửa lại sẽ phải điền đủ.
+
 ## Ngày mặc định là hôm nay (06/10/2026)
 
 - **Phiếu nhập chi phí** và **Ghi thu / chi**: ô Ngày luôn mặc định là hôm nay, không còn lấy ngày của phiếu vừa ghi.

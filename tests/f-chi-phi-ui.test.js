@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
 const { KT, startServer, readJsonFile, orphanErrors } = require('./helpers');
-const { SKIP, openPage, settle, num, pick, chonCongTrinh, chonKy } = require('./ui-helpers');
+const { SKIP, openPage, settle, num, pick, chonCongTrinh, chonKy, dienBatBuoc } = require('./ui-helpers');
 
 const V2 = path.join(__dirname, 'fixtures', 'ketoan-v2-hien-tai.json');
 const key = (s) => String(s || '').trim().toLowerCase();
@@ -688,6 +688,8 @@ test('F6 Công nợ NCC theo kỳ: bảng Đầu kỳ / Phát sinh / Thanh toán
     assert.equal(await page.inputValue('#entry-form input[name=maNCC]'), debtor.ma);
     assert.equal(num(await page.inputValue('#entry-form input[name=chi]')), debtor.cuoiKy);
     const cash0 = KT.filterLedger(KT.buildLedger(KT.postedDb(db)), {});
+    // công trình bắt buộc: chọn một công trình NCC này có chi phí (đang xem tất cả công trình nên chưa điền sẵn)
+    if (!(await page.inputValue('#entry-form [name=maDuAn]'))) await dienBatBuoc(page, '', db.costs.find((c) => c.maNCC === debtor.ma && c.maCT).maCT);
     await page.keyboard.press('Control+Enter');
     await page.waitForSelector('#entry-form', { state: 'detached', timeout: 6000 });
     await settle(page);

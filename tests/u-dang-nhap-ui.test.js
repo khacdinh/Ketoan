@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startServer, readStored } = require('./helpers');
-const { SKIP, openPage, settle } = require('./ui-helpers');
+const { SKIP, openPage, settle, dienBatBuoc } = require('./ui-helpers');
 const { batDangNhap, taoVaDangNhap, MK_CHU, dongHo } = require('./auth-helpers');
 
 function seed() {
@@ -93,6 +93,7 @@ test('U1 vai trò ở giao diện: Chỉ xem không thấy nút thêm / sửa / 
     await moFormGhi(page);
     await page.fill('#entry-page [name=noiDung]', 'kế toán ghi');
     await page.fill('#entry-page [name=chi]', '5000');
+    await dienBatBuoc(page, 'NCC1', 'CT1');
     await page.keyboard.press('Control+Enter');
     await page.waitForFunction(() => !document.querySelector('#entry-page'));
     const e = readStored(srv.dataDir).entries.find((x) => x.noiDung === 'kế toán ghi');
@@ -171,6 +172,7 @@ test('U3 hết phiên không mất dữ liệu: 2 phút trước khi hết hiệ
     await moFormGhi(page);
     await page.fill('#entry-page [name=noiDung]', 'đang gõ dở khi hết phiên');
     await page.fill('#entry-page [name=chi]', '7000');
+    await dienBatBuoc(page, 'NCC1', 'CT1');
     // 58 phút không thao tác (60 phút mới hết): cảnh báo, đếm ngược, nằm trên hộp thoại đang mở
     await page.clock.fastForward(58 * PHUT);
     await page.waitForSelector('#phien-bar[data-loai=cho]');
@@ -201,6 +203,7 @@ test('U3 hết phiên không mất dữ liệu: 2 phút trước khi hết hiệ
     await moFormGhi(page);
     await page.fill('#entry-page [name=noiDung]', 'lưu khi phiên đã hết');
     await page.fill('#entry-page [name=chi]', '8000');
+    await dienBatBuoc(page, 'NCC1', 'CT1');
     dh.tien(61 * PHUT);
     await page.click('#entry-page [data-act=save]');
     await page.waitForSelector('#auth-root .auth-screen.lai #dn-form');

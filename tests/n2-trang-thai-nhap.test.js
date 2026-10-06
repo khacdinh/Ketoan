@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const path = require('path');
 const { KT, startServer, readJsonFile } = require('./helpers');
 const { summarize, FILE: MOC } = require('./so-lieu-moc');
-const { SKIP, openPage, settle, num } = require('./ui-helpers');
+const { SKIP, openPage, settle, num, dienBatBuoc } = require('./ui-helpers');
 const X = require('./excel-helpers');
 
 const V2 = path.join(__dirname, 'fixtures', 'ketoan-v2-hien-tai.json');
@@ -102,6 +102,7 @@ test('N2.3 giao diện: Lưu nháp từ form, dòng nháp có nhãn và không �
     await page.waitForTimeout(100);
     await page.fill('#entry-form textarea[name=noiDung]', 'Tạm ứng thợ (nháp)');
     await page.fill('#entry-form input[name=chi]', '2tr');
+    await dienBatBuoc(page, 'NCC_DIENTHUY', 'DANDC10');
     await page.click('[data-act=save-draft]');
     await page.waitForFunction(() => /Đã lưu nháp/.test(document.querySelector('#toast-root').textContent), null, { timeout: 5000 });
     await page.waitForSelector('#so-body tr.draft');

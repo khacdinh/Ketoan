@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startServer, readStored } = require('./helpers');
-const { SKIP, openPage, settle } = require('./ui-helpers');
+const { SKIP, openPage, settle, dienBatBuoc } = require('./ui-helpers');
 
 test('V1 danh mục NCC: tích 3 mã → thanh "Đã chọn 3"; Bỏ chọn xóa dấu tích; Xóa chỉ xóa mã chưa dùng, mã đang có dòng sổ được giữ và báo lý do; mã xóa vào Thùng rác', { skip: SKIP, timeout: 180000 }, async () => {
   const srv = await startServer({});
@@ -162,6 +162,7 @@ test('V5 biểu đồ Thu, chi trong ngày (Tổng quan): mỗi ngày hai cột 
 test('V6 phiếu chi có mục Mã vật tư: chọn theo mã hoặc tên, lưu vào dòng sổ, hiện ở Sổ quỹ; mã lạ bị từ chối; Thu thì không lưu; sửa bỏ mã; đổi mã vật tư lan sang dòng sổ; xóa vật tư đang dùng bị chặn', { skip: SKIP, timeout: 180000 }, async () => {
   const srv = await startServer({});
   await srv.ok('POST', '/api/projects', { ma: 'CT1', ten: 'Công trình 1' });
+  await srv.ok('POST', '/api/suppliers', { ma: 'NCC1', ten: 'NCC 1' });
   const hm = (await srv.db()).costItems[0].ma;
   await srv.ok('POST', '/api/materials', { ma: 'XM', ten: 'Xi măng', dvt: 'bao', maHM: hm });
   // API: mã lạ bị từ chối, mã đúng (không phân biệt hoa thường) được chuẩn hóa
@@ -179,6 +180,7 @@ test('V6 phiếu chi có mục Mã vật tư: chọn theo mã hoặc tên, lưu 
     await page.waitForTimeout(150);
     await page.click('#entry-page [name=noiDung]'); await page.fill('#entry-page [name=noiDung]', 'Chi mua xi măng đợt 2');
     await page.fill('#entry-page [name=chi]', '2tr');
+    await dienBatBuoc(page, 'NCC1', 'CT1');
     await page.fill('#entry-page [name=maVT]', 'Xi măng');
     await page.locator('#entry-page [name=maVT]').dispatchEvent('change');
     assert.match(await page.$eval('#vt-hint', (e) => e.textContent), /Xi măng · bao/);

@@ -98,7 +98,7 @@ function mountEntryForm(root, entry, opts, pageKey) {
     '<input name="soPhieu" class="input" value="' + esc(e.soPhieu) + '" placeholder="VD: PC045/09" aria-label="Số phiếu">' +
     '<button type="button" class="btn btn-secondary flex-none" data-act="so-moi" title="Lấy số phiếu kế tiếp trong tháng">Số mới</button></div>' +
     '<span class="hint" id="so-hint"></span></div>' +
-    '<label class="field"><span class="label">Nhà cung cấp, đối tượng</span><input name="maNCC" class="input" list="dl-suppliers" value="' + esc(e.maNCC) + '" placeholder="Gõ mã hoặc tên">' +
+    '<label class="field"><span class="label">Nhà cung cấp, đối tượng <b class="req">*</b></span><input name="maNCC" class="input" list="dl-suppliers" value="' + esc(e.maNCC) + '" placeholder="Gõ mã hoặc tên">' +
     '<span class="hint" id="ncc-hint"></span></label>' +
     '<label class="field"><span class="label">Người nhận, người nộp</span><input name="nguoiNhan" class="input" value="' + esc(e.nguoiNhan) + '" placeholder="Để trống thì lấy theo nhà cung cấp khi in"></label>' +
     '<label class="field col-span-2 max-sm:col-span-1"><span class="label">Ghi chú</span><input name="ghiChu" class="input" value="' + esc(e.ghiChu) + '"></label>' +
@@ -107,7 +107,7 @@ function mountEntryForm(root, entry, opts, pageKey) {
     '<span class="min-w-0 flex-1 text-[12px] text-ink-3">Mỗi dòng gắn một công trình riêng để công nợ nhà cung cấp tách đúng theo công trình.</span>' +
     '<button type="button" class="btn btn-secondary btn-sm" data-act="them-dong">' + icon('plus') + 'Thêm dòng</button></div>' +
     '<div class="scroll-x overflow-x-auto"><table class="ledger grid-entry" id="phieu-dong"><thead><tr>' +
-    '<th class="num w-8">#</th><th class="min-w-[200px]">Nội dung <b class="req">*</b></th><th class="w-[120px] min-w-[100px]">Công trình</th><th class="w-[190px] min-w-[150px]">Tên công trình · NCC còn nợ</th>' +
+    '<th class="num w-8">#</th><th class="min-w-[200px]">Nội dung <b class="req">*</b></th><th class="w-[120px] min-w-[100px]">Công trình <b class="req">*</b></th><th class="w-[190px] min-w-[150px]">Tên công trình · NCC còn nợ</th>' +
     '<th data-show="chi" class="w-[120px] min-w-[100px]">Mã vật tư</th><th data-show="chi" class="num money w-[140px] min-w-[120px]">Số tiền chi</th><th data-show="thu" class="num money w-[140px] min-w-[120px]">Số tiền thu</th><th class="w-10"><span class="sr-only">Bỏ dòng</span></th></tr></thead>' +
     '<tbody>' + dongDau.map(dongHtml).join('') + '</tbody>' +
     '<tfoot><tr><td colspan="4" class="text-[15px]" id="phieu-tong" aria-live="polite">Tổng phiếu</td>' +
@@ -409,7 +409,9 @@ function mountEntryForm(root, entry, opts, pageKey) {
       const nguoiNhan = get('nguoiNhan').value.trim(), ghiChu = get('ghiChu').value.trim();
       if (!KT.isISODate(chung.ngay)) return fail(get('ngay'), 'Nhập ngày chứng từ, ví dụ 29/9');
       if (KT.isLockedDate(S.all, chung.ngay)) return fail(get('ngay'), KT.lockMessage(KT.monthOf(chung.ngay), 'ghi'));
-      if (chung.maNCC && !supplierByCode(chung.maNCC)) return fail(get('maNCC'), 'Mã nhà cung cấp chưa có trong danh mục. Bấm “Thêm nhà cung cấp này” hoặc chọn mã có sẵn');
+      // bắt buộc: thu / chi với ai (NCC, thợ, chủ nhà, người nộp quỹ… đều là đối tượng trong danh mục)
+      if (!chung.maNCC) return fail(get('maNCC'), 'Chọn nhà cung cấp / đối tượng: gõ mã hoặc tên rồi chọn trong gợi ý');
+      if (!supplierByCode(chung.maNCC)) return fail(get('maNCC'), 'Mã nhà cung cấp chưa có trong danh mục. Bấm “Thêm nhà cung cấp này” hoặc chọn mã có sẵn');
 
       const trs = rows();
       const dongTrong = (tr) => {
@@ -426,7 +428,9 @@ function mountEntryForm(root, entry, opts, pageKey) {
         const maVT = loai === 'thu' ? '' : resolveCode(S.db.materials, cell(tr, 'maVT').value);
         const noiDung = cell(tr, 'noiDung').value.trim() || nd0;
         const thu = loai === 'chi' ? 0 : st.getThu(), chi = loai === 'thu' ? 0 : st.getChi();
-        if (maDuAn && !projectByCode(maDuAn)) return fail(cell(tr, 'maDuAn'), at + 'Mã công trình chưa có trong danh mục. Bấm “Thêm công trình này” hoặc chọn mã có sẵn');
+        // mỗi dòng thu / chi bắt buộc có công trình (khoản chung, văn phòng... thì chọn công trình chung) để công nợ, chi phí tính đúng chỗ
+        if (!maDuAn) return fail(cell(tr, 'maDuAn'), at + 'Chọn công trình cho dòng này (khoản chung / văn phòng thì chọn công trình chung)');
+        if (!projectByCode(maDuAn)) return fail(cell(tr, 'maDuAn'), at + 'Mã công trình chưa có trong danh mục. Bấm “Thêm công trình này” hoặc chọn mã có sẵn');
         if (maVT && !S.db.materials.some((x) => KT.keyOf(x.ma) === KT.keyOf(maVT))) return fail(cell(tr, 'maVT'), at + 'Mã vật tư chưa có trong danh mục vật tư. Chọn mã có sẵn hoặc để trống');
         if (!noiDung) return fail(cell(tr, 'noiDung'), at + 'Nhập nội dung thu, chi');
         if (isNaN(chi)) return fail(cell(tr, 'chi'), at + 'Số tiền chi không hợp lệ. Ví dụ: 1.250.000, 50tr, 300k');
