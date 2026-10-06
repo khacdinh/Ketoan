@@ -93,6 +93,7 @@ Mục **Kiểm soát** (con số màu vàng = số việc cần xử lý): **C�
 ## 3. Ghi sổ nhanh
 
 - Bấm **Ghi thu / chi** (hoặc phím **F3**): mở **trang Ghi thu / chi** (không còn là hộp thoại). **Hủy** hoặc **Esc** quay lại màn hình trước; ghi sổ xong cũng tự quay lại.
+  Ô **Ngày** luôn mặc định là **hôm nay**, kể cả sau khi vừa ghi một phiếu ngày khác hoặc rời trang rồi mở lại.
 - Chọn **Chi tiền / Thu tiền / Thu & chi cùng lúc** (loại thứ ba dùng cho các khoản "đã thanh toán trước, thực tế không có thu" như trong file cũ).
 - **Ngày** luôn nhập dạng ngày/tháng/năm: gõ `29/9` là đủ (tự hiểu năm nay), hoặc `29/09/2026`, `290926`. Phím ↑ ↓ để tăng/giảm 1 ngày.
 - **Số phiếu**: bấm **Số mới** để lấy số kế tiếp trong tháng (VD `PC045/09`). Nhiều dòng dùng chung một số phiếu sẽ được gộp khi in.
@@ -214,9 +215,8 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
 
 ## 10. Phiếu nhập chi phí
 
-- **Đầu phiếu**: Ngày, Công trình, Nhà / khu (để trống hoặc chọn nhà dùng chung), Nhà cung cấp, Số phiếu / chuyến,
-  **Hạng mục** mặc định cho cả phiếu. Gõ **mã hoặc tên** rồi chọn trong gợi ý. Chọn công trình xong, phần mềm tự
-  điền nhà “dùng chung” của công trình đó. Dưới ô Nhà cung cấp hiện luôn **công nợ còn lại** của NCC tại công trình.
+- **Đầu phiếu**: Ngày, Nhà cung cấp, Số phiếu / chuyến. Công trình, Nhà / khu ghi ở từng dòng; hạng mục lấy theo vật tư.
+  Ô **Ngày** mặc định là **hôm nay**. Chọn ngày khác thì giữ trong lúc đang nhập phiếu đó; rời trang rồi quay lại (hoặc mở lại phần mềm) thì ngày trở về hôm nay, các dòng đang nhập dở vẫn còn.
 - **Các dòng hàng**: Mã VT → tự hiện **Tên vật tư, ĐVT**; gõ Số lượng, Đơn giá → **Thành tiền tự tính**, tổng phiếu
   và số tiền bằng chữ hiện ở cuối bảng.
   - Gõ mã hoặc **gõ đúng tên vật tư** đều được. Danh sách gợi ý đưa vật tư của hạng mục đang chọn lên đầu.

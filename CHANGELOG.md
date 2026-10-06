@@ -1,5 +1,10 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Ngày mặc định là hôm nay (06/10/2026)
+
+- **Phiếu nhập chi phí** và **Ghi thu / chi**: ô Ngày luôn mặc định là hôm nay, không còn lấy ngày của phiếu vừa ghi.
+- Đã chọn ngày khác mà rời trang rồi quay lại, hoặc mở lại phần mềm, thì ngày trở về hôm nay. Ở Phiếu nhập chi phí, các dòng đang nhập dở vẫn được giữ. Trong lúc đang ở trang, ngày đã chọn được giữ nguyên kể cả khi trang tự vẽ lại.
+
 ## Loại chi phí đặt theo hạng mục (06/10/2026)
 
 - Bỏ ô **Loại CP mặc định** ở hộp sửa vật tư. Thay vào đó mỗi **hạng mục** có ô **Loại chi phí** (Vật tư / Nhân công / Dịch vụ-Phí / Tự xác định).

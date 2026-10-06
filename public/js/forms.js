@@ -77,7 +77,8 @@ function mountEntryForm(root, entry, opts, pageKey) {
   const ngayKhoa = isEdit ? dongCu.map((x) => x.ngay).find((d) => KT.isLockedDate(S.all, d)) : '';
   const lockedRec = !!ngayKhoa; // tháng đã khóa sổ: chỉ xem
   const canDraft = (!isEdit || isDraftRec) && !lockedRec;
-  const e = Object.assign({ ngay: lastUsed.ngay || KT.todayISO(), soPhieu: '', maDuAn: '', maNCC: '', noiDung: '', thu: 0, chi: 0, nguoiNhan: '', ghiChu: '' }, entry || {});
+  // ngày mặc định luôn là hôm nay (không lấy ngày của phiếu vừa nhập); mở lại trang Ghi thu / chi là một phiếu mới
+  const e = Object.assign({ ngay: KT.todayISO(), soPhieu: '', maDuAn: '', maNCC: '', noiDung: '', thu: 0, chi: 0, nguoiNhan: '', ghiChu: '' }, entry || {});
   if (opts.duplicate) { e.id = undefined; }
   const coThu = dongCu.length ? dongCu.some((x) => x.thu > 0) : e.thu > 0;
   const coChi = dongCu.length ? dongCu.some((x) => x.chi > 0) : e.chi > 0;

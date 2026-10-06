@@ -16,6 +16,16 @@ const has = (v) => String(v == null ? '' : v).trim() !== '';
 
 // Bản nháp giữ lại khi chuyển màn hình hoặc khi dữ liệu được tải lại (thêm nhanh danh mục...)
 let draft = LS.get('cp.draft', null);
+// Phiếu MỚI đang nhập dở: ngày về hôm nay mỗi lần mở lại phần mềm hoặc rời trang rồi quay lại
+// (vẫn giữ ngày đã chọn khi trang tự vẽ lại lúc dữ liệu đổi, vd vừa thêm vật tư). Phiếu đang sửa giữ ngày của phiếu.
+function ngayVeHomNay() {
+  if (!draft || draft.mode !== 'new' || !draft.header || draft.header.ngay === KT.todayISO()) return;
+  draft.header.ngay = KT.todayISO();
+  if (LS.get('cp.draft', null)) LS.set('cp.draft', draft);
+}
+ngayVeHomNay();
+const trangCua = (url) => String(url || '').split('#')[1] ? String(url).split('#')[1].replace(/^\/?/, '').split('?')[0] : '';
+window.addEventListener('hashchange', (e) => { if (trangCua(e.oldURL) === 'cp-nhap' && trangCua(e.newURL) !== 'cp-nhap') ngayVeHomNay(); });
 let pendingFocus = null;
 
 // Hạng mục của vật tư (gắn sẵn ở Danh mục vật tư, kéo theo nhóm chi phí): dòng có mã vật tư luôn theo hạng mục này
@@ -98,7 +108,8 @@ function initialState(params, banSaoLuu) {
     const last = LS.get('cp.lastHeader', null);
     // công trình gợi ý cho dòng đầu: công trình đang chọn ở thanh trên, không thì công trình của phiếu trước
     const goiY = projectByCode(S.ct || '') ? projectByCode(S.ct).ma : last && last.ct && projectByCode(last.ct) ? projectByCode(last.ct).ma : '';
-    return { key, mode, header: Object.assign({ ngay: KT.todayISO(), maNCC: '', soPhieu: '' }, last ? { ngay: last.ngay || KT.todayISO(), maNCC: last.maNCC || '' } : {}, { maCT: '', maNha: '', soPhieu: '' }), lines: [Object.assign(blankLine(), { ct: goiY, nha: chungCua(goiY) })] };
+    // ngày phiếu mới luôn là hôm nay (không lấy ngày của phiếu trước)
+    return { key, mode, header: Object.assign({ ngay: KT.todayISO(), maNCC: '', soPhieu: '' }, last ? { maNCC: last.maNCC || '' } : {}, { maCT: '', maNha: '', soPhieu: '' }), lines: [Object.assign(blankLine(), { ct: goiY, nha: chungCua(goiY) })] };
   }
   // nhanbandong = nhân bản MỘT dòng chi phí (từ Sổ chi phí) thành phiếu mới chưa lưu
   const lines = params.nhanbandong ? allCostLedger().filter((c) => String(c.id) === String(params.nhanbandong)) : slipLines(params.phieu || params.nhanban);
