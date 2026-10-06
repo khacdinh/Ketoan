@@ -96,6 +96,9 @@ Mục **Kiểm soát** (con số màu vàng = số việc cần xử lý): **C�
   Ô **Ngày** luôn mặc định là **hôm nay**, kể cả sau khi vừa ghi một phiếu ngày khác hoặc rời trang rồi mở lại.
   Bắt buộc chọn **Nhà cung cấp, đối tượng** (đầu phiếu) và **Công trình** cho **từng dòng**; thiếu thì phần mềm báo ngay tại ô và chưa ghi.
   Người nộp quỹ, thợ, chủ nhà… cũng thêm vào danh mục NCC, đối tượng. Khoản chung hay văn phòng thì chọn công trình chung (ví dụ VP).
+  **Cảnh báo NCC – công trình**: khi khoản chi cho một NCC (đã có chi phí ở công trình khác) ghi vào công trình mà NCC đó **chưa có chi phí**, phần mềm làm hai việc. Không chặn, vì có thể là tạm ứng trước khi có hóa đơn.
+  - Ngay ở dòng hiện chữ vàng “NCC này chưa có chi phí ở công trình này”.
+  - Khi bấm Ghi sổ thì hỏi lại: **Xem lại** để sửa công trình, **Vẫn ghi** nếu đúng như vậy.
 - Chọn **Chi tiền / Thu tiền / Thu & chi cùng lúc** (loại thứ ba dùng cho các khoản "đã thanh toán trước, thực tế không có thu" như trong file cũ).
 - **Ngày** luôn nhập dạng ngày/tháng/năm: gõ `29/9` là đủ (tự hiểu năm nay), hoặc `29/09/2026`, `290926`. Phím ↑ ↓ để tăng/giảm 1 ngày.
 - **Số phiếu**: bấm **Số mới** để lấy số kế tiếp trong tháng (VD `PC045/09`). Nhiều dòng dùng chung một số phiếu sẽ được gộp khi in.

@@ -1,5 +1,12 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Cảnh báo NCC không khớp công trình khi ghi phiếu chi (06/10/2026)
+
+- **Ghi thu / chi**: khoản chi cho một nhà cung cấp mà NCC đó **chưa có chi phí** (phiếu nhập chi phí, số dư đầu kỳ hay khoản trả ngoài quỹ) ở công trình của dòng:
+  - ngay ở dòng hiện cảnh báo vàng;
+  - bấm Ghi sổ thì hỏi lại (**Xem lại** / **Vẫn ghi**). Không chặn, vì có thể là tạm ứng trước khi có hóa đơn.
+- Không cảnh báo khoản thu, và không cảnh báo đối tượng chưa có chi phí ở đâu cả (nhân viên, người nộp quỹ…).
+
 ## Cột Nội dung gọn lại (06/10/2026)
 
 - **Ghi thu / chi**: cột Nội dung rộng cố định khoảng 300px, trước đây giãn hết bề ngang. Cột Công trình, Mã vật tư, Số tiền rộng hơn; phần còn lại dành cho Tên công trình · NCC còn nợ.

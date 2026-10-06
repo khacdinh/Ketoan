@@ -134,6 +134,10 @@ test('W2 biểu mẫu nhiều dòng: thêm dòng, mỗi dòng một dự án, t�
     await page.click('[data-act=them-dong]');
     await page.fill(row(2) + ' [data-c=maDuAn]', 'CT3'); await page.fill(row(2) + ' [data-c=chi]', '10tr');
     await page.keyboard.press('Control+Enter');
+    // ông A chưa có chi phí ở CT3 → hỏi lại, chọn Vẫn ghi
+    await page.waitForSelector('.modal [data-act=yes]');
+    assert.match(await page.$eval('.modal', (e) => e.innerText), /CT3 \(dòng 2\)/);
+    await page.click('.modal [data-act=yes]');
     await page.waitForFunction(() => !document.querySelector('#entry-page'));
     db = readStored(srv.dataDir);
     rec = db.entries.filter((x) => x.soPhieu === 'PC050/07');
@@ -353,6 +357,52 @@ test('W8 mở Ghi thu / chi từ Phiếu nhập chi phí (F3) rồi Ghi sổ / C
     }
     assert.equal(readStored(srv.dataDir).entries.filter((e) => /^Ghi từ phiếu nhập/.test(e.noiDung)).length, 2, 'mỗi lần ghi đúng một dòng sổ quỹ');
     assert.equal(await page.inputValue('#cp-body tr:first-child [data-f=maVT], #cp-body tr:first-child input[name=maVT]').catch(() => 'XM'), 'XM', 'dòng nhập dở vẫn còn');
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); await srv.stop(); }
+});
+
+test('W9 khoản chi cho NCC ở công trình mà NCC chưa có chi phí: cảnh báo ngay ở dòng; bấm Ghi sổ thì hỏi lại (Xem lại → chưa ghi, Vẫn ghi → ghi); công trình có chi phí hoặc khoản thu thì không cảnh báo', { skip: SKIP, timeout: 120000 }, async () => {
+  const srv = await startServer({ seed: seed() }); // ONGA có chi phí ở CT1, CT2; chưa có ở CT3
+  const { browser, page, errors } = await openPage(srv, '#/so-thu-chi');
+  const row = (n) => '#phieu-dong tbody tr:nth-child(' + n + ')';
+  const dien = async (sel, v) => { await page.fill(sel, v); await page.locator(sel).dispatchEvent('change'); };
+  try {
+    await page.waitForSelector('#view tr[data-id]');
+    await page.keyboard.press('F3');
+    await page.waitForSelector('#entry-form'); await page.waitForTimeout(150);
+    await dien('#entry-page input[name=maNCC]', 'ONGA');
+    await page.click('#entry-page [name=noiDung]'); await page.fill('#entry-page [name=noiDung]', 'Trả ông A');
+    await page.fill('#entry-page [name=chi]', '5tr');
+    await dien('#entry-page [name=maDuAn]', 'CT1');
+    assert.equal(await page.locator(row(1) + ' [data-lech-ct]').count(), 0, 'CT1 có chi phí: không cảnh báo');
+    await dien('#entry-page [name=maDuAn]', 'CT3');
+    assert.match(await page.$eval(row(1), (e) => e.innerText), /NCC này chưa có chi phí ở công trình này/);
+    // Ghi sổ → hỏi lại; Xem lại → chưa ghi, con trỏ về ô công trình
+    await page.keyboard.press('Control+Enter');
+    await page.waitForSelector('.modal [data-act=yes]');
+    assert.match(await page.$eval('.modal', (e) => e.innerText), /Ông A[\s\S]*CT3/);
+    await page.click('.modal [data-act=no]');
+    await page.waitForSelector('.modal', { state: 'detached' });
+    assert.equal(readStored(srv.dataDir).entries.filter((e) => e.noiDung === 'Trả ông A').length, 0);
+    assert.equal(await page.evaluate(() => document.activeElement.getAttribute('data-c') || document.activeElement.name), 'maDuAn');
+    // Vẫn ghi → ghi
+    await page.keyboard.press('Control+Enter');
+    await page.waitForSelector('.modal [data-act=yes]');
+    await page.click('.modal [data-act=yes]');
+    await page.waitForFunction(() => !document.querySelector('#entry-page'), null, { timeout: 8000 });
+    assert.deepEqual(readStored(srv.dataDir).entries.filter((e) => e.noiDung === 'Trả ông A').map((e) => e.maDuAn), ['CT3']);
+    // khoản thu ở CT3: không cảnh báo, không hỏi
+    await page.keyboard.press('F3');
+    await page.waitForSelector('#entry-form'); await page.waitForTimeout(150);
+    await page.click('label:has(input[name=loai][value=thu])');
+    await dien('#entry-page input[name=maNCC]', 'ONGA');
+    await page.click('#entry-page [name=noiDung]'); await page.fill('#entry-page [name=noiDung]', 'Ông A hoàn tiền');
+    await page.fill('#entry-page [name=thu]', '1tr');
+    await dien('#entry-page [name=maDuAn]', 'CT3');
+    assert.equal(await page.locator(row(1) + ' [data-lech-ct]').count(), 0, 'khoản thu: không cảnh báo');
+    await page.keyboard.press('Control+Enter');
+    await page.waitForFunction(() => !document.querySelector('#entry-page'), null, { timeout: 8000 });
+    assert.equal(await page.locator('.modal').count(), 0);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });

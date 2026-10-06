@@ -26,6 +26,19 @@ let lastUsed = { ngay: '', soPhieu: '', maDuAn: '', maNCC: '', loai: 'chi' };
 const COT_DONG = ['noiDung', 'maDuAn', 'maVT', 'chi', 'thu'];
 const GOI_Y_DONG = { maDuAn: ['da-hint', 'da'], maVT: ['vt-hint', 'vt'], chi: ['chi-hint', 'chi'], thu: ['thu-hint', 'thu'] };
 
+// NCC có chi phí (hoặc số dư đầu kỳ, khoản trả ngoài quỹ) ở công trình đó chưa — tính cả phiếu nháp.
+// Chỉ xét NCC đã có chi phí / số dư đầu kỳ ở đâu đó (đối tượng chỉ nhận / nộp tiền như nhân viên, người nộp quỹ thì không cảnh báo).
+function nccCoChiPhi(ncc) {
+  const k = KT.keyOf(ncc);
+  return S.all.costs.some((x) => KT.keyOf(x.maNCC) === k) || (S.all.soDuDauKy || []).some((x) => KT.keyOf(x.maNCC) === k);
+}
+function nccCoChiPhiTai(ncc, ct) {
+  const k = KT.keyOf(ncc), c = KT.keyOf(ct);
+  const cap = (x, f) => KT.keyOf(x.maNCC) === k && KT.keyOf(x[f]) === c;
+  return S.all.costs.some((x) => cap(x, 'maCT')) || (S.all.soDuDauKy || []).some((x) => cap(x, 'maDuAn')) || (S.all.extPayments || []).some((x) => cap(x, 'maDuAn'));
+}
+const nccLechCT = (ncc, ct) => !!(ncc && ct && nccCoChiPhi(ncc) && !nccCoChiPhiTai(ncc, ct));
+
 // Lưới giống Phiếu nhập chi phí (ledger grid-entry, ô .cell): # · Nội dung · Công trình · Tên công trình (+ NCC còn nợ) · Mã vật tư · Số tiền chi · Số tiền thu
 function dongHtml(r) {
   return '<tr data-row data-id="' + (r.id || '') + '">' +
@@ -171,6 +184,7 @@ function mountEntryForm(root, entry, opts, pageKey) {
       el.querySelectorAll('[data-show]').forEach((x) => {
         x.hidden = !(loai === 'ca-hai' || x.dataset.show === loai);
       });
+      rows().forEach(daHint); // cảnh báo NCC / công trình chỉ áp cho khoản chi
       updateSoHint();
       tong();
     }
@@ -221,6 +235,10 @@ function mountEntryForm(root, entry, opts, pageKey) {
       if (ncc && supplierByCode(ncc) && rows().length > 1) {
         const d = KT.debtOf(viewKhongGomDangSua(), ncc, found.ma);
         if (d && d.soDongCP && d.conLai > 0) t += '<br><span class="text-ink-2">NCC còn nợ tại đây: <b class="font-semibold tabular-nums">' + money(d.conLai) + ' đ</b></span>';
+      }
+      // khoản chi cho NCC mà NCC chưa có chi phí ở công trình này: dễ là chọn nhầm công trình (hoặc chưa nhập phiếu chi phí)
+      if (loai !== 'thu' && ncc && supplierByCode(ncc) && nccLechCT(ncc, found.ma)) {
+        t += '<br><span class="text-caution" data-lech-ct>' + icon('warnTri', 'mr-1 align-[-2px]') + 'NCC này chưa có chi phí ở công trình này — kiểm tra lại công trình</span>';
       }
       setHint(h, t, 'hint good');
     }
@@ -448,6 +466,19 @@ function mountEntryForm(root, entry, opts, pageKey) {
           nguoiNhan: goc && !dirty.nguoiNhan ? goc.nguoiNhan || '' : nguoiNhan,
           ghiChu: goc && !dirty.ghiChu ? goc.ghiChu || '' : ghiChu
         }));
+      }
+      // khoản chi cho NCC ở công trình mà NCC chưa có chi phí: hỏi lại (không chặn — có thể là tạm ứng trước khi nhập chi phí)
+      const lech = lines.map((l, i) => [l, i]).filter(([l]) => (l.chi || 0) > (l.thu || 0) && nccLechCT(chung.maNCC, l.maDuAn));
+      if (lech.length) {
+        const sup = supplierByCode(chung.maNCC);
+        const ok = await confirmDialog({
+          title: 'Nhà cung cấp chưa có chi phí ở công trình này',
+          html: '<b class="text-ink">' + esc(sup ? sup.ten : chung.maNCC) + '</b> chưa có phiếu nhập chi phí nào ở ' +
+            lech.map(([l, i]) => '<b class="text-ink">' + esc(l.maDuAn) + '</b>' + (trs.length > 1 ? ' (dòng ' + (trs.indexOf(dung[i]) + 1) + ')' : '')).join(', ') + '.' +
+            '<p class="mt-2 text-[13px] text-ink-3">Có thể đã chọn nhầm công trình, hoặc chưa nhập phiếu chi phí của NCC này. Khoản trả sẽ làm NCC “ứng dư” ở công trình đó cho tới khi có chi phí.</p>',
+          okText: 'Vẫn ghi', cancelText: 'Xem lại'
+        });
+        if (!ok) { const tr = dung[lech[0][1]]; if (tr) focusInput(cell(tr, 'maDuAn')); return; }
       }
       // một dòng thì giữ cách ghi cũ (một lệnh thêm / sửa); nhiều dòng hoặc có dòng bị bỏ thì ghi cả phiếu trong một lần
       const viaPhieu = lines.length > 1 || xoaIds.length > 0 || (isEdit && lines.length === 1 && !lines[0].id);
