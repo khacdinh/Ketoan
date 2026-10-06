@@ -5,6 +5,7 @@
 - Bỏ ô **Hạng mục** ở đầu phiếu và ô gõ hạng mục ở từng dòng. Cột mới **Nhóm › Hạng mục** chỉ hiển thị nhóm chi phí và hạng mục đã gắn cho mã vật tư (Danh mục › Vật tư), không sửa được, nên không còn lệch dữ liệu giữa phiếu và danh mục.
 - Mỗi dòng mới phải có **mã vật tư** (đã gắn hạng mục); dòng không có vật tư hoặc vật tư chưa gắn hạng mục bị chặn khi ghi, báo đúng dòng. Nhân công / phí / hóa đơn bán lẻ tạo thành vật tư gắn hạng mục; hộp thêm nhanh vật tư bắt buộc chọn **Hạng mục**.
 - Dòng cũ không có vật tư (nhập trước đây hoặc từ Excel) vẫn giữ hạng mục đã lưu khi mở sửa phiếu.
+- Bỏ cột **Loại CP** ở phiếu nhập: loại chi phí tự xác định theo vật tư (loại mặc định của vật tư, nếu không thì theo hạng mục). Sửa lại phiếu cũ thì loại CP của các dòng cũng được tính lại theo vật tư.
 
 ## Phiếu nhập chi phí: mỗi dòng một công trình (06/10/2026)
 

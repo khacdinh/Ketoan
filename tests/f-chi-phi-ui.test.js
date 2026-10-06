@@ -74,11 +74,10 @@ test('F1 phiếu nhập chi phí: nhập toàn bộ bằng bàn phím (Enter san
     await type(page, 'Công thợ hồ'); await page.keyboard.press('Enter');
     await type(page, '10+5'); await page.keyboard.press('Enter');
     await type(page, '300k');
-    // Tab qua ô Thành tiền (đã tự tính) sang Loại CP; cột nhóm chi phí › hạng mục chỉ hiển thị theo vật tư, không có ô gõ
+    // Tab sang ô Thành tiền (đã tự tính); cột Nhóm › Hạng mục chỉ hiển thị theo vật tư, không còn cột Loại CP để sửa
     await page.keyboard.press('Tab');
     assert.equal((await active(page)).col, 'thanhTien');
-    await page.keyboard.press('Tab');
-    assert.equal((await active(page)).col, 'loaiCP');
+    assert.equal(await page.locator('#cp-body [data-col=loaiCP]').count(), 0, 'không còn ô Loại CP ở phiếu nhập');
     assert.match(await page.$eval('tr[data-row="2"] .vt-hm', (e) => e.textContent), /Nhân công thợ nề/, 'hiện hạng mục theo vật tư');
     assert.match(await page.$eval('tr[data-row="0"] .vt-hm', (e) => e.textContent), /Vật tư VLXD/);
     assert.equal(await page.locator('#cp-head input[name=hm]').count(), 0, 'đầu phiếu không còn ô hạng mục');
@@ -89,7 +88,7 @@ test('F1 phiếu nhập chi phí: nhập toàn bộ bằng bàn phím (Enter san
     assert.match(await page.$eval('#cp-words', (e) => e.textContent), /Bảy triệu sáu trăm hai mươi sáu nghìn đồng/);
     assert.ok(await page.locator('tr[data-row="3"]').count() === 1, 'luôn có một dòng trống ở cuối');
     // Loại CP tự động hiển thị loại tự xác định
-    assert.match(await page.$eval('tr[data-row="2"] select[data-col=loaiCP] option', (e) => e.textContent), /Tự động: Nhân công/);
+    assert.equal(await page.locator('#cp-lines thead th', { hasText: 'Loại CP' }).count(), 0);
     // lưu bằng Ctrl+Enter
     await page.keyboard.press('Control+Enter');
     await page.waitForFunction(() => /Đã ghi 3 dòng/.test(document.querySelector('#toast-root').textContent), null, { timeout: 8000 });
