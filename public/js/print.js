@@ -70,17 +70,18 @@ export function printSlip(slip, lines, settings) {
   const sl = (c) => (c.soLuong == null || c.soLuong === '' ? '' : KT.fmtQty(c.soLuong));
   const dg = (c) => (KT.isKhoan(c) ? 'theo khoản' : money(c.donGia));
   const total = lines.reduce((t, c) => t + (c.thanhTien || 0), 0);
+  const nhieuCT = new Set(lines.map((c) => KT.keyOf(c.maCT))).size > 1; // phiếu nhiều công trình: thêm cột Công trình
   printHtml(
     '<div class="vc-top"><div class="vc-org"><div class="vc-company">' + esc(settings.tenDonVi || '') + '</div><div>' + esc(settings.diaChi || '') + '</div></div>' +
     '<div class="vc-meta"><div class="vc-so">Số phiếu: ' + esc(slip.soPhieu || '................') + '</div><div>Ngày: ' + esc(KT.fmtDate(slip.ngay)) + '</div></div></div>' +
     '<div class="vc-title">PHIẾU NHẬP CHI PHÍ CÔNG TRÌNH</div>' +
     '<div class="vc-date">' + esc(KT.ngayChu(slip.ngay)) + '</div>' +
-    '<p><b>Công trình:</b> ' + esc(slip.maCT) + (slip.tenCT ? ' – ' + esc(slip.tenCT) : '') + (slip.maNha ? ' · Nhà/lô: ' + esc(slip.maNha) : '') + '</p>' +
+    '<p><b>Công trình:</b> ' + (nhieuCT ? 'nhiều công trình (xem cột Công trình)' : esc(slip.maCT) + (slip.tenCT ? ' – ' + esc(slip.tenCT) : '') + (slip.maNha ? ' · Nhà/lô: ' + esc(slip.maNha) : '')) + '</p>' +
     '<p><b>Nhà cung cấp:</b> ' + esc(slip.tenNCC || slip.maNCC || '') + (slip.maNCC ? ' (' + esc(slip.maNCC) + ')' : '') + '</p>' +
-    '<table class="bb-t"><thead><tr><th>STT</th><th>Mã VT</th><th>Tên vật tư / diễn giải</th><th>ĐVT</th><th>Số lượng</th><th>Đơn giá</th><th>Thành tiền</th><th>Hạng mục</th></tr></thead><tbody>' +
-    lines.map((c, i) => '<tr><td class="r">' + (i + 1) + '</td><td>' + esc(c.maVT || '') + '</td><td>' + esc((c.tenVT || '') + (c.tenVT && c.dienGiai ? ' – ' : '') + (c.dienGiai || '')) + '</td><td>' + esc(c.dvt || '') +
+    '<table class="bb-t"><thead><tr><th>STT</th>' + (nhieuCT ? '<th>Công trình</th>' : '') + '<th>Mã VT</th><th>Tên vật tư / diễn giải</th><th>ĐVT</th><th>Số lượng</th><th>Đơn giá</th><th>Thành tiền</th><th>Hạng mục</th></tr></thead><tbody>' +
+    lines.map((c, i) => '<tr><td class="r">' + (i + 1) + '</td>' + (nhieuCT ? '<td>' + esc(c.maCT || '') + '</td>' : '') + '<td>' + esc(c.maVT || '') + '</td><td>' + esc((c.tenVT || '') + (c.tenVT && c.dienGiai ? ' – ' : '') + (c.dienGiai || '')) + '</td><td>' + esc(c.dvt || '') +
       '</td><td class="r">' + sl(c) + '</td><td class="r">' + dg(c) + '</td><td class="r">' + money(c.thanhTien) + '</td><td>' + esc(c.tenHM || c.maHM || '') + '</td></tr>').join('') +
-    '<tr class="b"><td colspan="6">Cộng ' + lines.length + ' dòng</td><td class="r">' + money(total) + '</td><td></td></tr></tbody></table>' +
+    '<tr class="b"><td colspan="' + (nhieuCT ? 7 : 6) + '">Cộng ' + lines.length + ' dòng</td><td class="r">' + money(total) + '</td><td></td></tr></tbody></table>' +
     '<p><b>Bằng chữ:</b> <i>' + esc(KT.docTienBangChu(total)) + '</i></p>' +
     '<div class="vc-signs" style="grid-template-columns:repeat(3,1fr)">' +
     [['Người lập phiếu', settings.nguoiLap], ['Kế toán', settings.keToanTruong], ['Giám đốc', settings.giamDoc]].map(([t, n]) => '<div class="vc-sign"><b>' + esc(t) + '</b><i>(Ký, họ tên)</i><span class="vc-name">' + esc(n || '') + '</span></div>').join('') + '</div>');

@@ -730,6 +730,9 @@
   .side-toggle:hover { background: rgb(255 255 255 / .1); color: #fff; }
   body.side-thu .nav-group + .nav-group { border-top-color: rgb(255 255 255 / .14); }
   .app-sidebar :is(.nav-item, .side-toggle):focus-visible { outline-color: var(--color-accent-400); }
+  /* ô hạng mục tự lấy theo vật tư: chữ mờ, không sửa */
+  .grid-entry .cell[readonly] { color: var(--color-ink-3); cursor: default; }
+  .grid-entry .cell[readonly]:hover { background: transparent; border-color: transparent; }
   /* chữ menu lớn hơn một chút */
   .nav-item { font-size: 15.5px; height: 32px; }
   .nav-item .ph { font-size: 19px; }

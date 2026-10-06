@@ -142,3 +142,135 @@ test('W2 biểu mẫu nhiều dòng: thêm dòng, mỗi dòng một dự án, t�
     assert.deepEqual(errors.filter((e) => !/status of (400|409)/.test(e)), []);
   } finally { await browser.close(); await srv.stop(); }
 });
+
+/* ---------- Phiếu nhập chi phí: mỗi dòng một công trình ---------- */
+const slipHead = (o) => Object.assign({ ngay: '2026-07-20', maCT: 'CT1', maNCC: 'ONGA', soPhieu: 'GH-1', maHM: 'Vật tư' }, o);
+const dongCP = (o) => Object.assign({ dienGiai: 'Xi măng', thanhTien: 1000000 }, o);
+
+test('W3 API phiếu nhập chi phí: dòng ghi công trình riêng; đầu phiếu bỏ trống công trình khi mọi dòng đều có; thiếu / sai công trình báo đúng dòng; sửa phiếu giữ công trình từng dòng; công nợ tách theo công trình', async () => {
+  const srv = await startServer({ seed: seed() });
+  try {
+    const dau = (await srv.db()).costs.length;
+    // đầu phiếu CT1, dòng 2 sang CT2
+    const r = await srv.ok('POST', '/api/cost-slips', { header: slipHead({}), lines: [dongCP({ thanhTien: 5000000 }), dongCP({ thanhTien: 3000000, maCT: 'ct2' }), dongCP({ thanhTien: 2000000, maCT: 'CT1' })] });
+    let db = await srv.db();
+    let recs = db.costs.filter((c) => c.phieuId === r.phieuId);
+    assert.deepEqual(recs.map((c) => [c.maCT, c.thanhTien]), [['CT1', 5000000], ['CT2', 3000000], ['CT1', 2000000]]);
+    assert.equal(recs.every((c) => c.maNCC === 'ONGA' && c.soPhieu === 'GH-1'), true, 'các dòng cùng nhà cung cấp, cùng số phiếu');
+    const goc1 = KT.supplierDebt(seedDb(), { ct: 'CT1' }).rows.find((x) => x.ma === 'ONGA').phatSinh;
+    assert.equal(KT.supplierDebt(db, { ct: 'CT1' }).rows.find((x) => x.ma === 'ONGA').phatSinh, goc1 + 7000000, 'CT1 thêm 5tr + 2tr');
+    assert.equal(KT.supplierDebt(db, { ct: 'CT2' }).rows.find((x) => x.ma === 'ONGA').phatSinh, 40000000 + 3000000, 'CT2 thêm 3tr');
+    // đầu phiếu để trống công trình, mọi dòng có công trình riêng
+    const r2 = await srv.ok('POST', '/api/cost-slips', { header: slipHead({ maCT: '', soPhieu: 'GH-2' }), lines: [dongCP({ maCT: 'CT1' }), dongCP({ maCT: 'CT3' })] });
+    recs = (await srv.db()).costs.filter((c) => c.phieuId === r2.phieuId);
+    assert.deepEqual(recs.map((c) => c.maCT), ['CT1', 'CT3']);
+    // đầu phiếu trống mà có dòng không ghi công trình → báo đúng dòng, không ghi gì
+    const n = (await srv.db()).costs.length;
+    const bad = await srv.call('POST', '/api/cost-slips', { header: slipHead({ maCT: '' }), lines: [dongCP({ maCT: 'CT1' }), dongCP({})] });
+    assert.equal(bad.status, 400); assert.match(JSON.stringify(bad.json || bad.body), /Thiếu Mã công trình/);
+    const la = await srv.call('POST', '/api/cost-slips', { header: slipHead({}), lines: [dongCP({}), dongCP({ maCT: 'KHONGCO' })] });
+    assert.equal(la.status, 400); assert.match(JSON.stringify(la.json || la.body), /Dòng 2/);
+    assert.equal((await srv.db()).costs.length, n, 'nguyên khối: không ghi dòng nào');
+    // sửa phiếu: gửi lại các dòng (đổi dòng 2 sang CT3)
+    await srv.ok('PUT', '/api/cost-slips/' + r.phieuId, { header: slipHead({}), lines: [dongCP({ thanhTien: 5000000 }), dongCP({ thanhTien: 3000000, maCT: 'CT3' })] });
+    recs = (await srv.db()).costs.filter((c) => c.phieuId === r.phieuId);
+    assert.deepEqual(recs.map((c) => [c.maCT, c.thanhTien]), [['CT1', 5000000], ['CT3', 3000000]]);
+    assert.equal((await srv.db()).costs.length, dau + 4, 'tổng số dòng: phiếu đầu còn 2 sau khi sửa, phiếu thứ hai 2 dòng');
+  } finally { await srv.stop(); }
+});
+
+function seedDb() { return seed(); }
+
+test('W4 phiếu nhập chi phí trên giao diện: cột Công trình riêng, đầu phiếu trống công trình, ghi nhiều công trình; mở lại phiếu giữ đúng công trình từng dòng; danh sách phiếu ghi “+N công trình”', { skip: SKIP, timeout: 180000 }, async () => {
+  const srv = await startServer({ seed: seed() });
+  const { browser, page, errors } = await openPage(srv, '#/cp-nhap');
+  const cell = (row, col) => 'tr[data-row="' + row + '"] [data-col=' + col + ']';
+  try {
+    await page.waitForSelector('#cp-body tr[data-row]');
+    assert.equal(await page.locator('#cp-lines thead th', { hasText: 'Công trình' }).count(), 1, 'có cột Công trình');
+    await page.fill('#cp-head input[name=maNCC]', 'ONGA'); await page.locator('#cp-head input[name=maNCC]').dispatchEvent('change');
+    await page.fill('#cp-head input[name=hm]', 'Vật tư'); await page.locator('#cp-head input[name=hm]').dispatchEvent('change');
+    // dòng chưa có công trình, đầu phiếu trống → báo lỗi tại ô Công trình của dòng
+    await page.fill(cell(0, 'dienGiai'), 'Xi măng'); await page.fill(cell(0, 'thanhTien'), '5tr'); await page.locator(cell(0, 'thanhTien')).dispatchEvent('change');
+    await page.focus(cell(0, 'thanhTien'));
+    await page.keyboard.press('Control+Enter');
+    await page.waitForFunction(() => /Chọn công trình/.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
+    // dòng 1: CT1, dòng 2: CT2
+    await page.fill(cell(0, 'ct'), 'CT1'); await page.locator(cell(0, 'ct')).dispatchEvent('change');
+    await page.fill(cell(1, 'ct'), 'công trình 2'); await page.locator(cell(1, 'ct')).dispatchEvent('change');
+    assert.equal(await page.inputValue(cell(1, 'ct')), 'CT2', 'gõ tên thì đổi sang mã');
+    await page.fill(cell(1, 'dienGiai'), 'Cát'); await page.fill(cell(1, 'thanhTien'), '3tr'); await page.locator(cell(1, 'thanhTien')).dispatchEvent('change');
+    await page.focus(cell(1, 'thanhTien'));
+    await page.keyboard.press('Control+Enter');
+    await page.waitForFunction(() => /Đã ghi 2 dòng/.test(document.querySelector('#toast-root').textContent), null, { timeout: 6000 });
+    let db = await srv.db();
+    const moi = db.costs.filter((c) => c.dienGiai === 'Xi măng' || c.dienGiai === 'Cát');
+    assert.deepEqual(moi.map((c) => [c.maCT, c.thanhTien]), [['CT1', 5000000], ['CT2', 3000000]]);
+    assert.equal(new Set(moi.map((c) => c.phieuId)).size, 1, 'cùng một phiếu');
+    // danh sách phiếu đã nhập: phiếu có 2 công trình
+    await page.waitForSelector('#rc-body tr[data-phieu]');
+    assert.match(await page.$eval('#rc-body tr[data-phieu]', (e) => e.innerText), /\+1 công trình/);
+    // mở lại phiếu: ô Công trình của từng dòng khớp (đầu phiếu lấy công trình có nhiều dòng nhất, dòng còn lại ghi riêng)
+    await page.locator('#rc-body tr[data-phieu]').first().locator('a[href*="cp-nhap?phieu="]').click();
+    await page.waitForSelector(cell(1, 'ct'));
+    await page.waitForTimeout(200);
+    const cts = [await page.inputValue('#cp-head input[name=maCT]'), await page.inputValue(cell(0, 'ct')), await page.inputValue(cell(1, 'ct'))];
+    // dòng ô Công trình trống = theo đầu phiếu; hợp lại phải đủ CT1 và CT2
+    assert.deepEqual(Array.from(new Set([cts[0], cts[1] || cts[0], cts[2] || cts[0]])).sort(), ['CT1', 'CT2'], 'mở lại thấy đủ cả hai công trình');
+    assert.deepEqual(errors.filter((e) => !/status of 4/.test(e)), []);
+  } finally { await browser.close(); await srv.stop(); }
+});
+
+test('W5 hạng mục theo vật tư: dòng có mã vật tư luôn lấy hạng mục (và nhóm) của vật tư dù gửi hạng mục khác; dòng không có vật tư dùng hạng mục dòng / đầu phiếu; đầu phiếu không cần hạng mục khi mọi dòng có vật tư; sửa dòng lẻ cũng theo vật tư', async () => {
+  const srv = await startServer({ seed: seed() });
+  try {
+    const hm2 = await srv.ok('POST', '/api/cost-items', { ma: 'HM02', ten: 'Nhân công', maNhom: 'G1' });
+    await srv.ok('POST', '/api/materials', { ma: 'XM', ten: 'Xi măng', dvt: 'bao', maHM: 'HM01' });
+    await srv.ok('POST', '/api/materials', { ma: 'CHUA', ten: 'Vật tư chưa gắn hạng mục', dvt: 'cái' });
+    // đầu phiếu không có hạng mục; dòng có vật tư XM gửi "Nhân công" (sai) → vẫn theo vật tư (HM01)
+    const r = await srv.ok('POST', '/api/cost-slips', { header: slipHead({ maHM: '' }), lines: [dongCP({ maVT: 'xm', maHM: 'Nhân công', soLuong: 10, donGia: 95000, thanhTien: undefined })] });
+    let c = (await srv.db()).costs.find((x) => x.phieuId === r.phieuId);
+    assert.equal(c.maHM, 'HM01', 'hạng mục theo vật tư, bỏ hạng mục gửi lên');
+    assert.equal(c.maVT, 'XM');
+    // dòng không có vật tư và đầu phiếu không có hạng mục → báo lỗi đúng dòng
+    const bad = await srv.call('POST', '/api/cost-slips', { header: slipHead({ maHM: '' }), lines: [dongCP({ maVT: 'XM', soLuong: 1, donGia: 1000, thanhTien: undefined }), dongCP({})] });
+    assert.equal(bad.status, 400); assert.match(JSON.stringify(bad.json || bad.body), /Dòng 2.*Hạng mục/i);
+    // dòng khoán (không vật tư) lấy hạng mục của dòng hoặc đầu phiếu; vật tư chưa gắn hạng mục thì dùng hạng mục đầu phiếu
+    const r2 = await srv.ok('POST', '/api/cost-slips', { header: slipHead({ maHM: 'Nhân công' }), lines: [dongCP({}), dongCP({ maVT: 'CHUA', soLuong: 2, donGia: 500, thanhTien: undefined }), dongCP({ maHM: 'Vật tư' })] });
+    const l2 = (await srv.db()).costs.filter((x) => x.phieuId === r2.phieuId);
+    assert.deepEqual(l2.map((x) => x.maHM), ['HM02', 'HM02', 'HM01']);
+    // sửa dòng lẻ: gửi hạng mục khác cho dòng có vật tư → vẫn theo vật tư
+    const goc = (await srv.db()).costs.find((x) => x.phieuId === r.phieuId);
+    await srv.ok('PUT', '/api/costs/' + goc.id, Object.assign({}, goc, { maHM: 'HM02' }));
+    assert.equal((await srv.db()).costs.find((x) => x.id === goc.id).maHM, 'HM01');
+    assert.ok(hm2);
+  } finally { await srv.stop(); }
+});
+
+test('W6 phiếu nhập chi phí trên giao diện: ô Hạng mục của dòng có vật tư tự hiện hạng mục của vật tư và không sửa được; đầu phiếu không bắt buộc hạng mục', { skip: SKIP, timeout: 180000 }, async () => {
+  const srv = await startServer({ seed: seed() });
+  await srv.ok('POST', '/api/cost-items', { ma: 'HM02', ten: 'Nhân công', maNhom: 'G1' });
+  await srv.ok('POST', '/api/materials', { ma: 'XM', ten: 'Xi măng', dvt: 'bao', maHM: 'HM01' });
+  const { browser, page, errors } = await openPage(srv, '#/cp-nhap');
+  const cell = (row, col) => 'tr[data-row="' + row + '"] [data-col=' + col + ']';
+  try {
+    await page.waitForSelector('#cp-body tr[data-row]');
+    assert.equal(await page.locator('#cp-head label:has(input[name=hm]) .req').count(), 0, 'đầu phiếu: hạng mục không còn dấu * bắt buộc');
+    await page.fill('#cp-head input[name=maCT]', 'CT1'); await page.locator('#cp-head input[name=maCT]').dispatchEvent('change');
+    await page.fill('#cp-head input[name=maNCC]', 'ONGA'); await page.locator('#cp-head input[name=maNCC]').dispatchEvent('change');
+    await page.fill(cell(0, 'maVT'), 'XM'); await page.locator(cell(0, 'maVT')).dispatchEvent('change');
+    await page.fill(cell(0, 'soLuong'), '10'); await page.fill(cell(0, 'donGia'), '95k'); await page.locator(cell(0, 'donGia')).dispatchEvent('change');
+    assert.equal(await page.inputValue(cell(0, 'hm')), 'Vật tư', 'hiện hạng mục của vật tư');
+    assert.equal(await page.getAttribute(cell(0, 'hm'), 'readonly'), '', 'không sửa được');
+    // dòng không có vật tư: nhập được hạng mục riêng
+    await page.fill(cell(1, 'dienGiai'), 'Công thợ'); await page.fill(cell(1, 'thanhTien'), '2tr'); await page.locator(cell(1, 'thanhTien')).dispatchEvent('change');
+    assert.equal(await page.getAttribute(cell(1, 'hm'), 'readonly'), null);
+    await page.fill(cell(1, 'hm'), 'Nhân công'); await page.locator(cell(1, 'hm')).dispatchEvent('change');
+    await page.focus(cell(1, 'thanhTien'));
+    await page.keyboard.press('Control+Enter');
+    await page.waitForFunction(() => /Đã ghi 2 dòng/.test(document.querySelector('#toast-root').textContent), null, { timeout: 6000 });
+    const cs = (await srv.db()).costs.filter((x) => x.maVT === 'XM' || x.dienGiai === 'Công thợ');
+    assert.deepEqual(cs.map((x) => x.maHM).sort(), ['HM01', 'HM02']);
+    assert.deepEqual(errors.filter((e) => !/status of 4/.test(e)), []);
+  } finally { await browser.close(); await srv.stop(); }
+});

@@ -1,5 +1,13 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Phiếu nhập chi phí: mỗi dòng một công trình (06/10/2026)
+
+- Bảng dòng hàng có thêm cột **Công trình** (để trống = công trình đầu phiếu). Một nhà cung cấp giao hàng cho nhiều công trình trong cùng một phiếu thì ghi công trình riêng ở từng dòng; đầu phiếu đổi tên “Công trình (mặc định)” và được **để trống** khi mọi dòng đều ghi công trình riêng. Gõ tên công trình thì tự đổi sang mã.
+- Mỗi dòng vẫn là một dòng sổ chi phí (`maCT` riêng) nên công nợ NCC theo công trình, Sổ chi phí, báo cáo, Excel không đổi cách tính. Lược đồ dữ liệu không đổi.
+- API `POST` / `PUT /api/cost-slips`: dòng nhận thêm `maCT` (và `maNha` nếu khác công trình đầu phiếu); thiếu công trình (đầu phiếu trống mà có dòng không ghi riêng) hoặc mã lạ thì báo lỗi, một dòng sai thì không ghi dòng nào.
+- **Hạng mục theo vật tư**: dòng có mã vật tư luôn lấy hạng mục (và nhóm chi phí) đã gắn ở Danh mục vật tư, không còn chọn hạng mục riêng cho dòng đó (tránh một vật tư nằm ở hai hạng mục / hai nhóm). Ô Hạng mục của dòng hiện mờ và không sửa được; ô Hạng mục ở đầu phiếu không còn bắt buộc, chỉ dùng cho dòng không có mã vật tư (nhân công, phí…) hoặc vật tư chưa gắn hạng mục. Áp dụng ở máy chủ cho cả phiếu nhập và sửa từng dòng ở Sổ chi phí (ô Hạng mục của dòng có vật tư không sửa được; gửi hạng mục khác lên vẫn lấy theo vật tư). Dòng cũ lệch hạng mục so với vật tư sẽ được đồng bộ theo vật tư khi sửa lại phiếu.
+- Mở lại phiếu: đầu phiếu lấy công trình có nhiều dòng nhất, các dòng khác hiện công trình riêng (giữ nguyên nhà / khu của dòng). Danh sách phiếu đã nhập ghi “+N công trình”, phiếu in có cột Công trình, nhật ký ghi “CT1 +2 công trình”. Phím Enter ở ô Thành tiền xuống ô Công trình của dòng sau khi phiếu có nhiều công trình.
+
 ## Bảng màu hợp mệnh Kim (nữ 1993 – Quý Dậu, Kiếm Phong Kim) (05/10/2026)
 
 - Theo ngũ hành: mệnh Kim hợp **trắng, xám, bạc, vàng ánh kim**; Thổ sinh Kim nên dùng thêm **vàng nhạt / be**; tránh Hỏa (đỏ, cam, hồng, tím) khắc Kim.

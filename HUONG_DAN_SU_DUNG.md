@@ -71,7 +71,7 @@ Nhóm **Chi phí công trình**:
 | Màn hình | Sheet Excel tương ứng | Làm được gì |
 |---|---|---|
 | **Tổng hợp chi phí** | `TONGHOP` | Tổng chi phí; theo loại Vật tư / Nhân công / Dịch vụ-Phí; đã trả, còn nợ NCC; bảng Nhóm → Hạng mục bung / thu gọn; chi phí theo tháng và lũy kế. |
-| **Phiếu nhập chi phí** (**F2**) | `PHIEU_NHAP` + macro `GhiPhieuNhap` | Đầu phiếu nhập một lần (Ngày, Công trình, Nhà/lô, NCC, Số phiếu, Hạng mục mặc định), rồi nhập nhiều dòng Mã VT × Số lượng × Đơn giá (hoặc chỉ Thành tiền cho khoản khoán). Dòng có **lỗi** (đỏ, chặn ghi sổ) hoặc **cảnh báo** đơn giá lệch (vàng, có nút “Dùng giá cũ” / “Giữ”). **Ctrl Enter** ghi sổ, **Ctrl S** lưu nháp, **Ctrl D** nhân bản dòng. Danh sách phiếu đã nhập có Sửa / Nhân bản / **In** / Xóa. |
+| **Phiếu nhập chi phí** (**F2**) | `PHIEU_NHAP` + macro `GhiPhieuNhap` | Đầu phiếu nhập một lần (Ngày, Công trình mặc định, Nhà/lô, NCC, Số phiếu; Hạng mục chỉ cần cho dòng không có mã vật tư), rồi nhập nhiều dòng Mã VT × Số lượng × Đơn giá (hoặc chỉ Thành tiền cho khoản khoán). Dòng có **lỗi** (đỏ, chặn ghi sổ) hoặc **cảnh báo** đơn giá lệch (vàng, có nút “Dùng giá cũ” / “Giữ”). **Ctrl Enter** ghi sổ, **Ctrl S** lưu nháp, **Ctrl D** nhân bản dòng. Danh sách phiếu đã nhập có Sửa / Nhân bản / **In** / Xóa. |
 | **Sổ chi phí** | `NHATKYCHUNG` | Toàn bộ dòng chi phí; lọc theo kỳ, nhà/lô, nhóm, hạng mục, loại CP, NCC, vật tư (ô đang lọc đổi màu, có nhãn “Đang lọc” và nút Xóa lọc); tìm kiếm; sửa trực tiếp trong bảng; dòng tổng cuối bảng, số lượng nhiều đơn vị gom vào nút **“6 ĐVT”**. |
 | **Chi phí theo nhóm** | `CHI_TIET_THEO_NHOM` | Nhóm → Hạng mục → từng dòng, 3 mức hiển thị, **Bung hết / Thu gọn**, nút **Xem trong sổ** ở từng nhóm, hạng mục. |
 | **Công nợ NCC theo kỳ** | `CONGNO_NCC` + `Tong_Hop_NCC` | Gộp “Tổng hợp NCC” và “Công nợ NCC”: theo từng NCC **Số dư đầu kỳ (Dư Nợ | Dư Có) · Phát sinh · Thanh toán · Số dư cuối kỳ (Dư Nợ | Dư Có) · Tình trạng · Giao dịch gần nhất**; bấm nhãn Tất cả / Còn nợ / Ứng dư / Đã tất toán để lọc; bấm một dòng để mở hàng thao tác (Sổ chi tiết, Biên bản đối chiếu, Sổ chi phí / Sổ thu chi của NCC, Số dư đầu kỳ, Trả từ nguồn khác, Ghi phiếu chi). Xem theo công trình bằng nút **Theo công trình**. Đường dẫn cũ “Tổng hợp NCC” cũng mở màn này. |
@@ -232,7 +232,7 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
   - **Biết số lượng và tổng tiền**: gõ Số lượng và Thành tiền, Đơn giá tự tính (= Thành tiền ÷ Số lượng). Chia không chẵn
     đồng thì ô Đơn giá để trống (chữ “tự tính”), khi lưu phần mềm tính đơn giá tới 2 số lẻ sao cho Số lượng × Đơn giá đúng
     bằng Thành tiền.
-  - **Hạng mục riêng**: ghi nếu dòng đó khác hạng mục đầu phiếu. **Loại CP** để “Tự động” (theo loại mặc định của vật tư;
+  - **Hạng mục**: dòng có **mã vật tư** tự lấy hạng mục (và nhóm chi phí) đã gắn cho vật tư ở Danh mục › Vật tư, ô hiện mờ và không sửa được (muốn đổi thì sửa hạng mục của vật tư; nhờ vậy một vật tư không bao giờ nằm ở hai hạng mục). Dòng **không có mã vật tư** (nhân công, phí…) hoặc vật tư chưa gắn hạng mục thì nhập hạng mục riêng cho dòng, hoặc để trống để lấy hạng mục ở đầu phiếu. **Loại CP** để “Tự động” (theo loại mặc định của vật tư;
     hạng mục tên “Nhân công…” → Nhân công; có mã VT → Vật tư; không có mã VT → Dịch vụ-Phí) hoặc chọn tay.
   - Mã chưa có trong danh mục: ô báo đỏ kèm nút **Thêm** để thêm nhanh ngay trong phiếu.
 - **Phím tắt**: **Enter** sang ô kế tiếp (Mã VT → Diễn giải → Số lượng → Đơn giá → dòng sau; Đơn giá để trống thì
@@ -240,6 +240,7 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
   **Ctrl + Delete** xóa dòng, **Ctrl + Enter** lưu phiếu. Gõ vào dòng cuối là tự thêm dòng mới.
 - **Ghi vào sổ chi phí**: giống macro `GhiPhieuNhap` — các dòng được ghi vào Sổ chi phí, phần hàng và số phiếu được xóa trắng,
   đầu phiếu giữ lại để nhập chuyến tiếp theo. Phiếu đang nhập dở được giữ lại nếu lỡ chuyển sang màn hình khác.
+- **Một phiếu, nhiều công trình**: một nhà cung cấp thường giao hàng cho nhiều công trình trong cùng một chuyến. Bảng dòng có cột **Công trình**: để trống thì dòng thuộc công trình ở đầu phiếu (**Công trình mặc định**); ghi mã hoặc tên công trình thì dòng đó tính cho công trình ấy. Nếu mọi dòng đều ghi công trình riêng thì đầu phiếu được để trống công trình. Mỗi dòng vẫn là một dòng chi phí nên **Công nợ NCC theo công trình**, Sổ chi phí và báo cáo tách đúng từng công trình. Enter ở ô Thành tiền đưa con trỏ xuống ô Công trình của dòng sau (khi phiếu có dòng nhiều công trình). Nhà / khu của đầu phiếu chỉ áp cho công trình đầu phiếu; dòng thuộc công trình khác không gán nhà / khu. Mở lại phiếu thì công trình có nhiều dòng nhất lên đầu phiếu, các dòng còn lại hiện công trình riêng; danh sách phiếu đã nhập ghi “+N công trình”; phiếu in thêm cột Công trình.
 - **Phiếu đã nhập** (cuối trang): tìm, **sửa**, **nhân bản**, **xóa** cả phiếu.
 - Phần mềm **không cho lưu** khi: thiếu ngày / công trình / NCC / hạng mục, mã không có trong danh mục,
   số lượng ≤ 0, đơn giá âm, không có cả (Số lượng và Đơn giá) lẫn Thành tiền, có Đơn giá và Thành tiền mà thiếu Số lượng,

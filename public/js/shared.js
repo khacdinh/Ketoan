@@ -1216,16 +1216,18 @@
       let s = map.get(k);
       if (!s) {
         s = { key: k, phieuId: r.phieuId || null, ngay: r.ngay, maCT: r.maCT || '', tenCT: r.tenCT, maNha: r.maNha || '', maNCC: r.maNCC || '', tenNCC: r.tenNCC,
-          soPhieu: r.soPhieu || '', lines: [], total: 0, hangMuc: new Set(), lastSeq: 0 };
+          soPhieu: r.soPhieu || '', lines: [], total: 0, hangMuc: new Set(), dsCT: new Set(), lastSeq: 0 };
         map.set(k, s);
       }
       s.lines.push(r);
       s.total += r.thanhTien || 0;
       if (r.tenHM) s.hangMuc.add(r.tenHM);
+      if (r.maCT) s.dsCT.add(r.maCT);
       if ((r.seq || 0) > s.lastSeq) s.lastSeq = r.seq || 0;
     });
     const list = Array.from(map.values()).map(function (s) {
       s.hangMuc = Array.from(s.hangMuc);
+      s.dsCT = Array.from(s.dsCT); // các công trình có dòng trong phiếu (phiếu nhiều công trình có > 1)
       return s;
     });
     list.sort(function (a, b) {

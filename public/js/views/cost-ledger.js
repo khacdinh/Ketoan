@@ -351,6 +351,11 @@ function inlineEdit(td) {
   if (!c) return;
   if (KT.isLockedDate(S.all, c.ngay)) { moKyKhoa(c.ngay, 'sửa'); return; }
   const field = td.dataset.edit;
+  // hạng mục (và nhóm) của dòng có mã vật tư lấy theo Danh mục vật tư: không sửa riêng ở dòng để khỏi lệch dữ liệu
+  if (field === 'maHM' && c.maVT) {
+    const mm = materialByCode(c.maVT);
+    if (mm && mm.maHM && KT.findCostItem(S.db, mm.maHM)) { toast('Hạng mục của dòng này lấy theo vật tư ' + mm.ma + '. Muốn đổi, sửa hạng mục của vật tư ở Danh mục > Vật tư.', 'info'); return; }
+  }
   const old = td.innerHTML;
   let input;
   if (field === 'loaiCP') {
@@ -460,6 +465,16 @@ export function openCostLineForm(c) {
       bindAttach(el);
       const fm = $('#cl-form', el);
       const g = (n) => fm.elements[n];
+      // Có mã vật tư đã gắn hạng mục: hạng mục của dòng theo vật tư (hiện tên, không sửa)
+      const hmTheoVT = () => {
+        const mm = g('maVT').value.trim() ? materialByCode(resolveCode(S.db.materials, g('maVT').value)) : null;
+        const it = mm && mm.maHM ? KT.findCostItem(S.db, mm.maHM) : null;
+        const f = g('maHM');
+        if (it) { f.value = it.ten; f.readOnly = true; f.title = 'Theo vật tư ' + mm.ma + '. Đổi ở Danh mục > Vật tư'; } else { f.readOnly = false; f.title = ''; }
+      };
+      g('maVT').addEventListener('input', hmTheoVT);
+      g('maVT').addEventListener('change', hmTheoVT);
+      hmTheoVT();
       // Tự điền ô còn lại như ở phiếu nhập; ĐG có số lẻ (từ Excel) thì Thành tiền là gốc
       const so = { soLuong: g('soLuong').value, donGia: g('donGia').value, thanhTien: g('thanhTien').value,
         ttTuDong: !KT.isKhoan(c) && Number.isInteger(Number(c.donGia)), dgTuDong: !KT.isKhoan(c) && !Number.isInteger(Number(c.donGia)) };
