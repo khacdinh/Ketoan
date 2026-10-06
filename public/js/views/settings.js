@@ -109,7 +109,7 @@ export function renderSettings(root) {
     const n = (data.entries || []).length;
     if (!(await confirmDialog({
       title: 'Khôi phục dữ liệu',
-      html: 'File sao lưu có <b class="text-ink">' + n + '</b> dòng sổ, <b class="text-ink">' + (data.projects || []).length + '</b> dự án, <b class="text-ink">' + (data.suppliers || []).length + '</b> nhà cung cấp.' +
+      html: 'File sao lưu có <b class="text-ink">' + n + '</b> dòng sổ, <b class="text-ink">' + (data.projects || []).length + '</b> công trình, <b class="text-ink">' + (data.suppliers || []).length + '</b> nhà cung cấp.' +
         '<p class="mt-2">Toàn bộ dữ liệu hiện tại sẽ được thay thế. Phần mềm tự sao lưu dữ liệu hiện tại trước khi thay.</p>',
       okText: 'Khôi phục', danger: true
     }))) return;
@@ -232,14 +232,14 @@ async function previewImport(file, root) {
       '<div class="flex items-center gap-2 font-semibold">' + icon('check', 'text-income') + esc(file.name) + '</div>' +
       '<p class="mt-0.5 text-[12.5px] text-ink-3">Đọc được từ các sheet: ' + esc(st.sheets.join(', ')) + '</p>' +
       '<dl class="mt-3 grid grid-cols-3 gap-2 max-sm:grid-cols-2">' +
-      stat('Dòng sổ thu chi', st.soDong) + stat('Dự án', st.soDuAn) + stat('Nhà cung cấp', st.soNCC) +
+      stat('Dòng sổ thu chi', st.soDong) + stat('Công trình', st.soDuAn) + stat('Nhà cung cấp', st.soNCC) +
       stat('Tổng thu', money(st.tongThu)) + stat('Tổng chi', money(st.tongChi)) + stat('Tồn quỹ', money(st.tonQuy)) +
       '</dl>' + aliasTable(p.biDanh) +
       (p.warnings.length ? '<details class="mt-3 text-[13px]"><summary class="cursor-pointer font-semibold text-caution">' + p.warnings.length + ' điều cần biết khi đọc file</summary>' +
         '<ul class="mt-2 max-h-40 list-disc overflow-auto pl-5 text-ink-2">' + p.warnings.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul></details>' : '') +
       '<div class="mt-4 flex flex-wrap items-center gap-2">' +
       '<button type="button" class="btn btn-ghost" data-imp="cancel">Hủy</button><span class="flex-1"></span>' +
-      '<button type="button" class="btn btn-secondary" data-imp="merge" title="Giữ dữ liệu hiện có, chỉ thêm các dòng, dự án, nhà cung cấp chưa có">Gộp thêm vào dữ liệu hiện có</button>' +
+      '<button type="button" class="btn btn-secondary" data-imp="merge" title="Giữ dữ liệu hiện có, chỉ thêm các dòng, công trình, nhà cung cấp chưa có">Gộp thêm vào dữ liệu hiện có</button>' +
       (coQuyen('nhap-excel-thay-the') ? '<button type="button" class="btn btn-primary" data-imp="replace">Thay toàn bộ dữ liệu</button>' : '') +
       '</div></div>';
   } catch (err) {
@@ -261,7 +261,7 @@ async function previewImport(file, root) {
     try {
       const r = await api('POST', '/api/import?mode=' + mode + '&ten=' + encodeURIComponent(file.name), buf, true);
       const a = r.result.added;
-      toast('Đã nhập ' + a.entries + ' dòng sổ, ' + a.projects + ' dự án, ' + a.suppliers + ' nhà cung cấp' + (r.result.skipped ? '. Bỏ qua ' + r.result.skipped + ' dòng trùng' : ''));
+      toast('Đã nhập ' + a.entries + ' dòng sổ, ' + a.projects + ' công trình, ' + a.suppliers + ' nhà cung cấp' + (r.result.skipped ? '. Bỏ qua ' + r.result.skipped + ' dòng trùng' : ''));
     } catch (err) { showError(err); }
     if (b.isConnected) { done(); box.querySelectorAll('[data-imp]').forEach((x) => { x.disabled = false; }); }
   };
@@ -287,7 +287,7 @@ function openReset() {
     title: 'Xóa dữ liệu sổ',
     size: 'small',
     body: '<p class="leading-relaxed text-ink-2">Thao tác này xóa toàn bộ <b class="text-ink">' + S.all.entries.length + ' dòng sổ thu chi</b>. Một bản sao lưu được tạo ngay trước khi xóa.</p>' +
-      '<label class="check mt-4"><input type="checkbox" id="rs-keep" checked>Giữ lại danh mục dự án và nhà cung cấp</label>' +
+      '<label class="check mt-4"><input type="checkbox" id="rs-keep" checked>Giữ lại danh mục công trình và nhà cung cấp</label>' +
       '<label class="field mt-4"><span class="label">Gõ chữ XOA để xác nhận</span><input id="rs-confirm" class="input" autocomplete="off"></label>',
     footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="no">Hủy</button><button type="button" class="btn btn-danger" data-act="yes" disabled>Xóa dữ liệu sổ</button>',
     onMount(el, h) {
@@ -323,7 +323,7 @@ function previewCostImport(file, buf, p, box, root) {
     aliasTable(p.biDanh) +
     (st.trungKhiGop ? '<p class="mt-2 text-[13px] text-ink-2">' + icon('info', 'mr-1 align-[-3px] text-pen') + st.trungKhiGop + ' dòng chi phí đã có sẵn trong phần mềm sẽ được bỏ qua khi gộp.</p>' : '') +
     '<h3 class="mt-4 text-[13.5px] font-semibold">Mã công trình trong file</h3>' +
-    '<p class="text-[12.5px] text-ink-3">Công trình trong phần mềm chính là dự án trong danh mục dự án. Ghép đúng mã để sổ chi phí và sổ thu chi nối được với nhau (công nợ nhà cung cấp).</p>' +
+    '<p class="text-[12.5px] text-ink-3">Công trình trong sổ chi phí và sổ thu chi dùng chung một danh mục công trình. Ghép đúng mã để sổ chi phí và sổ thu chi nối được với nhau (công nợ nhà cung cấp).</p>' +
     '<table class="ledger ledger-compact mt-2"><thead><tr><th>Mã trong file</th><th>Dữ liệu</th><th>Xử lý</th></tr></thead><tbody>' +
     p.ctCodes.map((c) => '<tr><td><span class="code">' + esc(c.ma) + '</span>' + (c.ten ? '<div class="sub">' + esc(c.ten) + '</div>' : '') + '</td>' +
       '<td class="text-[12.5px] text-ink-2">' + [c.soDong ? c.soDong + ' dòng chi phí' : '', c.soQuy ? c.soQuy + ' dòng SO_QUY' : '', 'có trong ' + c.nguon.join(', ')].filter(Boolean).join(' · ') + '</td>' +
@@ -355,7 +355,7 @@ function previewCostImport(file, buf, p, box, root) {
     const soQuy = !!(box.querySelector('#imp-soquy') && box.querySelector('#imp-soquy').checked);
     if (mode === 'replace' && !(await confirmDialog({
       title: 'Thay toàn bộ dữ liệu chi phí',
-      html: 'Sổ chi phí hiện có (<b class="text-ink">' + S.all.costs.length + '</b> dòng) và danh mục chi phí sẽ được thay bằng dữ liệu trong file. Sổ thu chi, danh mục dự án và nhà cung cấp được giữ nguyên.' +
+      html: 'Sổ chi phí hiện có (<b class="text-ink">' + S.all.costs.length + '</b> dòng) và danh mục chi phí sẽ được thay bằng dữ liệu trong file. Sổ thu chi, danh mục công trình và nhà cung cấp được giữ nguyên.' +
         '<p class="mt-2">Phần mềm tự sao lưu dữ liệu cũ trước khi thay.</p>',
       okText: 'Thay dữ liệu chi phí', danger: true
     }))) return;

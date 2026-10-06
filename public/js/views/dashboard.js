@@ -1,4 +1,4 @@
-/* Tổng quan: tồn quỹ, nhịp tồn quỹ theo ngày, chi phí theo dự án. */
+/* Tổng quan: tồn quỹ, nhịp tồn quỹ theo ngày, chi phí theo công trình. */
 import { $, esc, money, fdate, fmtShort, icon, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, equationHtml, setPageActions } from '../ui.js';
 import { S, saveFilter, vouchers, anomalies } from '../state.js';
 import { printView } from '../print.js';
@@ -33,7 +33,7 @@ export function renderDashboard(root) {
   setPageActions('<button type="button" class="btn btn-secondary" data-act="print">' + icon('print') + 'In</button>' +
     '<button type="button" class="btn btn-secondary" data-act="export">' + icon('excel') + 'Xuất Excel</button>', (act) => {
     if (act === 'export') download('/api/export/projects?' + qs({ from: f.from, to: f.to }));
-    if (act === 'print') printView('TÌNH HÌNH QUỸ VÀ CHI PHÍ THEO DỰ ÁN', KT.describeRange(f.from, f.to), S.db.settings);
+    if (act === 'print') printView('TÌNH HÌNH QUỸ VÀ CHI PHÍ THEO CÔNG TRÌNH', KT.describeRange(f.from, f.to), S.db.settings);
   });
   root.innerHTML =
     '<div class="print-only" id="print-head"></div>' +
@@ -48,8 +48,8 @@ export function renderDashboard(root) {
     '<a href="#/so-thu-chi" class="btn btn-ghost btn-sm no-print">' + icon('book') + 'Mở sổ quỹ</a></div></div>' +
     '<div class="flow mt-2" id="flow"></div></section>' +
     '<section class="sheet overflow-hidden" aria-labelledby="h-duan">' +
-    '<div class="sheet-head"><div><h3 id="h-duan" class="sheet-title">Chi phí theo dự án</h3>' +
-    '<p class="sheet-note">Tổng chi trong kỳ so với ngân sách. Bấm một dòng để mở sổ của dự án đó.</p></div>' +
+    '<div class="sheet-head"><div><h3 id="h-duan" class="sheet-title">Chi phí theo công trình</h3>' +
+    '<p class="sheet-note">Tổng chi trong kỳ so với ngân sách. Bấm một dòng để mở sổ của công trình đó.</p></div>' +
     '<div class="flex items-center gap-4 text-[12px] text-ink-2" aria-hidden="true">' +
     '<span class="flex items-center gap-1.5"><span class="inline-block h-1.5 w-5 bg-pen"></span>Đã chi</span>' +
     '<span class="flex items-center gap-1.5"><span class="inline-block h-3 w-0.5 bg-ink"></span>Ngân sách</span></div></div>' +
@@ -88,7 +88,7 @@ export function renderDashboard(root) {
     const a = e.target.closest('[data-act]');
     if (a) {
       if (a.dataset.act === 'export') download('/api/export/projects?' + qs({ from: f.from, to: f.to }));
-      if (a.dataset.act === 'print') printView('TÌNH HÌNH QUỸ VÀ CHI PHÍ THEO DỰ ÁN', KT.describeRange(f.from, f.to), S.db.settings);
+      if (a.dataset.act === 'print') printView('TÌNH HÌNH QUỸ VÀ CHI PHÍ THEO CÔNG TRÌNH', KT.describeRange(f.from, f.to), S.db.settings);
       if (a.dataset.act === 'go-voucher') { e.preventDefault(); S.selectedVoucher = a.dataset.key; location.hash = '#/phieu'; }
       if (a.dataset.act === 'go-nhap') { Object.assign(S.filters.so, { period: 'tat-ca', from: '', to: '', rel: false, trangThai: 'nhap', duAn: '', ncc: '', loai: '', q: '' }); saveFilter('so'); }
       return;
@@ -125,7 +125,7 @@ function renderDashboardPhone(root) {
     '<h3 class="text-[20px]">Cần chú ý</h3><div class="flex flex-col gap-2">' +
     (a.open ? item('flag', '<b>' + a.open + ' việc cần xử lý</b>', '#/kiem-soat?tab=can-xu-ly') : '') +
     (nhap ? item('draft', '<b>' + nhap + ' dòng nháp</b> chưa ghi sổ', '#/so-thu-chi', 'go-nhap') : '') +
-    (ps.khongDuAn.chi > 0 ? item('info', '<b class="tabular-nums">' + money(ps.khongDuAn.chi) + ' đ</b> chi chưa gán dự án', '#/so-thu-chi') : '') +
+    (ps.khongDuAn.chi > 0 ? item('info', '<b class="tabular-nums">' + money(ps.khongDuAn.chi) + ' đ</b> chi chưa gán công trình', '#/so-thu-chi') : '') +
     (!a.open && !nhap && !(ps.khongDuAn.chi > 0) ? '<p class="text-ink-3">Không có gì cần chú ý.</p>' : '') + '</div>' +
     '<h3 class="text-[20px]">Ghi gần đây</h3>' + '<div class="sheet">' + recentHtml() + '</div>';
   root.addEventListener('click', (e) => {
@@ -142,7 +142,7 @@ function openProjectLedger(ma, f) {
   location.hash = '#/so-thu-chi';
 }
 
-/* ---------------- Bảng chi phí theo dự án, có thanh mức chi ---------------- */
+/* ---------------- Bảng chi phí theo công trình, có thanh mức chi ---------------- */
 function projectTable(ps) {
   const rows = ps.rows.filter((r) => r.chi > 0 || r.nganSach > 0).sort((a, b) => b.chi - a.chi);
   const idle = ps.rows.length - rows.length;
@@ -152,26 +152,26 @@ function projectTable(ps) {
   const bNs = withBudget.reduce((t, r) => t + r.nganSach, 0);
   const bCl = withBudget.reduce((t, r) => t + r.chenhLech, 0);
   return '<div class="overflow-x-auto"><table class="ledger">' +
-    '<thead><tr><th>Dự án</th><th class="num money">Ngân sách</th><th class="num money w-[34%]">Đã chi</th><th class="num money">Còn lại</th><th>Tình trạng</th><th class="no-print"><span class="sr-only">Mở sổ</span></th></tr></thead>' +
+    '<thead><tr><th>Công trình</th><th class="num money">Ngân sách</th><th class="num money w-[34%]">Đã chi</th><th class="num money">Còn lại</th><th>Tình trạng</th><th class="no-print"><span class="sr-only">Mở sổ</span></th></tr></thead>' +
     '<tbody>' + rows.map((r) => {
       const w = Math.max(0.5, (r.chi / max) * 100);
       const tick = r.nganSach > 0 ? '<span class="mbar-tick" style="left:' + ((r.nganSach / max) * 100).toFixed(2) + '%"></span>' : '';
-      return '<tr class="clickable" data-ma="' + esc(r.ma) + '" tabindex="0" aria-label="Mở sổ của dự án ' + esc(r.ma) + '">' +
+      return '<tr class="clickable" data-ma="' + esc(r.ma) + '" tabindex="0" aria-label="Mở sổ của công trình ' + esc(r.ma) + '">' +
         '<td><div class="code">' + esc(r.ma) + '</div><div class="sub">' + esc(r.ten) + '</div></td>' +
         '<td class="num money">' + (r.nganSach ? money(r.nganSach) : '') + '</td>' +
         '<td class="num money"><div class="font-semibold">' + money(r.chi) + '</div>' +
         '<div class="mbar" aria-hidden="true"><span class="mbar-fill' + (r.status === 'over' ? ' over' : '') + '" style="width:' + w.toFixed(2) + '%"></span>' + tick + '</div></td>' +
         '<td class="num money' + (r.chenhLech < 0 && r.nganSach ? ' neg' : '') + '">' + (r.nganSach ? money(r.chenhLech) : '') + '</td>' +
-        '<td>' + statusChip(r) + '</td><td class="actions no-print"><button type="button" class="icon-btn" data-ma="' + esc(r.ma) + '" title="Mở sổ của dự án này" aria-label="Mở sổ của dự án ' + esc(r.ma) + '">' + icon('book') + '</button></td></tr>';
+        '<td>' + statusChip(r) + '</td><td class="actions no-print"><button type="button" class="icon-btn" data-ma="' + esc(r.ma) + '" title="Mở sổ của công trình này" aria-label="Mở sổ của công trình ' + esc(r.ma) + '">' + icon('book') + '</button></td></tr>';
     }).join('') + '</tbody>' +
-    '<tfoot><tr><td>Tổng cộng · ' + ps.rows.length + ' dự án (' + rows.length + ' đang hiện)</td><td class="num money">' + money(ps.total.nganSach) + '</td>' +
+    '<tfoot><tr><td>Tổng cộng · ' + ps.rows.length + ' công trình (' + rows.length + ' đang hiện)</td><td class="num money">' + money(ps.total.nganSach) + '</td>' +
     '<td class="num money"><span class="dbl">' + money(ps.total.chi) + '</span></td>' +
-    '<td class="num money' + (bCl < 0 ? ' neg' : '') + '" title="Chỉ tính các dự án đã đặt ngân sách">' + (bNs ? money(bCl) : '') + '</td><td colspan="2"></td></tr>' +
-    (ps.khongDuAn.chi ? '<tr class="sub-total clickable" data-ma="__none__" tabindex="0"><td>Chi chưa gán dự án</td><td class="money"></td><td class="num money">' + money(ps.khongDuAn.chi) + '</td><td class="money"></td><td colspan="2"></td></tr>' : '') +
+    '<td class="num money' + (bCl < 0 ? ' neg' : '') + '" title="Chỉ tính các công trình đã đặt ngân sách">' + (bNs ? money(bCl) : '') + '</td><td colspan="2"></td></tr>' +
+    (ps.khongDuAn.chi ? '<tr class="sub-total clickable" data-ma="__none__" tabindex="0"><td>Chi chưa gán công trình</td><td class="money"></td><td class="num money">' + money(ps.khongDuAn.chi) + '</td><td class="money"></td><td colspan="2"></td></tr>' : '') +
     '</tfoot></table></div>' +
     '<p class="px-5 py-3 text-[12.5px] text-ink-3">' +
-    (withBudget.length < rows.length ? 'Cột “Còn lại” ở dòng tổng chỉ tính ' + withBudget.length + ' dự án đã đặt ngân sách. ' : '') +
-    (idle ? idle + ' dự án chưa phát sinh chi trong kỳ không hiển thị.' : '') + '</p>';
+    (withBudget.length < rows.length ? 'Cột “Còn lại” ở dòng tổng chỉ tính ' + withBudget.length + ' công trình đã đặt ngân sách. ' : '') +
+    (idle ? idle + ' công trình chưa phát sinh chi trong kỳ không hiển thị.' : '') + '</p>';
 }
 
 /* ---------------- Chi phí công trình (chỉ đọc, không ảnh hưởng số liệu tồn quỹ) ---------------- */
@@ -203,13 +203,13 @@ function alertsHtml(ps, multiDate) {
     items.push(alertItem('text-caution', 'warnTri', '<b>' + esc(r.ma) + '</b> đã dùng ' + (r.tiLe * 100).toFixed(0) + '% ngân sách', '<a href="#" class="alert-go" data-ma="' + esc(r.ma) + '">Mở sổ</a>'));
   });
   if (ps.khongDuAn.chi > 0) {
-    items.push(alertItem('text-neutral-800', 'info', '<b class="tabular-nums">' + money(ps.khongDuAn.chi) + ' đ</b> tiền chi chưa gán dự án', '<a href="#" class="alert-go" data-ma="__none__">Gán dự án</a>'));
+    items.push(alertItem('text-neutral-800', 'info', '<b class="tabular-nums">' + money(ps.khongDuAn.chi) + ' đ</b> tiền chi chưa gán công trình', '<a href="#" class="alert-go" data-ma="__none__">Gán công trình</a>'));
   }
   multiDate.slice(0, 3).forEach((v) => {
     items.push(alertItem('text-caution', 'warnTri', 'Phiếu <b>' + esc(v.soPhieu) + '</b> có dòng khác ngày nhau', '<a href="#" class="alert-go" data-act="go-voucher" data-key="' + esc(v.key) + '">Kiểm tra</a>'));
   });
   const noBudget = ps.rows.filter((r) => r.status === 'none').length;
-  if (noBudget) items.push(alertItem('text-neutral-800', 'info', '<b>' + noBudget + ' dự án</b> có chi nhưng chưa đặt ngân sách', '<a href="#/du-an" class="alert-go">Đặt ngân sách</a>'));
+  if (noBudget) items.push(alertItem('text-neutral-800', 'info', '<b>' + noBudget + ' công trình</b> có chi nhưng chưa đặt ngân sách', '<a href="#/du-an" class="alert-go">Đặt ngân sách</a>'));
   return '<ul class="divide-y divide-rule px-4 pb-2">' + (items.slice(0, 6).join('') || '') + '</ul>' + (items.length ? '' : '<p class="px-4 pb-3 text-[13px] text-ink-3" id="dash-none">Không có gì cần chú ý thêm.</p>');
 }
 

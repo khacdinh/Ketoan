@@ -252,7 +252,7 @@
     return (a.seq || 0) - (b.seq || 0);
   }
 
-  // Trả về các dòng sổ đã sắp theo ngày, kèm tên dự án/NCC và tồn quỹ lũy kế.
+  // Trả về các dòng sổ đã sắp theo ngày, kèm tên công trình/NCC và tồn quỹ lũy kế.
   function buildLedger(db) {
     const pIdx = indexBy(db.projects);
     const sIdx = indexBy(db.suppliers);
@@ -323,7 +323,7 @@
     idle: 'Chưa phát sinh'
   };
 
-  // Tổng hợp chi phí theo dự án (sheet Tong_Quan).
+  // Tổng hợp chi phí theo công trình (sheet Tong_Quan).
   function projectSummary(db, f) {
     f = f || {};
     const acc = new Map();
@@ -880,7 +880,7 @@
   }
 
   // Công nợ NCC = Chi phí phát sinh (sổ chi phí) − Đã trả (sổ thu chi: chi − thu), nối bằng Mã NCC
-  // (và Mã công trình = Mã dự án nếu lọc theo công trình). f: { ct, to }
+  // (và Mã công trình = Mã công trình nếu lọc theo công trình). f: { ct, to }
   const DEBT_TEXT = { no: 'Còn nợ', du: 'Ứng dư', ok: 'Đã tất toán' };
   // f.ncc: một mã hoặc danh sách mã NCC → Set khóa (null = mọi NCC)
   function nccSetOf(ncc) {
@@ -1067,8 +1067,8 @@
   }
 
   // Tổng hợp theo công trình: chi phí phát sinh, đã trả NCC, còn nợ / ứng dư (cộng theo từng NCC của công trình),
-  // chi khác không ghi NCC. Đã trả = sổ thu chi (chi − thu) có Mã dự án = công trình và có Mã NCC.
-  // f: { to, all, ncc } — all = hiện cả dự án chưa có dòng chi phí nào; ncc = chỉ tính một nhà cung cấp (bỏ công trình NCC đó
+  // chi khác không ghi NCC. Đã trả = sổ thu chi (chi − thu) có Mã công trình = công trình và có Mã NCC.
+  // f: { to, all, ncc } — all = hiện cả công trình chưa có dòng chi phí nào; ncc = chỉ tính một nhà cung cấp (bỏ công trình NCC đó
   // không có phát sinh / thanh toán; cột Chi khác không áp dụng).
   function projectDebtSummary(db, f) {
     f = f || {};
@@ -1102,7 +1102,7 @@
         if (!e.maNCC) chiKhac += (e.chi || 0) - (e.thu || 0);
         thuCT += e.thu || 0;
       });
-      // Dự án chưa nhập chi phí: chỉ có số đã trả; không tính nợ / ứng dư (sẽ ra "ứng dư" toàn bộ, sai ý nghĩa)
+      // Công trình chưa nhập chi phí: chỉ có số đã trả; không tính nợ / ứng dư (sẽ ra "ứng dư" toàn bộ, sai ý nghĩa)
       rows.push({
         ma: p.ma, ten: p.ten, trangThai: p.trangThai, inCatalog: p.inCatalog, coChiPhi: coCP,
         dauKy: t.dauKy, phatSinh: t.phatSinh, daTra: t.daTra, conNo: coCP ? t.conNo : 0, ungDu: coCP ? t.ungDu : 0, conLai: coCP ? t.conLai : 0, chiKhac: chiKhac,
@@ -1118,7 +1118,7 @@
     }, { dauKy: 0, phatSinh: 0, daTra: 0, daTraCoChiPhi: 0, conNo: 0, ungDu: 0, conLai: 0, chiKhac: 0, soNCCNo: 0, soNCCDu: 0 });
     // % đã thanh toán chỉ tính trên các công trình đã nhập chi phí
     total.tiLeDaTra = total.dauKy + total.phatSinh > 0 ? total.daTraCoChiPhi / (total.dauKy + total.phatSinh) : null;
-    // khoản trả cho NCC có chi phí công trình nhưng không ghi mã dự án -> không tính được vào công trình nào
+    // khoản trả cho NCC có chi phí công trình nhưng không ghi mã công trình -> không tính được vào công trình nào
     const nccCP = new Set();
     (db.costs || []).forEach(function (c) { if (c.maNCC) nccCP.add(keyOf(c.maNCC)); });
     let chuaGan = 0;
@@ -1454,7 +1454,7 @@
     ent.forEach(function (e) {
       const miss = [];
       if (e.maNCC && !x.s.get(keyOf(e.maNCC))) miss.push('NCC "' + e.maNCC + '" chưa có trong danh mục');
-      if (e.maDuAn && !x.p.get(keyOf(e.maDuAn))) miss.push('dự án "' + e.maDuAn + '" chưa có trong danh mục');
+      if (e.maDuAn && !x.p.get(keyOf(e.maDuAn))) miss.push('công trình "' + e.maDuAn + '" chưa có trong danh mục');
       if (!miss.length) return;
       push({ key: 'thieu:e:' + e.id + ':' + keyOf(e.maNCC) + '|' + keyOf(e.maDuAn), loai: 'thieu', ngay: e.ngay, soTien: e.chi || e.thu,
         tieuDe: 'Dòng sổ thu chi: ' + miss.join(', '), chiTiet: (e.noiDung || '') + ' · ' + moneyTxt(e.chi || e.thu), target: { kind: 'entries', id: e.id } });

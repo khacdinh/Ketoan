@@ -105,7 +105,7 @@ test('W2 biểu mẫu nhiều dòng: thêm dòng, mỗi dòng một dự án, t�
     await page.fill(row(3) + ' [data-c=maDuAn]', 'LA'); await page.fill(row(3) + ' [data-c=chi]', '1tr');
     await page.keyboard.press('Control+Enter');
     await settle(page);
-    assert.match(await page.$eval('.modal', (e) => e.innerText), /Dòng 3: Mã dự án chưa có/);
+    assert.match(await page.$eval('.modal', (e) => e.innerText), /Dòng 3: Mã công trình chưa có/);
     assert.equal(readStored(srv.dataDir).entries.filter((x) => x.soPhieu === 'PC050/07').length, 0, 'chưa ghi dòng nào');
     // bỏ dòng 3 rồi ghi sổ
     await page.click(row(3) + ' [data-act=bo-dong]');
@@ -196,7 +196,7 @@ test('W4 phiếu nhập chi phí trên giao diện: cột Công trình riêng, �
     await page.fill(cell(0, 'dienGiai'), 'Xi măng'); await page.fill(cell(0, 'thanhTien'), '5tr'); await page.locator(cell(0, 'thanhTien')).dispatchEvent('change');
     await page.focus(cell(0, 'thanhTien'));
     await page.keyboard.press('Control+Enter');
-    await page.waitForFunction(() => /Chọn công trình/.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
+    await page.waitForFunction(() => /chọn Công trình/i.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
     // dòng 1: CT1, dòng 2: CT2
     await page.fill(cell(0, 'ct'), 'CT1'); await page.locator(cell(0, 'ct')).dispatchEvent('change');
     await page.fill(cell(1, 'ct'), 'công trình 2'); await page.locator(cell(1, 'ct')).dispatchEvent('change');
@@ -217,9 +217,9 @@ test('W4 phiếu nhập chi phí trên giao diện: cột Công trình riêng, �
     await page.locator('#rc-body tr[data-phieu]').first().locator('a[href*="cp-nhap?phieu="]').click();
     await page.waitForSelector(cell(1, 'ct'));
     await page.waitForTimeout(200);
-    const cts = [await page.inputValue('#cp-head input[name=maCT]'), await page.inputValue(cell(0, 'ct')), await page.inputValue(cell(1, 'ct'))];
+    const cts = [await page.inputValue(cell(0, 'ct')), await page.inputValue(cell(1, 'ct'))];
     // dòng ô Công trình trống = theo đầu phiếu; hợp lại phải đủ CT1 và CT2
-    assert.deepEqual(Array.from(new Set([cts[0], cts[1] || cts[0], cts[2] || cts[0]])).sort(), ['CT1', 'CT2'], 'mở lại thấy đủ cả hai công trình');
+    assert.deepEqual(cts.sort(), ['CT1', 'CT2'], 'mở lại: mỗi dòng hiện đúng công trình');
     assert.deepEqual(errors.filter((e) => !/status of 4/.test(e)), []);
   } finally { await browser.close(); await srv.stop(); }
 });
@@ -261,7 +261,7 @@ test('W6 phiếu nhập chi phí trên giao diện: không còn ô hạng mục 
     await page.waitForSelector('#cp-body tr[data-row]');
     assert.equal(await page.locator('#cp-head input[name=hm]').count(), 0, 'đầu phiếu không còn ô hạng mục');
     assert.equal(await page.locator('#cp-body [data-col=hm]').count(), 0, 'dòng không còn ô gõ hạng mục');
-    await page.fill('#cp-head input[name=maCT]', 'CT1'); await page.locator('#cp-head input[name=maCT]').dispatchEvent('change');
+    await page.fill(cell(0, 'ct'), 'CT1'); await page.locator(cell(0, 'ct')).dispatchEvent('change');
     await page.fill('#cp-head input[name=maNCC]', 'ONGA'); await page.locator('#cp-head input[name=maNCC]').dispatchEvent('change');
     await page.fill(cell(0, 'maVT'), 'XM'); await page.locator(cell(0, 'maVT')).dispatchEvent('change');
     await page.fill(cell(0, 'soLuong'), '10'); await page.fill(cell(0, 'donGia'), '95k'); await page.locator(cell(0, 'donGia')).dispatchEvent('change');

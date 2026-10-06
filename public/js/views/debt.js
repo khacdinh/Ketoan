@@ -255,12 +255,12 @@ export function projectDebtHtml(sum, activeCt) {
   const t = sum.total;
   return '<div class="overflow-x-auto"><table class="ledger">' +
     '<thead><tr><th>Công trình</th><th class="num money">Chi phí phát sinh</th><th class="num money">Đã thanh toán NCC</th><th class="num">% đã thanh toán</th>' +
-    '<th class="num money">Dư Có (còn phải trả)</th><th class="num money">Dư Nợ (đã ứng trước)</th><th class="num money" title="Khoản chi trong sổ thu chi có mã dự án nhưng không ghi mã NCC">Chi khác (không ghi NCC)</th></tr></thead>' +
+    '<th class="num money">Dư Có (còn phải trả)</th><th class="num money">Dư Nợ (đã ứng trước)</th><th class="num money" title="Khoản chi trong sổ thu chi có mã công trình nhưng không ghi mã NCC">Chi khác (không ghi NCC)</th></tr></thead>' +
     '<tbody>' + body + '</tbody>' +
     (sum.rows.length > 1 ? '<tfoot><tr><td>Tổng cộng</td><td class="num money">' + money(t.phatSinh) + '</td><td class="num money">' + money(t.daTra) + '</td><td class="num">' + (t.tiLeDaTra == null ? '' : pct(t.tiLeDaTra)) + '</td>' +
       '<td class="num money"><span class="dbl">' + money(t.conNo) + '</span></td><td class="num money">' + money(t.ungDu) + '</td><td class="num money">' + (t.chiKhac ? money(t.chiKhac) : '') + '</td></tr></tfoot>' : '') +
     '</table></div>' +
-    '<p class="px-4 py-2.5 text-[12px] leading-relaxed text-ink-3">Đã thanh toán = tổng chi trừ tổng thu trong sổ thu chi có ghi cả Mã dự án và Mã NCC, cộng khoản trả NCC từ nguồn khác (ngoài quỹ) có ghi công trình. Còn nợ / ứng dư cộng theo từng NCC của công trình (NCC ứng dư không bù cho NCC khác còn nợ).' +
+    '<p class="px-4 py-2.5 text-[12px] leading-relaxed text-ink-3">Đã thanh toán = tổng chi trừ tổng thu trong sổ thu chi có ghi cả Mã công trình và Mã NCC, cộng khoản trả NCC từ nguồn khác (ngoài quỹ) có ghi công trình. Còn nợ / ứng dư cộng theo từng NCC của công trình (NCC ứng dư không bù cho NCC khác còn nợ).' +
     (sum.traChuaGanCT.soDong ? ' <span class="font-medium text-caution">' + icon('warnTri', 'align-[-2px]') + ' Có ' + sum.traChuaGanCT.soDong + ' khoản trả cho NCC công trình (' + money(sum.traChuaGanCT.soTien) +
-      ' đ) chưa ghi mã dự án nên chưa tính vào công trình nào.</span>' : '') + '</p>';
+      ' đ) chưa ghi mã công trình nên chưa tính vào công trình nào.</span>' : '') + '</p>';
 }

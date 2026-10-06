@@ -39,7 +39,7 @@ export function renderControl(root) {
 /* ============================== NHẬT KÝ THAY ĐỔI ============================== */
 
 const FIELD = {
-  ngay: 'Ngày', soPhieu: 'Số phiếu', maDuAn: 'Dự án', maNCC: 'Nhà cung cấp', noiDung: 'Nội dung', thu: 'Thu', chi: 'Chi', nguoiNhan: 'Người nhận',
+  ngay: 'Ngày', soPhieu: 'Số phiếu', maDuAn: 'Công trình', maNCC: 'Nhà cung cấp', noiDung: 'Nội dung', thu: 'Thu', chi: 'Chi', nguoiNhan: 'Người nhận',
   ghiChu: 'Ghi chú', maCT: 'Công trình', maNha: 'Nhà', maHM: 'Hạng mục', loaiCP: 'Loại CP', maVT: 'Vật tư', dienGiai: 'Diễn giải', soLuong: 'Số lượng',
   donGia: 'Đơn giá', thanhTien: 'Thành tiền', ma: 'Mã', ten: 'Tên', trangThai: 'Trạng thái', nganSach: 'Ngân sách', loai: 'Loại', sdt: 'Điện thoại',
   diaChi: 'Địa chỉ', maNhom: 'Nhóm', dvt: 'ĐVT', chuNha: 'Chủ nhà', dienTich: 'Diện tích', chung: 'Dùng chung', ngayKhoiCong: 'Ngày khởi công',

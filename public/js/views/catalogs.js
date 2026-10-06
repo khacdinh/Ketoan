@@ -1,4 +1,4 @@
-/* Danh mục dự án, danh mục nhà cung cấp / đối tượng, tổng hợp theo nhà cung cấp. */
+/* Danh mục công trình, danh mục nhà cung cấp / đối tượng, tổng hợp theo nhà cung cấp. */
 import { $, esc, money, fdate, icon, highlight, download, api, toast, showError, confirmDialog, freshRoot, debounce, LS, periodControls, bindPeriodControls, refreshPeriod } from '../ui.js';
 import { S, saveFilter } from '../state.js';
 import { openProjectForm, openSupplierForm } from '../forms.js';
@@ -41,18 +41,18 @@ function toolbar(o) {
     '</div>';
 }
 
-/* ============================== DỰ ÁN ============================== */
+/* ============================== CÔNG TRÌNH ============================== */
 
 export function renderProjects(root) {
   root = freshRoot(root);
   const state = { q: LS.get('q.projects', ''), merged: LS.get('merged.projects', false) };
   root.innerHTML =
     '<div class="print-only" id="print-head"></div>' +
-    toolbar({ id: 'pj-q', placeholder: 'Tìm mã hoặc tên dự án', q: state.q, addLabel: 'Thêm dự án', extra: mergeToolbarHtml('da', state.merged) }) +
+    toolbar({ id: 'pj-q', placeholder: 'Tìm mã hoặc tên công trình', q: state.q, addLabel: 'Thêm công trình', extra: mergeToolbarHtml('da', state.merged) }) +
     '<section class="sheet overflow-hidden">' +
     '<p class="no-print border-b border-rule px-4 py-2.5 text-[13px] text-ink-2" id="pj-count"></p>' +
     '<div class="overflow-x-auto"><table class="ledger">' +
-    '<thead><tr>' + pickHead + '<th>Mã dự án</th><th>Tên dự án</th><th class="num money">Ngân sách dự kiến</th><th class="num money">Đã chi</th><th class="num money">Còn lại</th><th>Ngân sách</th><th>Trạng thái · khởi công</th><th class="num">Số dòng</th><th>Ghi chú</th><th class="no-print"><span class="sr-only">Thao tác</span></th></tr></thead>' +
+    '<thead><tr>' + pickHead + '<th>Mã công trình</th><th>Tên công trình</th><th class="num money">Ngân sách dự kiến</th><th class="num money">Đã chi</th><th class="num money">Còn lại</th><th>Ngân sách</th><th>Trạng thái · khởi công</th><th class="num">Số dòng</th><th>Ghi chú</th><th class="no-print"><span class="sr-only">Thao tác</span></th></tr></thead>' +
     '<tbody id="pj-body"></tbody><tfoot id="pj-foot"></tfoot></table></div></section>';
 
   const draw = () => {
@@ -60,7 +60,7 @@ export function renderProjects(root) {
     const byMa = new Map(ps.rows.map((r) => [KT.keyOf(r.ma), r]));
     const q = KT.normalizeText(state.q).trim();
     const list = S.db.projects.filter((p) => !q || KT.normalizeText(p.ma + ' ' + p.ten + ' ' + (p.ghiChu || '')).includes(q));
-    $('#pj-count', root).innerHTML = '<b class="font-semibold text-ink">' + list.length + '</b> trên ' + S.db.projects.length + ' dự án. Bấm đúp một dòng để sửa.';
+    $('#pj-count', root).innerHTML = '<b class="font-semibold text-ink">' + list.length + '</b> trên ' + S.db.projects.length + ' công trình. Bấm đúp một dòng để sửa.';
     $('#pj-body', root).innerHTML = (list.length ? list.map((p) => {
       const r = byMa.get(KT.keyOf(p.ma)) || { chi: 0, soDong: 0, chenhLech: p.nganSach || 0, status: 'idle', tiLe: 0 };
       return '<tr data-id="' + p.id + '">' + pickCell(p.ma) +
@@ -72,10 +72,10 @@ export function renderProjects(root) {
         '<td class="whitespace-nowrap">' + esc(p.trangThai || '') + (p.ngayKhoiCong ? '<div class="text-[12.5px] text-ink-2">Khởi công ' + fdate(p.ngayKhoiCong) + '</div>' : '') + '</td>' +
         '<td class="num">' + r.soDong + '</td>' +
         '<td class="text-[12.5px] text-ink-2">' + highlight(p.ghiChu || '', state.q) + '</td>' +
-        rowActions(p.ma, { xem: [{ act: 'cost-ledger', title: 'Sổ chi phí của công trình', ic: 'table' }, { act: 'ledger', title: 'Sổ thu chi của dự án', ic: 'book' }],
+        rowActions(p.ma, { xem: [{ act: 'cost-ledger', title: 'Sổ chi phí của công trình', ic: 'table' }, { act: 'ledger', title: 'Sổ thu chi của công trình', ic: 'book' }],
           khoa: (r.soDong || usedCost(p.ma)) ? 'Đã có ' + (r.soDong + usedCost(p.ma)) + ' dòng sổ / chi phí: dùng Gộp mã để chuyển sang mã khác rồi mới xóa' : '' }) + '</tr>';
-    }).join('') : '<tr><td colspan="11" class="empty">Không có dự án nào khớp. Thử từ khóa khác hoặc thêm dự án mới.</td></tr>') +
-      // dự án đã gộp (ẩn mặc định): chỉ để tra cứu; muốn dùng lại thì hoàn tác ở màn Gộp mã
+    }).join('') : '<tr><td colspan="11" class="empty">Không có công trình nào khớp. Thử từ khóa khác hoặc thêm công trình mới.</td></tr>') +
+      // công trình đã gộp (ẩn mặc định): chỉ để tra cứu; muốn dùng lại thì hoàn tác ở màn Gộp mã
       (state.merged ? mergedRecords('da').filter((p) => !q || KT.normalizeText([p.ma, p.ten, p.gopVao].join(' ')).includes(q)).map((p) =>
         '<tr class="text-ink-3"><td class="no-print"></td><td class="code">' + esc(p.ma) + '</td><td>' + esc(p.ten) + '</td><td colspan="7">' + mergedChip(p) + '</td><td class="no-print"></td></tr>').join('') : '');
     $('#pj-foot', root).innerHTML = '<tr><td class="no-print"></td><td colspan="2">Tổng cộng</td><td class="num money">' + money(ps.total.nganSach) + '</td>' +
@@ -92,17 +92,17 @@ export function renderProjects(root) {
     const act = a.dataset.act;
     if (act === 'add') openProjectForm(null);
     else if (act === 'export') download('/api/export/projects');
-    else if (act === 'print') printView('DANH MỤC DỰ ÁN VÀ NGÂN SÁCH', '', S.db.settings);
+    else if (act === 'print') printView('DANH MỤC CÔNG TRÌNH VÀ NGÂN SÁCH', '', S.db.settings);
     else if (act === 'edit' && p) openProjectForm(p);
     else if (act === 'ledger' && p) goLedger('duAn', p.ma);
     else if (act === 'cost-ledger' && p) { Object.assign(S.filters.cpSo, { period: 'tat-ca', from: '', to: '', rel: false, nha: '', nhom: '', hm: '', loai: '', ncc: '', vt: '', q: '' }); datCongTrinh(p.ma); location.hash = '#/cp-so'; }
     else if (act === 'del' && p) {
       const used = S.all.entries.filter((x) => KT.keyOf(x.maDuAn) === KT.keyOf(p.ma)).length;
-      if (used) return toast('Không xóa được: dự án ' + p.ma + ' đang có ' + used + ' dòng sổ. Chuyển các dòng đó sang dự án khác trước.', 'error');
+      if (used) return toast('Không xóa được: công trình ' + p.ma + ' đang có ' + used + ' dòng sổ. Chuyển các dòng đó sang công trình khác trước.', 'error');
       const usedCost = S.all.costs.filter((x) => KT.keyOf(x.maCT) === KT.keyOf(p.ma)).length;
       if (usedCost) return toast('Không xóa được: công trình ' + p.ma + ' đang có ' + usedCost + ' dòng chi phí.', 'error');
-      if (!(await confirmDialog({ trash: true, title: 'Xóa dự án', html: 'Xóa dự án <b class="text-ink">' + esc(p.ma) + '</b>, ' + esc(p.ten) + '?', okText: 'Xóa dự án', danger: true }))) return;
-      try { await api('DELETE', '/api/projects/' + p.id); toast('Đã xóa dự án ' + p.ma + ', chuyển vào Thùng rác'); } catch (err) { showError(err); }
+      if (!(await confirmDialog({ trash: true, title: 'Xóa công trình', html: 'Xóa công trình <b class="text-ink">' + esc(p.ma) + '</b>, ' + esc(p.ten) + '?', okText: 'Xóa công trình', danger: true }))) return;
+      try { await api('DELETE', '/api/projects/' + p.id); toast('Đã xóa công trình ' + p.ma + ', chuyển vào Thùng rác'); } catch (err) { showError(err); }
     }
   });
   root.addEventListener('dblclick', (e) => {

@@ -28,7 +28,7 @@ const ROUTES = {
   'tong-quan': { title: 'Tổng quan', sub: 'Quỹ tiền mặt và chi phí các công trình', render: renderDashboard },
   'so-thu-chi': { title: 'Sổ quỹ thu chi', sub: 'Nhật ký thu, chi và tồn quỹ hằng ngày. Bấm đúp một dòng để sửa.', render: renderLedger },
   'phieu': { title: 'Phiếu thu / chi', sub: 'Các dòng sổ quỹ cùng số phiếu được gộp lại để in 2 liên.', render: renderVouchers },
-  'du-an': { title: 'Công trình, dự án', sub: 'Mã công trình và ngân sách phê duyệt', render: renderProjects },
+  'du-an': { title: 'Công trình', sub: 'Mã công trình và ngân sách phê duyệt', render: renderProjects },
   'ncc': { title: 'Nhà cung cấp và đối tượng', sub: 'Nhà cung cấp, thầu phụ, nhân viên, người nhận tiền', render: renderSuppliers },
   'tong-hop-ncc': { title: 'Công nợ nhà cung cấp theo kỳ', sub: 'Số dư đầu kỳ + phát sinh − thanh toán = số dư cuối kỳ', render: renderDebt },
   'cai-dat': { title: 'Cài đặt và dữ liệu', sub: 'Thông tin in trên phiếu, sao lưu, khôi phục, xóa dữ liệu', render: renderSettings },
@@ -45,7 +45,7 @@ const ROUTES = {
   'cp-danh-muc': { title: 'Danh mục chi phí', sub: 'Nhóm chi phí, hạng mục, vật tư, nhà và khu', render: renderCostCatalogs },
   // Kiểm soát sổ sách (nhóm độ chính xác và truy vết)
   'kiem-soat': { title: 'Kiểm soát sổ sách', sub: 'Nhật ký thay đổi, thùng rác và các việc cần xử lý để số liệu luôn đúng', render: renderControl },
-  'gop-ma': { title: 'Gộp mã', sub: 'Đưa các mã trùng (NCC, vật tư, hạng mục, nhà, dự án) về một mã, có xem trước và hoàn tác', render: renderMerge },
+  'gop-ma': { title: 'Gộp mã', sub: 'Đưa các mã trùng (NCC, vật tư, hạng mục, nhà, công trình) về một mã, có xem trước và hoàn tác', render: renderMerge },
   'nguoi-dung': { title: 'Người dùng', sub: 'Tài khoản, vai trò, mở khóa, đặt lại mật khẩu, sự kiện bảo mật', render: renderUsers }
 };
 // Menu: nhóm theo trình tự công việc. Mỗi mục: [đường dẫn, biểu tượng Lucide, tên, phím tắt (chỉ hiện ở chú thích), tab]; tab = mở sẵn tab của danh mục chi phí
@@ -97,7 +97,7 @@ function renderShell() {
       { icon: 'excel', label: 'Toàn bộ sổ sách', hint: 'Đủ các sheet như file gốc, giữ nguyên công thức', action: () => download('/api/export/full') },
       { sep: true },
       { icon: 'book', label: 'Sổ thu chi', hint: q ? 'Theo bộ lọc đang chọn ở màn hình Sổ thu chi' : 'Toàn bộ sổ', action: () => download('/api/export/ledger?' + q) },
-      { icon: 'hardhat', label: 'Chi phí theo dự án', hint: 'Tổng hợp và chi tiết. ' + KT.describeRange(d.from, d.to), action: () => download('/api/export/projects?' + dq) },
+      { icon: 'hardhat', label: 'Chi phí theo công trình', hint: 'Tổng hợp và chi tiết. ' + KT.describeRange(d.from, d.to), action: () => download('/api/export/projects?' + dq) },
       { icon: 'contacts', label: 'Thanh toán theo nhà cung cấp', hint: 'Tổng hợp và chi tiết. ' + KT.describeRange(t.from, t.to), action: () => download('/api/export/suppliers?' + tq) },
       { icon: 'receipt', label: v ? 'Phiếu ' + v.soPhieu : 'Phiếu thu, phiếu chi', hint: v ? 'Phiếu đang chọn, 2 liên' : 'Chọn một phiếu ở màn hình Phiếu trước', disabled: !v, action: () => download('/api/export/voucher?so=' + encodeURIComponent(v.soPhieu)) },
       { sep: true },

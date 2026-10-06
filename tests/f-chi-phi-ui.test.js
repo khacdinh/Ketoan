@@ -39,17 +39,19 @@ test('F1 phiếu nhập chi phí: nhập toàn bộ bằng bàn phím (Enter san
     assert.ok((await active(page)).cls.includes('date-text'), 'tiêu điểm phải ở ô Ngày');
     await page.keyboard.press('Control+A'); await type(page, '15/9'); await page.keyboard.press('Tab');
     assert.equal(await page.inputValue('#cp-head input[name=ngay]'), new Date().getFullYear() + '-09-15');
-    assert.equal((await active(page)).name, 'maCT', 'Tab từ ngày sang công trình');
-    await type(page, 'CT1'); await page.keyboard.press('Enter');
-    assert.equal((await active(page)).name, 'maNha');
-    assert.match(await page.$eval('#cp-head input[name=maNha]', (e) => e.value), /CHUNG1/, 'tự điền nhà dùng chung của công trình');
-    await page.keyboard.press('Control+A'); await type(page, 'NHA1'); await page.keyboard.press('Enter');
-    assert.equal((await active(page)).name, 'maNCC');
+    assert.equal((await active(page)).name, 'maNCC', 'Tab từ ngày sang nhà cung cấp (đầu phiếu không còn công trình)');
+    assert.equal(await page.locator('#cp-head input[name=maCT], #cp-head input[name=maNha]').count(), 0);
     await type(page, 'S1'); await page.keyboard.press('Enter');
     assert.equal((await active(page)).name, 'soPhieu');
     await type(page, 'GH-77'); await page.keyboard.press('Enter');
     let a = await active(page);
-    assert.deepEqual([a.col, a.row], ['maVT', '0'], 'Enter ở ô cuối đầu phiếu nhảy xuống dòng hàng đầu tiên');
+    assert.deepEqual([a.col, a.row], ['ct', '0'], 'Enter ở ô cuối đầu phiếu nhảy xuống ô Công trình của dòng đầu');
+    await type(page, 'CT1'); await page.keyboard.press('Enter');
+    assert.match(await page.inputValue('tr[data-row="0"] [data-col=nha]'), /CHUNG1/, 'tự điền nhà dùng chung của công trình');
+    a = await active(page);
+    assert.deepEqual([a.col, a.row], ['maVT', '0']);
+    await page.fill('tr[data-row="0"] [data-col=nha]', 'NHA1'); await page.locator('tr[data-row="0"] [data-col=nha]').dispatchEvent('change');
+    await page.focus('tr[data-row="0"] [data-col=maVT]');
     // dòng 1: XM — tự điền tên, ĐVT
     await type(page, 'XM'); await page.keyboard.press('Enter');
     assert.equal(await page.$eval('tr[data-row="0"] .vt-name', (e) => e.textContent.trim()), 'Xi măng');
@@ -102,7 +104,7 @@ test('F1 phiếu nhập chi phí: nhập toàn bộ bằng bàn phím (Enter san
     assert.equal(new Set(db.costs.map((c) => c.phieuId)).size, 1, 'một phiếu');
     // sau khi lưu: giữ đầu phiếu, xóa số phiếu và các dòng, tiêu điểm về ô đầu tiên của dòng 1
     await page.waitForTimeout(200);
-    assert.equal(await page.inputValue('#cp-head input[name=maCT]'), 'CT1');
+    assert.equal(await page.inputValue('tr[data-row="0"] [data-col=ct]'), 'CT1', 'phiếu sau gợi ý công trình của phiếu vừa ghi');
     assert.equal(await page.inputValue('#cp-head input[name=maNCC]'), 'S1');
     assert.equal(await page.inputValue('#cp-head input[name=soPhieu]'), '');
     assert.equal(await page.locator('#cp-body input[data-col=maVT]').count(), 1, 'chỉ còn 1 dòng trống');
@@ -152,9 +154,6 @@ test('F1b phiếu nhập: kiểm tra dữ liệu bằng bàn phím (báo lỗi, 
     await page.waitForTimeout(150);
     // lưu khi chưa nhập gì
     await page.keyboard.press('Control+Enter');
-    await page.waitForFunction(() => /Chọn công trình/.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
-    assert.equal((await active(page)).name, 'maCT', 'tiêu điểm về ô lỗi');
-    await type(page, 'CT1'); await page.keyboard.press('Control+Enter');
     await page.waitForFunction(() => /Chọn nhà cung cấp/.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
     assert.equal((await active(page)).name, 'maNCC');
     // NCC chưa có: gợi ý thêm nhanh
@@ -210,7 +209,8 @@ test('F1b phiếu nhập: kiểm tra dữ liệu bằng bàn phím (báo lỗi, 
     assert.equal(await page.inputValue('tr[data-row="0"] [data-col=maVT]'), 'VT_MOI', 'bản nháp phải còn');
     assert.equal(await page.inputValue('tr[data-row="0"] [data-col=donGia]'), '5.000');
     assert.equal(await page.inputValue('#cp-head input[name=maNCC]'), 'NCC_MOI');
-    // lưu thành công sau khi sửa xong, nháp bị xóa
+    // lưu thành công sau khi sửa xong (chọn công trình cho dòng), nháp bị xóa
+    await page.fill('#cp-body [data-row="0"][data-col=ct]', 'CT1'); await page.locator('#cp-body [data-row="0"][data-col=ct]').dispatchEvent('change');
     await page.focus('tr[data-row="0"] [data-col=donGia]');
     await page.keyboard.press('Control+Enter');
     await page.waitForFunction(() => /Đã ghi 1 dòng/.test(document.querySelector('#toast-root').textContent), null, { timeout: 6000 });
@@ -228,7 +228,7 @@ test('F1c phiếu nhập: dòng chỉ có Thành tiền (khoán, không SL / ĐG
   try {
     await page.waitForSelector('#cp-head');
     await page.waitForTimeout(150);
-    await page.fill('#cp-head input[name=maCT]', 'CT1');
+    await page.fill('#cp-body [data-row="0"][data-col=ct]', 'CT1'); await page.locator('#cp-body [data-row="0"][data-col=ct]').dispatchEvent('change');
     await page.fill('#cp-head input[name=maNCC]', 'S1');
     // dòng 1: khoán (vật tư NC = nhân công) — Enter qua Số lượng, Đơn giá để trống, gõ Thành tiền
     await page.focus('#cp-body [data-row="0"][data-col=maVT]');
@@ -821,7 +821,7 @@ test('F8 ô lọc gõ tìm thay dropdown: gõ mã / tên / “chưa gán”, ch�
     const nP = KT.filterLedger(led, { duAn: p.ma }).rows.length;
     assert.match(await count(), new RegExp('\\b' + nP + '\\b'));
     // lựa chọn "chưa gán dự án"
-    await pick(page, '#so-duan', '(Chưa gán dự án)');
+    await pick(page, '#so-duan', '(Chưa gán công trình)');
     const nNone = KT.filterLedger(led, { duAn: '__none__' }).rows.length;
     assert.match(await count(), new RegExp('\\b' + nNone + '\\b'));
     // gõ sai: báo lỗi, giữ bộ lọc cũ

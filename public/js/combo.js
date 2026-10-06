@@ -1,4 +1,4 @@
-/* Ô chọn gõ tìm có danh sách gợi ý — thay cho danh sách chọn (dropdown) khi chọn công trình, nhà, NCC, nhóm, hạng mục, vật tư, dự án.
+/* Ô chọn gõ tìm có danh sách gợi ý — thay cho danh sách chọn (dropdown) khi chọn công trình, nhà, NCC, nhóm, hạng mục, vật tư, công trình.
  * Gõ vài chữ của mã hoặc tên (không phân biệt hoa thường, có dấu hay không dấu đều được): danh sách gợi ý "mã – tên" hiện ngay
  * dưới ô; ↑ ↓ để chọn, Enter để lấy, Esc để đóng; bấm chuột vào một dòng cũng được. Gõ đủ mã / đúng tên rồi Enter hay rời ô cũng
  * được; xóa trắng = tất cả.

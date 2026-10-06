@@ -1,5 +1,10 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Phiếu nhập: bỏ Công trình ở đầu phiếu; thống nhất gọi “Công trình” (06/10/2026)
+
+- **Phiếu nhập chi phí**: đầu phiếu chỉ còn Ngày, Nhà cung cấp, Số phiếu. Mỗi dòng có cột **Công trình** (bắt buộc) và **Nhà / khu** (tự điền nhà dùng chung của công trình, sửa được). Dòng mới tự chép công trình, nhà / khu của dòng trên; Enter ở ô cuối đầu phiếu / cuối dòng dừng ở ô Công trình nếu dòng chưa có. Phiếu mới gợi ý công trình đang chọn ở thanh trên, không thì công trình của phiếu vừa ghi.
+- **Thống nhất tên gọi**: mọi chữ “Dự án” trên giao diện, thông báo lỗi, nhật ký, gộp mã đổi thành **Công trình** (một danh mục chung cho sổ thu chi và chi phí). Tên cột trong file Excel giữ nguyên như file gốc (`Mã Dự Án`…) để nhập lại được; mã trong dữ liệu không đổi.
+
 ## Phiếu nhập chi phí: bỏ chọn hạng mục, nhóm › hạng mục theo vật tư (06/10/2026)
 
 - Bỏ ô **Hạng mục** ở đầu phiếu và ô gõ hạng mục ở từng dòng. Cột mới **Nhóm › Hạng mục** chỉ hiển thị nhóm chi phí và hạng mục đã gắn cho mã vật tư (Danh mục › Vật tư), không sửa được, nên không còn lệch dữ liệu giữa phiếu và danh mục.

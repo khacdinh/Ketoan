@@ -11,7 +11,7 @@ export const LOAI = {
   vt: { list: 'materials', ten: 'vật tư', Ten: 'Vật tư', sub: (x) => x.dvt },
   hm: { list: 'costItems', ten: 'hạng mục', Ten: 'Hạng mục', sub: () => '' },
   nha: { list: 'houses', ten: 'nhà / khu', Ten: 'Nhà / khu', sub: (x) => x.maCT },
-  da: { list: 'projects', ten: 'dự án / công trình', Ten: 'Dự án / công trình', sub: () => '' }
+  da: { list: 'projects', ten: 'công trình', Ten: 'Công trình', sub: () => '' }
 };
 const COUNT_LABEL = { entries: 'dòng sổ thu chi', costs: 'dòng chi phí', materials: 'vật tư dùng làm hạng mục hay dùng', houses: 'nhà / khu', extPayments: 'khoản trả NCC ngoài quỹ', soDuDauKy: 'số dư đầu kỳ NCC' };
 const XAC_NHAN = { dvt: 'Tôi xác nhận: ĐVT khác nhau, số lượng giữ nguyên', khoan: 'Tôi xác nhận gộp mã khoản / chung với vật tư thường', ten: 'Tôi xác nhận hai hạng mục CÙNG NGHĨA' };
@@ -205,7 +205,7 @@ async function drawLog(box) {
   box.innerHTML = '<p class="text-ink-3">Đang tải…</p>';
   let items;
   try { items = (await api('GET', '/api/merge/log')).items; } catch (err) { box.innerHTML = '<p class="form-error">' + esc(err.message) + '</p>'; return; }
-  const LOAI_TEN = { ncc: 'NCC', vt: 'Vật tư', hm: 'Hạng mục', nha: 'Nhà / khu', da: 'Dự án', 'tach-hm': 'Tách hạng mục' };
+  const LOAI_TEN = { ncc: 'NCC', vt: 'Vật tư', hm: 'Hạng mục', nha: 'Nhà / khu', da: 'Công trình', 'tach-hm': 'Tách hạng mục' };
   box.innerHTML = '<section class="sheet overflow-hidden"><div class="overflow-x-auto"><table class="ledger" id="gm-log"><thead><tr><th>Lúc</th><th>Loại</th><th>Nội dung</th><th class="num">Bản ghi</th><th>Tiền chịu ảnh hưởng</th><th>Trạng thái</th><th class="no-print"></th></tr></thead><tbody>' +
     (items.length ? items.map((g) => '<tr data-id="' + g.id + '"><td class="whitespace-nowrap">' + esc(fdate(g.at.slice(0, 10))) + ' ' + esc(g.at.slice(11, 16)) + (g.by ? '<div class="sub">' + esc(g.by) + '</div>' : '') + '</td>' +
       '<td>' + esc(LOAI_TEN[g.loai] || g.loai) + '</td><td>' + esc(g.nhan) + (g.xacNhan.length ? '<div class="sub">Đã xác nhận: ' + esc(g.xacNhan.join(' | ')) + '</div>' : '') + '</td>' +
@@ -227,7 +227,7 @@ async function drawSuggest(box, root) {
   box.innerHTML = '<p class="text-ink-3">Đang tìm…</p>';
   let r;
   try { r = await api('GET', '/api/merge/suggest'); } catch (err) { box.innerHTML = '<p class="form-error">' + esc(err.message) + '</p>'; return; }
-  const LOAI_TEN = { ncc: 'Nhà cung cấp', vt: 'Vật tư', hm: 'Hạng mục', nha: 'Nhà / khu', da: 'Dự án' };
+  const LOAI_TEN = { ncc: 'Nhà cung cấp', vt: 'Vật tư', hm: 'Hạng mục', nha: 'Nhà / khu', da: 'Công trình' };
   const show = r.nhom.filter((g) => !g.boQua);
   const hidden = r.nhom.length - show.length;
   box.innerHTML =

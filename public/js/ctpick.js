@@ -1,6 +1,6 @@
 /* Chọn công trình ở thanh trên: áp dụng cho các sổ và báo cáo chi phí (thay cho ô "Công trình" riêng ở từng màn hình).
  * Giá trị nằm ở S.ct; để các màn hình cũ vẫn chạy, mỗi lần đổi ta ghi cùng mã vào bộ lọc công trình của từng màn hình.
- * Sổ quỹ thu chi giữ ô "Dự án" riêng của nó (có cả "Chưa gán dự án") nên không nằm trong danh sách này. */
+ * Sổ quỹ thu chi giữ ô "Công trình" riêng của nó (có cả "Chưa gán công trình") nên không nằm trong danh sách này. */
 import { $, esc, LS, icon } from './ui.js';
 import { S, saveFilter, costProjects } from './state.js';
 

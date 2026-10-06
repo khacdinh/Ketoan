@@ -176,7 +176,7 @@ test('G3 giao diện với 20.000 dòng: mở từng màn hình, lọc, tìm ki�
     await route(page, '#/cp-nhap');
     await page.waitForSelector('#cp-head');
     const c0 = db.costs[0];
-    await page.fill('#cp-head input[name=maCT]', c0.maCT);
+    await page.fill('#cp-body [data-row="0"][data-col=ct]', c0.maCT); await page.locator('#cp-body [data-row="0"][data-col=ct]').dispatchEvent('change');
     await page.fill('#cp-head input[name=maNCC]', c0.maNCC);
     const vt0 = db.materials.find((m) => m.maHM); // hạng mục của dòng lấy theo vật tư
     await page.fill('#cp-body [data-row="0"][data-col=maVT]', vt0.ma);

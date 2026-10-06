@@ -126,7 +126,7 @@ export function allCostLedger() {
   return S._allCostLedger;
 }
 
-// Các dòng Nháp của sổ thu chi dưới dạng dòng sổ (tên dự án, NCC...), chưa có tồn quỹ
+// Các dòng Nháp của sổ thu chi dưới dạng dòng sổ (tên công trình, NCC...), chưa có tồn quỹ
 export function draftLedgerRows() {
   if (!S.drafts.entries.length) return [];
   return KT.buildLedger(Object.assign({}, S.all, { entries: S.drafts.entries })).map((r) => Object.assign(r, { stt: '', ton: null }));
@@ -212,7 +212,7 @@ export function selectOptions(list, selected, opts) {
   return html;
 }
 
-// Công trình = dự án có dùng trong chi phí / nhà (lên đầu), sau đó các dự án còn lại
+// Công trình = công trình có dùng trong chi phí / nhà (lên đầu), sau đó các công trình còn lại
 export function costProjects() {
   const used = new Set();
   S.db.costs.forEach((c) => used.add(KT.keyOf(c.maCT)));

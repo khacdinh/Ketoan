@@ -33,7 +33,7 @@ export function renderLedger(root) {
   root = freshRoot(root);
   const f = refreshPeriod(S.filters.so);
   // ô gõ tìm thay cho danh sách chọn (xem combo.js)
-  const cbDa = { id: 'so-duan', list: S.db.projects, value: f.duAn, none: '(Chưa gán dự án)', noun: 'dự án', placeholder: 'Tất cả', label: 'Lọc theo dự án' };
+  const cbDa = { id: 'so-duan', list: S.db.projects, value: f.duAn, none: '(Chưa gán công trình)', noun: 'công trình', placeholder: 'Tất cả', label: 'Lọc theo công trình' };
   const cbNcc = { id: 'so-ncc', list: S.db.suppliers.map((x) => ({ ma: x.ma, ten: x.ten, sub: x.loai })), value: f.ncc, none: '(Chưa gán NCC)', noun: 'nhà cung cấp',
     placeholder: 'Tất cả', label: 'Lọc theo nhà cung cấp' };
 
@@ -46,7 +46,7 @@ export function renderLedger(root) {
     '<div class="print-only" id="print-head"></div>' +
     '<div class="no-print flex flex-wrap items-center gap-2.5">' +
     periodControls(f, 'so') +
-    filterBox('Dự án', cbDa) + filterBox('NCC', cbNcc) +
+    filterBox('Công trình', cbDa) + filterBox('NCC', cbNcc) +
     '<div class="seg" role="radiogroup" aria-label="Loại">' +
     [['', 'Thu và chi'], ['thu', 'Thu'], ['chi', 'Chi']].map(([v, l]) => '<label class="seg-item"><input type="radio" name="so-loai" value="' + v + '"' + ((f.loai || '') === v ? ' checked' : '') + '><span>' + l + '</span></label>').join('') +
     '</div></div>' +
@@ -63,7 +63,7 @@ export function renderLedger(root) {
     '<div id="so-cards" class="flex flex-col gap-2.5 md:hidden"></div>' +
     '<section class="sheet overflow-hidden max-md:hidden">' +
     '<div class="table-scroll scroll-x max-h-[calc(100vh-360px)] min-h-[260px] overflow-auto" id="so-wrap"><table class="ledger">' +
-    '<thead><tr><th class="no-print w-8"><input type="checkbox" id="so-all" aria-label="Chọn tất cả các dòng đang hiện"></th><th class="num">STT</th><th>Ngày</th><th>Số phiếu</th><th>Dự án</th><th>NCC, đối tượng</th><th>Nội dung, ghi chú</th>' +
+    '<thead><tr><th class="no-print w-8"><input type="checkbox" id="so-all" aria-label="Chọn tất cả các dòng đang hiện"></th><th class="num">STT</th><th>Ngày</th><th>Số phiếu</th><th>Công trình</th><th>NCC, đối tượng</th><th>Nội dung, ghi chú</th>' +
     '<th class="num money">Thu</th><th class="num money">Chi</th><th class="num money">Tồn quỹ</th><th class="no-print"><span class="sr-only">Thao tác</span></th></tr></thead>' +
     '<tbody id="so-body"></tbody><tfoot id="so-foot"></tfoot></table></div>' +
     '</section>';
@@ -273,10 +273,10 @@ function rowHtml(r, q) {
     '</td></tr>';
 }
 
-// Dự án: hiện mã (ngắn, kế toán quen dùng); tên đầy đủ khi rê chuột
+// Công trình: hiện mã (ngắn, kế toán quen dùng); tên đầy đủ khi rê chuột
 function projectCell(r, q) {
   if (!r.maDuAn) return '';
-  if (!r.duAnHopLe) return '<span class="code bad" title="Mã chưa có trong danh mục dự án">' + highlight(r.maDuAn, q) + '</span>';
+  if (!r.duAnHopLe) return '<span class="code bad" title="Mã chưa có trong danh mục công trình">' + highlight(r.maDuAn, q) + '</span>';
   return '<span class="code" title="' + esc(r.tenDuAn) + '">' + highlight(r.maDuAn, q) + '</span>';
 }
 

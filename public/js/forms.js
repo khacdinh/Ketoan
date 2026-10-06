@@ -1,4 +1,4 @@
-/* Biểu mẫu: ghi thu/chi, dự án, nhà cung cấp. */
+/* Biểu mẫu: ghi thu/chi, công trình, nhà cung cấp. */
 import { hauQuaCongNo } from './congno.js';
 import { $, esc, api, openModal, toast, showError, bindMoneyInput, money, confirmDialog, icon, dateField, focusInput, fieldError, busy } from './ui.js';
 import { S, datalists, resolveCode, projectByCode, supplierByCode } from './state.js';
@@ -20,18 +20,18 @@ export function nguoiThaoTacHtml(r) {
 let soForm = 0;
 let lastUsed = { ngay: '', soPhieu: '', maDuAn: '', maNCC: '', loai: 'chi' };
 
-/* Phiếu nhiều dòng: phần chung (ngày, số phiếu, đối tượng, người nhận, ghi chú) + bảng các dòng, mỗi dòng có nội dung, dự án, mã vật tư, số tiền riêng.
-   Mỗi dòng là một dòng sổ thu chi (cùng số phiếu) nên công nợ NCC tách đúng theo dự án. Dòng đầu tiên giữ thuộc tính name (noiDung, maDuAn, maVT, chi, thu)
+/* Phiếu nhiều dòng: phần chung (ngày, số phiếu, đối tượng, người nhận, ghi chú) + bảng các dòng, mỗi dòng có nội dung, công trình, mã vật tư, số tiền riêng.
+   Mỗi dòng là một dòng sổ thu chi (cùng số phiếu) nên công nợ NCC tách đúng theo công trình. Dòng đầu tiên giữ thuộc tính name (noiDung, maDuAn, maVT, chi, thu)
    và id gợi ý (da-hint, vt-hint, chi-hint, thu-hint) như biểu mẫu một dòng trước đây; mọi dòng đều có data-c. */
 const COT_DONG = ['noiDung', 'maDuAn', 'maVT', 'chi', 'thu'];
 const GOI_Y_DONG = { maDuAn: ['da-hint', 'da'], maVT: ['vt-hint', 'vt'], chi: ['chi-hint', 'chi'], thu: ['thu-hint', 'thu'] };
 
-// Lưới giống Phiếu nhập chi phí (ledger grid-entry, ô .cell): # · Nội dung · Dự án · Tên dự án (+ NCC còn nợ) · Mã vật tư · Số tiền chi · Số tiền thu
+// Lưới giống Phiếu nhập chi phí (ledger grid-entry, ô .cell): # · Nội dung · Công trình · Tên công trình (+ NCC còn nợ) · Mã vật tư · Số tiền chi · Số tiền thu
 function dongHtml(r) {
   return '<tr data-row data-id="' + (r.id || '') + '">' +
     '<td class="num text-ink-3" data-stt></td>' +
     '<td><textarea data-c="noiDung" class="cell resize-none overflow-hidden py-[7px] leading-[16px]" rows="1" placeholder="Diễn giải" aria-label="Nội dung dòng">' + esc(r.noiDung || '') + '</textarea></td>' +
-    '<td><input data-c="maDuAn" class="cell font-semibold" list="dl-projects" value="' + esc(r.maDuAn || '') + '" placeholder="Mã dự án" aria-label="Dự án của dòng"></td>' +
+    '<td><input data-c="maDuAn" class="cell font-semibold" list="dl-projects" value="' + esc(r.maDuAn || '') + '" placeholder="Mã công trình" aria-label="Công trình của dòng"></td>' +
     '<td class="text-[13px] leading-snug"><span class="hint" data-h="da"></span></td>' +
     '<td data-show="chi"><input data-c="maVT" class="cell font-semibold" list="dl-vt-so" value="' + esc(r.maVT || '') + '" placeholder="Mã vật tư" aria-label="Mã vật tư của dòng"><span class="hint" data-h="vt"></span></td>' +
     '<td data-show="chi"><input data-c="chi" inputmode="decimal" class="cell text-right font-semibold tabular-nums" value="' + (r.chi ? money(r.chi) : '') + '" placeholder="Số tiền chi" aria-label="Số tiền chi của dòng"><span class="hint" data-h="chi"></span></td>' +
@@ -78,10 +78,10 @@ export function openEntryForm(entry, opts) {
     '<label class="field col-span-2 max-sm:col-span-1"><span class="label">Ghi chú</span><input name="ghiChu" class="input" value="' + esc(e.ghiChu) + '"></label>' +
     '<section class="sheet col-span-2 overflow-hidden max-sm:col-span-1" aria-labelledby="h-dong-phieu">' +
     '<div class="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-rule px-4 py-2"><h3 id="h-dong-phieu" class="sheet-title">Các dòng của phiếu</h3>' +
-    '<span class="min-w-0 flex-1 text-[12px] text-ink-3">Mỗi dòng gắn một dự án riêng để công nợ nhà cung cấp tách đúng theo dự án.</span>' +
+    '<span class="min-w-0 flex-1 text-[12px] text-ink-3">Mỗi dòng gắn một công trình riêng để công nợ nhà cung cấp tách đúng theo công trình.</span>' +
     '<button type="button" class="btn btn-secondary btn-sm" data-act="them-dong">' + icon('plus') + 'Thêm dòng</button></div>' +
     '<div class="scroll-x overflow-x-auto"><table class="ledger grid-entry" id="phieu-dong"><thead><tr>' +
-    '<th class="num w-8">#</th><th class="min-w-[200px]">Nội dung <b class="req">*</b></th><th class="w-[120px] min-w-[100px]">Dự án</th><th class="w-[190px] min-w-[150px]">Tên dự án · NCC còn nợ</th>' +
+    '<th class="num w-8">#</th><th class="min-w-[200px]">Nội dung <b class="req">*</b></th><th class="w-[120px] min-w-[100px]">Công trình</th><th class="w-[190px] min-w-[150px]">Tên công trình · NCC còn nợ</th>' +
     '<th data-show="chi" class="w-[120px] min-w-[100px]">Mã vật tư</th><th data-show="chi" class="num money w-[140px] min-w-[120px]">Số tiền chi</th><th data-show="thu" class="num money w-[140px] min-w-[120px]">Số tiền thu</th><th class="w-10"><span class="sr-only">Bỏ dòng</span></th></tr></thead>' +
     '<tbody>' + dongDau.map(dongHtml).join('') + '</tbody>' +
     '<tfoot><tr><td colspan="4" class="text-[15px]" id="phieu-tong" aria-live="polite">Tổng phiếu</td>' +
@@ -160,14 +160,14 @@ export function openEntryForm(entry, opts) {
         if (found) setHint(h, esc(found.ten) + debtHint(found.ma), 'hint good');
         else setHint(h, 'Chưa có trong danh mục. <a href="#" data-act="add-supplier">Thêm nhà cung cấp này</a>', 'hint bad');
       }
-      rows().forEach(daHint); // công nợ tại từng dự án phụ thuộc nhà cung cấp
+      rows().forEach(daHint); // công nợ tại từng công trình phụ thuộc nhà cung cấp
     }
     // đang sửa thì không tính các dòng của chính phiếu này vào công nợ
     const viewKhongGomDangSua = () => {
       const ids = new Set(dongCu.map((x) => x.id));
       return ids.size ? Object.assign({}, S.db, { entries: S.db.entries.filter((x) => !ids.has(x.id)) }) : S.db;
     };
-    // Công nợ còn lại của NCC (chi phí công trình − đã trả); phiếu một dòng có dự án thì theo dự án đó, phiếu nhiều dòng thì toàn bộ
+    // Công nợ còn lại của NCC (chi phí công trình − đã trả); phiếu một dòng có công trình thì theo công trình đó, phiếu nhiều dòng thì toàn bộ
     function debtHint(maNCC) {
       const trs = rows();
       const ct = trs.length === 1 ? resolveCode(S.db.projects, cell(trs[0], 'maDuAn').value) : '';
@@ -178,14 +178,14 @@ export function openEntryForm(entry, opts) {
       if (d.conLai < 0) return '<br><span class="text-caution">Công nợ' + where + ': đã ứng dư ' + money(-d.conLai) + ' đ</span>';
       return '<br><span class="text-ink-2">Công nợ' + where + ': đã tất toán</span>';
     }
-    // dự án của dòng: hiện tên; đã chọn nhà cung cấp thì kèm số còn nợ nhà cung cấp tại dự án đó (để chia tiền cho đúng)
+    // công trình của dòng: hiện tên; đã chọn nhà cung cấp thì kèm số còn nợ nhà cung cấp tại công trình đó (để chia tiền cho đúng)
     function daHint(tr) {
       const input = cell(tr, 'maDuAn');
       const h = gy(tr, 'da');
       if (!input.value.trim()) { setHint(h, '', 'hint'); return; }
       const code = resolveCode(S.db.projects, input.value);
       const found = S.db.projects.find((x) => KT.keyOf(x.ma) === KT.keyOf(code));
-      if (!found) { setHint(h, 'Chưa có trong danh mục. <a href="#" data-act="add-project">Thêm dự án này</a>', 'hint bad'); return; }
+      if (!found) { setHint(h, 'Chưa có trong danh mục. <a href="#" data-act="add-project">Thêm công trình này</a>', 'hint bad'); return; }
       let t = esc(found.ten);
       const ncc = resolveCode(S.db.suppliers, get('maNCC').value);
       if (ncc && supplierByCode(ncc) && rows().length > 1) {
@@ -399,7 +399,7 @@ export function openEntryForm(entry, opts) {
         const maVT = loai === 'thu' ? '' : resolveCode(S.db.materials, cell(tr, 'maVT').value);
         const noiDung = cell(tr, 'noiDung').value.trim() || nd0;
         const thu = loai === 'chi' ? 0 : st.getThu(), chi = loai === 'thu' ? 0 : st.getChi();
-        if (maDuAn && !projectByCode(maDuAn)) return fail(cell(tr, 'maDuAn'), at + 'Mã dự án chưa có trong danh mục. Bấm “Thêm dự án này” hoặc chọn mã có sẵn');
+        if (maDuAn && !projectByCode(maDuAn)) return fail(cell(tr, 'maDuAn'), at + 'Mã công trình chưa có trong danh mục. Bấm “Thêm công trình này” hoặc chọn mã có sẵn');
         if (maVT && !S.db.materials.some((x) => KT.keyOf(x.ma) === KT.keyOf(maVT))) return fail(cell(tr, 'maVT'), at + 'Mã vật tư chưa có trong danh mục vật tư. Chọn mã có sẵn hoặc để trống');
         if (!noiDung) return fail(cell(tr, 'noiDung'), at + 'Nhập nội dung thu, chi');
         if (isNaN(chi)) return fail(cell(tr, 'chi'), at + 'Số tiền chi không hợp lệ. Ví dụ: 1.250.000, 50tr, 300k');
@@ -517,7 +517,7 @@ export async function deleteEntry(e) {
   }
 }
 
-/* ============================== DỰ ÁN ============================== */
+/* ============================== CÔNG TRÌNH ============================== */
 
 export const PROJECT_STATUSES = ['Đang thực hiện', 'Đang thi công', 'Tạm dừng', 'Hoàn thành', 'Đã quyết toán'];
 
@@ -526,35 +526,35 @@ export function openProjectForm(p, onSaved) {
   p = Object.assign({ ma: '', ten: '', nganSach: 0, trangThai: 'Đang thực hiện', ghiChu: '', ngayKhoiCong: '', diaChi: '' }, p || {});
   const used = isEdit ? S.all.entries.filter((e) => KT.keyOf(e.maDuAn) === KT.keyOf(p.ma)).length + S.all.costs.filter((c) => KT.keyOf(c.maCT) === KT.keyOf(p.ma)).length : 0;
   return openModal({
-    title: isEdit ? 'Sửa dự án ' + p.ma : 'Thêm dự án',
+    title: isEdit ? 'Sửa công trình ' + p.ma : 'Thêm công trình',
     body:
       '<form class="grid grid-cols-2 gap-x-5 gap-y-4 max-sm:grid-cols-1" id="p-form" novalidate autocomplete="off">' +
-      '<label class="field"><span class="label">Mã dự án <b class="req">*</b></span><input name="ma" class="input" value="' + esc(p.ma) + '" placeholder="VD: DA34PHK" required>' +
+      '<label class="field"><span class="label">Mã công trình <b class="req">*</b></span><input name="ma" class="input" value="' + esc(p.ma) + '" placeholder="VD: DA34PHK" required>' +
       '<span class="hint">' + (used ? 'Đổi mã sẽ cập nhật ' + used + ' dòng sổ thu chi và chi phí đang dùng mã này' : '') + '</span></label>' +
       '<label class="field"><span class="label">Trạng thái</span><select name="trangThai" class="input">' +
       PROJECT_STATUSES.concat(PROJECT_STATUSES.includes(p.trangThai) ? [] : [p.trangThai]).map((s) => '<option' + (s === p.trangThai ? ' selected' : '') + '>' + esc(s) + '</option>').join('') +
       '</select></label>' +
-      '<label class="field col-span-2 max-sm:col-span-1"><span class="label">Tên dự án <b class="req">*</b></span><input name="ten" class="input" value="' + esc(p.ten) + '" required></label>' +
+      '<label class="field col-span-2 max-sm:col-span-1"><span class="label">Tên công trình <b class="req">*</b></span><input name="ten" class="input" value="' + esc(p.ten) + '" required></label>' +
       '<label class="field"><span class="label">Ngân sách dự kiến (đồng)</span><input name="nganSach" inputmode="decimal" class="input text-right tabular-nums" value="' + (p.nganSach ? money(p.nganSach) : '') + '" placeholder="Để trống nếu chưa có">' +
       '<span class="hint" id="ns-hint"></span></label>' +
       '<label class="field"><span class="label">Ghi chú</span><input name="ghiChu" class="input" value="' + esc(p.ghiChu) + '"></label>' +
       '<label class="field"><span class="label">Ngày khởi công</span>' + dateField({ name: 'ngayKhoiCong', value: p.ngayKhoiCong, label: 'Ngày khởi công' }) + '</label>' +
       '<label class="field"><span class="label">Địa chỉ công trình</span><input name="diaChi" class="input" value="' + esc(p.diaChi) + '"></label>' +
       '</form>',
-    footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="cancel">Hủy</button><button type="button" class="btn btn-primary" data-act="save">' + (isEdit ? 'Lưu thay đổi' : 'Thêm dự án') + '</button>',
+    footer: '<span class="flex-1"></span><button type="button" class="btn btn-ghost" data-act="cancel">Hủy</button><button type="button" class="btn btn-primary" data-act="save">' + (isEdit ? 'Lưu thay đổi' : 'Thêm công trình') + '</button>',
     onMount(el, h) {
       const f = $('#p-form', el);
       const getNs = bindMoneyInput(f.elements.nganSach, $('#ns-hint', el));
       const save = async () => {
         const data = { ma: f.elements.ma.value.trim(), ten: f.elements.ten.value.trim(), nganSach: getNs(), trangThai: f.elements.trangThai.value, ghiChu: f.elements.ghiChu.value.trim(),
           ngayKhoiCong: f.elements.ngayKhoiCong.value, diaChi: f.elements.diaChi.value.trim() };
-        if (!data.ma) return fieldError(f.elements.ma, 'Nhập mã dự án');
-        if (!data.ten) return fieldError(f.elements.ten, 'Nhập tên dự án');
+        if (!data.ma) return fieldError(f.elements.ma, 'Nhập mã công trình');
+        if (!data.ten) return fieldError(f.elements.ten, 'Nhập tên công trình');
         if (isNaN(data.nganSach)) return fieldError(f.elements.nganSach, 'Ngân sách không hợp lệ. Ví dụ: 500tr, 1.200.000.000');
         const done = busy(el.querySelector('[data-act=save]'), 'Đang lưu…');
         try {
           const r = isEdit ? await api('PUT', '/api/projects/' + p.id, data) : await api('POST', '/api/projects', data);
-          toast(isEdit ? 'Đã lưu dự án' + (r.renamed ? ', cập nhật mã trên ' + r.renamed + ' dòng sổ' : '') : 'Đã thêm dự án ' + data.ma);
+          toast(isEdit ? 'Đã lưu công trình' + (r.renamed ? ', cập nhật mã trên ' + r.renamed + ' dòng sổ' : '') : 'Đã thêm công trình ' + data.ma);
           h.close();
           if (onSaved) onSaved(data);
         } catch (err) { done(); showError(err); }

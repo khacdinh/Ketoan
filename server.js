@@ -218,8 +218,8 @@ function cleanEntry(body) {
   // Trạng thái: 'nhap' = Nháp (chưa ghi sổ, không tính vào tồn quỹ, báo cáo, công nợ). Đã ghi sổ thì không lưu trường này.
   if (body.trangThai === 'nhap') e.trangThai = 'nhap';
   if (e.maDuAn) {
-    const p = findCode(store.db.projects, e.maDuAn); // mã dự án cũ đã gộp tự đổi sang mã đích
-    if (!p) throw new HttpError(400, 'Mã dự án "' + e.maDuAn + '" chưa có trong danh mục');
+    const p = findCode(store.db.projects, e.maDuAn); // mã công trình cũ đã gộp tự đổi sang mã đích
+    if (!p) throw new HttpError(400, 'Mã công trình "' + e.maDuAn + '" chưa có trong danh mục');
     e.maDuAn = p.ma;
   }
   if (e.maNCC) {
@@ -251,8 +251,8 @@ function cleanProject(body) {
     if (str(body.ngayKhoiCong) && !p.ngayKhoiCong) throw new HttpError(400, 'Ngày khởi công không hợp lệ');
   }
   if (body.diaChi !== undefined) p.diaChi = str(body.diaChi, 300);
-  if (!p.ma) throw new HttpError(400, 'Cần nhập mã dự án');
-  if (!p.ten) throw new HttpError(400, 'Cần nhập tên dự án');
+  if (!p.ma) throw new HttpError(400, 'Cần nhập mã công trình');
+  if (!p.ten) throw new HttpError(400, 'Cần nhập tên công trình');
   return p;
 }
 
@@ -431,9 +431,9 @@ async function handleApi(req, res, url) {
     }
   }
 
-  /* ----- Danh mục dự án / NCC ----- */
+  /* ----- Danh mục công trình / NCC ----- */
   const catalogs = {
-    projects: { clean: cleanProject, field: 'maDuAn', label: 'Mã dự án' },
+    projects: { clean: cleanProject, field: 'maDuAn', label: 'Mã công trình' },
     suppliers: { clean: cleanSupplier, field: 'maNCC', label: 'Mã NCC' }
   };
   if (own(catalogs, seg[1])) {
@@ -478,7 +478,7 @@ async function handleApi(req, res, url) {
         const used = costApi.usages(seg[1], rec.ma);
         if (used.length) throw new HttpError(400, 'Không thể xóa: ' + cfg.label + ' "' + rec.ma + '" đang được dùng trong ' + used.join(', ') + ' (chi phí công trình).');
         db[seg[1]] = list.filter((i) => i !== rec);
-        trace.toTrash(req, seg[1], [rec], (seg[1] === 'projects' ? 'Dự án ' : 'Nhà cung cấp ') + trace.describe(seg[1], rec));
+        trace.toTrash(req, seg[1], [rec], (seg[1] === 'projects' ? 'Công trình ' : 'Nhà cung cấp ') + trace.describe(seg[1], rec));
         store.save();
         return ok(res);
       }

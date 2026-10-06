@@ -87,7 +87,8 @@ test('TL2 phiếu nhập MỚI: chọn ảnh + Excel trước khi lưu (bỏ b�
     const { browser, page, errors } = await openPage(srv, '#/cp-nhap');
     try {
       await page.waitForSelector('[data-att-pending-input]', { state: 'attached' });
-      for (const [n, v] of [['maCT', 'CT1'], ['maNCC', 'MINH']]) { const el = page.locator('#view [name=' + n + ']').first(); await el.fill(v); await el.press('Tab'); }
+      await page.locator('[data-row="0"][data-col=ct]').fill('CT1'); await page.locator('[data-row="0"][data-col=ct]').dispatchEvent('change');
+      for (const [n, v] of [['maNCC', 'MINH']]) { const el = page.locator('#view [name=' + n + ']').first(); await el.fill(v); await el.press('Tab'); }
       await page.locator('[data-row="0"][data-col=maVT]').fill('DN'); await page.locator('[data-row="0"][data-col=maVT]').dispatchEvent('change');
       await page.locator('[data-row="0"][data-col=dienGiai]').click();
       await page.locator('[data-row="0"][data-col=dienGiai]').fill('HĐ điện nước Minh 17/8');
