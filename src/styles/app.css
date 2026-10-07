@@ -626,6 +626,7 @@
 
   /* Chứng từ đính kèm */
   .att-box { @apply mt-4 flex flex-col gap-2 border border-rule bg-transparent px-4 py-3; }
+  .att-box.is-drop { outline: 2px dashed var(--color-pen); outline-offset: -2px; }
   .att-list { @apply flex flex-col gap-1.5; }
   .att-item { @apply flex items-center gap-3 border border-rule bg-transparent px-2 py-1.5; }
   .att-thumb { @apply size-10 flex-none border border-rule object-cover; }

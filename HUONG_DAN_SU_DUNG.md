@@ -504,6 +504,11 @@ Mở một dòng sổ thu chi (sửa), một dòng chi phí, hoặc một phiế
 - **Phiếu nhập chi phí mới** và **Ghi thu / chi** (dòng mới): có thể chọn ảnh / tài liệu ngay khi đang lập (khung **Chứng từ đính kèm** dưới bảng dòng hàng,
   bỏ bớt bằng nút ×). File được tải lên và gắn vào phiếu / dòng ngay khi bấm **Ghi phiếu** / **Ghi sổ** (hoặc **Lưu nháp**). Chưa lưu phiếu mà tải lại
   trang thì phải chọn lại file.
+- **Dán ảnh, không cần lưu ra file.** Chụp màn hình (phím Print Screen, Windows + Shift + S, Zalo…) hoặc chuột phải vào ảnh → **Sao chép hình ảnh**, rồi trên trang đang mở phiếu bấm **Ctrl + V**.
+  - Ảnh vào khung Chứng từ đính kèm, tên tự đặt theo giờ dán (vd `anh-dan-20261007-091530.png`). Có ảnh nhỏ xem trước.
+  - Phiếu chưa lưu: ảnh chờ và tải lên khi Ghi phiếu / Ghi sổ. Phiếu đã lưu: tải lên ngay.
+  - Đang gõ trong một ô mà bộ nhớ tạm có chữ (vd sao chép ô Excel) thì Ctrl + V vẫn dán chữ như bình thường.
+  - Cũng có thể **kéo thả** file từ thư mục vào khung (khung hiện viền nét đứt khi kéo vào).
 - Dòng có chứng từ hiện **kẹp giấy kèm số lượng** trong sổ; bấm vào để xem nhanh.
 - Chứng từ nằm trong `data/attachments/`, có trong **bản sao lưu đầy đủ (.zip)**; xóa dòng thì chứng từ vào thùng rác cùng dòng đó.
 

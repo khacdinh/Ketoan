@@ -73,8 +73,9 @@ class HttpError extends Error {
 
 // Tiêu đề bảo mật cho mọi phản hồi: chặn chạy mã chèn thêm (CSP), chặn nhúng vào khung của trang khác, không đoán kiểu nội dung, không gửi Referer.
 // Giao diện không dùng mã nhúng trong trang (chỉ tệp .js cùng nguồn) nên script-src 'self' là đủ; style-src cần 'unsafe-inline' vì các thanh tỷ lệ dùng style="width:..%".
+// img-src có blob: để xem trước ảnh vừa dán / chọn (chưa tải lên) bằng URL.createObjectURL — chỉ mã của chính trang tạo được URL blob.
 const SECURITY_HEADERS = {
-  'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+  'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'no-referrer'

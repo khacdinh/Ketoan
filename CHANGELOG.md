@@ -1,5 +1,14 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Dán ảnh chứng từ bằng Ctrl + V, kéo thả file (07/10/2026)
+
+- Khung **Chứng từ đính kèm** (Phiếu nhập chi phí, Ghi thu / chi, sửa dòng chi phí) nhận ảnh dán bằng **Ctrl + V**: chụp màn hình hoặc sao chép ảnh rồi dán thẳng, không phải lưu ra file.
+  - Ảnh dán được đặt tên `anh-dan-<ngày>-<giờ>.png`.
+  - Phiếu chưa lưu: ảnh chờ (có ảnh xem trước) và tải lên khi lưu. Chứng từ đã lưu: tải lên ngay.
+  - Đang gõ trong ô nhập mà bộ nhớ tạm có chữ thì vẫn dán chữ. Hộp xem chứng từ (chỉ xem) không nhận ảnh dán.
+- Kéo thả file vào khung để đính kèm.
+- CSP cho phép ảnh `blob:` để xem trước ảnh chưa tải lên. Có test N7a, N7b.
+
 ## Đánh số chứng từ tự động (06/10/2026)
 
 - Trang mới **Hệ thống › Đánh số chứng từ**: tiền tố, số tiếp theo, độ dài, hậu tố và ví dụ cho 5 loại chứng từ, bấm biểu tượng bút để sửa (chỉ Chủ). Các loại:
