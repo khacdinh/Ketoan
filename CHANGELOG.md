@@ -1,12 +1,19 @@
 # Nhật ký phiên bản (CHANGELOG)
 
-## Công nợ theo công trình: đầu kỳ ghi Có / Nợ như màn theo NCC (08/10/2026)
+## Hai màn công nợ cùng bố cục, có khung đối chiếu (08/10/2026)
 
-- Đầu kỳ ở **Công nợ theo công trình** trước đây chỉ ghi số ròng (vd −491.635.000), còn **Công nợ NCC theo kỳ** ghi tách Có 268.365.000 / Nợ 760.000.000. Hai số vốn bằng nhau (268.365.000 − 760.000.000 = −491.635.000) nhưng trông như lệch.
-  - Nay màn theo công trình cũng ghi **Có … / Nợ …**; các ô Đầu kỳ ghi số kèm chữ Có / Nợ, không còn số âm.
-- Dòng Tổng cộng thêm **Thuần (Có − Nợ)**, luôn bằng dòng “Còn lại thuần” của màn theo NCC.
-- Ghi chú dưới bảng giải thích vì sao Dư Có / Dư Nợ cuối kỳ theo công trình có thể lớn hơn màn theo NCC: NCC còn nợ ở công trình này nhưng ứng trước ở công trình khác thì không được bù trừ.
-- Có test CN5 so sánh hai màn.
+Trước đây **Công nợ NCC theo kỳ** và **Công nợ theo công trình** ghi đầu kỳ / cuối kỳ khác cách, nên trông như lệch số.
+
+- **Cùng một dòng phương trình** (`congno.js` `phuongTrinhHtml`): Số dư đầu kỳ + Phát sinh − Thanh toán = Số dư cuối kỳ.
+  - Số dư ghi thuần kèm chữ Có / Nợ, nên phép cộng trừ đúng ngay trên màn hình.
+  - Dưới mỗi số dư tách Còn phải trả (Dư Có) và Đã ứng trước (Dư Nợ).
+- **Cùng cột bảng**: màn theo công trình nay cũng tách Số dư đầu kỳ thành Dư Nợ | Dư Có (trước là một cột có số âm). Dòng Tổng cộng hai màn đều ghi **Thuần (Có − Nợ)**.
+- **Khung “Đối chiếu với màn Công nợ NCC theo kỳ”** ở màn theo công trình (thu gọn sẵn, dòng tóm tắt nói ngay “cả hai đều đúng”):
+  - Dư Có, Dư Nợ, Thuần của hai màn cạnh nhau, kèm cột Chênh.
+  - Danh sách NCC vừa còn nợ ở công trình này vừa ứng trước ở công trình khác, kèm phần bù trừ.
+  - Nút mở Sổ chi tiết của từng NCC đó.
+- Màn theo NCC: dưới số dư của các NCC đó có dòng “đã trừ ứng trước … ở …”, kèm một dòng giải thích trên bảng.
+- `KT.doiChieuCongNo(db, { from, to, ncc })` tính phần đối chiếu. Test CN5 so sánh hai màn.
 
 ## Sổ chi tiết NCC: số dư theo từng công trình, ẩn công trình đã tất toán (08/10/2026)
 

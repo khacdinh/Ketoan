@@ -8,13 +8,19 @@ import { comboHtml, bindCombo } from '../combo.js';
 import { openEntryForm } from '../forms.js';
 import { openExtPayForm } from '../extpay.js';
 import { openSoDuDauForm } from '../sodudau.js';
-import { coNoHtml, debtChip, debtLabel, goCostLedger, goCashLedger, chonNCC, ghiPhieuChi, ctNhan } from '../congno.js';
+import { coNoHtml, debtChip, debtLabel, goCostLedger, goCashLedger, chonNCC, ghiPhieuChi, ctNhan, phuongTrinhHtml, buTruSub } from '../congno.js';
 import { moBienBan } from '../bienban.js';
 import { datCongTrinh } from '../ctpick.js';
 
 const KT = window.KT;
 const pct = (x) => (x > 0 && x < 0.0005 ? '< 0,1%' : (x * 100).toFixed(1).replace('.', ',') + '%');
 const dm = (iso) => (iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) : '');
+// Đối chiếu với màn Công nợ theo công trình (NCC được bù trừ giữa các công trình): tính lại khi dữ liệu hoặc kỳ đổi
+let dcCache = null;
+function doiChieu(from, to) {
+  if (!dcCache || dcCache.db !== S.db || dcCache.from !== from || dcCache.to !== to) dcCache = { db: S.db, from, to, d: KT.doiChieuCongNo(S.db, { from, to }) };
+  return dcCache.d;
+}
 
 function normalizeFilter(f) {
   if (!Array.isArray(f.nccs)) f.nccs = f.ncc ? [f.ncc] : [];
@@ -74,6 +80,7 @@ export function renderDebt(root) {
   /* ---------- vẽ phần dữ liệu (không dựng lại ô lọc, để gõ tìm không mất tiêu điểm) ---------- */
   let d = null;
   let rows = [];
+  let buTru = new Map();
   function draw() {
     const box = $('#cn-body', root);
     drawChips();
@@ -98,13 +105,15 @@ export function renderDebt(root) {
     const nNo = rows.filter((r) => r.status === 'no').length;
     const nDu = rows.filter((r) => r.status === 'du').length;
     const kyTu = f.from ? ' (' + dm(f.from) + ')' : '';
+    // NCC còn nợ ở công trình này nhưng ứng trước ở công trình khác: màn này bù trừ (chỉ có nghĩa khi xem mọi công trình)
+    const dc = f.ct ? null : doiChieu(f.from, f.to);
+    buTru = new Map(dc ? dc.dsNCC.map((x) => [KT.keyOf(x.ma), x]) : []);
     box.innerHTML =
-      '<div class="equation" role="group" aria-label="Đầu kỳ cộng phát sinh trừ thanh toán bằng cuối kỳ">' +
-      '<div class="eq-cell"><span class="eq-label">Đầu kỳ' + kyTu + '</span><span class="eq-value !text-[17px]">Có ' + money(dauCo) + '</span><span class="eq-label tabular-nums">Nợ ' + money(dauNo) + '</span></div><span class="eq-op">+</span>' +
-      '<div class="eq-cell"><span class="eq-label">Phát sinh trong kỳ</span><span class="eq-value">' + money(tot.phatSinh) + '</span><span class="eq-label">từ sổ chi phí</span></div><span class="eq-op">−</span>' +
-      '<div class="eq-cell"><span class="eq-label">Thanh toán trong kỳ</span><span class="eq-value">' + money(tot.thanhToan) + '</span><span class="eq-label">sổ quỹ' + (tot.traNgoai ? ' + nguồn khác ' + money(tot.traNgoai) : '') + '</span></div><span class="eq-op">=</span>' +
-      '<div class="eq-cell"><span class="eq-label">' + icon('clock') + ' Cuối kỳ · Dư Có (còn phải trả)</span><span class="eq-value">' + money(tot.conNo) + '</span><span class="eq-label">' + nNo + ' nhà cung cấp</span></div><span class="eq-sep"></span>' +
-      '<div class="eq-cell"><span class="eq-label">' + icon('arrowOut') + ' Cuối kỳ · Dư Nợ (đã ứng trước)</span><span class="eq-value !text-caution">' + money(tot.ungDu) + '</span><span class="eq-label">' + nDu + ' NCC · không bù cho NCC khác</span></div></div>' +
+      phuongTrinhHtml({ dauCo, dauNo, phatSinh: tot.phatSinh, thanhToan: tot.thanhToan, traNgoai: tot.traNgoai, cuoiCo: tot.conNo, cuoiNo: tot.ungDu, nCo: nNo, nNo: nDu, donVi: 'NCC', kyTu }) +
+      (dc && dc.dsNCC.length ? '<p class="no-print flex items-start gap-1.5 text-[12.5px] leading-relaxed text-ink-2" id="cn-bu-tru">' + icon('info', 'mt-0.5 flex-none text-pen') + '<span>' +
+        dc.dsNCC.length + ' NCC vừa còn nợ ở công trình này vừa đã ứng trước ở công trình khác: màn này <b>bù trừ</b> hai khoản (tổng ' + money(dc.buTru) + ', ghi dưới số dư từng NCC). ' +
+        'Màn <a class="text-pen underline underline-offset-2" href="#/cong-no-ct">Công nợ theo công trình</a> giữ riêng từng công trình nên Dư Có và Dư Nợ ở đó cùng lớn hơn ' + money(dc.buTru) + '; số thuần (Có − Nợ) hai màn bằng nhau. ' +
+        'Trả tiền và đối chiếu với nhà cung cấp dùng số ở màn này.</span></p>' : '') +
       '<section class="sheet overflow-hidden"><div class="table-scroll scroll-x max-h-[calc(100vh-380px)] min-h-[200px] overflow-auto"><table class="ledger" id="cn-table">' +
       '<thead><tr><th rowspan="2">Nhà cung cấp</th><th colspan="2" class="num group">Số dư đầu kỳ</th><th colspan="2" class="num group">Trong kỳ</th><th colspan="2" class="num group">Số dư cuối kỳ</th><th rowspan="2">Tình trạng</th><th rowspan="2">GD gần nhất</th><th rowspan="2" class="no-print"><span class="sr-only">Thao tác</span></th></tr>' +
       '<tr><th class="num money sub2">Dư Nợ <span class="font-normal">(đã ứng trước)</span></th><th class="num money sub2">Dư Có <span class="font-normal">(còn phải trả)</span></th><th class="num money sub2">Phát sinh</th><th class="num money sub2">Thanh toán</th>' +
@@ -112,17 +121,19 @@ export function renderDebt(root) {
       (rows.length ? rows.map((r) => rowHtml(r)).join('') : '<tr><td colspan="10" class="empty">' + (S.db.suppliers.length ? 'Không có nhà cung cấp nào khớp bộ lọc. <a href="#" class="font-bold text-pen underline underline-offset-2" data-act="clear">Xóa lọc</a>' : 'Chưa có nhà cung cấp.') + '</td></tr>') +
       '</tbody><tfoot><tr><td>Tổng cộng · ' + rows.length + ' NCC</td>' +
       '<td class="num money">' + money(dauNo) + '</td><td class="num money">' + money(dauCo) + '</td><td class="num money">' + money(tot.phatSinh) + '</td><td class="num money">' + money(tot.thanhToan) + '</td>' +
-      '<td class="num money text-caution">' + money(tot.ungDu) + '</td><td class="num money"><span class="dbl">' + money(tot.conNo) + '</span></td><td colspan="3" class="font-normal text-[12px] text-ink-3">Còn lại thuần (Có − Nợ): <b class="tabular-nums text-ink">' + money(tot.cuoiKy) + '</b> · chi / thu không ghi NCC tách riêng ở sổ quỹ</td></tr></tfoot></table></div></section>';
+      '<td class="num money text-caution">' + money(tot.ungDu) + '</td><td class="num money"><span class="dbl">' + money(tot.conNo) + '</span></td><td colspan="3" class="font-normal text-[12px] text-ink-3">Thuần (Có − Nợ) <b class="tabular-nums text-ink" id="cn-thuan">' + coNoHtml(tot.cuoiKy) + '</b> · chi / thu không ghi NCC tách riêng ở sổ quỹ</td></tr></tfoot></table></div></section>';
   }
 
   function rowHtml(r) {
     const open = KT.keyOf(r.ma) === KT.keyOf(sel) && openMa === r.ma;
     const na = (n) => (n ? '<span class="tabular-nums">' + money(n) + '</span>' : '<span class="text-ink-3">–</span>');
+    const x = buTru.get(KT.keyOf(r.ma));
+    const bt = x ? buTruSub(x) : '';
     const ctrl = '<tr class="clickable' + (KT.keyOf(r.ma) === KT.keyOf(sel) ? ' is-active' : '') + '" data-ma="' + esc(r.ma) + '" tabindex="0" aria-expanded="' + open + '">' +
       '<td><b class="code">' + esc(r.ten) + '</b><div class="sub">' + esc(r.ma) + (r.loai ? ' · ' + esc(r.loai) : '') + (r.inCatalog ? '' : ' · chưa có trong danh mục') + '</div></td>' +
       '<td class="num money text-caution">' + (r.dauKy < 0 ? na(-r.dauKy) : na(0)) + '</td><td class="num money">' + (r.dauKy > 0 ? na(r.dauKy) : na(0)) + '</td>' +
       '<td class="num money">' + na(r.phatSinh) + '</td><td class="num money">' + na(r.thanhToan) + (r.traNgoai ? '<div class="sub" title="Trả từ nguồn khác, không qua quỹ tiền mặt">ngoài quỹ ' + money(r.traNgoai) + '</div>' : '') + '</td>' +
-      '<td class="num money font-bold text-caution">' + (r.cuoiKy < 0 ? na(-r.cuoiKy) : na(0)) + '</td><td class="num money font-bold">' + (r.cuoiKy > 0 ? na(r.cuoiKy) : na(0)) + '</td>' +
+      '<td class="num money font-bold text-caution">' + (r.cuoiKy < 0 ? na(-r.cuoiKy) + bt : na(0)) + '</td><td class="num money font-bold">' + (r.cuoiKy >= 0 ? na(r.cuoiKy) + bt : na(0)) + '</td>' +
       '<td>' + debtChip(r.status) + '</td><td class="whitespace-nowrap tabular-nums text-ink-2">' + (r.last ? dm(r.last) : '') + '</td>' +
       '<td class="actions no-print"><div class="flex items-center justify-end gap-1">' +
       (r.cuoiKy > 0 && r.inCatalog ? '<button type="button" class="btn btn-secondary btn-sm" data-act="pay" title="Ghi phiếu chi trả nhà cung cấp này trong sổ thu chi (tiền quỹ)">Trả tiền</button>' +

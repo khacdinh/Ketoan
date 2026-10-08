@@ -317,35 +317,65 @@ test('CN4 Sổ chi tiết NCC: bảng số dư cuối kỳ theo công trình (c�
   } finally { await browser.close(); await srv.stop(); }
 });
 
-test('CN5 hai màn công nợ khớp nhau: đầu kỳ ghi Có / Nợ (không số âm) và bằng nhau; Còn lại thuần cuối kỳ bằng nhau; Dư Có / Dư Nợ theo công trình chỉ lớn hơn đúng phần NCC được bù trừ giữa các công trình', { skip: SKIP }, async () => {
+test('CN5 hai màn công nợ cùng bố cục: số dư ghi thuần Có / Nợ kèm Còn phải trả / Đã ứng trước, phương trình cộng trừ đúng; đối chiếu chỉ ra NCC được bù trừ giữa các công trình', { skip: SKIP }, async () => {
   const db = seed();
   // NCC_C đã ứng trước 4tr ở CT2 từ trước khi lên sổ → đầu kỳ Dư Nợ, cuối kỳ ứng dư 4tr
   db.soDuDauKy.push({ id: db.nextId++, ngay: '2026-06-30', maNCC: 'NCC_C', maDuAn: 'CT2', soTien: -4 * TR, ghiChu: 'ứng trước' });
+  // tính: theo NCC Có 57 (A 50 + D 7) / Nợ 6 (B 2 + C 4); theo công trình Có 62 / Nợ 11; chênh 5 = NCC_A còn nợ CT1/CT2/CTX nhưng trả dư 5 ở khoản không ghi công trình
+  const dc = KT.doiChieuCongNo(db, {});
+  assert.deepEqual(dc.ncc, { conNo: 57 * TR, ungDu: 6 * TR, thuan: 51 * TR });
+  assert.deepEqual(dc.ct, { conNo: 62 * TR, ungDu: 11 * TR, thuan: 51 * TR });
+  assert.equal(dc.buTru, 5 * TR);
+  assert.deepEqual(dc.dsNCC.map((x) => [x.ma, x.buTru, x.cuoiKy, x.ung, x.no.map((y) => y.ma)]), [['NCC_A', 5 * TR, 50 * TR, [{ ma: '', so: 5 * TR }], ['CT1', 'CT2', 'CTX']]]);
+
   const srv = await startServer({ seed: db });
   const { browser, page, errors, external } = await openPage(srv, '#/cp-cong-no');
   try {
-    // Công nợ NCC theo kỳ, tất cả NCC: đầu kỳ Có 9tr (NCC_A 2 + NCC_D 7), Nợ 4tr (NCC_C); cuối kỳ Có 57 (A 50 + D 7), Nợ 6 (B 2 + C 4), thuần 51
+    const eq = () => page.$$eval('.equation [data-eq]', (v) => Object.fromEntries(v.map((x) => [x.dataset.eq, x.textContent.trim()])));
+    const tach = () => page.$$eval('.equation .eq-rows', (v) => v.map((x) => [...x.querySelectorAll('b')].map((b) => b.textContent)));
+    // Công nợ NCC theo kỳ, tất cả NCC
     await page.waitForSelector('#cn-table');
     await page.click('label:has(input[name=cn-tt][value=""])'); await settle(page);
-    const eqNCC = await page.$$eval('.equation .eq-cell', (c) => c.map((x) => x.innerText.replace(/\s+/g, ' ')));
-    assert.match(eqNCC[0], /Có 9\.000\.000 Nợ 4\.000\.000/);
-    assert.match(eqNCC[3], /57\.000\.000/);
-    assert.match(eqNCC[4], /6\.000\.000/);
-    assert.match(await page.textContent('#cn-table tfoot'), /Còn lại thuần \(Có − Nợ\): 51\.000\.000/);
-    // Công nợ theo công trình, mọi dòng có số liệu: đầu kỳ giống hệt; cuối kỳ Có 62 / Nợ 11 vì NCC_A còn nợ 55 ở CT1/CT2/CTX nhưng ứng 5 ở "chưa gán"
+    assert.deepEqual(await eq(), { dau: '5.000.000Có', ps: '96.000.000', tt: '50.000.000', cuoi: '51.000.000Có' }, 'đầu 5 + 96 − 50 = 51');
+    assert.deepEqual(await tach(), [['9.000.000', '4.000.000'], ['57.000.000', '6.000.000']]);
+    assert.match(await page.textContent('#cn-bu-tru'), /1 NCC vừa còn nợ .* bù trừ .*5\.000\.000/);
+    assert.match(await page.textContent('#cn-table tr[data-ma="NCC_A"]'), /đã trừ ứng trước 5\.000\.000 \(chưa ghi công trình\)/);
+    assert.equal(await page.textContent('#cn-thuan'), '51.000.000Có');
+    // Công nợ theo công trình, mọi dòng có số liệu: cùng đầu kỳ, phát sinh, thanh toán, thuần; Dư Có / Dư Nợ lớn hơn đúng 5
     await page.evaluate(() => { location.hash = '#/cong-no-ct'; });
     await page.waitForSelector('#cnct-table');
     await page.click('label:has(input[name=cnct-tt][value=""])'); await settle(page);
-    assert.equal(await page.textContent('#cnct-dau-co'), 'Có 9.000.000');
-    assert.equal(await page.textContent('#cnct-dau-no'), 'Nợ 4.000.000');
-    assert.equal(num(await page.textContent('#cnct-con-no')), 62 * TR);
-    assert.equal(num(await page.textContent('#cnct-thuan')), 51 * TR, 'còn lại thuần = màn theo NCC');
-    // ô đầu kỳ: ghi Có / Nợ, không có dấu trừ
-    const dauKyCT2 = await page.$$eval('#cnct-table tr[data-ct="CT2"]', (t) => t.map((x) => [x.dataset.ma, x.children[1].textContent.trim()]));
-    assert.deepEqual(dauKyCT2, [['NCC_A', '2.000.000Có'], ['NCC_C', '4.000.000Nợ']]);
-    assert.equal(await page.textContent('#cnct-table tr[data-nhom="CT2"] td:nth-child(2)'), '2.000.000Nợ', 'nhóm CT2: 2 Có − 4 Nợ = 2 Nợ');
-    assert.equal(await page.textContent('#cnct-table tfoot td:nth-child(2)'), '5.000.000Có', 'tổng đầu kỳ ròng = 9 Có − 4 Nợ');
-    assert.ok(!/-\d/.test(await page.$$eval('#cnct-table td:nth-child(2)', (t) => t.map((x) => x.textContent).join(' '))), 'không còn số âm ở cột đầu kỳ');
+    assert.deepEqual(await eq(), { dau: '5.000.000Có', ps: '96.000.000', tt: '50.000.000', cuoi: '51.000.000Có' });
+    assert.deepEqual(await tach(), [['9.000.000', '4.000.000'], ['62.000.000', '11.000.000']]);
+    assert.equal(await page.textContent('#cnct-thuan'), '51.000.000Có');
+    // bảng: cùng cột với màn theo NCC; đầu kỳ tách Dư Nợ | Dư Có, không số âm
+    assert.deepEqual(await page.$$eval('#cnct-table thead tr:last-child th', (t) => t.map((x) => x.textContent)),
+      ['Dư Nợ (đã ứng trước)', 'Dư Có (còn phải trả)', 'Phát sinh', 'Thanh toán', 'Dư Nợ (đã ứng trước)', 'Dư Có (còn phải trả)']);
+    assert.deepEqual(await page.$$eval('#cnct-table tr[data-ct="CT2"]', (t) => t.map((x) => [x.dataset.ma, x.children[1].textContent.trim(), x.children[2].textContent.trim()])),
+      [['NCC_A', '–', '2.000.000'], ['NCC_C', '4.000.000', '–']]);
+    assert.deepEqual(await page.$$eval('#cnct-table tfoot td', (t) => t.slice(1, 7).map((x) => x.textContent)), ['4.000.000', '9.000.000', '96.000.000', '50.000.000', '11.000.000', '62.000.000']);
+    assert.ok(!/-\d/.test(await page.textContent('#cnct-table')), 'không còn số âm trong bảng');
+    // khung đối chiếu: thu gọn sẵn, dòng tóm tắt đã nói số nào đúng; mở ra có ba dòng Dư Có / Dư Nợ / Thuần, NCC_A gây chênh; mở / đóng thì nhớ
+    assert.equal(await page.$eval('#cnct-doi-chieu', (e) => e.open), false);
+    assert.match(await page.textContent('#cnct-doi-chieu summary'), /cả hai đều đúng: thuần \(Có − Nợ\) bằng nhau 51\.000\.000; Dư Có và Dư Nợ ở màn này cùng lớn hơn 5\.000\.000 do 1 NCC/);
+    await page.click('#cnct-doi-chieu summary'); await settle(page);
+    await page.reload(); await page.waitForSelector('#cnct-table'); await settle(page);
+    assert.ok(await page.$eval('#cnct-doi-chieu', (e) => e.open), 'nhớ đang mở');
+    assert.deepEqual(await page.$$eval('#cnct-dc-tong tbody tr', (t) => t.map((x) => [...x.children].map((c) => c.textContent.trim()))), [
+      ['Còn phải trả (Dư Có)', '57.000.000', '62.000.000', '+ 5.000.000'],
+      ['Đã ứng trước (Dư Nợ)', '6.000.000', '11.000.000', '+ 5.000.000'],
+      ['Thuần (Có − Nợ)', '51.000.000Có', '51.000.000Có', 'bằng nhau']]);
+    assert.deepEqual(await page.$$eval('#cnct-dc-ncc tbody tr', (t) => t.map((x) => x.dataset.dcNcc)), ['NCC_A']);
+    // bấm sổ chi tiết của NCC trong bảng đối chiếu: sang Sổ chi tiết NCC_A (tất cả công trình), có bảng số dư theo công trình
+    await page.click('#cnct-dc-ncc [data-act=dc-ledger]');
+    await page.waitForFunction(() => location.hash === '#/so-chi-tiet-ncc');
+    await page.waitForSelector('#sct-ct-table');
+    assert.equal(await page.inputValue('#sct-ncc'), 'NCC_A');
+    // chọn một công trình: không còn khung đối chiếu (một công trình thì hai màn là một)
+    await page.evaluate(() => { location.hash = '#/cong-no-ct'; });
+    await page.waitForSelector('#cnct-table');
+    await chonCongTrinh(page, 'CT1'); await settle(page);
+    assert.equal(await page.$('#cnct-doi-chieu'), null);
     assert.deepEqual(errors, []);
     assert.deepEqual(external, []);
   } finally { await browser.close(); await srv.stop(); }

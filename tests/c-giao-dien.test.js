@@ -385,7 +385,9 @@ test('UI8 danh mục dự án / nhà cung cấp: thêm, sửa (đổi mã lan sa
     const tt = dbx.entries.filter((e) => e.maNCC).reduce((t, e) => t + (e.chi || 0) - (e.thu || 0), 0);
     const ps = dbx.costs.filter((c) => c.maNCC).reduce((t, c) => t + c.thanhTien, 0);
     assert.ok(txt.includes(KT.fmtMoney(tt)), 'tổng thanh toán NCC ' + tt);
-    assert.ok(txt.includes(KT.fmtMoney(ps - tt)), 'tổng cuối kỳ NCC ' + (ps - tt));
+    // số dư cuối kỳ thuần ghi kèm chữ Có / Nợ, không dùng số âm
+    const ck = ps - tt;
+    assert.equal(await page.textContent('#cn-thuan'), ck ? KT.fmtMoney(Math.abs(ck)) + (ck > 0 ? 'Có' : 'Nợ') : '0', 'tổng cuối kỳ NCC ' + ck);
     assert.deepEqual(errors.filter((e) => !/status of 400/.test(e)), []);
   } finally { await browser.close(); await srv.stop(); }
 });

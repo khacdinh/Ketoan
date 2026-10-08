@@ -312,10 +312,15 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
     công trình đó; gõ tên NCC thì chỉ hiện NCC đó ở các công trình). Công trình chọn ở thanh trên thì chỉ hiện công trình đó. Bộ lọc được nhớ.
   - Khoản trả hoặc số dư đầu kỳ **không ghi công trình** nằm ở nhóm cuối **Chưa gán công trình**, nên cộng mọi nhóm của một NCC luôn bằng số ở màn
     Công nợ NCC theo kỳ. Muốn chia lại cho đúng công trình thì sửa Mã công trình của khoản đó trong Sổ quỹ / Số dư đầu kỳ.
-  - **So với màn Công nợ NCC theo kỳ**: Đầu kỳ ghi **Có** (còn phải trả) và **Nợ** (đã ứng trước) giống hệt màn theo NCC; cột Đầu kỳ ghi số kèm chữ Có / Nợ
-    (không dùng số âm), dòng Tổng cộng là số ròng (Có − Nợ). **Dư Có / Dư Nợ cuối kỳ** ở đây có thể **lớn hơn** màn theo NCC: một NCC còn nợ ở công trình này
-    nhưng đã ứng trước ở công trình khác thì màn theo NCC bù trừ hai số đó thành một số, còn màn này giữ riêng từng công trình (vì tiền ứng ở công trình kia
-    không tự trả cho công trình này). Hai màn luôn bằng nhau ở **Thuần (Có − Nợ)** — dòng Tổng cộng của cả hai màn đều ghi số này.
+  - **Cùng bố cục với màn Công nợ NCC theo kỳ**: dòng phương trình và các cột bảng giống hệt (Số dư đầu kỳ Dư Nợ | Dư Có · Phát sinh · Thanh toán ·
+    Số dư cuối kỳ Dư Nợ | Dư Có), nên đặt hai màn cạnh nhau là so được từng ô.
+  - **Khung “Đối chiếu với màn Công nợ NCC theo kỳ”** (ngay dưới dòng phương trình, khi xem tất cả công trình; bấm để mở, nhớ theo máy) trả lời
+    “số nào đúng”: **cả hai đều đúng**. Bảng nhỏ đặt Còn phải trả (Dư Có), Đã ứng trước (Dư Nợ), Thuần (Có − Nợ) của hai màn cạnh nhau kèm cột Chênh;
+    bên dưới là danh sách NCC gây chênh: NCC vừa **còn nợ ở công trình này** vừa **đã ứng trước ở công trình khác** — màn theo NCC trừ hai khoản cho nhau,
+    màn theo công trình giữ riêng (tiền ứng ở công trình kia không tự trả cho công trình này), nên Dư Có và Dư Nợ ở màn theo công trình cùng lớn hơn đúng
+    phần bù trừ, còn **Thuần luôn bằng nhau**. Trả tiền / đối chiếu với NCC dùng số màn theo NCC; theo dõi từng công trình dùng số màn này.
+    Nếu khoản ứng trước thật ra thuộc công trình đang còn nợ (vd ghi tạm vào công trình “chưa xác định”), sửa Mã công trình của phiếu chi / số dư đầu kỳ đó
+    thì chênh lệch mất. Biểu tượng sổ ở từng NCC mở Sổ chi tiết NCC (có bảng số dư theo từng công trình).
   - Ở từng dòng: **Trả tiền** mở trang Ghi thu / chi điền sẵn NCC, công trình và số còn nợ; biểu tượng sổ mở **Sổ chi tiết NCC** đã lọc công trình đó.
   - **In** và **Xuất Excel**: file có sheet `Theo_Cong_Trinh` (nhóm theo công trình, dòng cộng từng công trình, tổng cộng — dùng công thức, sửa số là tự cộng lại)
     và sheet `Bang_Cheo` (NCC × công trình).
@@ -334,7 +339,10 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
   - **Phát sinh** = chi phí trong Sổ chi phí công trình trong kỳ;
   - **Thanh toán** = Sổ thu chi (chi trừ thu lại của cùng Mã NCC) + khoản trả từ nguồn khác, ngoài quỹ (dòng nhỏ “ngoài quỹ …”);
   - **Số dư cuối kỳ** = Đầu kỳ + Phát sinh − Thanh toán, ở cột Dư Có (còn nợ) hoặc Dư Nợ (ứng dư). Công nợ chỉ có hai trạng thái dương / âm nên **không hiện số âm**.
-  Dòng phương trình trên đầu bảng cộng cả kỳ (đầu kỳ Có / Nợ, phát sinh, thanh toán, cuối kỳ Dư Có và Dư Nợ). Công trình chọn ở thanh trên áp dụng cho cả bảng.
+  Dòng phương trình trên đầu bảng: **Số dư đầu kỳ + Phát sinh − Thanh toán = Số dư cuối kỳ**. Hai số dư ghi **thuần** (Có − Nợ, kèm chữ Có / Nợ) nên phép
+  cộng trừ đúng ngay trên màn hình; dưới mỗi số dư tách **Còn phải trả (Dư Có)** và **Đã ứng trước (Dư Nợ)** kèm số NCC. Công trình chọn ở thanh trên áp dụng cho cả bảng.
+  Dòng Tổng cộng ghi thêm **Thuần (Có − Nợ)**. NCC vừa còn nợ ở công trình này vừa đã ứng trước ở công trình khác có dòng nhỏ dưới số dư
+  “đã trừ ứng trước … ở …” (rê chuột xem từng công trình): màn này bù trừ hai khoản, màn Công nợ theo công trình thì không (xem khung Đối chiếu ở màn đó).
   Đánh dấu **Chỉ NCC có số liệu** để ẩn NCC không có đầu kỳ / phát sinh / thanh toán. Nút **Tất cả / Còn nợ / Ứng dư / Đã tất toán** (kèm số lượng) lọc nhanh theo tình trạng.
   **Lọc theo NCC** (chọn được **nhiều** NCC): ở ô “NCC”, gõ mã hoặc tên — có dấu hay không dấu, hoa hay thường đều được — rồi chọn trong danh sách gợi ý
   dạng “mã – tên” (↑ ↓ để di chuyển, Enter để chọn). Mỗi NCC đã chọn hiện thành một **chip** “Đang lọc: …”; bấm × bỏ riêng NCC đó, **Xóa lọc** bỏ hết.

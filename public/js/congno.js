@@ -103,6 +103,66 @@ export function soChiTiet(ma, o) {
   };
 }
 
+/* ---------------- Dòng phương trình công nợ dùng chung ----------------
+ * Công nợ NCC theo kỳ và Công nợ theo công trình vẽ cùng một dòng, để hai màn đọc giống hệt nhau:
+ * Số dư đầu kỳ + Phát sinh − Thanh toán = Số dư cuối kỳ. Số dư ghi thuần (Có − Nợ) nên phép tính cộng trừ đúng ngay trên màn hình;
+ * bên dưới tách Còn phải trả (Dư Có) và Đã ứng trước (Dư Nợ).
+ * o: { dauCo, dauNo, phatSinh, thanhToan, traNgoai, cuoiCo, cuoiNo, nCo, nNo, donVi, kyTu, kyDen, idCo } */
+export function phuongTrinhHtml(o) {
+  const tach = (co, no, nCo, nNo, idCo) => '<span class="eq-rows">' +
+    '<span>Còn phải trả <span class="text-ink-3">(Dư Có)</span></span><b' + (idCo ? ' id="' + idCo + '"' : '') + '>' + money(co) + '</b><span class="text-ink-3">' + (nCo == null ? '' : nCo + ' ' + o.donVi) + '</span>' +
+    '<span>Đã ứng trước <span class="text-ink-3">(Dư Nợ)</span></span><b class="text-caution">' + money(no) + '</b><span class="text-ink-3">' + (nNo == null ? '' : nNo + ' ' + o.donVi) + '</span></span>';
+  return '<div class="equation" role="group" aria-label="Số dư đầu kỳ cộng phát sinh trừ thanh toán bằng số dư cuối kỳ">' +
+    '<div class="eq-cell"><span class="eq-label">Số dư đầu kỳ' + (o.kyTu || '') + '</span><span class="eq-value" data-eq="dau">' + coNoHtml(o.dauCo - o.dauNo) + '</span>' + tach(o.dauCo, o.dauNo) + '</div><span class="eq-op">+</span>' +
+    '<div class="eq-cell"><span class="eq-label">Phát sinh trong kỳ</span><span class="eq-value" data-eq="ps">' + money(o.phatSinh) + '</span><span class="eq-label">từ sổ chi phí</span></div><span class="eq-op">−</span>' +
+    '<div class="eq-cell"><span class="eq-label">Thanh toán trong kỳ</span><span class="eq-value" data-eq="tt">' + money(o.thanhToan) + '</span><span class="eq-label">sổ quỹ' + (o.traNgoai ? ' + nguồn khác ' + money(o.traNgoai) : '') + '</span></div><span class="eq-op">=</span>' +
+    '<div class="eq-cell eq-wide"><span class="eq-label" title="Thuần = Còn phải trả − Đã ứng trước">Số dư cuối kỳ' + (o.kyDen || '') + ' · thuần</span><span class="eq-value" data-eq="cuoi">' + coNoHtml(o.cuoiCo - o.cuoiNo) + '</span>' +
+    tach(o.cuoiCo, o.cuoiNo, o.nCo, o.nNo, o.idCo) + '</div></div>';
+}
+
+// Tên công trình trong đối chiếu ('' = khoản không ghi công trình)
+const tenCT = (ma) => (ma ? esc(ma) : '<span class="text-caution">chưa ghi công trình</span>');
+const dsCT = (xs, max) => xs.slice(0, max || 99).map((y) => tenCT(y.ma) + ' ' + money(y.so)).join(', ') + (max && xs.length > max ? ', … (' + xs.length + ' công trình)' : '');
+
+/* Khung "Đối chiếu với màn Công nợ NCC theo kỳ" ở màn Công nợ theo công trình: hai bộ Dư Có / Dư Nợ, chênh lệch, NCC gây chênh.
+ * d = KT.doiChieuCongNo(...); mo = đang mở */
+export function doiChieuHtml(d, mo) {
+  const dong = (ten, a, b, cls) => '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + ten + '</td><td class="num money">' + a + '</td><td class="num money">' + b + '</td>';
+  const chenh = (n) => '<td class="num money">' + (n ? '+ ' + money(n) : '<span class="text-income">' + icon('check', 'mr-1 align-[-2px]') + 'bằng nhau</span>') + '</td></tr>';
+  return '<details class="sheet doi-chieu" id="cnct-doi-chieu"' + (mo ? ' open' : '') + '><summary class="doi-chieu-head">' +
+    '<span class="caret">' + icon('caretRight') + '</span><span><b>Đối chiếu với màn Công nợ NCC theo kỳ</b> · cả hai đều đúng: thuần (Có − Nợ) bằng nhau <b class="tabular-nums">' + money(d.ct.thuan) + '</b>' +
+    (d.buTru ? '; Dư Có và Dư Nợ ở màn này cùng lớn hơn <b class="tabular-nums">' + money(d.buTru) + '</b> do ' + d.dsNCC.length + ' NCC được bù trừ giữa các công trình' : '') + '</span></summary>' +
+    '<div class="doi-chieu-body"><div class="w-max max-w-full overflow-x-auto"><table class="ledger" id="cnct-dc-tong"><thead><tr><th></th>' +
+    '<th class="num money">Màn theo NCC<div class="sub font-normal">bù trừ mọi công trình của một NCC</div></th>' +
+    '<th class="num money">Màn theo công trình<div class="sub font-normal">giữ riêng từng công trình</div></th><th class="num money">Chênh</th></tr></thead><tbody>' +
+    dong('Còn phải trả (Dư Có)', money(d.ncc.conNo), money(d.ct.conNo)) + chenh(d.ct.conNo - d.ncc.conNo) +
+    dong('Đã ứng trước (Dư Nợ)', '<span class="text-caution">' + money(d.ncc.ungDu) + '</span>', '<span class="text-caution">' + money(d.ct.ungDu) + '</span>') + chenh(d.ct.ungDu - d.ncc.ungDu) +
+    dong('<b>Thuần (Có − Nợ)</b>', '<b>' + coNoHtml(d.ncc.thuan) + '</b>', '<b>' + coNoHtml(d.ct.thuan) + '</b>', 'font-bold') + chenh(d.ct.thuan - d.ncc.thuan) +
+    '</tbody></table></div>' +
+    '<ul class="doi-chieu-note"><li><b>Trả tiền, đối chiếu với nhà cung cấp</b>: dùng số màn theo NCC — mỗi NCC chỉ có một số dư sau khi bù trừ mọi công trình.</li>' +
+    '<li><b>Theo dõi từng công trình còn nợ bao nhiêu</b>: dùng số màn này — tiền đã ứng ở công trình kia không tự trả cho công trình này.</li>' +
+    '<li>Số liệu tính trên mọi NCC có số liệu trong kỳ, không theo ô lọc tình trạng / tìm kiếm.</li></ul>' +
+    (d.dsNCC.length ? '<p class="mb-1.5 text-[12.5px] text-ink-2">' + d.dsNCC.length + ' NCC vừa còn nợ ở công trình này vừa đã ứng trước ở công trình khác (cộng phần bù trừ = chênh ' + money(d.buTru) + '). ' +
+      'Nếu khoản ứng trước thật ra thuộc công trình đang còn nợ, sửa Mã công trình của phiếu chi / số dư đầu kỳ đó thì chênh lệch mất.</p>' +
+      '<div class="overflow-x-auto"><table class="ledger" id="cnct-dc-ncc"><thead><tr><th>Nhà cung cấp</th><th>Đã ứng trước ở</th><th>Còn nợ ở</th><th class="num money">Bù trừ</th><th class="num money">Số dư thuần của NCC</th><th class="no-print"><span class="sr-only">Thao tác</span></th></tr></thead><tbody>' +
+      d.dsNCC.map((x) => '<tr data-dc-ncc="' + esc(x.ma) + '"><td><b class="code">' + esc(x.ten) + '</b><div class="sub">' + esc(x.ma) + '</div></td>' +
+        '<td class="text-caution">' + dsCT(x.ung) + '</td><td>' + dsCT(x.no, 4) + '</td><td class="num money font-bold">' + money(x.buTru) + '</td><td class="num money">' + coNoHtml(x.cuoiKy) + '</td>' +
+        '<td class="actions no-print"><button type="button" class="icon-btn" data-act="dc-ledger" title="Sổ chi tiết NCC: số dư từng công trình" aria-label="Sổ chi tiết ' + esc(x.ten) + '">' + icon('book') + '</button></td></tr>').join('') +
+      '</tbody><tfoot><tr><td colspan="3">Cộng ' + d.dsNCC.length + ' NCC</td><td class="num money"><span class="dbl">' + money(d.buTru) + '</span></td><td colspan="2"></td></tr></tfoot></table></div>' : '') +
+    '</div></details>';
+}
+
+// Ghi chú dưới số dư cuối kỳ của một NCC ở màn Công nợ NCC theo kỳ: số này đã bù trừ giữa các công trình (x = phần tử của doiChieuCongNo().dsNCC)
+export function buTruSub(x) {
+  const ung = x.cuoiKy >= 0;
+  const ds = ung ? x.ung : x.no;
+  const noi = ds.length === 1 ? (ds[0].ma ? 'ở ' + esc(ds[0].ma) : '(chưa ghi công trình)') : 'ở ' + ds.length + ' công trình';
+  const title = 'Còn nợ: ' + x.no.map((y) => (y.ma || 'chưa ghi công trình') + ' ' + money(y.so)).join(', ') + '. Đã ứng trước: ' + x.ung.map((y) => (y.ma || 'chưa ghi công trình') + ' ' + money(y.so)).join(', ') +
+    '. Màn này bù trừ hai khoản; màn Công nợ theo công trình giữ riêng từng công trình.';
+  // hai cụm không ngắt giữa chừng: màn hẹp thì xuống đúng hai dòng
+  return '<div class="sub sub-wrap" title="' + esc(title) + '"><span class="whitespace-nowrap">đã trừ ' + (ung ? 'ứng trước ' : 'còn nợ ') + money(x.buTru) + '</span> <span class="whitespace-nowrap">' + noi + '</span></div>';
+}
+
 // Hậu quả công nợ của một lần xóa, để ghi vào hộp xác nhận. delta = thay đổi của số dư cuối kỳ (dương = còn nợ nhiều hơn)
 export function hauQuaCongNo(maNCC, delta, ct) {
   if (!maNCC || !delta) return '';

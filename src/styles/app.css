@@ -354,6 +354,7 @@
   .ledger .code { @apply font-bold whitespace-nowrap text-ink; }
   .ledger .code.bad { @apply text-alert; }
   .ledger .sub { @apply max-w-[210px] truncate text-[11.5px] text-neutral-700; }
+  .ledger .sub.sub-wrap { @apply ml-auto max-w-[240px] font-normal whitespace-normal; }
   .ledger .wrap-text { @apply max-w-[440px] min-w-[220px]; }
   .ledger .actions { @apply w-px py-0.5 text-right whitespace-nowrap; }
   /* nút thao tác ở dòng: luôn thấy rõ (không chờ rê chuột) — thứ tự Xem → Sửa → Nhân bản → In → Xóa */
@@ -413,6 +414,18 @@
   .eq-value { @apply text-[22px] leading-tight font-bold tabular-nums text-ink; }
   .eq-op { @apply grid w-8 flex-none place-items-center text-[20px] font-light text-neutral-700; }
   .eq-sep { @apply w-px flex-none bg-rule; }
+  .eq-wide { @apply flex-[1.35]; }
+  /* Còn phải trả / Đã ứng trước dưới một số dư: nhãn · số · số NCC, thẳng cột */
+  .eq-rows { @apply mt-1 grid w-max grid-cols-[auto_auto_auto] items-baseline gap-x-2.5 gap-y-0.5 text-[12.5px] text-ink-2; }
+  .eq-rows b { @apply text-right text-[14px] font-bold tabular-nums text-ink; }
+  .eq-rows b.text-caution { @apply text-caution; }
+  /* Khung đối chiếu hai màn công nợ */
+  .doi-chieu-head { @apply flex cursor-pointer list-none items-start gap-2 px-4 py-2.5 text-[13px] leading-relaxed text-ink-2; }
+  .doi-chieu-head::-webkit-details-marker { display: none; }
+  .doi-chieu-head .caret { @apply mt-0.5 inline-grid size-5 flex-none place-items-center text-[12px] text-neutral-700 transition-transform; }
+  .doi-chieu[open] .doi-chieu-head .caret { transform: rotate(90deg); }
+  .doi-chieu-body { @apply flex flex-col gap-2 border-t border-rule px-4 pt-2.5 pb-3.5; }
+  .doi-chieu-note { @apply list-disc pl-5 text-[12.5px] leading-relaxed text-ink-2; }
   /* điện thoại: đẳng thức thành lưới 2×2 cho gọn, bộ lọc giãn hết bề ngang */
   @media (max-width: 639px) {
     .equation { @apply grid grid-cols-2; }

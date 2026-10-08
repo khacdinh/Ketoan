@@ -663,7 +663,8 @@ test('F6 Công nợ NCC theo kỳ: bảng Đầu kỳ / Phát sinh / Thanh toán
       const v = (s) => (/\d/.test(s) ? num(s) : 0);
       assert.equal(v(tds[3]), r.phatSinh, r.ma + ' phát sinh');
       assert.equal(v(tds[4].split('\n')[0]), r.thanhToan, r.ma + ' thanh toán');
-      assert.equal(v(tds[6]) - v(tds[5]), r.cuoiKy, r.ma + ' cuối kỳ = Dư Có − Dư Nợ');
+      // dòng đầu là số dư; dòng nhỏ bên dưới (nếu có) ghi phần bù trừ giữa các công trình
+      assert.equal(v(tds[6].split('\n')[0]) - v(tds[5].split('\n')[0]), r.cuoiKy, r.ma + ' cuối kỳ = Dư Có − Dư Nợ');
       assert.match(tds[7], r.status === 'no' ? /Còn nợ/ : r.status === 'du' ? /Ứng dư/ : /Đã tất toán/, r.ma + ' tình trạng');
     }
     const tot = P.sumRows(rows);
