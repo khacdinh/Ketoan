@@ -69,14 +69,21 @@ export const ctNhan = (ct) => { const p = ct ? S.db.projects.find((x) => KT.keyO
 
 /* ---------------- Dữ liệu Sổ chi tiết công nợ một nhà cung cấp ----------------
  * Đầu kỳ = số dư nhập tay + chi phí trước kỳ − thanh toán trước kỳ (cùng KT.supplierPeriod, nên Cuối kỳ khớp màn Công nợ theo kỳ).
- * Trong kỳ: mỗi phiếu nhập chi phí một dòng (tăng nợ), mỗi khoản chi sổ quỹ / trả ngoài quỹ một dòng (giảm nợ). Lũy kế = đầu kỳ + phát sinh − thanh toán. */
+ * Trong kỳ: mỗi phiếu nhập chi phí một dòng (tăng nợ), mỗi khoản chi sổ quỹ / trả ngoài quỹ một dòng (giảm nợ). Lũy kế = đầu kỳ + phát sinh − thanh toán.
+ * o.bo = [{ ma, dauKy, nhapDauKy }]: bỏ chứng từ của các công trình này (công trình đã tất toán, ma '' = chưa gán) và trừ đầu kỳ của chúng,
+ * nên lũy kế chỉ còn các công trình đang hiện; cuối kỳ không đổi vì công trình bị bỏ có số dư cuối kỳ bằng 0. */
 export function soChiTiet(ma, o) {
   o = o || {};
   const k = KT.keyOf(ma);
   const rg = (ngay) => (!o.from || ngay >= o.from) && (!o.to || ngay <= o.to);
-  const okCt = (x, f) => !o.ct || KT.keyOf(x[f]) === KT.keyOf(o.ct);
-  const per = KT.supplierPeriod(S.db, { from: o.from, to: o.to, ct: o.ct, ncc: [ma] }).rows.find((r) => KT.keyOf(r.ma) === k) ||
+  const bo = new Map((o.bo || []).map((x) => [KT.keyOf(x.ma), x]));
+  const okCt = (x, f) => (!o.ct || KT.keyOf(x[f]) === KT.keyOf(o.ct)) && !bo.has(KT.keyOf(x[f]));
+  let per = KT.supplierPeriod(S.db, { from: o.from, to: o.to, ct: o.ct, ncc: [ma] }).rows.find((r) => KT.keyOf(r.ma) === k) ||
     { ma, ten: tenNCC(ma), loai: '', dauKy: 0, nhapDauKy: 0, phatSinh: 0, thanhToan: 0, cuoiKy: 0, soDongDK: 0, status: 'ok', inCatalog: false };
+  if (bo.size) {
+    per = Object.assign({}, per);
+    bo.forEach((x) => { per.dauKy -= x.dauKy || 0; per.nhapDauKy -= x.nhapDauKy || 0; });
+  }
   const costs = S.costLedger.filter((c) => KT.keyOf(c.maNCC) === k && rg(c.ngay) && okCt(c, 'maCT'));
   const slips = KT.costSlips(Object.assign({}, S.db, { costs }), costs);
   const docs = [];

@@ -77,7 +77,7 @@ Nhóm **Chi phí công trình**:
 | **Chi phí theo nhóm** | `CHI_TIET_THEO_NHOM` | Nhóm → Hạng mục → từng dòng, 3 mức hiển thị, **Bung hết / Thu gọn**, nút **Xem trong sổ** ở từng nhóm, hạng mục. |
 | **Công nợ NCC theo kỳ** | `CONGNO_NCC` + `Tong_Hop_NCC` | Gộp “Tổng hợp NCC” và “Công nợ NCC”: theo từng NCC **Số dư đầu kỳ (Dư Nợ | Dư Có) · Phát sinh · Thanh toán · Số dư cuối kỳ (Dư Nợ | Dư Có) · Tình trạng · Giao dịch gần nhất**; bấm nhãn Tất cả / Còn nợ / Ứng dư / Đã tất toán để lọc; bấm một dòng để mở hàng thao tác (Sổ chi tiết, Biên bản đối chiếu, Sổ chi phí / Sổ thu chi của NCC, Số dư đầu kỳ, Trả từ nguồn khác, Ghi phiếu chi). Xem theo công trình bằng nút **Theo công trình**. Đường dẫn cũ “Tổng hợp NCC” cũng mở màn này. |
 | **Công nợ theo công trình** | (mới) | Công trình nào còn nợ nhà cung cấp nào, bao nhiêu: mỗi công trình một nhóm (bung / thu gọn) gồm từng NCC với Đầu kỳ · Phát sinh · Thanh toán · Dư Nợ / Dư Có · Tình trạng, nút **Trả tiền** và **Sổ chi tiết** ở từng dòng; hoặc **Bảng chéo NCC × công trình**. Xem mục 12. |
-| **Sổ chi tiết NCC** | (mới) | Một NCC: số dư đầu kỳ, **từng chứng từ** (mỗi phiếu nhập một dòng, bấm để bung các dòng hàng; khoản chi sổ quỹ và khoản trả ngoài quỹ nền xanh nhạt), số dư lũy kế kèm Có / Nợ, dòng cộng cuối bảng. **Alt ↑ ↓** chuyển NCC khác. Nút **Ghi thanh toán**, **Biên bản đối chiếu**, In sổ. |
+| **Sổ chi tiết NCC** | (mới) | Một NCC: số dư đầu kỳ, **từng chứng từ** (mỗi phiếu nhập một dòng, bấm để bung các dòng hàng; khoản chi sổ quỹ và khoản trả ngoài quỹ nền xanh nhạt), số dư lũy kế kèm Có / Nợ, dòng cộng cuối bảng. Bảng **Số dư cuối kỳ theo công trình**: NCC còn nợ / đã ứng bao nhiêu ở từng công trình (cộng lại bằng số dư cuối kỳ), nút **Trả tiền** từng công trình, bấm một công trình để xem sổ của riêng công trình đó. **Ẩn công trình đã tất toán** (mặc định bật). **Alt ↑ ↓** chuyển NCC khác. Nút **Ghi thanh toán**, **Biên bản đối chiếu**, In sổ. |
 | **Biên bản đối chiếu công nợ** | (mới) | A4 dọc, đen trắng: đầu đơn vị, quốc hiệu, Bên A / Bên B, bảng 4 mục (đầu kỳ + phát sinh − thanh toán = cuối kỳ), bằng chữ, bảng kê chứng từ có lũy kế, điều khoản 07 ngày, chỗ ký. Xem trước rồi bấm **In biên bản**. |
 | **Giá vật tư** | (mới) | Lịch sử đơn giá từng vật tư theo NCC, giá thấp / cao / gần nhất, biểu đồ giá; mỗi dòng có nút mở phiếu nhập, xem trong sổ chi phí, sửa đơn giá. |
 | **Vật tư, hạng mục** | `DM_NHOM`, `DM_HANGMUC`, `DM_VATTU`, `DM_NHA` | Danh mục chi phí: tab **Vật tư** (cây nhóm chi phí → hạng mục bên trái, bảng vật tư bên phải) và tab **Nhà / khu**. |
@@ -338,6 +338,13 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
   Cuối kỳ luôn bằng “Còn lại” tính đến ngày cuối kỳ, và bằng số dư cuối ở **Sổ chi tiết NCC**.
   - **Trả tiền** (ghi phiếu chi trong sổ thu chi, điền sẵn NCC và số còn nợ) và **Nguồn khác** (khoản trả ngoài quỹ) có ngay ở từng dòng còn nợ.
   - **Sổ chi tiết** (Enter trên dòng): xem từng phiếu nhập, từng khoản thanh toán; **Biên bản đối chiếu** in gửi NCC ký xác nhận.
+  - **Sổ chi tiết NCC — số dư theo từng công trình**: ngay dưới dòng phương trình có bảng **Số dư cuối kỳ theo công trình** (khi NCC làm từ 2 công trình trở lên):
+    mỗi công trình một dòng Số dư đầu kỳ · Phát sinh · Thanh toán · **Số dư cuối kỳ** (Có = còn phải trả, Nợ = đã ứng trước) · Tình trạng, dòng cộng bằng đúng
+    số dư cuối kỳ của NCC — không phải tự trừ. Nút **Trả tiền** ở dòng công trình còn nợ mở phiếu chi điền sẵn công trình và số còn nợ của công trình đó.
+    Bấm một công trình để sổ bên dưới chỉ còn chứng từ của công trình đó (bấm lại hoặc **Xem tất cả công trình** để bỏ). **Thu gọn** để ẩn bảng.
+  - **Ẩn công trình đã tất toán** (ô tích trên thanh lọc, mặc định bật, nhớ theo máy): công trình có số dư cuối kỳ bằng 0 (vd đã trả đủ) không còn hiện
+    trong bảng theo công trình và chứng từ của công trình đó cũng được bỏ khỏi sổ; số dư lũy kế chỉ tính các công trình còn lại nên số dư cuối kỳ không đổi.
+    Đầu sổ ghi rõ “Đã ẩn chứng từ của … công trình đã tất toán: …”, bấm **Hiện** để xem lại đầy đủ. In sổ in đúng như đang xem; Biên bản đối chiếu và Xuất Excel luôn đủ mọi chứng từ.
   - Bấm một NCC để xem các phiếu chi phí và các lần trả tiền; nút **Trả tiền / Ghi phiếu chi** mở sẵn form ghi chi
     trong Sổ thu chi với đúng NCC, dự án và số còn nợ.
   - **Trả từ nguồn khác (ngoài quỹ)** — khi NCC đã được trả bằng tiền KHÔNG thuộc quỹ tiền mặt do thủ quỹ quản lý

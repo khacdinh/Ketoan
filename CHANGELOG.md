@@ -1,5 +1,16 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Sổ chi tiết NCC: số dư theo từng công trình, ẩn công trình đã tất toán (08/10/2026)
+
+- **Sổ chi tiết NCC** có bảng **Số dư cuối kỳ theo công trình**: mỗi công trình một dòng (đầu kỳ, phát sinh, thanh toán, số dư cuối kỳ Có / Nợ, tình trạng). Dòng cộng bằng số dư cuối kỳ của NCC.
+  - Nút **Trả tiền** theo từng công trình.
+  - Bấm một công trình để xem sổ của riêng công trình đó (chọn công trình ở thanh trên); **Xem tất cả công trình** để bỏ.
+  - Bảng hiện khi NCC có từ 2 công trình trở lên; **Thu gọn** được.
+- **Ẩn công trình đã tất toán** (mặc định bật, nhớ theo máy): công trình có số dư cuối kỳ bằng 0 bị bỏ khỏi bảng và chứng từ của nó bị bỏ khỏi sổ.
+  - Lũy kế và đầu kỳ chỉ tính các công trình còn lại; số dư cuối kỳ không đổi.
+  - Đầu sổ ghi rõ công trình nào đã ẩn, có nút **Hiện**.
+- Sửa nhóm “Chưa gán công trình” ở `KT.supplierDebtByProject`: trừ đúng cả số dư đầu kỳ nhập tay (`nhapDauKy`), chi / thu. Có test CN4.
+
 ## Công nợ NCC theo công trình, mục menu Công nợ (08/10/2026)
 
 - Trang mới **Công nợ › Công nợ theo công trình** (`#/cong-no-ct`): công trình nào còn nợ nhà cung cấp nào, bao nhiêu.

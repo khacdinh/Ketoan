@@ -85,6 +85,8 @@ test('CN1 tính: mỗi cặp công trình × NCC đúng số độc lập; cộn
   assert.deepEqual(kq.groups.map((g) => g.ma), ['CT1', 'CT2', 'CTX']);
   assert.equal(kq.groups[2].inCatalog, false);
   assert.equal(kq.chuaGan.ten, 'Chưa gán công trình');
+  // nhóm Chưa gán trừ đúng cả phần nhập tay: NCC_D nợ cũ 7tr không ghi công trình, NCC_A nhập tay 2tr thuộc CT2
+  assert.deepEqual(kq.chuaGan.rows.map((r) => [r.ma, r.nhapDauKy, r.dauKy]).sort(), [['NCC_A', 0, 0], ['NCC_D', 7 * TR, 7 * TR]]);
   assert.deepEqual([kq.total.conNo, kq.total.ungDu, kq.total.soCongTrinhNo], [62 * TR, 7 * TR, 3]);
   // cộng các nhóm của từng NCC = màn Công nợ NCC theo kỳ (cả 4 cột)
   const theoNCC = new Map();
@@ -246,6 +248,70 @@ test('CN3 giao diện: menu mục Công nợ, trang theo công trình (nhóm, th
     await settle(page);
     assert.equal(await page.inputValue('#sct-ncc'), 'NCC_A');
     assert.match(await page.textContent('#tb-ct-val'), /CT2/);
+    assert.deepEqual(errors, []);
+    assert.deepEqual(external, []);
+  } finally { await browser.close(); await srv.stop(); }
+});
+
+// NCC_A thêm một công trình đã tất toán (CT3: chi phí 10tr, trả ngoài quỹ 10tr) để thử ẩn công trình đã tất toán
+function seed4() {
+  const db = seed();
+  let id = db.nextId;
+  db.costs.push({ id: id++, seq: db.costs.length + 1, phieuId: 0, ngay: '2026-07-08', maCT: 'CT3', maNha: '', maHM: 'HM01', loaiCP: 'Vật tư', maVT: '',
+    dienGiai: 'cp CT3', soLuong: null, donGia: null, thanhTien: 10 * TR, maNCC: 'NCC_A', soPhieu: '', ghiChu: '', nguon: 'mau' });
+  db.extPayments.push({ id: id++, ngay: '2026-07-21', maNCC: 'NCC_A', maDuAn: 'CT3', soTien: 10 * TR, nguon: 'Chuyển khoản', ghiChu: 'trả đủ CT3' });
+  db.nextId = id + 5;
+  return db;
+}
+
+test('CN4 Sổ chi tiết NCC: bảng số dư cuối kỳ theo công trình (cộng = cuối kỳ), ẩn công trình đã tất toán khỏi sổ, bấm công trình để xem riêng, Trả tiền theo công trình', { skip: SKIP }, async () => {
+  const srv = await startServer({ seed: seed4() });
+  const { browser, page, errors, external } = await openPage(srv, '#/tong-quan');
+  try {
+    await page.evaluate(() => { localStorage.setItem('stc.sct.ncc', JSON.stringify('NCC_A')); location.hash = '#/so-chi-tiet-ncc'; });
+    await page.waitForSelector('#sct-ct-table'); await settle(page);
+    const bang = () => page.$$eval('#sct-ct-table tbody tr', (t) => t.map((x) => [x.dataset.ct, x.children[4].textContent.trim()]));
+    const eq = async () => (await page.$$eval('.equation .eq-value', (v) => v.map((x) => x.textContent))).map(num);
+    const ctSo = () => page.$$eval('#sct-table tbody tr[data-i] td:nth-child(3)', (t) => [...new Set(t.map((x) => x.textContent.trim()).filter(Boolean))].sort());
+    // mặc định ẩn công trình đã tất toán: CT3 không có trong bảng lẫn trong sổ
+    assert.deepEqual(await bang(), [['CT1', '30.000.000Có'], ['CT2', '22.000.000Có'], ['CTX', '3.000.000Có'], ['', '5.000.000Nợ']]);
+    assert.match(await page.textContent('#sct-ct .sheet-note'), /ẩn 1 đã tất toán \(CT3\)/);
+    assert.equal(num(await page.textContent('#sct-ct-table tfoot td:nth-child(5)')), 50 * TR, 'cộng các công trình = cuối kỳ');
+    assert.deepEqual(await eq(), [2 * TR, 68 * TR, 20 * TR, 50 * TR], 'đầu kỳ + phát sinh − thanh toán = cuối kỳ, không tính CT3');
+    assert.deepEqual(await ctSo(), ['CT1', 'CT2', 'CTX']);
+    assert.match(await page.textContent('#sct-table tr.an-tt'), /1 công trình đã tất toán.*CT3/);
+    assert.ok(await page.isChecked('#sct-an-tt'));
+    // hiện lại: CT3 có trong sổ, lũy kế cuối vẫn 50tr
+    await page.click('#sct-an-tt'); await page.waitForSelector('#sct-table tr.an-tt', { state: 'detached' }); await settle(page);
+    assert.deepEqual(await ctSo(), ['CT1', 'CT2', 'CT3', 'CTX']);
+    assert.deepEqual(await eq(), [2 * TR, 78 * TR, 30 * TR, 50 * TR]);
+    assert.deepEqual((await bang()).map((x) => x[0]), ['CT1', 'CT2', 'CTX', 'CT3', '']);
+    // ẩn lại bằng nút trên bảng công trình, lựa chọn được nhớ khi mở lại
+    await page.click('#sct-ct [data-act=tt-toggle]'); await page.waitForSelector('#sct-table tr.an-tt'); await settle(page);
+    await page.reload(); await page.waitForSelector('#sct-ct-table'); await settle(page);
+    assert.ok(await page.isChecked('#sct-an-tt'));
+    // bấm một công trình: sổ chỉ còn công trình đó, dòng đó sáng; bấm lại hoặc "Xem tất cả công trình" để bỏ lọc
+    await page.click('#sct-ct-table tr[data-ct="CT2"]'); await page.waitForSelector('#sct-ct-table tr.is-active[data-ct="CT2"]'); await settle(page);
+    assert.match(await page.textContent('#tb-ct-val'), /CT2/);
+    assert.deepEqual(await ctSo(), ['CT2']);
+    assert.equal((await eq())[3], 22 * TR);
+    await page.click('#sct-ct [data-act=ct-all]'); await page.waitForSelector('#sct-ct-table tr.is-active', { state: 'detached' }); await settle(page);
+    assert.equal((await eq())[3], 50 * TR);
+    // Trả tiền ở dòng công trình: phiếu chi điền sẵn công trình và số còn nợ của công trình đó
+    await page.click('#sct-ct-table tr[data-ct="CT1"] [data-act=ct-pay]');
+    await page.waitForSelector('#entry-page');
+    assert.equal(await page.inputValue('#entry-page [name=maDuAn]'), 'CT1');
+    assert.equal(num(await page.inputValue('#entry-page [name=chi]')), 30 * TR);
+    // NCC đã tất toán ở mọi công trình (NCC_C chỉ có CT2, đã trả đủ): không ẩn gì, vẫn xem được lịch sử
+    await page.click('#entry-page [data-act=cancel]');
+    await page.evaluate(() => { localStorage.setItem('stc.sct.ncc', JSON.stringify('NCC_C')); location.hash = '#/tong-quan'; });
+    await page.waitForFunction(() => location.hash === '#/tong-quan');
+    await page.evaluate(() => { location.hash = '#/so-chi-tiet-ncc'; });
+    await page.waitForFunction(() => document.querySelector('#sct-ncc') && document.querySelector('#sct-ncc').value === 'NCC_C'); await settle(page);
+    assert.equal(await page.$$eval('#sct-table tbody tr[data-i]', (t) => t.length), 2, 'phiếu nhập + phiếu chi của NCC_C vẫn hiện');
+    assert.equal(await page.$('#sct-table tr.an-tt'), null);
+    assert.equal(await page.$('#sct-an-tt'), null);
+    assert.equal(await page.isHidden('#sct-ct'), true, 'một công trình: không cần bảng theo công trình');
     assert.deepEqual(errors, []);
     assert.deepEqual(external, []);
   } finally { await browser.close(); await srv.stop(); }

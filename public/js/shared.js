@@ -1163,7 +1163,8 @@
         if (k && r.maNCC && !seen.has(k)) { seen.add(k); ds.push({ ma: String(r[x[1]]).trim(), ten: '(Chưa có trong danh mục)', trangThai: '', inCatalog: false }); }
       });
     });
-    const cong = function (a, r) { ['dauKy', 'phatSinh', 'thanhToan', 'traNgoai', 'cuoiKy'].forEach(function (k) { a[k] = (a[k] || 0) + r[k]; }); };
+    const SO = ['dauKy', 'nhapDauKy', 'phatSinh', 'thanhToan', 'daChi', 'daThu', 'traNgoai', 'cuoiKy'];
+    const cong = function (a, r) { SO.forEach(function (k) { a[k] = (a[k] || 0) + (r[k] || 0); }); };
     const daCong = new Map(); // NCC → tổng các công trình (để tính phần chưa gán)
     const groups = [];
     ds.forEach(function (p) {
@@ -1183,7 +1184,7 @@
       all.rows.forEach(function (r) {
         const a = daCong.get(keyOf(r.ma)) || {};
         const x = Object.assign({}, r);
-        ['dauKy', 'phatSinh', 'thanhToan', 'traNgoai', 'cuoiKy'].forEach(function (k) { x[k] = r[k] - (a[k] || 0); });
+        SO.forEach(function (k) { x[k] = (r[k] || 0) - (a[k] || 0); });
         x.coSoLieu = !!(x.dauKy || x.phatSinh || x.thanhToan);
         x.status = x.cuoiKy > 0 ? 'no' : x.cuoiKy < 0 ? 'du' : 'ok';
         if (x.coSoLieu && hop(x) && khopNCC(x)) rows.push(x);
