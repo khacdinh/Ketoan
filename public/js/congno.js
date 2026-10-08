@@ -125,9 +125,13 @@ export function phuongTrinhHtml(o) {
 export function cauNoiHtml(d, man) {
   if (!d || !d.buTru) return '';
   const kia = man === 'ncc' ? d.ct : d.ncc;
+  const ten = d.dsNCC.slice(0, 4).map((x) => esc(x.ten)).join(', ') + (d.dsNCC.length > 4 ? ', …' : '');
+  // liên kết mở khung đối chiếu (danh sách NCC, ví dụ tính tay) ở màn Công nợ theo công trình
+  const link = '<a class="whitespace-nowrap font-medium text-pen underline underline-offset-2" data-dc-mo href="' + (man === 'ncc' ? '#/cong-no-ct' : '#cnct-doi-chieu') + '">Xem ' +
+    d.dsNCC.length + ' NCC này' + (man === 'ncc' ? ' ở màn Công nợ theo công trình' : '') + ' ›</a>';
   return (man === 'ncc' ? 'Màn theo công trình ghi ' : 'Màn theo NCC ghi ') + '<b>' + money(kia.conNo) + '</b> / <b>' + money(kia.ungDu) + '</b>: mỗi số ' +
-    (man === 'ncc' ? 'lớn hơn ' : 'nhỏ hơn ') + '<b>' + money(d.buTru) + '</b> vì ' + d.dsNCC.length + ' NCC còn nợ ở công trình này nhưng ứng trước ở công trình khác — ' +
-    (man === 'ncc' ? 'màn này trừ cho nhau, màn kia giữ riêng.' : 'màn kia trừ cho nhau, màn này giữ riêng.');
+    (man === 'ncc' ? 'lớn hơn ' : 'nhỏ hơn ') + '<b>' + money(d.buTru) + '</b> vì ' + d.dsNCC.length + ' NCC (' + ten + ') còn nợ ở công trình này nhưng ứng trước ở công trình khác — ' +
+    (man === 'ncc' ? 'màn này trừ cho nhau, màn kia giữ riêng. ' : 'màn kia trừ cho nhau, màn này giữ riêng. ') + link;
 }
 
 // Tên công trình trong đối chiếu ('' = khoản không ghi công trình)

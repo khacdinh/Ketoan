@@ -324,7 +324,9 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
     nhiều nhất, vd Hiền Mai còn nợ 308.425.000 ở 4 công trình, ứng trước 200.000.000 ở DACANTACH: màn theo NCC ghi 308.425.000 − 200.000.000 = 108.425.000
     vào Còn phải trả; màn theo công trình ghi 308.425.000 vào Còn phải trả **và** 200.000.000 vào Đã ứng trước → cả hai dòng lớn hơn 200.000.000.
   - Ngay dưới Còn phải trả / Đã ứng trước (khi xem đủ mọi NCC, không lọc tình trạng / tìm kiếm) có dòng nối sang màn kia: “Màn theo NCC ghi … / …: mỗi số
-    nhỏ hơn … vì … NCC còn nợ ở công trình này nhưng ứng trước ở công trình khác”. Màn Công nợ NCC theo kỳ có dòng tương tự trỏ sang màn theo công trình.
+    nhỏ hơn … vì … NCC (tên các NCC) còn nợ ở công trình này nhưng ứng trước ở công trình khác”, cuối dòng có liên kết **Xem … NCC này ›** mở khung Đối chiếu.
+    Màn Công nợ NCC theo kỳ có dòng tương tự; liên kết **Xem … NCC này ở màn Công nợ theo công trình ›** chuyển sang màn đó, mở sẵn khung Đối chiếu và
+    đặt lọc về **Tất cả có số liệu** để số khớp đúng dòng nối.
   - Ở từng dòng: **Trả tiền** mở trang Ghi thu / chi điền sẵn NCC, công trình và số còn nợ; biểu tượng sổ mở **Sổ chi tiết NCC** đã lọc công trình đó.
   - **In** và **Xuất Excel**: file có sheet `Theo_Cong_Trinh` (nhóm theo công trình, dòng cộng từng công trình, tổng cộng — dùng công thức, sửa số là tự cộng lại)
     và sheet `Bang_Cheo` (NCC × công trình).

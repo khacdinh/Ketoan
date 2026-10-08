@@ -342,7 +342,7 @@ test('CN5 hai màn công nợ cùng bố cục: số dư ghi thuần Có / Nợ 
     assert.match(await page.textContent('#cn-table tr[data-ma="NCC_A"]'), /đã trừ ứng trước 5\.000\.000 \(chưa ghi công trình\)/);
     assert.equal(await page.textContent('#cn-thuan'), '51.000.000Có');
     // dòng nối ngay dưới Còn phải trả / Đã ứng trước: số của màn kia và vì sao lệch
-    assert.equal(await page.textContent('.eq-cau-noi'), 'Màn theo công trình ghi 62.000.000 / 11.000.000: mỗi số lớn hơn 5.000.000 vì 1 NCC còn nợ ở công trình này nhưng ứng trước ở công trình khác — màn này trừ cho nhau, màn kia giữ riêng.');
+    assert.equal(await page.textContent('.eq-cau-noi'), 'Màn theo công trình ghi 62.000.000 / 11.000.000: mỗi số lớn hơn 5.000.000 vì 1 NCC (Vật liệu A) còn nợ ở công trình này nhưng ứng trước ở công trình khác — màn này trừ cho nhau, màn kia giữ riêng. Xem 1 NCC này ở màn Công nợ theo công trình ›');
     // đang lọc tình trạng thì bảng không cộng đủ mọi NCC: không so
     await page.click('label:has(input[name=cn-tt][value=no])'); await settle(page);
     assert.equal(await page.$('.eq-cau-noi'), null);
@@ -354,7 +354,7 @@ test('CN5 hai màn công nợ cùng bố cục: số dư ghi thuần Có / Nợ 
     assert.deepEqual(await eq(), { dau: '5.000.000Có', ps: '96.000.000', tt: '50.000.000', cuoi: '51.000.000Có' });
     assert.deepEqual(await tach(), [['9.000.000', '4.000.000'], ['62.000.000', '11.000.000']]);
     assert.equal(await page.textContent('#cnct-thuan'), '51.000.000Có');
-    assert.equal(await page.textContent('.eq-cau-noi'), 'Màn theo NCC ghi 57.000.000 / 6.000.000: mỗi số nhỏ hơn 5.000.000 vì 1 NCC còn nợ ở công trình này nhưng ứng trước ở công trình khác — màn kia trừ cho nhau, màn này giữ riêng.');
+    assert.equal(await page.textContent('.eq-cau-noi'), 'Màn theo NCC ghi 57.000.000 / 6.000.000: mỗi số nhỏ hơn 5.000.000 vì 1 NCC (Vật liệu A) còn nợ ở công trình này nhưng ứng trước ở công trình khác — màn kia trừ cho nhau, màn này giữ riêng. Xem 1 NCC này ›');
     // bảng: cùng cột với màn theo NCC; đầu kỳ tách Dư Nợ | Dư Có, không số âm
     assert.deepEqual(await page.$$eval('#cnct-table thead tr:last-child th', (t) => t.map((x) => x.textContent)),
       ['Dư Nợ (đã ứng trước)', 'Dư Có (còn phải trả)', 'Phát sinh', 'Thanh toán', 'Dư Nợ (đã ứng trước)', 'Dư Có (còn phải trả)']);
@@ -383,6 +383,23 @@ test('CN5 hai màn công nợ cùng bố cục: số dư ghi thuần Có / Nợ 
     await page.waitForFunction(() => location.hash === '#/so-chi-tiet-ncc');
     await page.waitForSelector('#sct-ct-table');
     assert.equal(await page.inputValue('#sct-ncc'), 'NCC_A');
+    // bấm "Xem 1 NCC này" ở màn theo NCC: sang màn theo công trình, khung đối chiếu mở sẵn, lọc tình trạng về Tất cả để số khớp dòng nối
+    await page.evaluate(() => { location.hash = '#/cong-no-ct'; });
+    await page.waitForSelector('#cnct-table');
+    await page.click('label:has(input[name=cnct-tt][value=no])'); await settle(page);
+    if (await page.$eval('#cnct-doi-chieu', (e) => e.open)) await page.click('#cnct-doi-chieu summary');
+    await page.evaluate(() => { location.hash = '#/cp-cong-no'; });
+    await page.waitForSelector('.eq-cau-noi [data-dc-mo]');
+    await page.click('.eq-cau-noi [data-dc-mo]');
+    await page.waitForFunction(() => location.hash === '#/cong-no-ct');
+    await page.waitForSelector('#cnct-table'); await settle(page);
+    assert.ok(await page.$eval('#cnct-doi-chieu', (e) => e.open), 'khung đối chiếu mở sẵn');
+    assert.ok(await page.isChecked('input[name=cnct-tt][value=""]'), 'lọc Tất cả có số liệu');
+    // ở màn theo công trình: đóng khung, bấm "Xem 1 NCC này" ngay dưới số dư thì khung mở ra
+    await page.click('#cnct-doi-chieu summary'); await settle(page);
+    await page.click('.eq-cau-noi [data-dc-mo]');
+    assert.ok(await page.$eval('#cnct-doi-chieu', (e) => e.open));
+    assert.equal(await page.evaluate(() => location.hash), '#/cong-no-ct', 'không đổi trang');
     // chọn một công trình: không còn khung đối chiếu (một công trình thì hai màn là một)
     await page.evaluate(() => { location.hash = '#/cong-no-ct'; });
     await page.waitForSelector('#cnct-table');

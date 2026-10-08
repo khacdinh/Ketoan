@@ -188,6 +188,8 @@ export function renderDebt(root) {
   const maOfEvent = (a) => { const tr = a.closest('tr[data-ma]'); if (tr) return tr.dataset.ma; const open = a.closest('tr.open-row'); return open && open.previousElementSibling ? open.previousElementSibling.dataset.ma : sel; };
   const goLedger = (ma) => { LS.set('sct.ncc', ma); LS.set('cp.cn.sel', ma); location.hash = '#/so-chi-tiet-ncc'; };
   root.addEventListener('click', (e) => {
+    // "Xem … NCC này": sang Công nợ theo công trình, mở sẵn khung đối chiếu, xem mọi tình trạng để số khớp dòng nối
+    if (e.target.closest('[data-dc-mo]')) { LS.set('cnct.dcMo', true); S.filters.cnCt.tt = ''; saveFilter('cnCt'); return; }
     const chip = e.target.closest('[data-chip]');
     if (chip) {
       const k = chip.dataset.chip;

@@ -150,6 +150,13 @@ export function renderDebtByProject(root) {
   const moSo = (ma, maCT) => { LS.set('sct.ncc', ma); datCongTrinh(maCT || '', true); location.hash = '#/so-chi-tiet-ncc'; };
   const batNhom = (k) => { if (dong.has(k)) dong.delete(k); else dong.add(k); luu(); draw(); };
   root.addEventListener('click', (e) => {
+    const dcMo = e.target.closest('[data-dc-mo]');
+    if (dcMo) {
+      e.preventDefault();
+      const det = $('#cnct-doi-chieu', root);
+      if (det) { det.open = true; LS.set('cnct.dcMo', true); det.scrollIntoView({ block: 'start' }); }
+      return;
+    }
     const a = e.target.closest('[data-act]');
     if (a) {
       const act = a.dataset.act;
