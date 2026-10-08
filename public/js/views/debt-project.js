@@ -6,13 +6,14 @@ import { $, esc, money, icon, download, periodControls, bindPeriodControls, refr
 import { S, saveFilter } from '../state.js';
 import { printView } from '../print.js';
 import { openEntryForm } from '../forms.js';
-import { debtChip, ghiPhieuChi, ctNhan } from '../congno.js';
+import { debtChip, ghiPhieuChi, ctNhan, coNoHtml } from '../congno.js';
 import { datCongTrinh } from '../ctpick.js';
 
 const KT = window.KT;
 const TT = [['no', 'Còn nợ'], ['du', 'Ứng dư'], ['khac0', 'Còn nợ hoặc ứng dư'], ['', 'Tất cả có số liệu']];
 const dash = '<span class="text-ink-3">–</span>';
 const so = (n) => (n ? '<span class="tabular-nums">' + money(n) + '</span>' : dash);
+const dk = (n) => (n ? coNoHtml(n) : dash); // số dư đầu kỳ: ghi Có / Nợ như màn Công nợ NCC theo kỳ, không dùng số âm
 
 function chuanHoa(f) {
   if (!f.period) f.period = 'tat-ca';
@@ -28,8 +29,9 @@ function tongCua(rows) {
   return rows.reduce((t, r) => {
     ['dauKy', 'phatSinh', 'thanhToan', 'traNgoai', 'cuoiKy'].forEach((k) => { t[k] += r[k]; });
     if (r.cuoiKy > 0) t.conNo += r.cuoiKy; else t.ungDu -= r.cuoiKy;
+    if (r.dauKy > 0) t.dauCo += r.dauKy; else t.dauNo -= r.dauKy;
     return t;
-  }, { dauKy: 0, phatSinh: 0, thanhToan: 0, traNgoai: 0, cuoiKy: 0, conNo: 0, ungDu: 0 });
+  }, { dauKy: 0, phatSinh: 0, thanhToan: 0, traNgoai: 0, cuoiKy: 0, conNo: 0, ungDu: 0, dauCo: 0, dauNo: 0 });
 }
 
 export function renderDebtByProject(root) {
@@ -69,14 +71,16 @@ export function renderDebtByProject(root) {
     $('#cnct-mo', root).hidden = f.view !== 'ds';
     $('#cnct-body', root).innerHTML =
       '<div class="equation" role="group" aria-label="Tổng công nợ theo công trình">' +
-      '<div class="eq-cell"><span class="eq-label">Đầu kỳ</span><span class="eq-value">' + money(tong.dauKy) + '</span></div><span class="eq-op">+</span>' +
+      '<div class="eq-cell"><span class="eq-label">Đầu kỳ</span><span class="eq-value !text-[17px]" id="cnct-dau-co">Có ' + money(tong.dauCo) + '</span><span class="eq-label tabular-nums" id="cnct-dau-no">Nợ ' + money(tong.dauNo) + '</span></div><span class="eq-op">+</span>' +
       '<div class="eq-cell"><span class="eq-label">Phát sinh trong kỳ</span><span class="eq-value">' + money(tong.phatSinh) + '</span></div><span class="eq-op">−</span>' +
       '<div class="eq-cell"><span class="eq-label">Thanh toán trong kỳ</span><span class="eq-value">' + money(tong.thanhToan) + '</span></div><span class="eq-op">=</span>' +
-      '<div class="eq-cell"><span class="eq-label">' + icon('clock') + ' Còn phải trả (Dư Có)</span><span class="eq-value" id="cnct-con-no">' + money(tong.conNo) + '</span><span class="eq-label">' + nCT + ' công trình còn nợ</span></div><span class="eq-sep"></span>' +
-      '<div class="eq-cell"><span class="eq-label">' + icon('arrowOut') + ' Đã ứng trước (Dư Nợ)</span><span class="eq-value !text-caution">' + money(tong.ungDu) + '</span><span class="eq-label">không bù cho NCC / công trình khác</span></div></div>' +
+      '<div class="eq-cell"><span class="eq-label">' + icon('clock') + ' Cuối kỳ · Dư Có (còn phải trả)</span><span class="eq-value" id="cnct-con-no">' + money(tong.conNo) + '</span><span class="eq-label">' + nCT + ' công trình còn nợ</span></div><span class="eq-sep"></span>' +
+      '<div class="eq-cell"><span class="eq-label">' + icon('arrowOut') + ' Cuối kỳ · Dư Nợ (đã ứng trước)</span><span class="eq-value !text-caution">' + money(tong.ungDu) + '</span><span class="eq-label">không bù cho NCC / công trình khác</span></div></div>' +
       (f.view === 'mt' ? bangCheo(groups) : danhSach(groups, tong)) +
       '<p class="text-[12px] leading-relaxed text-ink-3">Mỗi dòng là công nợ của một nhà cung cấp <b>tại một công trình</b>: phát sinh = sổ chi phí của công trình đó; thanh toán = phiếu chi / thu và khoản trả từ nguồn khác có ghi công trình đó. ' +
-      'Khoản trả hoặc số dư đầu kỳ <b>không ghi công trình</b> nằm ở nhóm “Chưa gán công trình”, nên cộng mọi nhóm của một NCC luôn bằng số ở màn Công nợ NCC theo kỳ.</p>';
+      'Khoản trả hoặc số dư đầu kỳ <b>không ghi công trình</b> nằm ở nhóm “Chưa gán công trình”, nên cộng mọi nhóm của một NCC luôn bằng số ở màn Công nợ NCC theo kỳ. ' +
+      'Dư Có / Dư Nợ cuối kỳ ở đây có thể <b>lớn hơn</b> màn Công nợ NCC theo kỳ: NCC còn nợ ở công trình này nhưng đã ứng trước ở công trình khác thì màn theo NCC bù trừ hai số đó, ' +
+      'còn màn này giữ riêng từng công trình. <b>Còn lại thuần (Có − Nợ)</b> ở hai màn luôn bằng nhau.</p>';
   }
 
   function danhSach(gs, tong) {
@@ -89,13 +93,13 @@ export function renderDebtByProject(root) {
         '<td><button type="button" class="tree-toggle" tabindex="-1"><span class="caret' + (mo ? ' open' : '') + '">' + icon('caretRight') + '</span>' +
         (g.ma ? '<span><span class="code">' + esc(g.ma) + '</span> · ' + esc(g.ten) + '</span>' : '<span class="text-caution">' + icon('warnTri', 'mr-1 align-[-2px]') + 'Chưa gán công trình</span>') + '</button>' +
         '<div class="sub pl-6 font-normal">' + g.rows.length + ' NCC' + (g.soNCCNo ? ' · ' + g.soNCCNo + ' còn nợ' : '') + '</div></td>' +
-        '<td class="num money">' + so(g.tong.dauKy) + '</td><td class="num money">' + so(g.tong.phatSinh) + '</td><td class="num money">' + so(g.tong.thanhToan) + '</td>' +
+        '<td class="num money">' + dk(g.tong.dauKy) + '</td><td class="num money">' + so(g.tong.phatSinh) + '</td><td class="num money">' + so(g.tong.thanhToan) + '</td>' +
         '<td class="num money text-caution">' + so(g.tong.ungDu) + '</td><td class="num money"><span class="dbl" data-con-no>' + money(g.tong.conNo) + '</span></td><td colspan="2"></td></tr>';
       if (!mo) return;
       g.rows.forEach((r) => {
         html += '<tr data-ma="' + esc(r.ma) + '" data-ct="' + esc(g.ma) + '">' +
           '<td class="pl-9"><b class="code">' + esc(r.ten) + '</b><div class="sub">' + esc(r.ma) + (r.loai ? ' · ' + esc(r.loai) : '') + '</div></td>' +
-          '<td class="num money">' + so(r.dauKy) + '</td><td class="num money">' + so(r.phatSinh) + '</td>' +
+          '<td class="num money">' + dk(r.dauKy) + '</td><td class="num money">' + so(r.phatSinh) + '</td>' +
           '<td class="num money">' + so(r.thanhToan) + (r.traNgoai ? '<div class="sub" title="Trả từ nguồn khác, không qua quỹ tiền mặt">ngoài quỹ ' + money(r.traNgoai) + '</div>' : '') + '</td>' +
           '<td class="num money font-bold text-caution">' + (r.cuoiKy < 0 ? so(-r.cuoiKy) : dash) + '</td><td class="num money font-bold">' + (r.cuoiKy > 0 ? so(r.cuoiKy) : dash) + '</td>' +
           '<td>' + debtChip(r.status) + '</td>' +
@@ -107,8 +111,9 @@ export function renderDebtByProject(root) {
     return '<section class="sheet overflow-hidden"><div class="table-scroll scroll-x max-h-[calc(100vh-360px)] min-h-[200px] overflow-auto"><table class="ledger tree" id="cnct-table">' +
       '<thead><tr><th>Công trình / Nhà cung cấp</th><th class="num money">Đầu kỳ</th><th class="num money">Phát sinh</th><th class="num money">Thanh toán</th>' +
       '<th class="num money">Dư Nợ <span class="font-normal">(đã ứng trước)</span></th><th class="num money">Dư Có <span class="font-normal">(còn phải trả)</span></th><th>Tình trạng</th><th class="no-print"><span class="sr-only">Thao tác</span></th></tr></thead>' +
-      '<tbody>' + html + '</tbody><tfoot><tr><td>Tổng cộng · ' + gs.filter((g) => g.ma).length + ' công trình</td><td class="num money">' + money(tong.dauKy) + '</td><td class="num money">' + money(tong.phatSinh) + '</td><td class="num money">' + money(tong.thanhToan) + '</td>' +
-      '<td class="num money text-caution">' + money(tong.ungDu) + '</td><td class="num money"><span class="dbl">' + money(tong.conNo) + '</span></td><td colspan="2"></td></tr></tfoot></table></div></section>';
+      '<tbody>' + html + '</tbody><tfoot><tr><td>Tổng cộng · ' + gs.filter((g) => g.ma).length + ' công trình</td><td class="num money">' + dk(tong.dauKy) + '</td><td class="num money">' + money(tong.phatSinh) + '</td><td class="num money">' + money(tong.thanhToan) + '</td>' +
+      '<td class="num money text-caution">' + money(tong.ungDu) + '</td><td class="num money"><span class="dbl">' + money(tong.conNo) + '</span></td>' +
+      '<td colspan="2" class="whitespace-nowrap font-normal text-[12px] text-ink-3" title="Còn lại thuần = Dư Có − Dư Nợ, luôn bằng màn Công nợ NCC theo kỳ">Thuần (Có − Nợ) <b class="tabular-nums text-ink" id="cnct-thuan">' + money(tong.cuoiKy) + '</b></td></tr></tfoot></table></div></section>';
   }
 
   // Bảng chéo: hàng = NCC, cột = công trình, ô = số dư cuối kỳ (dương còn nợ, âm ứng dư)

@@ -1,5 +1,13 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Công nợ theo công trình: đầu kỳ ghi Có / Nợ như màn theo NCC (08/10/2026)
+
+- Đầu kỳ ở **Công nợ theo công trình** trước đây chỉ ghi số ròng (vd −491.635.000), còn **Công nợ NCC theo kỳ** ghi tách Có 268.365.000 / Nợ 760.000.000. Hai số vốn bằng nhau (268.365.000 − 760.000.000 = −491.635.000) nhưng trông như lệch.
+  - Nay màn theo công trình cũng ghi **Có … / Nợ …**; các ô Đầu kỳ ghi số kèm chữ Có / Nợ, không còn số âm.
+- Dòng Tổng cộng thêm **Thuần (Có − Nợ)**, luôn bằng dòng “Còn lại thuần” của màn theo NCC.
+- Ghi chú dưới bảng giải thích vì sao Dư Có / Dư Nợ cuối kỳ theo công trình có thể lớn hơn màn theo NCC: NCC còn nợ ở công trình này nhưng ứng trước ở công trình khác thì không được bù trừ.
+- Có test CN5 so sánh hai màn.
+
 ## Sổ chi tiết NCC: số dư theo từng công trình, ẩn công trình đã tất toán (08/10/2026)
 
 - **Sổ chi tiết NCC** có bảng **Số dư cuối kỳ theo công trình**: mỗi công trình một dòng (đầu kỳ, phát sinh, thanh toán, số dư cuối kỳ Có / Nợ, tình trạng). Dòng cộng bằng số dư cuối kỳ của NCC.

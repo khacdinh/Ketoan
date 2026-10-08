@@ -312,6 +312,10 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
     công trình đó; gõ tên NCC thì chỉ hiện NCC đó ở các công trình). Công trình chọn ở thanh trên thì chỉ hiện công trình đó. Bộ lọc được nhớ.
   - Khoản trả hoặc số dư đầu kỳ **không ghi công trình** nằm ở nhóm cuối **Chưa gán công trình**, nên cộng mọi nhóm của một NCC luôn bằng số ở màn
     Công nợ NCC theo kỳ. Muốn chia lại cho đúng công trình thì sửa Mã công trình của khoản đó trong Sổ quỹ / Số dư đầu kỳ.
+  - **So với màn Công nợ NCC theo kỳ**: Đầu kỳ ghi **Có** (còn phải trả) và **Nợ** (đã ứng trước) giống hệt màn theo NCC; cột Đầu kỳ ghi số kèm chữ Có / Nợ
+    (không dùng số âm), dòng Tổng cộng là số ròng (Có − Nợ). **Dư Có / Dư Nợ cuối kỳ** ở đây có thể **lớn hơn** màn theo NCC: một NCC còn nợ ở công trình này
+    nhưng đã ứng trước ở công trình khác thì màn theo NCC bù trừ hai số đó thành một số, còn màn này giữ riêng từng công trình (vì tiền ứng ở công trình kia
+    không tự trả cho công trình này). Hai màn luôn bằng nhau ở **Thuần (Có − Nợ)** — dòng Tổng cộng của cả hai màn đều ghi số này.
   - Ở từng dòng: **Trả tiền** mở trang Ghi thu / chi điền sẵn NCC, công trình và số còn nợ; biểu tượng sổ mở **Sổ chi tiết NCC** đã lọc công trình đó.
   - **In** và **Xuất Excel**: file có sheet `Theo_Cong_Trinh` (nhóm theo công trình, dòng cộng từng công trình, tổng cộng — dùng công thức, sửa số là tự cộng lại)
     và sheet `Bang_Cheo` (NCC × công trình).
