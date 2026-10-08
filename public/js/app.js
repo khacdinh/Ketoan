@@ -21,6 +21,7 @@ import { renderOpeningBalances } from './sodudau.js';
 import { renderSupplierLedger } from './views/supplier-ledger.js';
 import { renderImportPage } from './views/settings.js';
 import { renderNumbering } from './views/numbering.js';
+import { renderDebtByProject } from './views/debt-project.js';
 import { A, napTrangThai, dangNhap, doiMatKhauBatBuoc, coQuyen, onAuthChange, khoaManHinh } from './auth.js';
 
 const KT = window.KT;
@@ -43,6 +44,7 @@ const ROUTES = {
   'ghi-thu-chi': { title: 'Ghi thu / chi', sub: 'Phiếu thu, phiếu chi nhiều dòng; mỗi dòng một công trình', render: renderEntryPage },
   'cp-so': { title: 'Sổ chi phí', sub: 'Nhật ký chung các dòng chi phí công trình', render: renderCostLedger },
   'cp-chi-tiet': { title: 'Chi phí theo nhóm', sub: 'Nhóm, hạng mục, từng dòng; bung hoặc thu gọn 3 cấp', render: renderCostDetail },
+  'cong-no-ct': { title: 'Công nợ theo công trình', sub: 'Công trình nào còn nợ nhà cung cấp nào, bao nhiêu', render: renderDebtByProject },
   'cp-cong-no': { title: 'Công nợ nhà cung cấp theo kỳ', sub: 'Số dư đầu kỳ + phát sinh − thanh toán = số dư cuối kỳ', render: renderDebt },
   'cp-gia': { title: 'Giá vật tư', sub: 'Lịch sử đơn giá theo vật tư và nhà cung cấp', render: renderPrices },
   'cp-danh-muc': { title: 'Danh mục chi phí', sub: 'Nhóm chi phí, hạng mục, vật tư, nhà và khu', render: renderCostCatalogs },
@@ -54,9 +56,11 @@ const ROUTES = {
 // Menu: nhóm theo trình tự công việc. Mỗi mục: [đường dẫn, biểu tượng Lucide, tên, phím tắt (chỉ hiện ở chú thích), tab]; tab = mở sẵn tab của danh mục chi phí
 const NAV = [
   { items: [['tong-quan', 'ph-layout-dashboard', 'Tổng quan']] },
-  { head: 'Nhập liệu', items: [['cp-nhap', 'ph-file-plus', 'Phiếu nhập chi phí', 'F2'], ['ghi-thu-chi', 'ph-arrow-left-right', 'Ghi thu / chi', 'F3'], ['so-du-dau', 'ph-flag', 'Số dư đầu kỳ NCC'], ['nhap-excel', 'ph-file-spreadsheet', 'Nhập từ Excel']] },
-  { head: 'Sổ sách', items: [['so-thu-chi', 'ph-wallet', 'Sổ quỹ thu chi'], ['phieu', 'ph-receipt', 'Phiếu thu / chi'], ['cp-so', 'ph-book-open', 'Sổ chi phí'], ['so-chi-tiet-ncc', 'ph-list', 'Sổ chi tiết NCC']] },
-  { head: 'Báo cáo', items: [['cp-chi-tiet', 'ph-chart-pie', 'Chi phí theo nhóm'], ['cp-tong-hop', 'ph-target', 'Tổng hợp chi phí'], ['cp-cong-no', 'ph-scale', 'Công nợ NCC theo kỳ'], ['cp-gia', 'ph-trending-up', 'Giá vật tư']] },
+  { head: 'Nhập liệu', items: [['cp-nhap', 'ph-file-plus', 'Phiếu nhập chi phí', 'F2'], ['ghi-thu-chi', 'ph-arrow-left-right', 'Ghi thu / chi', 'F3'], ['nhap-excel', 'ph-file-spreadsheet', 'Nhập từ Excel']] },
+  { head: 'Sổ sách', items: [['so-thu-chi', 'ph-wallet', 'Sổ quỹ thu chi'], ['phieu', 'ph-receipt', 'Phiếu thu / chi'], ['cp-so', 'ph-book-open', 'Sổ chi phí']] },
+  // Công nợ nhà cung cấp: gom một chỗ (theo kỳ, theo công trình, sổ chi tiết, số dư đầu kỳ)
+  { head: 'Công nợ', items: [['cp-cong-no', 'ph-scale', 'Công nợ NCC theo kỳ'], ['cong-no-ct', 'ph-table', 'Công nợ theo công trình'], ['so-chi-tiet-ncc', 'ph-list', 'Sổ chi tiết NCC'], ['so-du-dau', 'ph-flag', 'Số dư đầu kỳ NCC']] },
+  { head: 'Báo cáo', items: [['cp-chi-tiet', 'ph-chart-pie', 'Chi phí theo nhóm'], ['cp-tong-hop', 'ph-target', 'Tổng hợp chi phí'], ['cp-gia', 'ph-trending-up', 'Giá vật tư']] },
   { head: 'Danh mục', items: [['du-an', 'ph-building-2', 'Công trình, nhà/lô'], ['ncc', 'ph-truck', 'NCC, đối tượng'], ['cp-danh-muc', 'ph-package', 'Vật tư, hạng mục', '', 'vat-tu'], ['gop-ma', 'ph-merge', 'Gộp mã']] },
   { head: 'Hệ thống', items: [['kiem-soat', 'ph-shield-check', 'Kiểm soát'], ['cai-dat', 'ph-database', 'Cài đặt, sao lưu'], ['danh-so', 'ph-file-text', 'Đánh số chứng từ'], ['nguoi-dung', 'ph-users', 'Người dùng']] }
 ];

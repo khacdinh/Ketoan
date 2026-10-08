@@ -143,7 +143,8 @@ export function renderDebt(root) {
   function projectView() {
     const sum = KT.projectDebtSummary(S.db, { to: f.to, all: !!f.allCT, ncc: nccs });
     return '<section class="sheet overflow-hidden"><div class="sheet-head pb-1"><div><h3 class="sheet-title">Nợ và đã thanh toán theo công trình' + (f.to ? ', tính đến ngày ' + esc(fdate(f.to)) : '') + '</h3>' +
-      '<p class="sheet-note screen-hint">Bấm một công trình để xem công nợ từng nhà cung cấp của công trình đó.</p></div>' +
+      '<p class="sheet-note screen-hint">Bấm một công trình để xem công nợ từng nhà cung cấp của công trình đó. ' +
+      '<a class="no-print text-pen underline underline-offset-2" id="cn-sang-ct" href="#/cong-no-ct">Xem mọi công trình kèm từng NCC, bảng chéo NCC × công trình</a></p></div>' +
       '<label class="check no-print"><input type="checkbox" id="cn-allct"' + (f.allCT ? ' checked' : '') + '>Hiện cả công trình chưa nhập chi phí</label></div>' +
       projectDebtHtml(sum, f.ct) + '</section>';
   }

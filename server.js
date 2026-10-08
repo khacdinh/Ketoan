@@ -773,6 +773,10 @@ async function handleApi(req, res, url) {
       case 'cost-debt': {
         return attachment(res, await runExport('cost', 'buildDebtWorkbook', [db, { ct: q.get('ct') || '', ncc: q.getAll('ncc').map((x) => String(x).trim()).filter(Boolean).slice(0, 500), tt: ['no', 'du', 'an'].includes(q.get('tt')) ? q.get('tt') : '', to: f.to }]), 'CongNoNCC_' + stampNow() + '.xlsx', XLSX_TYPE);
       }
+      case 'debt-by-project': {
+        const df = { from: f.from, to: f.to, ct: q.get('ct') || '', tt: ['no', 'du', 'khac0'].includes(q.get('tt')) ? q.get('tt') : '', q: String(q.get('q') || '').slice(0, 200) };
+        return attachment(res, await runExport('cost', 'buildDebtByProjectWorkbook', [db, df]), 'CongNoNCC_TheoCongTrinh' + rangeSuffix(f) + '.xlsx', XLSX_TYPE);
+      }
       case 'cash-count': {
         const buf = await cashCountApi.buildWorkbook(store.db, q.get('id'));
         return attachment(res, buf, 'BienBanKiemQuy_' + stampNow() + '.xlsx', XLSX_TYPE);

@@ -1143,6 +1143,65 @@
     return { rows: rows, total: sumRows(rows), sumRows: sumRows };
   }
 
+  // Công nợ NCC chia theo công trình: mỗi công trình một nhóm, mỗi NCC một dòng (Đầu kỳ / Phát sinh / Thanh toán / Cuối kỳ như
+  // supplierPeriod nhưng chỉ tính chứng từ có Mã công trình = công trình đó). Thanh toán, số dư đầu kỳ không ghi công trình gom vào
+  // nhóm chuaGan = (cả bảng không lọc công trình) − (tổng các công trình) theo từng NCC, nên mỗi NCC cộng các nhóm luôn bằng
+  // supplierPeriod không lọc công trình. f: { from, to, ncc, ct (chỉ một công trình), tt: '' | 'no' | 'du' | 'khac0',
+  // q: từ khóa — công trình khớp thì giữ cả nhóm, không thì chỉ giữ các NCC khớp }. Nhóm xếp theo còn nợ giảm dần, NCC theo cuối kỳ giảm dần.
+  function supplierDebtByProject(db, f) {
+    f = f || {};
+    const q = normalizeText(f.q || '').trim();
+    const khopNCC = function (r) { return !q || normalizeText(r.ma + ' ' + r.ten + ' ' + (r.loai || '')).includes(q); };
+    const xep = function (a, b) { return b.cuoiKy - a.cuoiKy || String(a.ten).localeCompare(String(b.ten), 'vi'); };
+    const hop = function (r) { return f.tt === 'no' ? r.cuoiKy > 0 : f.tt === 'du' ? r.cuoiKy < 0 : f.tt === 'khac0' ? r.cuoiKy !== 0 : r.coSoLieu; };
+    const ds = [];
+    const seen = new Set();
+    (db.projects || []).forEach(function (p) { const k = keyOf(p.ma); if (k && !seen.has(k)) { seen.add(k); ds.push({ ma: p.ma, ten: p.ten, trangThai: p.trangThai || '', inCatalog: true }); } });
+    [['costs', 'maCT'], ['entries', 'maDuAn'], ['extPayments', 'maDuAn'], ['soDuDauKy', 'maDuAn']].forEach(function (x) {
+      (db[x[0]] || []).forEach(function (r) {
+        const k = keyOf(r[x[1]]);
+        if (k && r.maNCC && !seen.has(k)) { seen.add(k); ds.push({ ma: String(r[x[1]]).trim(), ten: '(Chưa có trong danh mục)', trangThai: '', inCatalog: false }); }
+      });
+    });
+    const cong = function (a, r) { ['dauKy', 'phatSinh', 'thanhToan', 'traNgoai', 'cuoiKy'].forEach(function (k) { a[k] = (a[k] || 0) + r[k]; }); };
+    const daCong = new Map(); // NCC → tổng các công trình (để tính phần chưa gán)
+    const groups = [];
+    ds.forEach(function (p) {
+      if (f.ct && keyOf(p.ma) !== keyOf(f.ct)) return;
+      const d = supplierPeriod(db, { from: f.from, to: f.to, ct: p.ma, ncc: f.ncc });
+      const coSo = d.rows.filter(function (r) { return r.coSoLieu; });
+      coSo.forEach(function (r) { const k = keyOf(r.ma); if (!daCong.has(k)) daCong.set(k, {}); cong(daCong.get(k), r); });
+      const ctKhop = !q || normalizeText(p.ma + ' ' + p.ten).includes(q);
+      const rows = coSo.filter(function (r) { return hop(r) && (ctKhop || khopNCC(r)); }).sort(xep);
+      if (!rows.length) return;
+      groups.push({ ma: p.ma, ten: p.ten, trangThai: p.trangThai, inCatalog: p.inCatalog, rows: rows, tong: d.sumRows(rows), soNCCNo: rows.filter(function (r) { return r.cuoiKy > 0; }).length });
+    });
+    let chuaGan = null;
+    if (!f.ct) {
+      const all = supplierPeriod(db, { from: f.from, to: f.to, ncc: f.ncc });
+      const rows = [];
+      all.rows.forEach(function (r) {
+        const a = daCong.get(keyOf(r.ma)) || {};
+        const x = Object.assign({}, r);
+        ['dauKy', 'phatSinh', 'thanhToan', 'traNgoai', 'cuoiKy'].forEach(function (k) { x[k] = r[k] - (a[k] || 0); });
+        x.coSoLieu = !!(x.dauKy || x.phatSinh || x.thanhToan);
+        x.status = x.cuoiKy > 0 ? 'no' : x.cuoiKy < 0 ? 'du' : 'ok';
+        if (x.coSoLieu && hop(x) && khopNCC(x)) rows.push(x);
+      });
+      rows.sort(xep);
+      if (rows.length) chuaGan = { ma: '', ten: 'Chưa gán công trình', rows: rows, tong: all.sumRows(rows), soNCCNo: rows.filter(function (r) { return r.cuoiKy > 0; }).length };
+    }
+    groups.sort(function (a, b) { return b.tong.conNo - a.tong.conNo || b.tong.ungDu - a.tong.ungDu || String(a.ma).localeCompare(String(b.ma), 'vi'); });
+    const tatCa = groups.concat(chuaGan ? [chuaGan] : []);
+    const total = tatCa.reduce(function (t, g) {
+      ['dauKy', 'phatSinh', 'thanhToan', 'traNgoai', 'cuoiKy', 'conNo', 'ungDu'].forEach(function (k) { t[k] += g.tong[k]; });
+      t.soDong += g.rows.length;
+      return t;
+    }, { dauKy: 0, phatSinh: 0, thanhToan: 0, traNgoai: 0, cuoiKy: 0, conNo: 0, ungDu: 0, soDong: 0 });
+    total.soCongTrinhNo = groups.filter(function (g) { return g.tong.conNo > 0; }).length;
+    return { groups: groups, chuaGan: chuaGan, total: total };
+  }
+
   // Tổng hợp theo công trình: chi phí phát sinh, đã trả NCC, còn nợ / ứng dư (cộng theo từng NCC của công trình),
   // chi khác không ghi NCC. Đã trả = sổ thu chi (chi − thu) có Mã công trình = công trình và có Mã NCC.
   // f: { to, all, ncc } — all = hiện cả công trình chưa có dòng chi phí nào; ncc = chỉ tính một nhà cung cấp (bỏ công trình NCC đó
@@ -1819,6 +1878,7 @@
     debtOf: debtOf,
     supplierPeriod: supplierPeriod,
     projectDebtSummary: projectDebtSummary,
+    supplierDebtByProject: supplierDebtByProject,
     materialStats: materialStats,
     goiYLoaiCPHangMuc: goiYLoaiCPHangMuc,
     priceHistory: priceHistory,

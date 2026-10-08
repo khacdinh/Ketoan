@@ -8,7 +8,7 @@ import { S, saveFilter, costProjects } from './state.js';
 const KT = window.KT;
 // [tên bộ lọc, tên trường chứa mã công trình]
 const LOC = [['so', 'duAn'], ['cpSo', 'ct'], ['cpTh', 'ct'], ['cpCt', 'ct'], ['cpCn', 'ct']];
-export const CT_ROUTES = new Set(['so-thu-chi', 'cp-so', 'cp-tong-hop', 'cp-chi-tiet', 'cp-cong-no', 'so-chi-tiet-ncc']);
+export const CT_ROUTES = new Set(['so-thu-chi', 'cp-so', 'cp-tong-hop', 'cp-chi-tiet', 'cp-cong-no', 'cong-no-ct', 'so-chi-tiet-ncc']);
 const NONE = '__none__';
 const giaTri = (f) => (S.ct === NONE && f !== 'so' ? '' : S.ct); // "Chưa gán" chỉ có nghĩa ở sổ quỹ
 const route = () => location.hash.replace(/^#\/?/, '').split('?')[0];

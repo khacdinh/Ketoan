@@ -1,5 +1,17 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Công nợ NCC theo công trình, mục menu Công nợ (08/10/2026)
+
+- Trang mới **Công nợ › Công nợ theo công trình** (`#/cong-no-ct`): công trình nào còn nợ nhà cung cấp nào, bao nhiêu.
+  - **Theo công trình**: mỗi công trình một nhóm bung / thu gọn (nợ nhiều nhất đứng đầu), từng NCC có Đầu kỳ, Phát sinh, Thanh toán, Dư Nợ, Dư Có, Tình trạng.
+    Ở từng dòng có nút **Trả tiền** (Ghi thu / chi điền sẵn NCC, công trình, số còn nợ) và **Sổ chi tiết** (đã lọc công trình).
+  - **Bảng chéo NCC × công trình**: ô = số dư cuối kỳ, có cột và hàng Tổng. Bấm ô để mở sổ chi tiết.
+  - Lọc theo kỳ, tình trạng (mặc định Còn nợ), từ khóa công trình / NCC, công trình ở thanh trên. Bộ lọc được nhớ.
+  - Khoản trả / số dư đầu kỳ không ghi công trình nằm ở nhóm **Chưa gán công trình**. Vì vậy cộng mọi nhóm của một NCC luôn bằng màn Công nợ NCC theo kỳ.
+  - **In**, **Xuất Excel** (`/api/export/debt-by-project`): sheet `Theo_Cong_Trinh` có dòng cộng từng công trình bằng `SUBTOTAL` và sheet `Bang_Cheo`.
+- Menu có mục riêng **Công nợ**: Công nợ NCC theo kỳ, Công nợ theo công trình, Sổ chi tiết NCC, Số dư đầu kỳ NCC (trước đây nằm rải ở Nhập liệu, Sổ sách, Báo cáo).
+- Tính toán ở `KT.supplierDebtByProject` (shared.js). Có test CN1–CN3.
+
 ## Dán ảnh chứng từ bằng Ctrl + V, kéo thả file (07/10/2026)
 
 - Khung **Chứng từ đính kèm** (Phiếu nhập chi phí, Ghi thu / chi, sửa dòng chi phí) nhận ảnh dán bằng **Ctrl + V**: chụp màn hình hoặc sao chép ảnh rồi dán thẳng, không phải lưu ra file.

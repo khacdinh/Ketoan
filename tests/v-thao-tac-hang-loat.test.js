@@ -116,7 +116,7 @@ test('V4 menu trái (bản 1a): rộng 248px, mục cao 32px có biểu tượng
     });
     let x = await m();
     assert.deepEqual([x.w, x.h, x.ic, x.code, x.tip, x.side], [248, 32, true, 0, null, false]);
-    assert.deepEqual(x.heads, ['Nhập liệu', 'Sổ sách', 'Báo cáo', 'Danh mục', 'Hệ thống']);
+    assert.deepEqual(x.heads, ['Nhập liệu', 'Sổ sách', 'Công nợ', 'Báo cáo', 'Danh mục', 'Hệ thống']);
     assert.match(x.foot, /^Tồn quỹ hiện tại · (lưu \d\d:\d\d)?$/);
     // Ctrl B: thu gọn
     await page.keyboard.press('Control+b'); await settle(page);
