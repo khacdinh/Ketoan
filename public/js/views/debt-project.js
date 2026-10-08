@@ -6,7 +6,7 @@ import { $, esc, money, icon, download, periodControls, bindPeriodControls, refr
 import { S, saveFilter } from '../state.js';
 import { printView } from '../print.js';
 import { openEntryForm } from '../forms.js';
-import { debtChip, ghiPhieuChi, ctNhan, coNoHtml, phuongTrinhHtml, doiChieuHtml } from '../congno.js';
+import { debtChip, ghiPhieuChi, ctNhan, coNoHtml, phuongTrinhHtml, doiChieuHtml, cauNoiHtml } from '../congno.js';
 import { datCongTrinh } from '../ctpick.js';
 
 const KT = window.KT;
@@ -73,7 +73,7 @@ export function renderDebtByProject(root) {
     $('#cnct-mo', root).hidden = f.view !== 'ds';
     $('#cnct-body', root).innerHTML =
       phuongTrinhHtml({ dauCo: tong.dauCo, dauNo: tong.dauNo, phatSinh: tong.phatSinh, thanhToan: tong.thanhToan, traNgoai: tong.traNgoai,
-        cuoiCo: tong.conNo, cuoiNo: tong.ungDu, nCo: nCT, nNo: nDu, donVi: 'công trình', idCo: 'cnct-con-no' }) +
+        cuoiCo: tong.conNo, cuoiNo: tong.ungDu, nCo: nCT, nNo: nDu, donVi: 'công trình', idCo: 'cnct-con-no', cauNoi: f.tt || f.q ? '' : cauNoiHtml(dc, 'ct') }) +
       (dc ? doiChieuHtml(dc, LS.get('cnct.dcMo', false) === true) : '') + // mặc định thu gọn: dòng tóm tắt đã trả lời "số nào đúng"
       (f.view === 'mt' ? bangCheo(groups) : danhSach(groups, tong)) +
       '<p class="text-[12px] leading-relaxed text-ink-3">Mỗi dòng là công nợ của một nhà cung cấp <b>tại một công trình</b>: phát sinh = sổ chi phí của công trình đó; thanh toán = phiếu chi / thu và khoản trả từ nguồn khác có ghi công trình đó. ' +

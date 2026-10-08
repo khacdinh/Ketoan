@@ -415,8 +415,11 @@
   .eq-op { @apply grid w-8 flex-none place-items-center text-[20px] font-light text-neutral-700; }
   .eq-sep { @apply w-px flex-none bg-rule; }
   .eq-wide { @apply flex-[1.35]; }
-  /* Còn phải trả / Đã ứng trước dưới một số dư: nhãn · số · số NCC, thẳng cột */
-  .eq-rows { @apply mt-1 grid w-max grid-cols-[auto_auto_auto] items-baseline gap-x-2.5 gap-y-0.5 text-[12.5px] text-ink-2; }
+  /* ô số dư có bảng Còn phải trả / Đã ứng trước: rộng tối thiểu đủ cho bảng, để dòng đẳng thức xuống hàng thay vì tràn ngang */
+  .eq-cell:has(> .eq-rows) { @apply min-w-[255px]; }
+  .eq-cell.eq-wide:has(> .eq-rows) { @apply min-w-[300px]; }
+  /* Còn phải trả / Đã ứng trước dưới một số dư: nhãn · số · số NCC, thẳng cột (nhãn tự xuống dòng nếu ô hẹp) */
+  .eq-rows { @apply mt-1 grid max-w-full grid-cols-[minmax(0,auto)_auto_auto] items-baseline justify-start gap-x-2.5 gap-y-0.5 text-[12.5px] text-ink-2; }
   .eq-rows b { @apply text-right text-[14px] font-bold tabular-nums text-ink; }
   .eq-rows b.text-caution { @apply text-caution; }
   /* Khung đối chiếu hai màn công nợ */
@@ -426,6 +429,9 @@
   .doi-chieu[open] .doi-chieu-head .caret { transform: rotate(90deg); }
   .doi-chieu-body { @apply flex flex-col gap-2 border-t border-rule px-4 pt-2.5 pb-3.5; }
   .doi-chieu-note { @apply list-disc pl-5 text-[12.5px] leading-relaxed text-ink-2; }
+  .doi-chieu-vd { @apply flex flex-col gap-0.5 border-l-2 border-pen bg-surface px-3 py-2 text-[12.5px] leading-relaxed text-ink-2; }
+  .eq-cau-noi { @apply mt-1.5 max-w-[460px] border-t border-dashed border-rule pt-1 text-[11.5px] leading-snug text-ink-3; }
+  .eq-cau-noi b { @apply font-semibold tabular-nums text-ink-2; }
   /* điện thoại: đẳng thức thành lưới 2×2 cho gọn, bộ lọc giãn hết bề ngang */
   @media (max-width: 639px) {
     .equation { @apply grid grid-cols-2; }

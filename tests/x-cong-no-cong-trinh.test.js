@@ -341,6 +341,12 @@ test('CN5 hai màn công nợ cùng bố cục: số dư ghi thuần Có / Nợ 
     assert.match(await page.textContent('#cn-bu-tru'), /1 NCC vừa còn nợ .* bù trừ .*5\.000\.000/);
     assert.match(await page.textContent('#cn-table tr[data-ma="NCC_A"]'), /đã trừ ứng trước 5\.000\.000 \(chưa ghi công trình\)/);
     assert.equal(await page.textContent('#cn-thuan'), '51.000.000Có');
+    // dòng nối ngay dưới Còn phải trả / Đã ứng trước: số của màn kia và vì sao lệch
+    assert.equal(await page.textContent('.eq-cau-noi'), 'Màn theo công trình ghi 62.000.000 / 11.000.000: mỗi số lớn hơn 5.000.000 vì 1 NCC còn nợ ở công trình này nhưng ứng trước ở công trình khác — màn này trừ cho nhau, màn kia giữ riêng.');
+    // đang lọc tình trạng thì bảng không cộng đủ mọi NCC: không so
+    await page.click('label:has(input[name=cn-tt][value=no])'); await settle(page);
+    assert.equal(await page.$('.eq-cau-noi'), null);
+    await page.click('label:has(input[name=cn-tt][value=""])'); await settle(page);
     // Công nợ theo công trình, mọi dòng có số liệu: cùng đầu kỳ, phát sinh, thanh toán, thuần; Dư Có / Dư Nợ lớn hơn đúng 5
     await page.evaluate(() => { location.hash = '#/cong-no-ct'; });
     await page.waitForSelector('#cnct-table');
@@ -348,6 +354,7 @@ test('CN5 hai màn công nợ cùng bố cục: số dư ghi thuần Có / Nợ 
     assert.deepEqual(await eq(), { dau: '5.000.000Có', ps: '96.000.000', tt: '50.000.000', cuoi: '51.000.000Có' });
     assert.deepEqual(await tach(), [['9.000.000', '4.000.000'], ['62.000.000', '11.000.000']]);
     assert.equal(await page.textContent('#cnct-thuan'), '51.000.000Có');
+    assert.equal(await page.textContent('.eq-cau-noi'), 'Màn theo NCC ghi 57.000.000 / 6.000.000: mỗi số nhỏ hơn 5.000.000 vì 1 NCC còn nợ ở công trình này nhưng ứng trước ở công trình khác — màn kia trừ cho nhau, màn này giữ riêng.');
     // bảng: cùng cột với màn theo NCC; đầu kỳ tách Dư Nợ | Dư Có, không số âm
     assert.deepEqual(await page.$$eval('#cnct-table thead tr:last-child th', (t) => t.map((x) => x.textContent)),
       ['Dư Nợ (đã ứng trước)', 'Dư Có (còn phải trả)', 'Phát sinh', 'Thanh toán', 'Dư Nợ (đã ứng trước)', 'Dư Có (còn phải trả)']);
@@ -366,6 +373,11 @@ test('CN5 hai màn công nợ cùng bố cục: số dư ghi thuần Có / Nợ 
       ['Đã ứng trước (Dư Nợ)', '6.000.000', '11.000.000', '+ 5.000.000'],
       ['Thuần (Có − Nợ)', '51.000.000Có', '51.000.000Có', 'bằng nhau']]);
     assert.deepEqual(await page.$$eval('#cnct-dc-ncc tbody tr', (t) => t.map((x) => x.dataset.dcNcc)), ['NCC_A']);
+    // ví dụ tính tay: NCC_A còn nợ 55 ở 3 công trình, ứng trước 5 ở khoản không ghi công trình
+    const vd = (await page.textContent('#cnct-dc-vd')).replace(/\s+/g, ' ');
+    assert.match(vd, /Ví dụ Vật liệu A: còn nợ 55\.000\.000 ở 3 công trình, đã ứng trước 5\.000\.000 \(chưa ghi công trình\)/);
+    assert.match(vd, /Màn theo NCC trừ cho nhau: 55\.000\.000 − 5\.000\.000 = 50\.000\.000Có → chỉ cộng 50\.000\.000 vào Còn phải trả/);
+    assert.match(vd, /Màn theo công trình giữ riêng: cộng 55\.000\.000 vào Còn phải trả và 5\.000\.000 vào Đã ứng trước → cả hai dòng lớn hơn 5\.000\.000/);
     // bấm sổ chi tiết của NCC trong bảng đối chiếu: sang Sổ chi tiết NCC_A (tất cả công trình), có bảng số dư theo công trình
     await page.click('#cnct-dc-ncc [data-act=dc-ledger]');
     await page.waitForFunction(() => location.hash === '#/so-chi-tiet-ncc');

@@ -8,7 +8,7 @@ import { comboHtml, bindCombo } from '../combo.js';
 import { openEntryForm } from '../forms.js';
 import { openExtPayForm } from '../extpay.js';
 import { openSoDuDauForm } from '../sodudau.js';
-import { coNoHtml, debtChip, debtLabel, goCostLedger, goCashLedger, chonNCC, ghiPhieuChi, ctNhan, phuongTrinhHtml, buTruSub } from '../congno.js';
+import { coNoHtml, debtChip, debtLabel, goCostLedger, goCashLedger, chonNCC, ghiPhieuChi, ctNhan, phuongTrinhHtml, buTruSub, cauNoiHtml } from '../congno.js';
 import { moBienBan } from '../bienban.js';
 import { datCongTrinh } from '../ctpick.js';
 
@@ -109,7 +109,8 @@ export function renderDebt(root) {
     const dc = f.ct ? null : doiChieu(f.from, f.to);
     buTru = new Map(dc ? dc.dsNCC.map((x) => [KT.keyOf(x.ma), x]) : []);
     box.innerHTML =
-      phuongTrinhHtml({ dauCo, dauNo, phatSinh: tot.phatSinh, thanhToan: tot.thanhToan, traNgoai: tot.traNgoai, cuoiCo: tot.conNo, cuoiNo: tot.ungDu, nCo: nNo, nNo: nDu, donVi: 'NCC', kyTu }) +
+      phuongTrinhHtml({ dauCo, dauNo, phatSinh: tot.phatSinh, thanhToan: tot.thanhToan, traNgoai: tot.traNgoai, cuoiCo: tot.conNo, cuoiNo: tot.ungDu, nCo: nNo, nNo: nDu, donVi: 'NCC', kyTu,
+        cauNoi: f.tt || f.q || nccs.length ? '' : cauNoiHtml(dc, 'ncc') }) + // chỉ khi bảng đang cộng đủ mọi NCC, để hai bộ số so được
       (dc && dc.dsNCC.length ? '<p class="no-print flex items-start gap-1.5 text-[12.5px] leading-relaxed text-ink-2" id="cn-bu-tru">' + icon('info', 'mt-0.5 flex-none text-pen') + '<span>' +
         dc.dsNCC.length + ' NCC vừa còn nợ ở công trình này vừa đã ứng trước ở công trình khác: màn này <b>bù trừ</b> hai khoản (tổng ' + money(dc.buTru) + ', ghi dưới số dư từng NCC). ' +
         'Màn <a class="text-pen underline underline-offset-2" href="#/cong-no-ct">Công nợ theo công trình</a> giữ riêng từng công trình nên Dư Có và Dư Nợ ở đó cùng lớn hơn ' + money(dc.buTru) + '; số thuần (Có − Nợ) hai màn bằng nhau. ' +

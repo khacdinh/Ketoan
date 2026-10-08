@@ -13,6 +13,8 @@ Trước đây **Công nợ NCC theo kỳ** và **Công nợ theo công trình**
   - Danh sách NCC vừa còn nợ ở công trình này vừa ứng trước ở công trình khác, kèm phần bù trừ.
   - Nút mở Sổ chi tiết của từng NCC đó.
 - Màn theo NCC: dưới số dư của các NCC đó có dòng “đã trừ ứng trước … ở …”, kèm một dòng giải thích trên bảng.
+- Dưới Còn phải trả / Đã ứng trước của mỗi màn có **dòng nối** ghi số của màn kia và vì sao lệch (`cauNoiHtml`); khung đối chiếu có **ví dụ tính tay** cho NCC chênh nhiều nhất.
+- Ô số dư trên dòng phương trình có bề rộng tối thiểu, nên ở cửa sổ 1024px dòng phương trình xuống hàng thay vì tràn ngang (test F9).
 - `KT.doiChieuCongNo(db, { from, to, ncc })` tính phần đối chiếu. Test CN5 so sánh hai màn.
 
 ## Sổ chi tiết NCC: số dư theo từng công trình, ẩn công trình đã tất toán (08/10/2026)

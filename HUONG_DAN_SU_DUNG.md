@@ -320,7 +320,11 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
     màn theo công trình giữ riêng (tiền ứng ở công trình kia không tự trả cho công trình này), nên Dư Có và Dư Nợ ở màn theo công trình cùng lớn hơn đúng
     phần bù trừ, còn **Thuần luôn bằng nhau**. Trả tiền / đối chiếu với NCC dùng số màn theo NCC; theo dõi từng công trình dùng số màn này.
     Nếu khoản ứng trước thật ra thuộc công trình đang còn nợ (vd ghi tạm vào công trình “chưa xác định”), sửa Mã công trình của phiếu chi / số dư đầu kỳ đó
-    thì chênh lệch mất. Biểu tượng sổ ở từng NCC mở Sổ chi tiết NCC (có bảng số dư theo từng công trình).
+    thì chênh lệch mất. Biểu tượng sổ ở từng NCC mở Sổ chi tiết NCC (có bảng số dư theo từng công trình). Khung có một **ví dụ tính tay** cho NCC chênh
+    nhiều nhất, vd Hiền Mai còn nợ 308.425.000 ở 4 công trình, ứng trước 200.000.000 ở DACANTACH: màn theo NCC ghi 308.425.000 − 200.000.000 = 108.425.000
+    vào Còn phải trả; màn theo công trình ghi 308.425.000 vào Còn phải trả **và** 200.000.000 vào Đã ứng trước → cả hai dòng lớn hơn 200.000.000.
+  - Ngay dưới Còn phải trả / Đã ứng trước (khi xem đủ mọi NCC, không lọc tình trạng / tìm kiếm) có dòng nối sang màn kia: “Màn theo NCC ghi … / …: mỗi số
+    nhỏ hơn … vì … NCC còn nợ ở công trình này nhưng ứng trước ở công trình khác”. Màn Công nợ NCC theo kỳ có dòng tương tự trỏ sang màn theo công trình.
   - Ở từng dòng: **Trả tiền** mở trang Ghi thu / chi điền sẵn NCC, công trình và số còn nợ; biểu tượng sổ mở **Sổ chi tiết NCC** đã lọc công trình đó.
   - **In** và **Xuất Excel**: file có sheet `Theo_Cong_Trinh` (nhóm theo công trình, dòng cộng từng công trình, tổng cộng — dùng công thức, sửa số là tự cộng lại)
     và sheet `Bang_Cheo` (NCC × công trình).
