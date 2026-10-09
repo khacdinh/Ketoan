@@ -1,12 +1,13 @@
 /* Phân tích (BI): bảng và biểu đồ tự chọn chỉ số / hàng / cột, tuổi nợ NCC, công nợ theo tháng, xuất dữ liệu cho Power BI / Excel.
  * Mọi số đều lấy từ KT.phanTichChiPhi / tuoiNo / congNoTheoThang (shared.js), cùng nguồn với Sổ chi phí và Công nợ nên luôn khớp.
  * Bấm vào cột / ô / thanh để mở sổ chi tiết đã lọc sẵn. Biểu đồ tự vẽ bằng SVG, chạy offline. */
-import { $, esc, money, icon, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, LS, setPageActions, setPageTitle, setPageTags, openModal, toast } from '../ui.js';
+import { $, debounce, esc, money, icon, download, periodControls, bindPeriodControls, refreshPeriod, freshRoot, LS, setPageActions, setPageTitle, setPageTags, openModal, toast } from '../ui.js';
 import { S, saveFilter } from '../state.js';
 import { printView } from '../print.js';
 import { datCongTrinh } from '../ctpick.js';
 
 const KT = window.KT;
+let dongNhieu = null; // bộ đóng hộp chọn nhiều NCC khi bấm ra ngoài
 
 /* ---------- báo cáo có sẵn và báo cáo đã lưu ---------- */
 const CO_SAN = [
@@ -14,11 +15,19 @@ const CO_SAN = [
   { id: 'tuoi-no', ten: 'Tuổi nợ NCC', loai: 'tuoi-no' },
   { id: 'cong-no-thang', ten: 'Công nợ theo tháng', loai: 'cong-no-thang' },
   { id: 'nhom-ct', ten: 'Chi phí nhóm × công trình', loai: 'pivot', chiSo: 'chiPhi', hang: 'nhom', cot: 'ct', mau: 'loai' },
-  { id: 'gia-vat-tu', ten: 'Giá vật tư theo NCC', loai: 'pivot', chiSo: 'giaTB', hang: 'vt', cot: 'ncc', mau: 'loai' }
+  { id: 'gia-vat-tu', ten: 'Giá vật tư theo NCC', loai: 'pivot', chiSo: 'giaTB', hang: 'vt', cot: 'ncc', mau: 'loai' },
+  { id: 'thu-chi', ten: 'Thu chi theo tháng', loai: 'thu-chi', chiSo: 'chi', hang: 'ct', cot: 'thang' }
 ];
 const daLuu = () => LS.get('bi.saved', []);
 const tatCa = () => CO_SAN.concat(daLuu());
 const CHI_SO = [['chiPhi', 'Chi phí phát sinh'], ['giaTB', 'Đơn giá trung bình']];
+const CHI_SO_TC = [['chi', 'Chi'], ['thu', 'Thu'], ['rong', 'Chênh (thu − chi)']];
+const HANG_TC = ['ct', 'ncc', 'phieu', 'thang', 'quy', 'nam'];
+const LOC_MAC_DINH = () => ({ loaiCP: '', nhom: '', hm: '', vt: '', nha: '', q: '', nccs: [], loaiNCC: '', tt: '', loaiPhieu: '' });
+const LOC_KEYS = Object.keys(LOC_MAC_DINH());
+const layLoc = (f) => { const o = {}; LOC_KEYS.forEach((k) => { o[k] = f[k]; }); return o; };
+const apLoc = (f, lc) => { Object.assign(f, LOC_MAC_DINH(), lc || {}); if (lc && lc.ncc && !(lc.nccs || []).length) f.nccs = [lc.ncc]; delete f.ncc; };
+const coLoc = (f) => LOC_KEYS.some((k) => (Array.isArray(f[k]) ? f[k].length : f[k]));
 const HANG = ['ct', 'ncc', 'nhom', 'hm', 'vt', 'loai'];
 const COT = ['thang', 'quy', 'nam', 'loai', 'nhom', 'ct', 'ncc'];
 const MAU = [['loai', 'Loại chi phí'], ['nhom', 'Nhóm chi phí'], ['', 'Một màu']];
@@ -53,23 +62,33 @@ function trangThai() {
   if (!f.rep || !tatCa().some((r) => r.id === f.rep)) f.rep = 'chi-phi-thang';
   if (!f.period) f.period = 'tat-ca';
   if (!f.cfg) f.cfg = Object.assign({}, tatCa().find((r) => r.id === f.rep));
-  f.loaiCP = f.loaiCP || ''; f.nhom = f.nhom || ''; f.ncc = f.ncc || '';
+  if (f.ncc) { f.nccs = [f.ncc]; delete f.ncc; }
+  LOC_KEYS.forEach((k) => { if (f[k] == null) f[k] = LOC_MAC_DINH()[k]; });
   if (!['cot', 'duong', 'bang'].includes(f.xem)) f.xem = 'cot';
   if (!['dong', 'nghin', 'trieu'].includes(f.dv)) f.dv = 'trieu';
   if (!KT.isISODate(f.den)) f.den = ngayHomNay();
   refreshPeriod(f);
   return f;
 }
-const loc = (f) => ({ from: f.from, to: f.to, ct: S.ct && S.ct !== '__none__' ? S.ct : '', loaiCP: f.loaiCP, nhom: f.nhom, ncc: f.ncc });
+const loc = (f) => Object.assign({ from: f.from, to: f.to, ct: S.ct && S.ct !== '__none__' ? S.ct : '' }, layLoc(f));
 
 /* ---------- mở sổ chi tiết đã lọc ---------- */
 function moSoChiPhi(d) {
   const f = S.filters.cpSo;
-  Object.assign(f, { nha: '', nhom: d.nhom || '', hm: d.hm || '', loai: d.loai || '', ncc: d.ncc || '', vt: d.vt || '', q: '' });
+  Object.assign(f, { nha: d.nha || '', nhom: d.nhom || '', hm: d.hm || '', loai: d.loai || '', ncc: d.ncc || '', vt: d.vt || '', q: d.q || '' });
   if (d.from) Object.assign(f, { period: 'khoang', from: d.from, to: d.to, rel: false }); else Object.assign(f, { period: 'tat-ca', from: '', to: '', rel: false });
   datCongTrinh(d.ct != null ? d.ct : S.ct, true);
   saveFilter('cpSo');
   location.hash = '#/cp-so';
+}
+// Mở Sổ quỹ thu chi đã lọc (cùng ý với moSoChiPhi)
+function moSoQuy(d) {
+  const f = S.filters.so;
+  Object.assign(f, { ncc: d.ncc || '', loai: d.loaiPhieu || '', q: d.q || '' });
+  if (d.from) Object.assign(f, { period: 'khoang', from: d.from, to: d.to, rel: false }); else Object.assign(f, { period: 'tat-ca', from: '', to: '', rel: false });
+  datCongTrinh(d.ct != null ? d.ct : S.ct, true);
+  saveFilter('so');
+  location.hash = '#/so-thu-chi';
 }
 function khoangCua(chieu, k) {
   if (chieu === 'thang') { const u = KT.periodUnit('thang', k + '-01'); return { from: u.from, to: u.to }; }
@@ -80,7 +99,7 @@ function khoangCua(chieu, k) {
 function dungDieuKien(chieu, k, d) {
   if (k === '__khac__') return;
   if (['thang', 'quy', 'nam'].includes(chieu)) Object.assign(d, khoangCua(chieu, k));
-  else if (chieu === 'ct') d.ct = k; else if (chieu === 'loai') d.loai = k; else d[chieu] = k;
+  else if (chieu === 'ct') d.ct = k; else if (chieu === 'loai') d.loai = k; else if (chieu === 'phieu') d.loaiPhieu = k.toLowerCase(); else d[chieu] = k;
 }
 
 /* ---------- tooltip và bắt sự kiện cho vùng bấm ---------- */
@@ -163,6 +182,7 @@ export function renderAnalytics(root) {
   const nccCoCP = Array.from(new Set(S.db.costs.map((c) => c.maNCC).filter(Boolean)));
   const ten = (ma) => { const x = S.db.suppliers.find((s) => KT.keyOf(s.ma) === KT.keyOf(ma)); return x ? x.ten : ma; };
   void L;
+  const soDK = () => ({ loai: f.loaiCP, nhom: f.nhom, hm: f.hm, vt: f.vt, nha: f.nha, q: f.q, ncc: f.nccs.length === 1 ? f.nccs[0] : '' });
 
   setPageTitle('Phân tích', 'Chọn chỉ số, chia theo hàng / cột, lọc — số liệu tính cùng cách với Sổ chi phí và Công nợ nên luôn khớp');
   setPageTags(f.rep.startsWith('u') ? '<span class="tag tag-neutral">Báo cáo của bạn</span>' : '');
@@ -177,13 +197,17 @@ export function renderAnalytics(root) {
   });
 
   const tenBaoCao = () => { const r = tatCa().find((x) => x.id === f.rep); return r ? r.ten : 'Báo cáo'; };
-  const moTaLoc = () => [cfg.loai === 'tuoi-no' ? 'Tính đến ' + ngayVN(f.den) : KT.describeRange(f.from, f.to), ct ? 'Công trình ' + ct : 'Tất cả công trình', f.loaiCP ? 'Loại CP ' + f.loaiCP : '', f.nhom ? 'Nhóm ' + f.nhom : '', f.ncc ? 'NCC ' + ten(f.ncc) : ''].filter(Boolean).join(' · ');
+  const moTaLoc = () => [cfg.loai === 'tuoi-no' ? 'Tính đến ' + ngayVN(f.den) : KT.describeRange(f.from, f.to), ct ? 'Công trình ' + ct : 'Tất cả công trình', f.loaiCP ? 'Loại CP ' + f.loaiCP : '', f.nhom ? 'Nhóm ' + f.nhom : '',
+    f.hm ? 'Hạng mục ' + f.hm : '', f.vt ? 'Vật tư ' + f.vt : '', f.nha ? 'Nhà ' + f.nha : '', f.nccs.length ? 'NCC ' + f.nccs.map(ten).join(', ') : '', f.loaiNCC ? 'Loại NCC ' + f.loaiNCC : '',
+    f.tt ? (f.tt === 'no' ? 'Còn nợ' : 'Ứng dư') : '', f.loaiPhieu ? (f.loaiPhieu === 'thu' ? 'Phiếu thu' : 'Phiếu chi') : '', f.q ? 'Tìm “' + f.q + '”' : ''].filter(Boolean).join(' · ');
   const thamSo = () => {
     const p = new URLSearchParams({ loai: cfg.loai });
     if (cfg.loai === 'tuoi-no') p.set('to', f.den);
     else { if (f.from) p.set('from', f.from); if (f.to) p.set('to', f.to); }
     if (ct) p.set('ct', ct);
-    if (cfg.loai === 'pivot') { p.set('chiSo', cfg.chiSo); p.set('hang', cfg.hang); if (cfg.cot) p.set('cot', cfg.cot); if (f.loaiCP) p.set('loaiCP', f.loaiCP); if (f.nhom) p.set('nhom', f.nhom); if (f.ncc) p.set('ncc', f.ncc); }
+    if (cfg.loai === 'pivot' || cfg.loai === 'thu-chi') { p.set('chiSo', cfg.chiSo); p.set('hang', cfg.hang); if (cfg.cot) p.set('cot', cfg.cot); }
+    ['loaiCP', 'nhom', 'hm', 'vt', 'nha', 'q', 'loaiNCC', 'tt', 'loaiPhieu'].forEach((k) => { if (f[k]) p.set(k, f[k]); });
+    f.nccs.forEach((m) => p.append('nccs', m));
     return p.toString();
   };
 
@@ -196,24 +220,44 @@ export function renderAnalytics(root) {
     opts.map(([k, t]) => '<option value="' + esc(k) + '"' + (k === v ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select></label>';
   const tenChieu = (k) => (KT.biChieu[k] || ['?'])[0];
   const co = (lbl, v) => '<div class="bi-pick on"><span class="bi-pick-l">' + lbl + '</span><span class="bi-pick-v">' + v + '</span></div>';
+  const tatCaOpt = [['', 'Tất cả']];
   const loaiList = KT.LOAI_CP.map((l) => [l, l]);
   const nhomList = S.db.costGroups.map((g) => [g.ma, g.ten]);
-  const nccList = nccCoCP.map((m) => [m, ten(m)]).sort((a, b) => a[1].localeCompare(b[1], 'vi'));
+  const hmList = S.db.costItems.map((h) => [h.ma, h.ten]);
+  const vtList = S.db.materials.map((m) => [m.ma, m.ten]).sort((a, b) => a[1].localeCompare(b[1], 'vi'));
+  const nhaList = S.db.houses.map((h) => [h.ma, h.ten]);
+  const nccDung = new Set(S.db.costs.concat(S.db.entries).map((c) => KT.keyOf(c.maNCC)).filter(Boolean));
+  const nccList = S.db.suppliers.filter((x) => nccDung.has(KT.keyOf(x.ma))).map((x) => [x.ma, x.ten]).sort((a, b) => a[1].localeCompare(b[1], 'vi'));
+  const loaiNccList = Array.from(new Set(S.db.suppliers.map((x) => x.loai).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'vi')).map((x) => [x, x]);
+  // chọn nhiều NCC: hộp có ô tìm và danh sách tích chọn
+  const nhieu = () => '<details class="bi-multi" id="bi-nccs"><summary class="bi-pick' + (f.nccs.length ? ' on' : '') + '"><span class="bi-pick-l">NCC</span><span class="bi-pick-v" id="bi-nccs-t">' + tomTatNcc() + '</span><i class="ph ph-caret-down bi-caret" aria-hidden="true"></i></summary>' +
+    '<div class="bi-multi-box"><input type="search" class="input" placeholder="Tìm nhà cung cấp" data-tim aria-label="Tìm nhà cung cấp"><div class="bi-multi-list">' +
+    nccList.map(([m, t]) => '<label class="check" data-t="' + esc(KT.normalizeText(m + ' ' + t)) + '"><input type="checkbox" value="' + esc(m) + '"' + (f.nccs.some((x) => KT.keyOf(x) === KT.keyOf(m)) ? ' checked' : '') + '>' + esc(t) + '</label>').join('') +
+    '</div><button type="button" class="btn btn-ghost btn-sm" data-act="bo-ncc">Bỏ chọn hết</button></div></details>';
+  function tomTatNcc() { return f.nccs.length === 0 ? 'Tất cả' : f.nccs.length === 1 ? esc(ten(f.nccs[0])) : f.nccs.length + ' đã chọn'; }
+  const tim = '<label class="bi-pick' + (f.q ? ' on' : '') + '"><span class="bi-pick-l">Tìm</span><input type="search" id="bi-q" class="bi-sel" placeholder="chữ cần tìm" value="' + esc(f.q) + '" aria-label="Tìm chữ"></label>';
   let builder = '<div class="bi-builder">';
   if (cfg.loai === 'pivot') {
     builder += sel('bi-chiso', 'Chỉ số', CHI_SO, cfg.chiSo) + sel('bi-hang', 'Hàng', HANG.map((k) => [k, tenChieu(k)]), cfg.hang) +
       sel('bi-cot', 'Cột', COT.map((k) => [k, tenChieu(k)]).concat([['', 'Không chia cột']]), cfg.cot) + (cfg.chiSo === 'chiPhi' ? sel('bi-mau', 'Màu theo', MAU, cfg.mau || '') : '');
+  } else if (cfg.loai === 'thu-chi') {
+    builder += sel('bi-chiso', 'Chỉ số', CHI_SO_TC, cfg.chiSo) + sel('bi-hang', 'Hàng', HANG_TC.map((k) => [k, tenChieu(k)]), cfg.hang) +
+      sel('bi-cot', 'Cột', HANG_TC.map((k) => [k, tenChieu(k)]).concat([['', 'Không chia cột']]), cfg.cot);
   } else if (cfg.loai === 'tuoi-no') {
     builder += co('Chỉ số', 'Còn phải trả') + co('Hàng', 'Nhà cung cấp') + co('Cột', 'Tuổi nợ') +
       '<label class="bi-pick on"><span class="bi-pick-l">Tính đến</span><input type="date" id="bi-den" class="bi-sel" value="' + esc(f.den) + '" aria-label="Tính đến ngày"></label>';
   } else {
     builder += co('Chỉ số', 'Phát sinh · Thanh toán · Còn phải trả') + co('Hàng', 'Tháng') + co('Tách theo', 'NCC lớn nhất');
   }
-  builder += '<span class="bi-sep"></span>' + (cfg.loai === 'tuoi-no' ? '' : periodControls(f, 'bi') + '<span class="bi-sep"></span>') + '<span class="bi-k">Lọc</span>' +
-    (ct ? '<span class="filter-chip">Công trình: ' + esc(ct) + '</span>' : '') +
-    (cfg.loai === 'pivot' ? sel('bi-loai', 'Loại CP', [['', 'Tất cả']].concat(loaiList), f.loaiCP) + sel('bi-nhom', 'Nhóm', [['', 'Tất cả']].concat(nhomList), f.nhom) + sel('bi-ncc', 'NCC', [['', 'Tất cả']].concat(nccList), f.ncc) : '') +
-    (!ct && cfg.loai !== 'pivot' ? '<span class="text-[12.5px] text-ink-3">Chọn công trình ở thanh trên để lọc</span>' : '') +
-    ((f.loaiCP || f.nhom || f.ncc) ? '<button type="button" class="btn btn-ghost btn-sm" data-act="xoa-loc">' + icon('x') + 'Xóa lọc</button>' : '') + '</div>';
+  builder += '<span class="bi-sep"></span>' + (cfg.loai === 'tuoi-no' ? '' : periodControls(f, 'bi')) + '</div>' +
+    '<div class="bi-builder bi-filters"><span class="bi-k">Lọc</span>' + (ct ? '<span class="filter-chip">Công trình: ' + esc(ct) + '</span>' : '<span class="text-[12.5px] text-ink-3">Công trình: chọn ở thanh trên</span>') +
+    (cfg.loai === 'pivot' ? sel('bi-loai', 'Loại CP', tatCaOpt.concat(loaiList), f.loaiCP) + sel('bi-nhom', 'Nhóm', tatCaOpt.concat(nhomList), f.nhom) + sel('bi-hm', 'Hạng mục', tatCaOpt.concat(hmList), f.hm) +
+      sel('bi-vt', 'Vật tư', tatCaOpt.concat(vtList), f.vt) + (nhaList.length ? sel('bi-nha', 'Nhà / khu', tatCaOpt.concat(nhaList), f.nha) : '') : '') +
+    (cfg.loai === 'thu-chi' ? sel('bi-lp', 'Loại phiếu', [['', 'Thu và chi'], ['thu', 'Phiếu thu'], ['chi', 'Phiếu chi']], f.loaiPhieu) : '') +
+    nhieu() + (loaiNccList.length ? sel('bi-lncc', 'Loại NCC', tatCaOpt.concat(loaiNccList), f.loaiNCC) : '') +
+    (cfg.loai === 'cong-no-thang' ? sel('bi-tt', 'Tình trạng', [['', 'Còn nợ và ứng dư'], ['no', 'Còn nợ'], ['du', 'Ứng dư']], f.tt) : '') +
+    (cfg.loai === 'pivot' || cfg.loai === 'thu-chi' ? tim : '') +
+    '<button type="button" class="btn btn-ghost btn-sm"' + (coLoc(f) ? '' : ' hidden') + ' data-act="xoa-loc">' + icon('x') + 'Xóa lọc</button></div>';
 
   root.innerHTML = '<div class="print-only" id="print-head"></div>' + '<div class="no-print flex flex-col gap-3">' + baoCaoBar + builder + '</div><div id="bi-body" class="flex flex-col gap-4"></div>';
 
@@ -222,19 +266,39 @@ export function renderAnalytics(root) {
   root.querySelectorAll('input[name=bi-r]').forEach((r) => r.addEventListener('change', () => {
     const bc = tatCa().find((x) => x.id === r.value);
     const lc = bc.loc || {};
-    f.rep = r.value; f.cfg = Object.assign({}, bc); f.loaiCP = lc.loaiCP || ''; f.nhom = lc.nhom || ''; f.ncc = lc.ncc || '';
+    f.rep = r.value; f.cfg = Object.assign({}, bc); apLoc(f, lc);
     veLai();
   }));
   const doi = (id, k, ngoai) => { const e = $('#' + id, root); if (e) e.addEventListener('change', () => { if (ngoai) f[k] = e.value; else cfg[k] = e.value; veLai(); }); };
-  doi('bi-chiso', 'chiSo'); doi('bi-hang', 'hang'); doi('bi-cot', 'cot'); doi('bi-mau', 'mau'); doi('bi-loai', 'loaiCP', true); doi('bi-nhom', 'nhom', true); doi('bi-ncc', 'ncc', true);
+  doi('bi-chiso', 'chiSo'); doi('bi-hang', 'hang'); doi('bi-cot', 'cot'); doi('bi-mau', 'mau'); doi('bi-loai', 'loaiCP', true); doi('bi-nhom', 'nhom', true); doi('bi-hm', 'hm', true); doi('bi-vt', 'vt', true); doi('bi-nha', 'nha', true);
+  doi('bi-lncc', 'loaiNCC', true); doi('bi-tt', 'tt', true); doi('bi-lp', 'loaiPhieu', true);
+  const q = $('#bi-q', root);
+  if (q) q.addEventListener('input', debounce(() => { f.q = q.value.trim(); luu(); draw(); }, 250));
+  const nn = $('#bi-nccs', root);
+  if (nn) {
+    nn.addEventListener('change', (e) => {
+      if (e.target.type !== 'checkbox') return;
+      f.nccs = Array.from(nn.querySelectorAll('.bi-multi-list input:checked')).map((x) => x.value);
+      $('#bi-nccs-t', root).innerHTML = tomTatNcc(); nn.querySelector('summary').classList.toggle('on', f.nccs.length > 0);
+      luu(); draw();
+    });
+    nn.querySelector('[data-tim]').addEventListener('input', (e) => {
+      const t = KT.normalizeText(e.target.value).trim();
+      nn.querySelectorAll('.bi-multi-list label').forEach((l) => { l.hidden = !!t && !l.dataset.t.includes(t); });
+    });
+    nn.querySelector('[data-act=bo-ncc]').addEventListener('click', () => { f.nccs = []; veLai(); });
+    if (dongNhieu) document.removeEventListener('mousedown', dongNhieu);
+    dongNhieu = (e) => { if (nn.open && !nn.contains(e.target)) nn.open = false; };
+    document.addEventListener('mousedown', dongNhieu);
+  }
   const den = $('#bi-den', root);
   if (den) den.addEventListener('change', () => { if (KT.isISODate(den.value)) { f.den = den.value; luu(); draw(); } });
   if (cfg.loai !== 'tuoi-no') bindPeriodControls(root, f, 'bi', () => { luu(); draw(); });
   root.addEventListener('click', (e) => {
     const a = e.target.closest('[data-act]');
     if (!a) return;
-    if (a.dataset.act === 'xoa-loc') { f.loaiCP = f.nhom = f.ncc = ''; veLai(); }
-    else if (a.dataset.act === 'bc-moi') { f.rep = 'chi-phi-thang'; f.cfg = Object.assign({}, CO_SAN[0]); f.loaiCP = f.nhom = f.ncc = ''; veLai(); }
+    if (a.dataset.act === 'xoa-loc') { apLoc(f, null); veLai(); }
+    else if (a.dataset.act === 'bc-moi') { f.rep = 'chi-phi-thang'; f.cfg = Object.assign({}, CO_SAN[0]); apLoc(f, null); veLai(); }
     else if (a.dataset.act === 'xoa-bc') {
       LS.set('bi.saved', daLuu().filter((r) => r.id !== f.rep)); f.rep = 'chi-phi-thang'; f.cfg = Object.assign({}, CO_SAN[0]); toast('Đã xóa báo cáo.', 'info'); veLai();
     }
@@ -255,7 +319,7 @@ export function renderAnalytics(root) {
       if (!t) { toast('Nhập tên báo cáo.', 'error'); return; }
       const ds = daLuu();
       const id = 'u' + Date.now().toString(36);
-      ds.push({ id, ten: t, loai: cfg.loai, chiSo: cfg.chiSo, hang: cfg.hang, cot: cfg.cot, mau: cfg.mau, loc: { loaiCP: f.loaiCP, nhom: f.nhom, ncc: f.ncc } });
+      ds.push({ id, ten: t, loai: cfg.loai, chiSo: cfg.chiSo, hang: cfg.hang, cot: cfg.cot, mau: cfg.mau, loc: layLoc(f) });
       LS.set('bi.saved', ds);
       f.rep = id; f.cfg = Object.assign({}, ds[ds.length - 1]); h.close(); toast('Đã lưu báo cáo “' + t + '”.', 'ok'); veLai();
     };
@@ -297,10 +361,12 @@ export function renderAnalytics(root) {
   /* ---------- phần thân ---------- */
   const body = $('#bi-body', root);
   function draw() {
+    const xl = $('[data-act=xoa-loc]', root); if (xl) xl.hidden = !coLoc(f);
     if (cfg.loai === 'tuoi-no') body.innerHTML = thanTuoiNo();
     else if (cfg.loai === 'cong-no-thang') body.innerHTML = thanCongNo();
+    else if (cfg.loai === 'thu-chi') body.innerHTML = thanThuChi();
     else body.innerHTML = thanPivot();
-    if (cfg.loai === 'tuoi-no') veTuoiNo(); else if (cfg.loai === 'cong-no-thang') veCongNo(); else vePivot();
+    if (cfg.loai === 'tuoi-no') veTuoiNo(); else if (cfg.loai === 'cong-no-thang') veCongNo(); else if (cfg.loai === 'thu-chi') { thangChart = null; vePivot(); veThuChi(); } else vePivot();
     root.querySelectorAll('input[name=bi-xem]').forEach((r) => r.addEventListener('change', () => { f.xem = r.value; luu(); draw(); }));
     root.querySelectorAll('input[name=bi-dv]').forEach((r) => r.addEventListener('change', () => { f.dv = r.value; luu(); draw(); }));
   }
@@ -343,15 +409,16 @@ export function renderAnalytics(root) {
     const max = Math.max(1, ...pv.hang.filter((h) => !h.khac).map((h) => Math.max(0, ...pv.cot.map((c) => h.o[c.k] || 0))));
     const nen = (v) => (v > 0 ? HEAT[Math.min(4, Math.floor(Math.sqrt(v / max) * 5))] : 'transparent');
     const coCot = !!cfg.cot;
+    const tyTrong = !gia && cfg.chiSo !== 'rong';
     const dvSeg = gia ? '' : '<div class="flex items-center gap-2"><span class="bi-k">Đơn vị</span><div class="seg seg-sm">' + [['dong', 'Đồng'], ['nghin', 'Nghìn'], ['trieu', 'Triệu']].map(([v, l]) => '<label class="seg-item"><input type="radio" name="bi-dv" value="' + v + '"' + (f.dv === v ? ' checked' : '') + '><span>' + l + '</span></label>').join('') + '</div></div>';
-    const note = (gia ? 'Đơn giá trung bình, đồng' : 'Đơn vị: ' + { dong: 'đồng', nghin: 'nghìn đồng', trieu: 'triệu đồng' }[f.dv]) + (gia ? ' · tổng thành tiền ÷ tổng số lượng của dòng có số lượng' : ' · ô càng đậm chi càng nhiều') + ' · bấm một ô để mở Sổ chi phí đã lọc';
+    const note = (gia ? 'Đơn giá trung bình, đồng' : 'Đơn vị: ' + { dong: 'đồng', nghin: 'nghìn đồng', trieu: 'triệu đồng' }[f.dv]) + (gia ? ' · tổng thành tiền ÷ tổng số lượng của dòng có số lượng' : ' · ô càng đậm chi càng nhiều') + ' · bấm một ô để mở ' + (cfg.loai === 'thu-chi' ? 'Sổ quỹ' : 'Sổ chi phí') + ' đã lọc';
     return '<section class="sheet bi-card"><div class="bi-card-head"><div><h3 class="sheet-title">' + esc(tenChieu(cfg.hang)) + (coCot ? ' × ' + esc(tenChieu(cfg.cot).toLowerCase()) : '') + '</h3><p class="sheet-note">' + esc(note) + '</p></div>' + dvSeg + '</div>' +
-      '<div class="overflow-x-auto"><table class="ledger bi-pivot" id="bi-pivot"><thead><tr><th>' + esc(tenChieu(cfg.hang)) + '</th>' + pv.cot.map((c) => '<th class="num">' + esc(cfg.cot === 'thang' ? thangNgan(c.k) : c.t) + '</th>').join('') + (coCot ? '<th class="num">Tổng</th>' : '') + (gia ? '' : '<th class="num">Tỷ trọng</th>') + '</tr></thead><tbody>' +
+      '<div class="overflow-x-auto"><table class="ledger bi-pivot" id="bi-pivot"><thead><tr><th>' + esc(tenChieu(cfg.hang)) + '</th>' + pv.cot.map((c) => '<th class="num">' + esc(cfg.cot === 'thang' ? thangNgan(c.k) : c.t) + '</th>').join('') + (coCot ? '<th class="num">Tổng</th>' : '') + (tyTrong ? '<th class="num">Tỷ trọng</th>' : '') + '</tr></thead><tbody>' +
       pv.hang.map((h, i) => '<tr data-h="' + i + '"><td><b class="code">' + esc(h.t) + '</b>' + (h.s ? '<div class="sub">' + esc(h.s) + '</div>' : '') + '</td>' +
         pv.cot.map((c, j) => { const v = h.o[c.k] || 0; return '<td class="num bi-cell' + (v ? ' clickable' : '') + '" data-h="' + i + '" data-c="' + j + '" style="background:' + (h.khac ? 'transparent' : nen(v)) + '">' + (v ? fmt(v) : dash) + '</td>'; }).join('') +
         (coCot ? '<td class="num font-bold">' + (h.tong ? fmt(h.tong) : dash) + '</td>' : '') +
-        (gia ? '' : '<td class="num"><span class="bi-meter"><span style="width:' + Math.min(100, h.tt / pv.tongTien * 100).toFixed(1) + '%"></span></span>' + pct(h.tt / pv.tongTien) + '</td>') + '</tr>').join('') +
-      '</tbody>' + (gia ? '' : '<tfoot><tr><td>Tổng cộng</td>' + pv.cot.map((c) => '<td class="num">' + fmt(pv.tongCot[c.k] || 0) + '</td>').join('') + (coCot ? '<td class="num"><span class="dbl">' + fmt(pv.tong) + '</span></td>' : '') + '<td class="num">100%</td></tr></tfoot>') + '</table></div></section>';
+        (!tyTrong ? '' : '<td class="num"><span class="bi-meter"><span style="width:' + Math.min(100, h.tt / pv.tongTien * 100).toFixed(1) + '%"></span></span>' + pct(h.tt / pv.tongTien) + '</td>') + '</tr>').join('') +
+      '</tbody>' + (gia ? '' : '<tfoot><tr><td>Tổng cộng</td>' + pv.cot.map((c) => '<td class="num">' + fmt(pv.tongCot[c.k] || 0) + '</td>').join('') + (coCot ? '<td class="num"><span class="dbl">' + fmt(pv.tong) + '</span></td>' : '') + (tyTrong ? '<td class="num">100%</td>' : '') + '</tr></tfoot>') + '</table></div></section>';
   }
   function vePivot() {
     const tb = $('#bi-pivot', root);
@@ -363,9 +430,10 @@ export function renderAnalytics(root) {
       const d = {};
       dungDieuKien(cfg.hang, h.k, d);
       if (td.dataset.c != null && cfg.cot) { const c = pv.cot[Number(td.dataset.c)]; if (c) dungDieuKien(cfg.cot, c.k, d); }
-      moSoChiPhi(Object.assign({ loai: f.loaiCP, nhom: f.nhom, ncc: f.ncc }, d));
+      if (cfg.loai === 'thu-chi') moSoQuy(Object.assign({ ncc: f.nccs.length === 1 ? f.nccs[0] : '', loaiPhieu: f.loaiPhieu, q: f.q }, d));
+      else moSoChiPhi(Object.assign(soDK(), d));
     });
-    if (!thangChart || cfg.chiSo === 'giaTB') return;
+    if (!thangChart || cfg.chiSo === 'giaTB' || cfg.loai === 'thu-chi') return;
     const th = thangChart;
     const sr = th.cot.map((c, i) => ({ k: c.k, t: c.t, color: cfg.mau === 'loai' ? (MAU_LOAI[c.k] || MAU_KHAC) : c.k === '__khac__' ? MAU_KHAC : MAU_HANG[i % 3], v: th.hang.map((h) => h.o[c.k] || 0) }));
     const cats = th.hang.map((h) => ({ k: h.k, t: thangNgan(h.k) }));
@@ -377,12 +445,12 @@ export function renderAnalytics(root) {
         cats.map((c, i) => '<tr><td>' + thangDai(c.k) + '</td>' + sr.map((x) => '<td class="num">' + (x.v[i] ? money(x.v[i]) : dash) + '</td>').join('') + '<td class="num font-bold">' + money(sr.reduce((t, x) => t + x.v[i], 0)) + '</td></tr>').join('') + '</tbody></table></div>';
     } else {
       bieuDoCot(el, cats, sr, f.xem === 'duong' ? 'duong' : 'cot', 'Chi phí phát sinh theo tháng');
-      gan(el, html, (i) => moSoChiPhi(Object.assign({ loai: f.loaiCP, nhom: f.nhom, ncc: f.ncc }, khoangCua('thang', cats[i].k))));
+      gan(el, html, (i) => moSoChiPhi(Object.assign(soDK(), khoangCua('thang', cats[i].k))));
     }
     const thanhNgang = (box, pvx, mau, chieu) => {
       const mx = Math.max(1, ...pvx.hang.map((h) => h.tong));
       box.innerHTML = pvx.hang.filter((h) => !h.khac).map((h, i) => '<div class="bi-hrow clickable" data-i="' + i + '" tabindex="0"><div class="bi-hname" title="' + esc(h.t) + '">' + esc(h.t) + '</div><div class="bi-htrack"><span class="bi-hbar" style="width:' + (h.tong / mx * 100 * 0.62).toFixed(1) + '%;background:' + mau + '"></span><span class="bi-hval">' + ty(h.tong) + ' <span class="text-ink-3">· ' + pct(h.tong / pv.tong) + '</span></span></div></div>').join('');
-      const mo = (r) => { const h = pvx.hang.filter((x) => !x.khac)[Number(r.dataset.i)]; const d = { loai: f.loaiCP, nhom: f.nhom, ncc: f.ncc }; dungDieuKien(chieu, h.k, d); moSoChiPhi(d); };
+      const mo = (r) => { const h = pvx.hang.filter((x) => !x.khac)[Number(r.dataset.i)]; const d = soDK(); dungDieuKien(chieu, h.k, d); moSoChiPhi(d); };
       box.addEventListener('click', (e) => { const r = e.target.closest('[data-i]'); if (r) mo(r); });
       box.addEventListener('keydown', (e) => { const r = e.target.closest('[data-i]'); if (r && e.key === 'Enter') mo(r); });
     };
@@ -393,7 +461,7 @@ export function renderAnalytics(root) {
   /* ----- B. tuổi nợ ----- */
   let tn = null;
   function thanTuoiNo() {
-    tn = KT.tuoiNo(S.db, { to: f.den, ct });
+    tn = KT.tuoiNo(S.db, { to: f.den, ct, nccs: f.nccs, loaiNCC: f.loaiNCC });
     if (!tn.rows.length) return '<section class="sheet p-10 text-center text-ink-3">Không có khoản nào còn phải trả tại ngày này.</section>';
     const b = tn.tong, tong = tn.tongAll;
     const lau = tn.rows.slice().sort((x, y) => y.ngay - x.ngay)[0];
@@ -432,7 +500,7 @@ export function renderAnalytics(root) {
   /* ----- C. công nợ theo tháng ----- */
   let cn = null;
   function thanCongNo() {
-    cn = KT.congNoTheoThang(S.db, { from: f.from, to: f.to, ct, top: 4 });
+    cn = KT.congNoTheoThang(S.db, { from: f.from, to: f.to, ct, top: 4, nccs: f.nccs, loaiNCC: f.loaiNCC, tt: f.tt });
     if (!cn.thang.length) return '<section class="sheet p-10 text-center text-ink-3">Chưa có số liệu.</section>';
     const cuoi = cn.thang[cn.thang.length - 1];
     const ps = cn.thang.reduce((t, x) => t + x.ps, 0), tt = cn.thang.reduce((t, x) => t + x.tt, 0);
@@ -488,6 +556,63 @@ export function renderAnalytics(root) {
     const mo = (e) => { const c = e.target.closest('[data-k]'); if (c) moSoNCC(cn.top[Number(c.dataset.k)].ma); };
     sm.addEventListener('click', mo);
     sm.addEventListener('keydown', (e) => { if (e.key === 'Enter') mo(e); });
+  }
+
+  /* ----- D. thu chi (sổ quỹ) ----- */
+  let tcThang = null;
+  function thanThuChi() {
+    const b = loc(f);
+    pv = KT.phanTichThuChi(S.db, Object.assign({}, b, { chiSo: cfg.chiSo, hang: cfg.hang, cot: cfg.cot, topHang: 12, topCot: 8 }));
+    if (!pv.soDong) return '<section class="sheet p-10 text-center text-ink-3">Không có dòng thu chi nào khớp bộ lọc.</section>';
+    const thu = KT.phanTichThuChi(S.db, Object.assign({}, b, { chiSo: 'thu', hang: 'thang', cot: '' }));
+    const chi = KT.phanTichThuChi(S.db, Object.assign({}, b, { chiSo: 'chi', hang: 'thang', cot: '' }));
+    const ms = Array.from(new Set(thu.hang.map((h) => h.k).concat(chi.hang.map((h) => h.k)))).sort();
+    const led = KT.buildLedger(KT.postedDb(S.all || S.db));
+    const cuoiT = (m) => { const d = new Date(Date.UTC(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0)).toISOString().slice(0, 10); return KT.filterLedger(led, { to: f.to && f.to < d ? f.to : d }).tonCuoiKy; };
+    tcThang = ms.map((m) => ({ m, thu: (thu.hang.find((h) => h.k === m) || { tong: 0 }).tong, chi: (chi.hang.find((h) => h.k === m) || { tong: 0 }).tong, ton: cuoiT(m) }));
+    const tThu = thu.tong, tChi = chi.tong;
+    const cao = tcThang.reduce((x, d) => (d.chi > (x ? x.chi : -1) ? d : x), null);
+    return the4([the('Tổng thu', money(tThu), esc(KT.describeRange(f.from, f.to))), the('Tổng chi', money(tChi), cao ? 'tháng chi nhiều nhất ' + thangDai(cao.m) + ': ' + money(cao.chi) : ''),
+      the('Chênh lệch (thu − chi)', (tThu - tChi < 0 ? '−' : '') + money(Math.abs(tThu - tChi)), tThu - tChi < 0 ? 'chi nhiều hơn thu' : 'thu nhiều hơn chi'),
+      the('Tồn quỹ cuối kỳ', money(tcThang.length ? tcThang[tcThang.length - 1].ton : 0), 'toàn quỹ, không phụ thuộc bộ lọc')]) +
+      the_('Thu, chi và tồn quỹ theo tháng', 'Bấm một tháng để mở Sổ quỹ của tháng đó · đường đen là tồn quỹ cuối tháng (toàn quỹ)', nhanXem(f.xem === 'bang' ? 'bang' : 'cot', ['bang', 'cot']),
+        chuGiai([['Thu', MAU_HANG[1]], ['Chi', MAU_HANG[0]], ['Tồn quỹ cuối tháng', '#25282D', 'line']]) + '<div id="bi-tc" class="bi-chart"></div>') + bangHai(false);
+  }
+  function veThuChi() {
+    const el = $('#bi-tc', root);
+    if (!el) return;
+    const T = tcThang;
+    if (f.xem === 'bang') {
+      el.closest('section').querySelector('.bi-legend').hidden = true;
+      el.innerHTML = '<div class="overflow-x-auto"><table class="ledger"><thead><tr><th>Tháng</th><th class="num">Thu</th><th class="num">Chi</th><th class="num">Chênh</th><th class="num">Tồn quỹ cuối tháng</th></tr></thead><tbody>' +
+        T.map((d) => '<tr><td>' + thangDai(d.m) + '</td><td class="num">' + money(d.thu) + '</td><td class="num">' + money(d.chi) + '</td><td class="num">' + (d.thu - d.chi < 0 ? '−' : '') + money(Math.abs(d.thu - d.chi)) + '</td><td class="num font-bold">' + money(d.ton) + '</td></tr>').join('') + '</tbody></table></div>';
+      return;
+    }
+    const W = Math.max(380, el.clientWidth), H = 320, m = { l: 54, r: 74, t: 24, b: 30 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const { step, top } = nice(Math.max(1, ...T.map((x) => Math.max(x.thu, x.chi, x.ton))), 4);
+    const lo = Math.min(0, ...T.map((x) => x.ton));
+    const bot = lo < 0 ? -nice(-lo, 4).top : 0, span = top - bot;
+    const y = (v) => m.t + ih - ((v - bot) / span) * ih, slot = iw / T.length, bw = Math.min(18, slot * 0.4);
+    let s = '';
+    for (let v = bot; v <= top + 1; v += step) s += '<line class="g" x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + y(v) + '" y2="' + y(v) + '"/><text class="ax" x="' + (m.l - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + (v < 0 ? '−' : '') + nhanTruc(Math.abs(v)) + '</text>';
+    const buoc = Math.max(1, Math.ceil(T.length / Math.max(2, Math.floor(iw / 56))));
+    const pts = [];
+    T.forEach((d, i) => {
+      const cx = m.l + (i + 0.5) * slot;
+      if (d.chi) s += '<rect class="mk" x="' + (cx - bw - 1).toFixed(1) + '" y="' + y(d.chi).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (y(0) - y(d.chi)).toFixed(1) + '" fill="' + MAU_HANG[0] + '"/>';
+      if (d.thu) s += '<rect class="mk" x="' + (cx + 1).toFixed(1) + '" y="' + y(d.thu).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (y(0) - y(d.thu)).toFixed(1) + '" fill="' + MAU_HANG[1] + '"/>';
+      if (i % buoc === 0) s += '<text class="ax" x="' + cx + '" y="' + (H - 9) + '" text-anchor="middle">' + thangNgan(d.m) + '</text>';
+      pts.push([cx, y(d.ton)]);
+    });
+    s += '<line class="base" x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + y(0) + '" y2="' + y(0) + '"/><polyline class="ln" style="stroke:#25282D" points="' + pts.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ') + '"/>';
+    pts.forEach((p) => { s += '<circle class="dot" style="fill:#25282D" cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="4"/>'; });
+    const lp = pts[pts.length - 1];
+    s += '<text class="val" x="' + (lp[0] + 10) + '" y="' + (lp[1] + 4) + '">' + ty(T[T.length - 1].ton, 2) + '</text>';
+    T.forEach((_, i) => { s += '<rect class="bi-hit" data-i="' + i + '" x="' + (m.l + i * slot).toFixed(1) + '" y="' + m.t + '" width="' + slot.toFixed(1) + '" height="' + ih + '"/>'; });
+    el.innerHTML = '<svg width="' + W + '" height="' + H + '" role="img" aria-label="Thu, chi và tồn quỹ theo tháng">' + s + '</svg>';
+    gan(el, (i) => '<b>' + thangDai(T[i].m) + '</b>' + tipDong(MAU_HANG[1], 'Thu', money(T[i].thu)) + tipDong(MAU_HANG[0], 'Chi', money(T[i].chi)) + tipDong('#25282D', 'Tồn quỹ cuối tháng', money(T[i].ton)) + '<div class="h">Bấm để mở Sổ quỹ tháng ' + thangDai(T[i].m) + '</div>',
+      (i) => moSoQuy(Object.assign({ ncc: f.nccs.length === 1 ? f.nccs[0] : '', loaiPhieu: f.loaiPhieu, q: f.q }, khoangCua('thang', T[i].m))));
   }
 
   draw();

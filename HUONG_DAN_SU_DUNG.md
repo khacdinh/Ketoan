@@ -386,12 +386,18 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
 
 Menu **Báo cáo → Phân tích**. Mọi số được tính cùng cách với Sổ chi phí và Công nợ, nên luôn khớp; bấm vào cột, ô hay thanh để mở sổ chi tiết đã lọc sẵn.
 
-- **Hàng “Báo cáo đã lưu”** (đầu trang): 5 báo cáo có sẵn — *Chi phí theo tháng*, *Tuổi nợ NCC*, *Công nợ theo tháng*, *Chi phí nhóm × công trình*, *Giá vật tư theo NCC*. **+ Báo cáo mới** để làm lại từ đầu; **Lưu báo cáo** (góc phải) lưu cách chia hiện tại kèm bộ lọc Loại CP / Nhóm / NCC dưới tên bạn đặt (lưu trên máy này, bấm **Xóa** để bỏ).
+- **Hàng “Báo cáo đã lưu”** (đầu trang): 6 báo cáo có sẵn — *Chi phí theo tháng*, *Tuổi nợ NCC*, *Công nợ theo tháng*, *Chi phí nhóm × công trình*, *Giá vật tư theo NCC*, *Thu chi theo tháng*. **+ Báo cáo mới** để làm lại từ đầu; **Lưu báo cáo** (góc phải) lưu cách chia hiện tại kèm bộ lọc Loại CP / Nhóm / NCC dưới tên bạn đặt (lưu trên máy này, bấm **Xóa** để bỏ).
 - **Thanh chọn**: *Chỉ số* (Chi phí phát sinh, hoặc Đơn giá trung bình = tổng thành tiền ÷ tổng số lượng, bỏ dòng khoán), *Hàng* và *Cột* (công trình, NCC, nhóm, hạng mục, vật tư, loại chi phí, tháng, quý, năm), *Màu theo* (loại chi phí, nhóm, một màu), kỳ, bộ lọc. **Công trình** lọc bằng ô công trình ở thanh trên cùng. Hàng / cột không phải thời gian chỉ giữ các mục lớn nhất, phần còn lại gộp vào **Khác**.
 - **Chi phí theo tháng**: 4 ô số tổng, biểu đồ cột chồng theo tháng (chuyển **Bảng / Cột / Đường**), chi phí theo nhóm, 5 NCC chi nhiều nhất, và bảng hai chiều có ô tô đậm nhạt theo độ lớn (đơn vị Đồng / Nghìn / Triệu). Bấm một cột tháng, một thanh nhóm / NCC, hoặc một ô công trình × tháng để mở **Sổ chi phí** đã lọc đúng phần đó.
 - **Tuổi nợ NCC**: mỗi NCC một thanh chia 0–30 / 31–60 / 61–90 / trên 90 ngày. Tuổi nợ tính từ ngày phát sinh chi phí; tiền đã trả được trừ vào khoản **cũ nhất trước**. Chọn ô **Tính đến** để xem nợ sẽ quá hạn ra sao vào một ngày sau. Tổng còn phải trả bằng Dư Có ở màn Công nợ NCC theo kỳ cùng ngày. Bấm biểu tượng sổ để mở Sổ chi tiết NCC.
 - **Công nợ theo tháng**: phát sinh, thanh toán trong tháng và còn phải trả cuối tháng (đường đen); 4 biểu đồ nhỏ cho 4 NCC còn nợ nhiều nhất, cùng thang để so sánh; tháng cuối khớp màn Công nợ NCC theo kỳ.
-- **In** và **Xuất Excel** xuất đúng bảng đang xem.
+- **Thu chi theo tháng** (báo cáo thứ 6, phân tích sổ quỹ): 4 ô số (tổng thu, tổng chi, chênh lệch, tồn quỹ cuối kỳ), biểu đồ cột thu / chi từng tháng kèm đường tồn quỹ cuối tháng, bảng hai chiều chọn Chỉ số (Chi / Thu / Chênh) × Hàng × Cột (công trình, NCC, loại phiếu, tháng, quý, năm). Bấm một cột hay một ô để mở **Sổ quỹ** đã lọc đúng công trình và tháng đó.
+- **Bộ lọc** (hàng “Lọc” dưới thanh chọn; nút **Xóa lọc**; được nhớ cùng báo cáo đã lưu):
+  - Chi phí: Loại CP, Nhóm, Hạng mục, Vật tư, Nhà / khu, NCC (tích chọn nhiều, có ô tìm), Loại NCC, ô **Tìm** chữ (diễn giải, số phiếu, vật tư…).
+  - Công nợ (Tuổi nợ, Công nợ theo tháng): NCC (nhiều), Loại NCC; riêng Công nợ theo tháng có **Tình trạng** (còn nợ / ứng dư).
+  - Thu chi: Loại phiếu (thu / chi), NCC (nhiều), Loại NCC, ô **Tìm** chữ (nội dung, số phiếu, người nhận).
+  - Mọi báo cáo: **Công trình** chọn ở thanh trên cùng, và **kỳ** chọn ngay hàng trên. Khi bấm sang Sổ chi phí, nếu chọn nhiều NCC thì sổ chỉ lọc công trình và kỳ.
+- **In** và **Xuất Excel** xuất đúng bảng đang xem, kèm các điều kiện lọc.
 - **Xuất dữ liệu cho BI**: tạo một file **KeToan_BI.xlsx** (mỗi bảng một sheet) hoặc **.zip** gồm các file CSV, nằm trong thư mục Downloads. Có 11 bảng phẳng: `ChiPhi`, `ThuChi`, `TraNgoaiQuy`, `SoDuDauKy`, `CongNo_NCC_CongTrinh` (số công nợ từng cặp NCC × công trình do phần mềm tính sẵn, nên khớp màn Công nợ), `DM_CongTrinh`, `DM_NCC`, `DM_VatTu`, `DM_HangMuc`, `DM_Nhom` và `Lich` (bảng ngày). Mở bằng **Power BI Desktop** (miễn phí, Get Data → Excel) hoặc Excel (Insert → PivotTable), nối các bảng bằng mã (`MaCongTrinh`, `MaNCC`…). Lần sau xuất đè cùng file rồi bấm **Refresh**. Người chỉ có quyền xem không xuất được.
 
 ## 13. Danh mục chi phí

@@ -1212,11 +1212,28 @@
     hm: ['Hạng mục', function (r) { return { k: r.maHM || '', t: r.tenHM || r.maHM || 'Chưa có hạng mục', s: r.tenNhom || '' }; }],
     vt: ['Vật tư', function (r) { return { k: r.maVT || '', t: r.tenVT || r.maVT || 'Không ghi vật tư', s: r.maVT || '' }; }],
     loai: ['Loại chi phí', function (r) { return { k: r.loaiCP || '', t: r.loaiCP || 'Chưa phân loại', s: '' }; }],
+    phieu: ['Loại phiếu', function (r) { return { k: r.loaiPhieu || '', t: r.loaiPhieu || '', s: '' }; }],
     thang: ['Tháng', function (r) { const m = String(r.ngay).slice(0, 7); return { k: m, t: m.slice(5) + '/' + m.slice(0, 4), s: '' }; }],
     quy: ['Quý', function (r) { const y = String(r.ngay).slice(0, 4); const q = Math.ceil(Number(String(r.ngay).slice(5, 7)) / 3); return { k: y + '-Q' + q, t: 'Q' + q + '/' + y, s: '' }; }],
     nam: ['Năm', function (r) { const y = String(r.ngay).slice(0, 4); return { k: y, t: y, s: '' }; }]
   };
   const BI_THOI_GIAN = { thang: 1, quy: 1, nam: 1 };
+
+  // Điều kiện lọc nhà cung cấp dùng chung cho các báo cáo phân tích: f.nccs (nhiều mã), f.loaiNCC (loại NCC trong danh mục).
+  // Không có điều kiện nào thì mọi dòng đều qua (kể cả dòng không ghi NCC); có điều kiện thì dòng không ghi NCC bị loại.
+  function locNCC(db, f) {
+    const set = new Set((f.nccs || []).map(keyOf));
+    const loai = {};
+    (db.suppliers || []).forEach(function (x) { loai[keyOf(x.ma)] = x.loai || ''; });
+    if (!set.size && !f.loaiNCC) return function () { return true; };
+    return function (ma) {
+      const k = keyOf(ma);
+      if (!k) return false;
+      if (set.size && !set.has(k)) return false;
+      if (f.loaiNCC && loai[k] !== f.loaiNCC) return false;
+      return true;
+    };
+  }
 
   // Bảng hai chiều trên sổ chi phí. f: { from, to, ct, loaiCP, nhom, ncc, chiSo: 'chiPhi'|'giaTB', hang, cot ('' = một cột), topHang, topCot }
   // → { hang: [{ k, t, s, o: {khóaCột: số}, tong }], cot: [{ k, t }], tongCot: {}, tong, soDong, chiSo }
@@ -1226,13 +1243,16 @@
     const hangDef = BI_CHIEU[f.hang] || BI_CHIEU.ct;
     const cotDef = f.cot ? BI_CHIEU[f.cot] : null;
     const giaTB = f.chiSo === 'giaTB';
-    const rows = filterCosts(buildCostLedger(db), { from: f.from, to: f.to, ct: f.ct, loai: f.loaiCP, nhom: f.nhom, ncc: f.ncc }).rows;
+    const okN = locNCC(db, f);
+    const amt = f._amt || function (r) { return r.thanhTien; };
+    const slOf = f._sl || function (r) { return r.soLuong; };
+    const rows = f._rows || filterCosts(buildCostLedger(db), { from: f.from, to: f.to, ct: f.ct, loai: f.loaiCP, nhom: f.nhom, hm: f.hm, vt: f.vt, nha: f.nha, q: f.q, ncc: f.ncc }).rows.filter(function (r) { return okN(r.maNCC); });
     const cell = new Map(); // "hang|cot" → { tt, sl }
     const hangs = new Map();
     const cots = new Map();
     let soDong = 0;
     rows.forEach(function (r) {
-      if (giaTB && !(r.soLuong > 0)) return;
+      if (giaTB && !(slOf(r) > 0)) return;
       soDong++;
       const h = hangDef[1](r);
       const c = cotDef ? cotDef[1](r) : { k: '', t: 'Tổng', s: '' };
@@ -1240,10 +1260,10 @@
       if (!cots.has(c.k)) cots.set(c.k, { k: c.k, t: c.t, tt: 0, sl: 0 });
       const kk = h.k + '|' + c.k;
       const x = cell.get(kk) || { tt: 0, sl: 0 };
-      x.tt += r.thanhTien; x.sl += r.soLuong || 0;
+      x.tt += amt(r); x.sl += slOf(r) || 0;
       cell.set(kk, x);
-      const H = hangs.get(h.k); H.tt += r.thanhTien; H.sl += r.soLuong || 0;
-      const C = cots.get(c.k); C.tt += r.thanhTien; C.sl += r.soLuong || 0;
+      const H = hangs.get(h.k); H.tt += amt(r); H.sl += slOf(r) || 0;
+      const C = cots.get(c.k); C.tt += amt(r); C.sl += slOf(r) || 0;
     });
     const val = function (x) { return giaTB ? (x.sl > 0 ? Math.round(x.tt / x.sl) : 0) : x.tt; };
     const sapXep = function (def, m, top) {
@@ -1285,6 +1305,29 @@
     return { hang: hangOut, cot: cotOut, tongCot: tongCot, tong: val(tongAll), tongTien: tongAll.tt, soDong: soDong, chiSo: giaTB ? 'giaTB' : 'chiPhi' };
   }
 
+  // Phân tích sổ quỹ (thu / chi) cùng dạng bảng hai chiều. f: { from, to, ct, nccs, loaiNCC, loaiPhieu: 'thu'|'chi'|'', q, chiSo: 'chi'|'thu'|'rong', hang, cot, topHang, topCot }
+  // Chiều có thể dùng: ct, ncc, phieu (Thu / Chi), thang, quy, nam. rong = thu − chi.
+  function phanTichThuChi(db, f) {
+    f = f || {};
+    const q = normalizeText(f.q || '').trim();
+    const okN = locNCC(db, f);
+    const pj = new Map((db.projects || []).map(function (p) { return [keyOf(p.ma), p.ten]; }));
+    const sp = new Map((db.suppliers || []).map(function (x) { return [keyOf(x.ma), x.ten]; }));
+    const rows = [];
+    (db.entries || []).forEach(function (e) {
+      if (!inRange(e.ngay, f.from, f.to)) return;
+      if (f.ct && keyOf(e.maDuAn) !== keyOf(f.ct)) return;
+      if (!okN(e.maNCC)) return;
+      if (f.loaiPhieu === 'thu' && !(e.thu > 0)) return;
+      if (f.loaiPhieu === 'chi' && !(e.chi > 0)) return;
+      if (q && !normalizeText([e.noiDung, e.soPhieu, e.nguoiNhan, e.ghiChu].join(' ')).includes(q)) return;
+      rows.push({ ngay: e.ngay, maCT: e.maDuAn || '', tenCT: pj.get(keyOf(e.maDuAn)) || '', maNCC: e.maNCC || '', tenNCC: sp.get(keyOf(e.maNCC)) || '',
+        loaiPhieu: (e.thu || 0) > 0 && !(e.chi > 0) ? 'Thu' : 'Chi', thu: e.thu || 0, chi: e.chi || 0 });
+    });
+    const dang = f.chiSo === 'thu' ? function (r) { return r.thu; } : f.chiSo === 'rong' ? function (r) { return r.thu - r.chi; } : function (r) { return r.chi; };
+    return phanTichChiPhi(db, Object.assign({}, f, { _rows: rows, _amt: dang, _sl: function () { return 0; }, chiSo: 'chiPhi' }));
+  }
+
   // Ngày cuối cùng có số liệu (chi phí hoặc thu chi): mốc "đến nay" của các báo cáo theo tháng
   function ngayCuoiSoLieu(db) {
     let m = '';
@@ -1313,19 +1356,20 @@
     const asOf = f.to || todayISO();
     const okCt = function (v) { return !f.ct || keyOf(v) === keyOf(f.ct); };
     const sup = new Map();
+    const okN = locNCC(db, f);
     const get = function (ma) { const k = keyOf(ma); if (!sup.has(k)) sup.set(k, { ma: ma, no: [], tra: 0, ngayThu: '' }); return sup.get(k); };
-    (db.costs || []).forEach(function (c) { if (c.maNCC && c.ngay <= asOf && okCt(c.maCT)) get(c.maNCC).no.push({ ngay: c.ngay, so: c.thanhTien }); });
+    (db.costs || []).forEach(function (c) { if (c.maNCC && c.ngay <= asOf && okCt(c.maCT) && okN(c.maNCC)) get(c.maNCC).no.push({ ngay: c.ngay, so: c.thanhTien }); });
     (db.soDuDauKy || []).forEach(function (p) {
-      if (!p.maNCC || p.ngay > asOf || !okCt(p.maDuAn)) return;
+      if (!p.maNCC || p.ngay > asOf || !okCt(p.maDuAn) || !okN(p.maNCC)) return;
       if (p.soTien > 0) get(p.maNCC).no.push({ ngay: p.ngay, so: p.soTien }); else get(p.maNCC).tra -= p.soTien;
     });
     (db.entries || []).forEach(function (e) {
-      if (!e.maNCC || e.ngay > asOf || !okCt(e.maDuAn)) return;
+      if (!e.maNCC || e.ngay > asOf || !okCt(e.maDuAn) || !okN(e.maNCC)) return;
       const x = get(e.maNCC);
       x.tra += (e.chi || 0) - (e.thu || 0);
       if ((e.thu || 0) > (e.chi || 0) && e.ngay > x.ngayThu) x.ngayThu = e.ngay;
     });
-    (db.extPayments || []).forEach(function (p) { if (p.maNCC && p.ngay <= asOf && okCt(p.maDuAn)) get(p.maNCC).tra += p.soTien; });
+    (db.extPayments || []).forEach(function (p) { if (p.maNCC && p.ngay <= asOf && okCt(p.maDuAn) && okN(p.maNCC)) get(p.maNCC).tra += p.soTien; });
     const t0 = Date.parse(asOf);
     const ten = {};
     (db.suppliers || []).forEach(function (x) { ten[keyOf(x.ma)] = x.ten; });
@@ -1354,9 +1398,12 @@
     const tu = f.from || ngayDauSoLieu(db);
     const den = f.to || ngayCuoiSoLieu(db);
     const ms = danhSachThang(tu, den);
+    const okN = locNCC(db, f);
     const per = ms.map(function (m) {
       const to = cuoiThang(m) < den ? cuoiThang(m) : den;
-      return { m: m, to: to, P: supplierPeriod(db, { from: m + '-01', to: to, ct: f.ct }) };
+      const P = supplierPeriod(db, { from: m + '-01', to: to, ct: f.ct, ncc: f.nccs && f.nccs.length ? f.nccs : undefined });
+      P.rows = P.rows.filter(function (r) { return okN(r.ma) && (f.tt === 'no' ? r.cuoiKy > 0 : f.tt === 'du' ? r.cuoiKy < 0 : true); });
+      return { m: m, to: to, P: P };
     });
     const thang = per.map(function (x) {
       const t = { m: x.m, ps: 0, tt: 0, co: 0, no: 0 };
@@ -2122,6 +2169,8 @@
     supplierDebtByProject: supplierDebtByProject,
     doiChieuCongNo: doiChieuCongNo,
     phanTichChiPhi: phanTichChiPhi,
+    phanTichThuChi: phanTichThuChi,
+    locNCC: locNCC,
     tuoiNo: tuoiNo,
     congNoTheoThang: congNoTheoThang,
     biBang: biBang,

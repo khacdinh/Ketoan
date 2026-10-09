@@ -784,9 +784,11 @@ async function handleApi(req, res, url) {
       }
       case 'phan-tich': {
         const lay = (k) => String(q.get(k) || '').slice(0, 60);
-        const loai = ['pivot', 'tuoi-no', 'cong-no-thang'].includes(q.get('loai')) ? q.get('loai') : 'pivot';
-        const cfg = { loai, from: f.from, to: f.to, ct: lay('ct'), loaiCP: lay('loaiCP'), nhom: lay('nhom'), ncc: lay('ncc'), chiSo: q.get('chiSo') === 'giaTB' ? 'giaTB' : 'chiPhi',
-          hang: lay('hang') || 'ct', cot: lay('cot'), topHang: 12, topCot: 12 };
+        const loai = ['pivot', 'tuoi-no', 'cong-no-thang', 'thu-chi'].includes(q.get('loai')) ? q.get('loai') : 'pivot';
+        const cfg = { loai, from: f.from, to: f.to, ct: lay('ct'), loaiCP: lay('loaiCP'), nhom: lay('nhom'), hm: lay('hm'), vt: lay('vt'), nha: lay('nha'), q: String(q.get('q') || '').slice(0, 100),
+          nccs: q.getAll('nccs').map((x) => String(x).trim()).filter(Boolean).slice(0, 500), loaiNCC: lay('loaiNCC'), tt: ['no', 'du'].includes(q.get('tt')) ? q.get('tt') : '',
+          loaiPhieu: ['thu', 'chi'].includes(q.get('loaiPhieu')) ? q.get('loaiPhieu') : '',
+          chiSo: ['giaTB', 'thu', 'chi', 'rong'].includes(q.get('chiSo')) ? q.get('chiSo') : 'chiPhi', hang: lay('hang') || 'ct', cot: lay('cot'), topHang: 12, topCot: 12 };
         return attachment(res, await runExport('cost', 'buildAnalysisWorkbook', [db, cfg]), 'PhanTich_' + stampNow() + '.xlsx', XLSX_TYPE);
       }
       case 'cash-count': {

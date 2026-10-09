@@ -221,3 +221,111 @@ test('BI5 giao diện: các báo cáo, số khớp tính độc lập, bấm c�
     assert.deepEqual(external, []);
   } finally { await browser.close(); await srv.stop(); }
 });
+
+// dữ liệu thêm một phiếu thu không ghi NCC (3tr, CT2) để thử báo cáo thu chi mà không đổi công nợ
+function seedTC() {
+  const db = seed();
+  db.entries.push({ id: db.nextId++, seq: db.entries.length + 1, ngay: '2026-09-10', soPhieu: 'PT001/09', maDuAn: 'CT2', maNCC: '', noiDung: 'Chủ nhà ứng thêm', thu: 3 * TR, chi: 0, nguoiNhan: '', ghiChu: '' });
+  return db;
+}
+
+test('BI6 tính: điều kiện lọc chi phí (hạng mục, vật tư, tìm chữ), công nợ (nhiều NCC, loại NCC, tình trạng), thu chi (loại phiếu, NCC, tìm chữ)', () => {
+  const db = seedTC();
+  const cp = (f) => KT.phanTichChiPhi(db, Object.assign({ hang: 'ct', cot: '' }, f)).tong;
+  assert.equal(cp({ hm: 'HM02' }), 24 * TR);
+  assert.equal(cp({ vt: 'VT1' }), 16 * TR);
+  assert.equal(cp({ q: 'cp 3' }), 4 * TR);
+  assert.equal(cp({ nccs: ['NCC_B'] }), 20 * TR);
+  assert.equal(cp({ nccs: ['NCC_A', 'NCC_B'] }), 40 * TR);
+  assert.equal(cp({ loaiNCC: 'Nhân công' }), 20 * TR);
+  assert.equal(cp({ loaiNCC: 'Vật tư', hm: 'HM02' }), 4 * TR);
+  // công nợ
+  assert.equal(KT.tuoiNo(db, { to: DEN, nccs: ['NCC_A'] }).tongAll, 15 * TR);
+  const b = KT.tuoiNo(db, { to: DEN, loaiNCC: 'Nhân công' });
+  assert.deepEqual(b.rows.map((r) => [r.ma, r.tong]), [['NCC_B', 15 * TR]]);
+  const th = (f) => KT.congNoTheoThang(db, Object.assign({ from: '2026-07-01', to: DEN }, f)).thang;
+  assert.equal(th({ tt: 'no' })[2].co, 30 * TR);
+  assert.equal(th({ tt: 'du' })[2].co, 0);
+  assert.equal(th({ nccs: ['NCC_A'] })[2].co, 15 * TR);
+  assert.equal(th({ loaiNCC: 'Nhân công' })[2].co, 15 * TR);
+  // thu chi: chi 5 + 8 = 13, thu 3
+  const tc = (f) => KT.phanTichThuChi(db, Object.assign({ hang: 'thang', cot: '' }, f));
+  assert.equal(tc({ chiSo: 'chi' }).tong, 13 * TR);
+  assert.equal(tc({ chiSo: 'thu' }).tong, 3 * TR);
+  assert.equal(tc({ chiSo: 'rong' }).tong, -10 * TR);
+  assert.equal(tc({ chiSo: 'chi', loaiPhieu: 'thu' }).soDong, 1);
+  assert.equal(tc({ chiSo: 'chi', nccs: ['NCC_A'] }).tong, 5 * TR);
+  assert.equal(tc({ chiSo: 'thu', q: 'ứng thêm' }).tong, 3 * TR);
+  assert.equal(tc({ chiSo: 'chi', ct: 'CT1' }).tong, 13 * TR);
+  const px = KT.phanTichThuChi(db, { hang: 'phieu', cot: 'thang', chiSo: 'rong' });
+  assert.deepEqual(px.hang.map((h) => [h.k, h.o['2026-09']]), [['Thu', 3 * TR], ['Chi', -8 * TR]]);
+});
+
+test('BI7 giao diện: thanh lọc chi phí / công nợ / thu chi, chọn nhiều NCC, xóa lọc, báo cáo Thu chi và bấm mở Sổ quỹ; xuất Excel có lọc', { skip: SKIP }, async () => {
+  const srv = await startServer({ seed: seedTC() });
+  const { browser, page, errors, external } = await openPage(srv, '#/phan-tich');
+  try {
+    await page.waitForSelector('#bi-body .stat'); await settle(page);
+    const the = async () => (await page.$$eval('#bi-body .stats .stat-value', (v) => v.map((x) => x.textContent.trim()))).map((x) => x.replace('−', '-'));
+    // chi phí: hạng mục, vật tư, tìm chữ, NCC nhiều
+    assert.equal(num((await the())[0]), 40 * TR);
+    await page.selectOption('#bi-hm', 'HM02'); await settle(page);
+    assert.equal(num((await the())[0]), 24 * TR);
+    await page.selectOption('#bi-hm', ''); await page.selectOption('#bi-vt', 'VT1'); await settle(page);
+    assert.equal(num((await the())[0]), 16 * TR);
+    await page.click('[data-act=xoa-loc]'); await settle(page);
+    await page.fill('#bi-q', 'cp 3'); await page.waitForTimeout(500); await settle(page);
+    assert.equal(num((await the())[0]), 4 * TR);
+    await page.click('[data-act=xoa-loc]'); await settle(page);
+    await page.click('#bi-nccs summary'); await page.check('#bi-nccs input[value=NCC_B]'); await settle(page);
+    assert.equal(num((await the())[0]), 20 * TR);
+    assert.equal(await page.textContent('#bi-nccs-t'), 'Đội thợ B');
+    await page.check('#bi-nccs input[value=NCC_A]'); await settle(page);
+    assert.equal(num((await the())[0]), 40 * TR);
+    assert.equal(await page.textContent('#bi-nccs-t'), '2 đã chọn');
+    await page.fill('#bi-nccs [data-tim]', 'thợ');
+    assert.equal(await page.$$eval('#bi-nccs .bi-multi-list label:not([hidden])', (l) => l.length), 1);
+    await page.click('[data-act=xoa-loc]'); await settle(page);
+    assert.equal(num((await the())[0]), 40 * TR);
+    await page.selectOption('#bi-lncc', 'Nhân công'); await settle(page);
+    assert.equal(num((await the())[0]), 20 * TR);
+    await page.click('[data-act=xoa-loc]'); await settle(page);
+    // công nợ theo tháng: loại NCC + tình trạng
+    await page.click('label:has(input[name=bi-r][value=cong-no-thang])'); await page.waitForSelector('#bi-cn svg'); await settle(page);
+    assert.equal(num((await the())[0]), 30 * TR);
+    await page.selectOption('#bi-lncc', 'Nhân công'); await settle(page);
+    assert.equal(num((await the())[0]), 15 * TR);
+    await page.selectOption('#bi-tt', 'du'); await settle(page);
+    assert.equal(num((await the())[0]), 0);
+    await page.click('[data-act=xoa-loc]'); await settle(page);
+    // tuổi nợ: lọc NCC
+    await page.click('label:has(input[name=bi-r][value=tuoi-no])'); await page.waitForSelector('#bi-tn-bang'); await settle(page);
+    await page.click('#bi-nccs summary'); await page.check('#bi-nccs input[value=NCC_A]'); await settle(page);
+    assert.equal(await page.$$eval('#bi-tn-bang tbody tr', (r) => r.length), 1);
+    await page.click('[data-act=xoa-loc]'); await settle(page);
+    // thu chi
+    await page.click('label:has(input[name=bi-r][value=thu-chi])'); await page.waitForSelector('#bi-tc svg'); await settle(page);
+    assert.deepEqual((await the()).slice(0, 3).map((x) => num(x)), [3 * TR, 13 * TR, -10 * TR]);
+    assert.equal(await page.$$eval('#bi-tc rect.bi-hit', (r) => r.length), 3);
+    await page.selectOption('#bi-lp', 'thu'); await settle(page);
+    assert.equal(num((await the())[1]), 0);
+    await page.selectOption('#bi-lp', ''); await settle(page);
+    await page.selectOption('#bi-cot', 'phieu'); await settle(page);
+    assert.deepEqual(await page.$$eval('#bi-pivot thead th', (t) => t.map((x) => x.textContent)).then((a) => a.slice(0, 3)), ['Công trình', 'Chi', 'Thu']);
+    await page.selectOption('#bi-cot', 'thang'); await settle(page);
+    // bấm ô CT1 × 08/2026 → Sổ quỹ lọc công trình và tháng
+    await page.click('#bi-pivot td[data-h="0"][data-c="1"]');
+    await page.waitForFunction(() => location.hash === '#/so-thu-chi'); await settle(page);
+    const sf = await page.evaluate(() => JSON.parse(localStorage.getItem('stc.filter.so')));
+    assert.deepEqual([sf.duAn, sf.from, sf.to], ['CT1', '2026-08-01', '2026-08-31']);
+    // xuất Excel kèm điều kiện lọc
+    const p = new URLSearchParams({ loai: 'thu-chi', chiSo: 'chi', hang: 'ct', cot: 'thang', loaiPhieu: 'chi' });
+    const r = await srv.call('GET', '/api/export/phan-tich?' + p + '&nccs=NCC_A');
+    assert.equal(r.status, 200);
+    let tong = 0;
+    (await X.loadWb(r.body)).getWorksheet('Phan_Tich').eachRow((rw) => { if (X.cellVal(rw.getCell(1)) === 'Tổng cộng') tong = X.cellVal(rw.getCell(rw.cellCount)); });
+    assert.equal(tong, 5 * TR);
+    assert.deepEqual(errors, []);
+    assert.deepEqual(external, []);
+  } finally { await browser.close(); await srv.stop(); }
+});

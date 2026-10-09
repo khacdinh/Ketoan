@@ -1,5 +1,14 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Phân tích: báo cáo Thu chi và bộ lọc đầy đủ cho chi phí, thu chi, công nợ (09/10/2026)
+
+- Báo cáo mới **Thu chi theo tháng** (`KT.phanTichThuChi`): tổng thu, chi, chênh lệch, tồn quỹ cuối kỳ; cột thu / chi theo tháng kèm đường tồn quỹ; bảng hai chiều Chỉ số × Hàng × Cột (công trình, NCC, loại phiếu, tháng, quý, năm); bấm mở Sổ quỹ đã lọc.
+- Bộ lọc chi phí: thêm Hạng mục, Vật tư, Nhà / khu, ô Tìm chữ, NCC chọn nhiều, Loại NCC.
+- Bộ lọc công nợ (Tuổi nợ, Công nợ theo tháng): NCC chọn nhiều, Loại NCC, Tình trạng (còn nợ / ứng dư).
+- Bộ lọc thu chi: Loại phiếu, NCC chọn nhiều, Loại NCC, ô Tìm chữ.
+- Bộ lọc được lưu cùng báo cáo và truyền sang **Xuất Excel** của màn Phân tích (`/api/export/phan-tich` nhận thêm `nccs`, `loaiNCC`, `tt`, `hm`, `vt`, `nha`, `q`, `loaiPhieu`, `chiSo` = thu / chi / rong).
+- Test BI6, BI7.
+
 ## Phân tích (BI): bảng, biểu đồ, tuổi nợ, xuất dữ liệu cho Power BI / Excel (09/10/2026)
 
 - Mục mới **Báo cáo → Phân tích** (`views/analytics.js`), 5 báo cáo có sẵn và báo cáo tự lưu:
