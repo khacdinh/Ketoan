@@ -1,5 +1,13 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Rà soát Phân tích: sửa lỗi nhỏ (09/10/2026)
+
+- Lọc ra rỗng không còn báo lỗi trang (biểu đồ cũ được xóa trước khi vẽ lại).
+- Ngày “Tính đến” của Tuổi nợ: báo cáo lưu từ hôm trước tự lấy ngày hôm nay, trừ khi người dùng đã tự chọn ngày.
+- Bấm ô “Chưa gán công trình” / “Không ghi NCC” mở sổ lọc đúng phần chưa ghi; ô “Khác” (gộp nhiều mục) báo không lọc được thay vì mở sổ sai.
+- Sổ chi phí ghi “không ghi” cho bộ lọc phần chưa ghi mã.
+- Test BI8.
+
 ## Phân tích: báo cáo Thu chi và bộ lọc đầy đủ cho chi phí, thu chi, công nợ (09/10/2026)
 
 - Báo cáo mới **Thu chi theo tháng** (`KT.phanTichThuChi`): tổng thu, chi, chênh lệch, tồn quỹ cuối kỳ; cột thu / chi theo tháng kèm đường tồn quỹ; bảng hai chiều Chỉ số × Hàng × Cột (công trình, NCC, loại phiếu, tháng, quý, năm); bấm mở Sổ quỹ đã lọc.

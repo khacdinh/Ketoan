@@ -66,7 +66,7 @@ function trangThai() {
   LOC_KEYS.forEach((k) => { if (f[k] == null) f[k] = LOC_MAC_DINH()[k]; });
   if (!['cot', 'duong', 'bang'].includes(f.xem)) f.xem = 'cot';
   if (!['dong', 'nghin', 'trieu'].includes(f.dv)) f.dv = 'trieu';
-  if (!KT.isISODate(f.den)) f.den = ngayHomNay();
+  if (!f.denTay || !KT.isISODate(f.den)) f.den = ngayHomNay(); // "Tính đến" mặc định hôm nay, chỉ giữ ngày khi người dùng tự chọn
   refreshPeriod(f);
   return f;
 }
@@ -96,10 +96,16 @@ function khoangCua(chieu, k) {
   if (chieu === 'nam') return { from: k + '-01-01', to: k + '-12-31' };
   return {};
 }
-function dungDieuKien(chieu, k, d) {
-  if (k === '__khac__') return;
+// Trả về false khi sổ không lọc được đúng ô này (gộp "Khác", hoặc "Chưa gán công trình" ở Sổ chi phí)
+function dungDieuKien(chieu, k, d, soQuy) {
+  if (k === '__khac__') return false;
+  if (k === '' && !['thang', 'quy', 'nam', 'loai', 'phieu'].includes(chieu)) {
+    if (chieu === 'ct' && !soQuy) return false;
+    k = '__none__'; // "chưa gán / không ghi": các sổ lọc được bằng mã này
+  }
   if (['thang', 'quy', 'nam'].includes(chieu)) Object.assign(d, khoangCua(chieu, k));
   else if (chieu === 'ct') d.ct = k; else if (chieu === 'loai') d.loai = k; else if (chieu === 'phieu') d.loaiPhieu = k.toLowerCase(); else d[chieu] = k;
+  return true;
 }
 
 /* ---------- tooltip và bắt sự kiện cho vùng bấm ---------- */
@@ -292,7 +298,7 @@ export function renderAnalytics(root) {
     document.addEventListener('mousedown', dongNhieu);
   }
   const den = $('#bi-den', root);
-  if (den) den.addEventListener('change', () => { if (KT.isISODate(den.value)) { f.den = den.value; luu(); draw(); } });
+  if (den) den.addEventListener('change', () => { if (KT.isISODate(den.value)) { f.den = den.value; f.denTay = den.value !== ngayHomNay(); luu(); draw(); } });
   if (cfg.loai !== 'tuoi-no') bindPeriodControls(root, f, 'bi', () => { luu(); draw(); });
   root.addEventListener('click', (e) => {
     const a = e.target.closest('[data-act]');
@@ -374,6 +380,7 @@ export function renderAnalytics(root) {
   /* ----- A. bảng hai chiều ----- */
   let pv = null, thangChart = null, nhomPv = null, nccPv = null;
   function thanPivot() {
+    thangChart = nhomPv = nccPv = null; // không để biểu đồ của lần vẽ trước (khi lọc hết dữ liệu)
     const b = loc(f);
     const gia = cfg.chiSo === 'giaTB';
     pv = KT.phanTichChiPhi(S.db, Object.assign({}, b, { chiSo: cfg.chiSo, hang: cfg.hang, cot: cfg.cot, topHang: 12, topCot: 8 }));
@@ -428,8 +435,10 @@ export function renderAnalytics(root) {
       const h = pv.hang[Number(td.dataset.h)];
       if (!h || h.khac) return;
       const d = {};
-      dungDieuKien(cfg.hang, h.k, d);
-      if (td.dataset.c != null && cfg.cot) { const c = pv.cot[Number(td.dataset.c)]; if (c) dungDieuKien(cfg.cot, c.k, d); }
+      const soQuy = cfg.loai === 'thu-chi';
+      let duoc = dungDieuKien(cfg.hang, h.k, d, soQuy);
+      if (td.dataset.c != null && cfg.cot) { const c = pv.cot[Number(td.dataset.c)]; if (c) duoc = dungDieuKien(cfg.cot, c.k, d, soQuy) && duoc; }
+      if (!duoc) { toast('Ô này gộp nhiều mục (“Khác”) hoặc là “Chưa gán công trình” — sổ không lọc được đúng phần này.', 'info'); return; }
       if (cfg.loai === 'thu-chi') moSoQuy(Object.assign({ ncc: f.nccs.length === 1 ? f.nccs[0] : '', loaiPhieu: f.loaiPhieu, q: f.q }, d));
       else moSoChiPhi(Object.assign(soDK(), d));
     });
@@ -450,7 +459,7 @@ export function renderAnalytics(root) {
     const thanhNgang = (box, pvx, mau, chieu) => {
       const mx = Math.max(1, ...pvx.hang.map((h) => h.tong));
       box.innerHTML = pvx.hang.filter((h) => !h.khac).map((h, i) => '<div class="bi-hrow clickable" data-i="' + i + '" tabindex="0"><div class="bi-hname" title="' + esc(h.t) + '">' + esc(h.t) + '</div><div class="bi-htrack"><span class="bi-hbar" style="width:' + (h.tong / mx * 100 * 0.62).toFixed(1) + '%;background:' + mau + '"></span><span class="bi-hval">' + ty(h.tong) + ' <span class="text-ink-3">· ' + pct(h.tong / pv.tong) + '</span></span></div></div>').join('');
-      const mo = (r) => { const h = pvx.hang.filter((x) => !x.khac)[Number(r.dataset.i)]; const d = soDK(); dungDieuKien(chieu, h.k, d); moSoChiPhi(d); };
+      const mo = (r) => { const h = pvx.hang.filter((x) => !x.khac)[Number(r.dataset.i)]; const d = soDK(); if (dungDieuKien(chieu, h.k, d)) moSoChiPhi(d); };
       box.addEventListener('click', (e) => { const r = e.target.closest('[data-i]'); if (r) mo(r); });
       box.addEventListener('keydown', (e) => { const r = e.target.closest('[data-i]'); if (r && e.key === 'Enter') mo(r); });
     };

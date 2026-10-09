@@ -175,7 +175,7 @@ test('BI5 giao diện: các báo cáo, số khớp tính độc lập, bấm c�
     await page.evaluate(() => { localStorage.setItem('stc.ct', JSON.stringify('')); location.hash = '#/phan-tich'; location.reload(); });
     await page.waitForSelector('#bi-body .stat'); await settle(page);
     // báo cáo 2: tuổi nợ — khớp tính độc lập
-    await page.evaluate((d) => { localStorage.setItem('stc.filter.bi', JSON.stringify({ rep: 'tuoi-no', period: 'tat-ca', from: '', to: '', xem: 'cot', dv: 'trieu', den: d })); location.reload(); }, DEN);
+    await page.evaluate((d) => { localStorage.setItem('stc.filter.bi', JSON.stringify({ rep: 'tuoi-no', period: 'tat-ca', from: '', to: '', xem: 'cot', dv: 'trieu', den: d, denTay: true })); location.reload(); }, DEN);
     await page.waitForSelector('#bi-tn-bang'); await settle(page);
     const t = KT.tuoiNo(seed(), { to: DEN });
     assert.equal(num((await the())[0]), t.tongAll);
@@ -325,6 +325,40 @@ test('BI7 giao diện: thanh lọc chi phí / công nợ / thu chi, chọn nhi�
     let tong = 0;
     (await X.loadWb(r.body)).getWorksheet('Phan_Tich').eachRow((rw) => { if (X.cellVal(rw.getCell(1)) === 'Tổng cộng') tong = X.cellVal(rw.getCell(rw.cellCount)); });
     assert.equal(tong, 5 * TR);
+    assert.deepEqual(errors, []);
+    assert.deepEqual(external, []);
+  } finally { await browser.close(); await srv.stop(); }
+});
+
+test('BI8 giao diện: lọc hết dữ liệu không lỗi; ô "Khác" / "Chưa gán công trình" không mở sổ sai; ô "Không ghi NCC" mở Sổ quỹ lọc chưa gán NCC; ngày "Tính đến" mặc định hôm nay', { skip: SKIP }, async () => {
+  const db = seedTC();
+  db.entries.push({ id: db.nextId++, seq: db.entries.length + 1, ngay: '2026-09-12', soPhieu: 'PC009/09', maDuAn: '', maNCC: '', noiDung: 'Mua văn phòng phẩm', thu: 0, chi: 1 * TR, nguoiNhan: '', ghiChu: '' });
+  const srv = await startServer({ seed: db });
+  const { browser, page, errors, external } = await openPage(srv, '#/phan-tich');
+  try {
+    await page.waitForSelector('#bi-body .stat'); await settle(page);
+    // lọc hết dữ liệu rồi đổi cách xem: chỉ báo không có dữ liệu, không lỗi
+    await page.fill('#bi-q', 'khong-co-chu-nay'); await page.waitForTimeout(500); await settle(page);
+    assert.match(await page.textContent('#bi-body'), /Không có dữ liệu khớp bộ lọc/);
+    await page.fill('#bi-q', ''); await page.waitForTimeout(500); await settle(page);
+    assert.equal(num((await page.$$eval('#bi-body .stat-value', (v) => v.map((x) => x.textContent)))[0]), 40 * TR);
+    // thu chi theo công trình × NCC: hàng "Chưa gán công trình" — bấm thì mở Sổ quỹ lọc chưa gán, cột "Không ghi NCC" lọc chưa gán NCC
+    await page.click('label:has(input[name=bi-r][value=thu-chi])'); await page.waitForSelector('#bi-pivot'); await settle(page);
+    await page.selectOption('#bi-cot', 'ncc'); await settle(page);
+    const hang = await page.$$eval('#bi-pivot tbody tr', (t) => t.map((x) => x.querySelector('b').textContent));
+    const cot = await page.$$eval('#bi-pivot thead th', (t) => t.map((x) => x.textContent));
+    const h = hang.indexOf('Chưa gán công trình'), c = cot.indexOf('Không ghi NCC') - 1;
+    assert.ok(h >= 0 && c >= 0, JSON.stringify([hang, cot]));
+    await page.click('#bi-pivot td[data-h="' + h + '"][data-c="' + c + '"]');
+    await page.waitForFunction(() => location.hash === '#/so-thu-chi'); await settle(page);
+    const sf = await page.evaluate(() => JSON.parse(localStorage.getItem('stc.filter.so')));
+    assert.deepEqual([sf.duAn, sf.ncc], ['__none__', '__none__']);
+    // chi phí: hàng "Khác" (gộp) không mở sổ, báo cho biết
+    await page.evaluate(() => { localStorage.setItem('stc.ct', JSON.stringify('')); localStorage.setItem('stc.filter.bi', JSON.stringify({ rep: 'chi-phi-thang', period: 'tat-ca', from: '', to: '', den: '2020-01-01' })); location.hash = '#/phan-tich'; location.reload(); });
+    await page.waitForSelector('#bi-pivot'); await settle(page);
+    // ngày "Tính đến" đã lưu mà người dùng không tự chọn → về hôm nay
+    await page.click('label:has(input[name=bi-r][value=tuoi-no])'); await page.waitForSelector('#bi-den'); await settle(page);
+    assert.equal(await page.inputValue('#bi-den'), KT.todayISO());
     assert.deepEqual(errors, []);
     assert.deepEqual(external, []);
   } finally { await browser.close(); await srv.stop(); }

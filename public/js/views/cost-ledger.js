@@ -250,7 +250,7 @@ function drawRows(root, f) {
     (filtered ? 'Tổng chi phí theo bộ lọc' : 'Tổng chi phí') + ' · <b class="text-ink">' + res.rows.length + '</b>' + (filtered ? ' / ' + S.costLedger.length : '') + ' dòng</div><div class="text-[22px] font-bold tabular-nums">' + money(res.total) + ' đ</div></div>' +
     KT.LOAI_CP.map((l) => tile(l + pct(res.byLoai[l] || 0), res.byLoai[l] || 0)).join('') + '</div>';
   // dòng "Đang lọc": từng điều kiện là một nhãn, bấm ✕ để bỏ; Xóa lọc bỏ hết
-  const nm = (list, ma, k) => { const x = list.find((y) => KT.keyOf(y.ma) === KT.keyOf(ma)); return x ? (k === 'ma' ? x.ma : x.ten) : ma; };
+  const nm = (list, ma, k) => { if (ma === '__none__') return 'không ghi'; const x = list.find((y) => KT.keyOf(y.ma) === KT.keyOf(ma)); return x ? (k === 'ma' ? x.ma : x.ten) : ma; };
   const chips = [];
   if (f.from || f.to) chips.push(['period', 'Kỳ ' + KT.describeRange(f.from, f.to).replace(/^Từ ngày /, '').replace(' đến ngày ', ' – ')]);
   if (f.nha) chips.push(['nha', 'Nhà/lô: ' + (f.nha === '__none__' ? 'không gán' : nm(S.db.houses, f.nha, 'ma'))]);
