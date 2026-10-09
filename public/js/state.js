@@ -21,6 +21,7 @@ export const S = {
     cpCt: LS.get('filter.cpCt', { period: 'tat-ca', from: '', to: '', ct: '', nha: '', loai: '', ncc: '', level: 3 }),
     cpCn: LS.get('filter.cpCn', { ct: '', nccs: [], tt: '', to: '', pham: 'ct', sort: 'conLai' }),
     cnCt: LS.get('filter.cnCt', { period: 'tat-ca', from: '', to: '', tt: 'no', q: '', view: 'ds', dong: [] }),
+    bi: LS.get('filter.bi', { rep: 'chi-phi-thang', period: 'tat-ca', from: '', to: '', xem: 'cot', dv: 'trieu' }),
     cpGia: LS.get('filter.cpGia', { q: '', ncc: '', hm: '', vt: '' }),
     cpDm: LS.get('filter.cpDm', { tab: 'vat-tu', q: '' })
   },

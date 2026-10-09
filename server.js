@@ -777,6 +777,18 @@ async function handleApi(req, res, url) {
         const df = { from: f.from, to: f.to, ct: q.get('ct') || '', tt: ['no', 'du', 'khac0'].includes(q.get('tt')) ? q.get('tt') : '', q: String(q.get('q') || '').slice(0, 200) };
         return attachment(res, await runExport('cost', 'buildDebtByProjectWorkbook', [db, df]), 'CongNoNCC_TheoCongTrinh' + rangeSuffix(f) + '.xlsx', XLSX_TYPE);
       }
+      case 'bi': {
+        const bang = q.getAll('bang').map((x) => String(x).trim()).filter(Boolean).slice(0, 20);
+        if (q.get('fmt') === 'csv') return attachment(res, await runExport('cost', 'buildBiZip', [db, { from: f.from, to: f.to, bang }]), 'KeToan_BI_' + stampNow() + '.zip', 'application/zip');
+        return attachment(res, await runExport('cost', 'buildBiWorkbook', [db, { from: f.from, to: f.to, bang }]), 'KeToan_BI.xlsx', XLSX_TYPE);
+      }
+      case 'phan-tich': {
+        const lay = (k) => String(q.get(k) || '').slice(0, 60);
+        const loai = ['pivot', 'tuoi-no', 'cong-no-thang'].includes(q.get('loai')) ? q.get('loai') : 'pivot';
+        const cfg = { loai, from: f.from, to: f.to, ct: lay('ct'), loaiCP: lay('loaiCP'), nhom: lay('nhom'), ncc: lay('ncc'), chiSo: q.get('chiSo') === 'giaTB' ? 'giaTB' : 'chiPhi',
+          hang: lay('hang') || 'ct', cot: lay('cot'), topHang: 12, topCot: 12 };
+        return attachment(res, await runExport('cost', 'buildAnalysisWorkbook', [db, cfg]), 'PhanTich_' + stampNow() + '.xlsx', XLSX_TYPE);
+      }
       case 'cash-count': {
         const buf = await cashCountApi.buildWorkbook(store.db, q.get('id'));
         return attachment(res, buf, 'BienBanKiemQuy_' + stampNow() + '.xlsx', XLSX_TYPE);

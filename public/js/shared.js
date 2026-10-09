@@ -1203,6 +1203,210 @@
     return { groups: groups, chuaGan: chuaGan, total: total };
   }
 
+  /* ---------------- Phân tích (BI) ---------------- */
+  // Chiều phân tích của sổ chi phí: [nhãn, hàm lấy {k: khóa, t: tên, s: phụ}]
+  const BI_CHIEU = {
+    ct: ['Công trình', function (r) { return { k: r.maCT || '', t: r.maCT || 'Chưa gán công trình', s: r.tenCT || '' }; }],
+    ncc: ['Nhà cung cấp', function (r) { return { k: r.maNCC || '', t: r.tenNCC || r.maNCC || 'Không ghi NCC', s: r.tenNCC ? r.maNCC : '' }; }],
+    nhom: ['Nhóm chi phí', function (r) { return { k: r.maNhom || '', t: r.tenNhom || 'Chưa có nhóm', s: '' }; }],
+    hm: ['Hạng mục', function (r) { return { k: r.maHM || '', t: r.tenHM || r.maHM || 'Chưa có hạng mục', s: r.tenNhom || '' }; }],
+    vt: ['Vật tư', function (r) { return { k: r.maVT || '', t: r.tenVT || r.maVT || 'Không ghi vật tư', s: r.maVT || '' }; }],
+    loai: ['Loại chi phí', function (r) { return { k: r.loaiCP || '', t: r.loaiCP || 'Chưa phân loại', s: '' }; }],
+    thang: ['Tháng', function (r) { const m = String(r.ngay).slice(0, 7); return { k: m, t: m.slice(5) + '/' + m.slice(0, 4), s: '' }; }],
+    quy: ['Quý', function (r) { const y = String(r.ngay).slice(0, 4); const q = Math.ceil(Number(String(r.ngay).slice(5, 7)) / 3); return { k: y + '-Q' + q, t: 'Q' + q + '/' + y, s: '' }; }],
+    nam: ['Năm', function (r) { const y = String(r.ngay).slice(0, 4); return { k: y, t: y, s: '' }; }]
+  };
+  const BI_THOI_GIAN = { thang: 1, quy: 1, nam: 1 };
+
+  // Bảng hai chiều trên sổ chi phí. f: { from, to, ct, loaiCP, nhom, ncc, chiSo: 'chiPhi'|'giaTB', hang, cot ('' = một cột), topHang, topCot }
+  // → { hang: [{ k, t, s, o: {khóaCột: số}, tong }], cot: [{ k, t }], tongCot: {}, tong, soDong, chiSo }
+  // Chiều không phải thời gian chỉ giữ topHang / topCot lớn nhất, phần còn lại gộp vào "Khác".
+  function phanTichChiPhi(db, f) {
+    f = f || {};
+    const hangDef = BI_CHIEU[f.hang] || BI_CHIEU.ct;
+    const cotDef = f.cot ? BI_CHIEU[f.cot] : null;
+    const giaTB = f.chiSo === 'giaTB';
+    const rows = filterCosts(buildCostLedger(db), { from: f.from, to: f.to, ct: f.ct, loai: f.loaiCP, nhom: f.nhom, ncc: f.ncc }).rows;
+    const cell = new Map(); // "hang|cot" → { tt, sl }
+    const hangs = new Map();
+    const cots = new Map();
+    let soDong = 0;
+    rows.forEach(function (r) {
+      if (giaTB && !(r.soLuong > 0)) return;
+      soDong++;
+      const h = hangDef[1](r);
+      const c = cotDef ? cotDef[1](r) : { k: '', t: 'Tổng', s: '' };
+      if (!hangs.has(h.k)) hangs.set(h.k, { k: h.k, t: h.t, s: h.s, tt: 0, sl: 0 });
+      if (!cots.has(c.k)) cots.set(c.k, { k: c.k, t: c.t, tt: 0, sl: 0 });
+      const kk = h.k + '|' + c.k;
+      const x = cell.get(kk) || { tt: 0, sl: 0 };
+      x.tt += r.thanhTien; x.sl += r.soLuong || 0;
+      cell.set(kk, x);
+      const H = hangs.get(h.k); H.tt += r.thanhTien; H.sl += r.soLuong || 0;
+      const C = cots.get(c.k); C.tt += r.thanhTien; C.sl += r.soLuong || 0;
+    });
+    const val = function (x) { return giaTB ? (x.sl > 0 ? Math.round(x.tt / x.sl) : 0) : x.tt; };
+    const sapXep = function (def, m, top) {
+      const xs = Array.from(m.values());
+      if (BI_THOI_GIAN[def]) { xs.sort(function (a, b) { return a.k < b.k ? -1 : a.k > b.k ? 1 : 0; }); return { giu: xs, khac: [] }; }
+      xs.sort(function (a, b) { return b.tt - a.tt || String(a.t).localeCompare(String(b.t), 'vi'); });
+      return top && xs.length > top + 1 ? { giu: xs.slice(0, top), khac: xs.slice(top) } : { giu: xs, khac: [] };
+    };
+    const H = sapXep(f.hang, hangs, f.topHang || 0);
+    const C = cotDef ? sapXep(f.cot, cots, f.topCot || 0) : { giu: Array.from(cots.values()), khac: [] };
+    const cotKeys = C.giu.map(function (c) { return c.k; });
+    const khacCot = new Set(C.khac.map(function (c) { return c.k; }));
+    const khacHang = new Set(H.khac.map(function (h) { return h.k; }));
+    const ghep = function (hk, ck) { // gộp ô theo nhóm "Khác"
+      const a = hk.map ? hk : [hk];
+      const b = ck.map ? ck : [ck];
+      const t = { tt: 0, sl: 0 };
+      a.forEach(function (h) { b.forEach(function (c) { const x = cell.get(h + '|' + c); if (x) { t.tt += x.tt; t.sl += x.sl; } }); });
+      return t;
+    };
+    const cotOut = C.giu.map(function (c) { return { k: c.k, t: c.t }; });
+    if (C.khac.length) cotOut.push({ k: '__khac__', t: 'Khác (' + C.khac.length + ')' });
+    const khacCotKeys = Array.from(khacCot);
+    const hangOut = H.giu.map(function (h) { return { k: h.k, t: h.t, s: h.s, ks: [h.k] }; });
+    if (H.khac.length) hangOut.push({ k: '__khac__', t: 'Khác', s: H.khac.length + ' mục nhỏ', ks: Array.from(khacHang), khac: true });
+    const tongCot = {};
+    let tongAll = { tt: 0, sl: 0 };
+    hangOut.forEach(function (h) {
+      h.o = {}; const t = { tt: 0, sl: 0 };
+      cotOut.forEach(function (c) {
+        const x = ghep(h.ks, c.k === '__khac__' ? khacCotKeys : [c.k]);
+        h.o[c.k] = val(x); t.tt += x.tt; t.sl += x.sl;
+        const tc = tongCot[c.k] || (tongCot[c.k] = { tt: 0, sl: 0 }); tc.tt += x.tt; tc.sl += x.sl;
+      });
+      h.tong = val(t); h.tt = t.tt; tongAll.tt += t.tt; tongAll.sl += t.sl;
+      delete h.ks;
+    });
+    Object.keys(tongCot).forEach(function (k) { tongCot[k] = val(tongCot[k]); });
+    return { hang: hangOut, cot: cotOut, tongCot: tongCot, tong: val(tongAll), tongTien: tongAll.tt, soDong: soDong, chiSo: giaTB ? 'giaTB' : 'chiPhi' };
+  }
+
+  // Ngày cuối cùng có số liệu (chi phí hoặc thu chi): mốc "đến nay" của các báo cáo theo tháng
+  function ngayCuoiSoLieu(db) {
+    let m = '';
+    ['costs', 'entries', 'extPayments', 'soDuDauKy'].forEach(function (l) { (db[l] || []).forEach(function (r) { if (r.ngay && r.ngay > m) m = r.ngay; }); });
+    return m || todayISO();
+  }
+  function ngayDauSoLieu(db) {
+    let m = '9999-99-99';
+    ['costs', 'entries'].forEach(function (l) { (db[l] || []).forEach(function (r) { if (r.ngay && r.ngay < m) m = r.ngay; }); });
+    return m === '9999-99-99' ? todayISO() : m;
+  }
+  function danhSachThang(tu, den) {
+    const out = [];
+    let y = Number(tu.slice(0, 4)), mo = Number(tu.slice(5, 7));
+    const yt = Number(den.slice(0, 4)), mt = Number(den.slice(5, 7));
+    while (y < yt || (y === yt && mo <= mt)) { out.push(y + '-' + (mo < 10 ? '0' : '') + mo); mo++; if (mo > 12) { mo = 1; y++; } }
+    return out;
+  }
+  function cuoiThang(m) { return new Date(Date.UTC(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0)).toISOString().slice(0, 10); }
+
+  // Tuổi nợ nhà cung cấp tính đến ngày f.to (mặc định hôm nay): tiền đã trả trừ vào khoản cũ nhất trước (FIFO).
+  // Khoản NCC trả lại / số dư đầu kỳ âm cộng vào phần đã trả. Tổng còn phải trả = tổng Dư Có của supplierPeriod ở cùng ngày.
+  // f: { to, ct } → { rows: [{ ma, ten, b: [0-30, 31-60, 61-90, >90], tong, cu, ngay }], tong: [4], tongAll, ngayTinh }
+  function tuoiNo(db, f) {
+    f = f || {};
+    const asOf = f.to || todayISO();
+    const okCt = function (v) { return !f.ct || keyOf(v) === keyOf(f.ct); };
+    const sup = new Map();
+    const get = function (ma) { const k = keyOf(ma); if (!sup.has(k)) sup.set(k, { ma: ma, no: [], tra: 0, ngayThu: '' }); return sup.get(k); };
+    (db.costs || []).forEach(function (c) { if (c.maNCC && c.ngay <= asOf && okCt(c.maCT)) get(c.maNCC).no.push({ ngay: c.ngay, so: c.thanhTien }); });
+    (db.soDuDauKy || []).forEach(function (p) {
+      if (!p.maNCC || p.ngay > asOf || !okCt(p.maDuAn)) return;
+      if (p.soTien > 0) get(p.maNCC).no.push({ ngay: p.ngay, so: p.soTien }); else get(p.maNCC).tra -= p.soTien;
+    });
+    (db.entries || []).forEach(function (e) {
+      if (!e.maNCC || e.ngay > asOf || !okCt(e.maDuAn)) return;
+      const x = get(e.maNCC);
+      x.tra += (e.chi || 0) - (e.thu || 0);
+      if ((e.thu || 0) > (e.chi || 0) && e.ngay > x.ngayThu) x.ngayThu = e.ngay;
+    });
+    (db.extPayments || []).forEach(function (p) { if (p.maNCC && p.ngay <= asOf && okCt(p.maDuAn)) get(p.maNCC).tra += p.soTien; });
+    const t0 = Date.parse(asOf);
+    const ten = {};
+    (db.suppliers || []).forEach(function (x) { ten[keyOf(x.ma)] = x.ten; });
+    const xep = function (a, b) { return a.ngay < b.ngay ? -1 : a.ngay > b.ngay ? 1 : 0; };
+    const rows = [];
+    sup.forEach(function (x, k) {
+      const no = x.no.slice().sort(xep);
+      let tra = x.tra;
+      if (tra < 0) { no.push({ ngay: x.ngayThu || asOf, so: -tra }); no.sort(xep); tra = 0; }
+      const con = [];
+      no.forEach(function (d) { const tru = Math.min(tra, d.so); tra -= tru; if (d.so - tru > 0) con.push({ ngay: d.ngay, so: d.so - tru }); });
+      if (!con.length) return;
+      const b = [0, 0, 0, 0];
+      con.forEach(function (d) { const n = (t0 - Date.parse(d.ngay)) / 864e5; b[n <= 30 ? 0 : n <= 60 ? 1 : n <= 90 ? 2 : 3] += d.so; });
+      rows.push({ ma: x.ma, ten: ten[k] || x.ma, b: b, tong: b[0] + b[1] + b[2] + b[3], cu: con[0].ngay, ngay: Math.max(0, Math.round((t0 - Date.parse(con[0].ngay)) / 864e5)) });
+    });
+    rows.sort(function (a, b) { return b.tong - a.tong || String(a.ten).localeCompare(String(b.ten), 'vi'); });
+    const tong = [0, 1, 2, 3].map(function (i) { return rows.reduce(function (t, r) { return t + r.b[i]; }, 0); });
+    return { rows: rows, tong: tong, tongAll: tong[0] + tong[1] + tong[2] + tong[3], ngayTinh: asOf };
+  }
+
+  // Công nợ NCC từng tháng: phát sinh, thanh toán trong tháng; còn phải trả / đã ứng trước cuối tháng (đúng supplierPeriod).
+  // f: { from, to, ct, top } → { thang: [{ m, ps, tt, co, no }], top: [{ ma, ten, v: [cuối tháng của từng tháng] }] }
+  function congNoTheoThang(db, f) {
+    f = f || {};
+    const tu = f.from || ngayDauSoLieu(db);
+    const den = f.to || ngayCuoiSoLieu(db);
+    const ms = danhSachThang(tu, den);
+    const per = ms.map(function (m) {
+      const to = cuoiThang(m) < den ? cuoiThang(m) : den;
+      return { m: m, to: to, P: supplierPeriod(db, { from: m + '-01', to: to, ct: f.ct }) };
+    });
+    const thang = per.map(function (x) {
+      const t = { m: x.m, ps: 0, tt: 0, co: 0, no: 0 };
+      x.P.rows.forEach(function (r) { t.ps += r.phatSinh; t.tt += r.thanhToan; if (r.cuoiKy > 0) t.co += r.cuoiKy; else t.no -= r.cuoiKy; });
+      return t;
+    });
+    const cuoi = per.length ? per[per.length - 1].P.rows.filter(function (r) { return r.cuoiKy > 0; }).sort(function (a, b) { return b.cuoiKy - a.cuoiKy; }).slice(0, f.top || 4) : [];
+    const top = cuoi.map(function (r) {
+      return { ma: r.ma, ten: r.ten, v: per.map(function (x) { const y = x.P.rows.find(function (z) { return keyOf(z.ma) === keyOf(r.ma); }); return y ? y.cuoiKy : 0; }) };
+    });
+    return { thang: thang, top: top };
+  }
+
+  // Các bảng phẳng cho Power BI / Excel PivotTable. f: { from, to } (chỉ ảnh hưởng bảng công nợ). Mỗi bảng: { ten, mota, cot: [..], dong: [[..]] }
+  function biBang(db, f) {
+    f = f || {};
+    const L = buildCostLedger(db);
+    const cap = supplierDebtByProject(db, { from: f.from, to: f.to, tt: 'khac0' });
+    const capDong = [];
+    cap.groups.concat(cap.chuaGan ? [cap.chuaGan] : []).forEach(function (g) {
+      g.rows.forEach(function (r) { capDong.push([g.ma || '', r.ma, r.ten, r.dauKy, r.phatSinh, r.thanhToan, r.cuoiKy, r.cuoiKy > 0 ? r.cuoiKy : 0, r.cuoiKy < 0 ? -r.cuoiKy : 0]); });
+    });
+    const tu = ngayDauSoLieu(db), den = ngayCuoiSoLieu(db);
+    const lich = [];
+    for (let t = Date.parse(tu.slice(0, 7) + '-01'); t <= Date.parse(den); t += 864e5) {
+      const d = new Date(t).toISOString().slice(0, 10);
+      lich.push([d, d.slice(0, 4), d.slice(0, 4) + '-Q' + Math.ceil(Number(d.slice(5, 7)) / 3), d.slice(0, 7), Number(d.slice(8, 10))]);
+    }
+    return [
+      { ten: 'ChiPhi', mota: 'Sổ chi phí: ngày, công trình, nhà, nhóm, hạng mục, vật tư, loại CP, NCC, SL, ĐG, thành tiền',
+        cot: ['Ngay', 'MaCongTrinh', 'MaNha', 'MaNhom', 'MaHangMuc', 'MaVatTu', 'LoaiCP', 'MaNCC', 'SoPhieu', 'DienGiai', 'SoLuong', 'DonGia', 'ThanhTien'],
+        dong: L.map(function (c) { return [c.ngay, c.maCT || '', c.maNha || '', c.maNhom || '', c.maHM || '', c.maVT || '', c.loaiCP || '', c.maNCC || '', c.soPhieu || '', c.dienGiai || '', c.soLuong == null ? '' : c.soLuong, c.donGia == null ? '' : c.donGia, c.thanhTien]; }) },
+      { ten: 'ThuChi', mota: 'Sổ quỹ: ngày, số phiếu, công trình, NCC, nội dung, thu, chi',
+        cot: ['Ngay', 'SoPhieu', 'MaCongTrinh', 'MaNCC', 'NoiDung', 'Thu', 'Chi'],
+        dong: (db.entries || []).slice().sort(compareEntries).map(function (e) { return [e.ngay, e.soPhieu || '', e.maDuAn || '', e.maNCC || '', e.noiDung || '', e.thu || 0, e.chi || 0]; }) },
+      { ten: 'TraNgoaiQuy', mota: 'Khoản trả NCC từ nguồn khác', cot: ['Ngay', 'MaNCC', 'MaCongTrinh', 'SoTien', 'Nguon', 'GhiChu'],
+        dong: (db.extPayments || []).map(function (p) { return [p.ngay, p.maNCC || '', p.maDuAn || '', p.soTien, p.nguon || '', p.ghiChu || '']; }) },
+      { ten: 'SoDuDauKy', mota: 'Số dư đầu kỳ NCC (dương = còn nợ, âm = đã ứng)', cot: ['Ngay', 'MaNCC', 'MaCongTrinh', 'SoTien', 'GhiChu'],
+        dong: (db.soDuDauKy || []).map(function (p) { return [p.ngay, p.maNCC || '', p.maDuAn || '', p.soTien, p.ghiChu || '']; }) },
+      { ten: 'CongNo_NCC_CongTrinh', mota: 'Số đã tính sẵn theo kỳ: đầu kỳ, phát sinh, thanh toán, cuối kỳ của từng cặp NCC × công trình (MaCongTrinh trống = chưa ghi công trình)',
+        cot: ['MaCongTrinh', 'MaNCC', 'TenNCC', 'DauKy', 'PhatSinh', 'ThanhToan', 'CuoiKy', 'ConPhaiTra', 'DaUngTruoc'], dong: capDong },
+      { ten: 'DM_CongTrinh', mota: 'Danh mục công trình', cot: ['MaCongTrinh', 'TenCongTrinh', 'TrangThai'], dong: (db.projects || []).map(function (p) { return [p.ma, p.ten, p.trangThai || '']; }) },
+      { ten: 'DM_NCC', mota: 'Danh mục nhà cung cấp', cot: ['MaNCC', 'TenNCC', 'Loai'], dong: (db.suppliers || []).map(function (x) { return [x.ma, x.ten, x.loai || '']; }) },
+      { ten: 'DM_VatTu', mota: 'Danh mục vật tư', cot: ['MaVatTu', 'TenVatTu', 'DonViTinh', 'MaHangMuc'], dong: (db.materials || []).map(function (m) { return [m.ma, m.ten, m.dvt || '', m.maHM || '']; }) },
+      { ten: 'DM_HangMuc', mota: 'Danh mục hạng mục', cot: ['MaHangMuc', 'TenHangMuc', 'MaNhom', 'LoaiCP'], dong: (db.costItems || []).map(function (h) { return [h.ma, h.ten, h.maNhom || '', h.loaiCP || '']; }) },
+      { ten: 'DM_Nhom', mota: 'Danh mục nhóm chi phí', cot: ['MaNhom', 'TenNhom'], dong: (db.costGroups || []).map(function (g) { return [g.ma, g.ten]; }) },
+      { ten: 'Lich', mota: 'Bảng ngày: ngày, năm, quý, tháng, ngày trong tháng (để Power BI nhóm theo thời gian)', cot: ['Ngay', 'Nam', 'Quy', 'Thang', 'NgayTrongThang'], dong: lich }
+    ];
+  }
+
   // Đối chiếu hai màn công nợ: Công nợ NCC theo kỳ (gộp mọi công trình của một NCC) với Công nợ theo công trình (từng cặp NCC × công trình).
   // Thuần (Có − Nợ) hai màn luôn bằng nhau. Dư Có và Dư Nợ theo công trình lớn hơn cùng một khoản = phần bù trừ: NCC còn nợ ở công trình này
   // nhưng đã ứng trước ở công trình khác (màn theo NCC trừ hai khoản cho nhau, màn theo công trình giữ riêng). f: { from, to, ncc }
@@ -1917,6 +2121,13 @@
     projectDebtSummary: projectDebtSummary,
     supplierDebtByProject: supplierDebtByProject,
     doiChieuCongNo: doiChieuCongNo,
+    phanTichChiPhi: phanTichChiPhi,
+    tuoiNo: tuoiNo,
+    congNoTheoThang: congNoTheoThang,
+    biBang: biBang,
+    biChieu: BI_CHIEU,
+    ngayCuoiSoLieu: ngayCuoiSoLieu,
+    ngayDauSoLieu: ngayDauSoLieu,
     materialStats: materialStats,
     goiYLoaiCPHangMuc: goiYLoaiCPHangMuc,
     priceHistory: priceHistory,

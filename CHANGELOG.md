@@ -1,5 +1,18 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Phân tích (BI): bảng, biểu đồ, tuổi nợ, xuất dữ liệu cho Power BI / Excel (09/10/2026)
+
+- Mục mới **Báo cáo → Phân tích** (`views/analytics.js`), 5 báo cáo có sẵn và báo cáo tự lưu:
+  - **Chi phí theo tháng**: số tổng, biểu đồ cột chồng / đường / bảng, chi phí theo nhóm, 5 NCC lớn, bảng công trình × tháng tô màu theo độ lớn.
+  - **Tuổi nợ NCC**: 0–30 / 31–60 / 61–90 / trên 90 ngày, tiền trả trừ vào khoản cũ nhất trước, chọn ngày “Tính đến”.
+  - **Công nợ theo tháng**: phát sinh, thanh toán, còn phải trả cuối tháng, 4 NCC lớn nhất cùng thang.
+  - **Chi phí nhóm × công trình**, **Giá vật tư theo NCC** (đơn giá trung bình).
+  - Thanh chọn Chỉ số / Hàng / Cột / Màu theo / kỳ / lọc; **Lưu báo cáo** (trên máy này), xóa báo cáo đã lưu.
+  - Bấm cột, ô, thanh để mở Sổ chi phí / Sổ chi tiết NCC đã lọc sẵn.
+- **Xuất dữ liệu cho BI**: `/api/export/bi` → KeToan_BI.xlsx (11 bảng phẳng, mỗi bảng một sheet) hoặc .zip CSV; có bảng `CongNo_NCC_CongTrinh` tính sẵn và bảng ngày `Lich`. **Xuất Excel** bảng đang xem: `/api/export/phan-tich`. Cả hai cần quyền xuất Excel.
+- Phần tính dùng chung ở `shared.js`: `KT.phanTichChiPhi`, `KT.tuoiNo`, `KT.congNoTheoThang`, `KT.biBang`. Màu biểu đồ đã kiểm tra phân biệt được với người khó phân biệt màu.
+- Test BI1–BI5 (số độc lập, khớp Công nợ, xuất file, giao diện).
+
 ## Hai màn công nợ cùng bố cục, có khung đối chiếu (08/10/2026)
 
 Trước đây **Công nợ NCC theo kỳ** và **Công nợ theo công trình** ghi đầu kỳ / cuối kỳ khác cách, nên trông như lệch số.

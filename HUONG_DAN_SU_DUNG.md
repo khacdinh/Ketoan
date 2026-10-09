@@ -38,7 +38,7 @@ Muốn có biểu tượng trên Desktop: bấm đúp **`TaoBieuTuongDesktop.bat
 
 - **Menu bên trái** chia theo trình tự công việc: *Tổng quan* · **Nhập liệu** (Phiếu nhập chi phí, Ghi thu / chi, Nhập từ Excel) ·
   **Sổ sách** (Sổ quỹ thu chi, Phiếu thu / chi, Sổ chi phí) · **Công nợ** (Công nợ NCC theo kỳ, Công nợ theo công trình, Sổ chi tiết NCC, Số dư đầu kỳ NCC) ·
-  **Báo cáo** (Chi phí theo nhóm, Tổng hợp chi phí, Giá vật tư) ·
+  **Báo cáo** (Phân tích, Chi phí theo nhóm, Tổng hợp chi phí, Giá vật tư) ·
   **Danh mục** (Công trình nhà/lô, NCC đối tượng, Vật tư hạng mục, Gộp mã) · **Hệ thống** (Kiểm soát, Cài đặt sao lưu, Người dùng). Mỗi mục có biểu tượng riêng; mục Kiểm soát có nhãn số việc cần xử lý (ẩn khi bằng 0).
   Cuối menu là **tồn quỹ hiện tại**, giờ lưu gần nhất và nút thu gọn. **Ctrl B** thu gọn menu (rộng 248px → 56px) chỉ còn logo và biểu tượng, rê chuột vào biểu tượng để xem tên mục; trạng thái này được nhớ theo từng người dùng.
 - **Thanh trên cùng**: ô **Công trình** (chọn một công trình thì mọi sổ chi phí, báo cáo, công nợ chỉ hiện công trình đó; chọn “Tất cả công trình” để bỏ lọc), ô **Tìm** toàn cục
@@ -381,6 +381,18 @@ Với file sổ thu chi, phần mềm đọc thử, cho xem trước số dòng,
   từng lần mua theo NCC, chênh lệch so với lần trước, biểu đồ giá.
 
 ---
+
+## 12a. Phân tích (BI): bảng, biểu đồ, tuổi nợ, xuất dữ liệu cho Power BI / Excel
+
+Menu **Báo cáo → Phân tích**. Mọi số được tính cùng cách với Sổ chi phí và Công nợ, nên luôn khớp; bấm vào cột, ô hay thanh để mở sổ chi tiết đã lọc sẵn.
+
+- **Hàng “Báo cáo đã lưu”** (đầu trang): 5 báo cáo có sẵn — *Chi phí theo tháng*, *Tuổi nợ NCC*, *Công nợ theo tháng*, *Chi phí nhóm × công trình*, *Giá vật tư theo NCC*. **+ Báo cáo mới** để làm lại từ đầu; **Lưu báo cáo** (góc phải) lưu cách chia hiện tại kèm bộ lọc Loại CP / Nhóm / NCC dưới tên bạn đặt (lưu trên máy này, bấm **Xóa** để bỏ).
+- **Thanh chọn**: *Chỉ số* (Chi phí phát sinh, hoặc Đơn giá trung bình = tổng thành tiền ÷ tổng số lượng, bỏ dòng khoán), *Hàng* và *Cột* (công trình, NCC, nhóm, hạng mục, vật tư, loại chi phí, tháng, quý, năm), *Màu theo* (loại chi phí, nhóm, một màu), kỳ, bộ lọc. **Công trình** lọc bằng ô công trình ở thanh trên cùng. Hàng / cột không phải thời gian chỉ giữ các mục lớn nhất, phần còn lại gộp vào **Khác**.
+- **Chi phí theo tháng**: 4 ô số tổng, biểu đồ cột chồng theo tháng (chuyển **Bảng / Cột / Đường**), chi phí theo nhóm, 5 NCC chi nhiều nhất, và bảng hai chiều có ô tô đậm nhạt theo độ lớn (đơn vị Đồng / Nghìn / Triệu). Bấm một cột tháng, một thanh nhóm / NCC, hoặc một ô công trình × tháng để mở **Sổ chi phí** đã lọc đúng phần đó.
+- **Tuổi nợ NCC**: mỗi NCC một thanh chia 0–30 / 31–60 / 61–90 / trên 90 ngày. Tuổi nợ tính từ ngày phát sinh chi phí; tiền đã trả được trừ vào khoản **cũ nhất trước**. Chọn ô **Tính đến** để xem nợ sẽ quá hạn ra sao vào một ngày sau. Tổng còn phải trả bằng Dư Có ở màn Công nợ NCC theo kỳ cùng ngày. Bấm biểu tượng sổ để mở Sổ chi tiết NCC.
+- **Công nợ theo tháng**: phát sinh, thanh toán trong tháng và còn phải trả cuối tháng (đường đen); 4 biểu đồ nhỏ cho 4 NCC còn nợ nhiều nhất, cùng thang để so sánh; tháng cuối khớp màn Công nợ NCC theo kỳ.
+- **In** và **Xuất Excel** xuất đúng bảng đang xem.
+- **Xuất dữ liệu cho BI**: tạo một file **KeToan_BI.xlsx** (mỗi bảng một sheet) hoặc **.zip** gồm các file CSV, nằm trong thư mục Downloads. Có 11 bảng phẳng: `ChiPhi`, `ThuChi`, `TraNgoaiQuy`, `SoDuDauKy`, `CongNo_NCC_CongTrinh` (số công nợ từng cặp NCC × công trình do phần mềm tính sẵn, nên khớp màn Công nợ), `DM_CongTrinh`, `DM_NCC`, `DM_VatTu`, `DM_HangMuc`, `DM_Nhom` và `Lich` (bảng ngày). Mở bằng **Power BI Desktop** (miễn phí, Get Data → Excel) hoặc Excel (Insert → PivotTable), nối các bảng bằng mã (`MaCongTrinh`, `MaNCC`…). Lần sau xuất đè cùng file rồi bấm **Refresh**. Người chỉ có quyền xem không xuất được.
 
 ## 13. Danh mục chi phí
 
