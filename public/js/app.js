@@ -2,6 +2,7 @@
 import { $, esc, api, onDatabase, showError, icon, attachMenu, download, hasOpenModal, dangCheDangNhap, LS, datMau, setPageActions, openModal } from './ui.js';
 import { S, setDb, onChange, vouchers, anomalies, saveFilter } from './state.js';
 import { veChonCongTrinh, moChonCongTrinh } from './ctpick.js';
+import { apDungLienKet } from './lienket.js';
 import { moTimKiem } from './search.js';
 import { openEntryForm, renderEntryPage } from './forms.js';
 import { renderDashboard } from './views/dashboard.js';
@@ -197,6 +198,7 @@ let lastRoute = null;
 function render() {
   if (!S.db) return;
   const k = current();
+  apDungLienKet(k); // link có "?ct=…&ncc=…": đặt bộ lọc của màn hình trước khi vẽ
   const r = ROUTES[k];
   document.querySelectorAll('.nav-item').forEach((a) => {
     const on = a.dataset.route === k;

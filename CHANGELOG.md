@@ -1,5 +1,12 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Trợ lý AI: link "Xem trên phần mềm" mở đúng màn hình đã lọc (10/10/2026)
+
+- Phần mềm nhận link có bộ lọc, ví dụ `#/so-chi-tiet-ncc?ncc=NCC_A&ct=CT1&tu=2026-09-01&den=2026-09-30` (`public/js/lienket.js`). Áp dụng cho Sổ quỹ, Sổ chi phí, Công nợ NCC theo kỳ, Công nợ theo công trình, Sổ chi tiết NCC, Chi phí theo nhóm, Tổng hợp chi phí, Giá vật tư, Phân tích. Link đặt trọn bộ lọc của màn hình (kể cả công trình ở thanh trên), lưu như người dùng tự chọn, rồi bỏ phần `?…` khỏi địa chỉ.
+- `server.js` ghi cổng đang chạy vào `data/.dang-chay-cong.json` (xóa khi tắt) để trợ lý tạo link đúng cổng.
+- Mọi công cụ MCP trả thêm `xemTrenPhanMem: { url, luuY? }`. Khi phần mềm đang tắt, `luuY` nhắc mở phần mềm trước.
+- Test T5 (mở link bằng trình duyệt thật, kiểm tra bộ lọc và số trên màn hình).
+
 ## Trợ lý AI: cổng MCP chỉ đọc cho Claude Desktop (10/10/2026)
 
 - `scripts/mcp-ketoan.js`: cổng MCP qua stdio (JSON-RPC 2.0, không thêm thư viện). Mở `data/ketoan.db` **chỉ đọc**, tự đọc lại khi file thay đổi, tính bằng `shared.js`, bỏ phiếu nháp.

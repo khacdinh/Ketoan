@@ -46,6 +46,30 @@ const soQuy = (c) => c.ledger || (c.ledger = KT.buildLedger(c.db));
 const dsCanhBao = (c) => c.canhBao || (c.canhBao = KT.anomalies(c.goc).items.filter((x) => !x.ignored));
 const soChiPhi = (c) => c.costLedger || (c.costLedger = KT.buildCostLedger(c.db));
 
+/* ---------- đường link mở màn hình trên phần mềm (public/js/lienket.js) ---------- */
+
+// Cổng phần mềm đang chạy: server.js ghi data/.dang-chay-cong.json khi mở, xóa khi tắt
+function phanMem() {
+  try {
+    const x = JSON.parse(fs.readFileSync(path.join(DATA_DIR, '.dang-chay-cong.json'), 'utf8'));
+    if (Number.isInteger(x.port) && conSong(x.pid)) return { port: x.port, dangChay: true };
+  } catch (e) { /* chưa mở phần mềm */ }
+  return { port: Number(process.env.PORT) || 3939, dangChay: false };
+}
+function conSong(pid) {
+  try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; }
+}
+// route + tham số (ct, ncc, tu, den, vt, hm, nhom, nha, loai, q, tt, bao-cao) → { url, luuY? }
+function lienKet(route, p) {
+  const q = Object.keys(p || {}).filter((k) => p[k]).map((k) => k + '=' + encodeURIComponent(p[k])).join('&');
+  const pm = phanMem();
+  // màn có bộ lọc luôn kèm "?" (kể cả rỗng) để link đặt lại bộ lọc cũ đang lưu trong trình duyệt
+  const coLoc = !['tong-quan', 'kiem-soat'].includes(route);
+  const out = { url: 'http://localhost:' + pm.port + '/#/' + route + (coLoc || q ? '?' + q : '') };
+  if (!pm.dangChay) out.luuY = 'Phần mềm đang tắt: mở phần mềm (KhoiDong.bat) rồi mới bấm link.';
+  return out;
+}
+
 /* ---------- tìm mã theo mã hoặc tên ---------- */
 
 const LOAI_DM = {
@@ -311,6 +335,7 @@ function tongQuan(a) {
     congNoNCC: { conPhaiTra: cn.conNo, daUngTruoc: cn.ungDu, thuan: cn.cuoiKy },
     soCongTrinh: (db.projects || []).length, soNCC: (db.suppliers || []).length, soVatTu: (db.materials || []).length,
     soCanhBao: cb.length,
+    xemTrenPhanMem: lienKet('tong-quan'),
     ghiChu: 'Đơn vị tiền: đồng. Chỉ tính chứng từ đã ghi sổ (không tính phiếu nháp).'
   };
 }
@@ -355,6 +380,7 @@ function congNoNCC(a) {
     ky: kyMoTa(f), congTrinh: ct ? ct + ' — ' + tenCua(db, 'ct', ct) : 'Tất cả',
     tong: { dauKy: t.dauKy, phatSinh: t.phatSinh, thanhToan: t.thanhToan, cuoiKy: t.cuoiKy, conPhaiTra: t.conNo, daUngTruoc: t.ungDu },
     ncc: cat(rows.map(nccRow), gioiHan(a.gioi_han)),
+    xemTrenPhanMem: lienKet(ncc ? 'so-chi-tiet-ncc' : 'cp-cong-no', { ct, ncc, tu: f.from, den: f.to, tt: ['no', 'du'].includes(tt) ? tt : '' }),
     ghiChu: 'Đơn vị: đồng. Cuối kỳ = Đầu kỳ + Phát sinh − Thanh toán; dương = còn phải trả, âm = đã ứng trước.' + (ct === '__none__' ? ' Lọc "chưa gán công trình" không áp dụng ở đây: hãy dùng cong_no_theo_cong_trinh.' : '')
   };
 }
@@ -376,6 +402,7 @@ function congNoTheoCT(a) {
     tong: { conPhaiTra: res.total.conNo, daUngTruoc: res.total.ungDu, cuoiKyThuan: res.total.cuoiKy, soCongTrinhConNo: res.total.soCongTrinhNo },
     congTrinh: groups,
     chuaGanCongTrinh: ct && ct !== '__none__' ? undefined : chuaGan,
+    xemTrenPhanMem: lienKet('cong-no-ct', { ct: ct === '__none__' ? '' : ct, ncc, tu: f.from, den: f.to, tt }),
     ghiChu: 'Đơn vị: đồng. Tổng "còn phải trả" theo công trình có thể lớn hơn ở cong_no_ncc vì một NCC có thể còn nợ ở công trình này nhưng ứng dư ở công trình khác; số thuần luôn bằng nhau.'
   };
 }
@@ -392,6 +419,7 @@ function tuoiNo(a) {
     tinhDen: res.ngayTinh,
     tong: Object.assign({ tatCa: res.tongAll }, theoNhom(res.tong)),
     ncc: cat(res.rows.map((r) => Object.assign({ ma: r.ma, ten: r.ten, tong: r.tong, khoanCuNhat: r.cu, soNgayNoLauNhat: r.ngay }, theoNhom(r.b))), gioiHan(a.gioi_han)),
+    xemTrenPhanMem: lienKet('phan-tich', { 'bao-cao': 'tuoi-no', den: res.ngayTinh, ct, ncc }),
     ghiChu: 'Đơn vị: đồng. Tiền đã trả được trừ vào khoản nợ cũ nhất trước.'
   };
 }
@@ -403,6 +431,8 @@ function locChiPhi(db, a) {
     hm: timMa(db, 'hm', a.hang_muc), nhom: timMa(db, 'nhom', a.nhom), loai
   };
 }
+
+const lienKetSoChiPhi = (f) => lienKet('cp-so', { ct: f.ct, ncc: f.ncc, vt: f.vt, hm: f.hm, nhom: f.nhom, loai: f.loai || f.loaiCP, q: f.q, tu: f.from, den: f.to });
 
 function soChiPhiTool(a) {
   const c = duLieu();
@@ -416,6 +446,7 @@ function soChiPhiTool(a) {
   return {
     ky: kyMoTa(f), tongTien: res.total, theoLoai: res.byLoai, soLuongTheoDvt: f.vt ? res.slTheoDvt : undefined,
     dong: cat(rows, gioiHan(a.gioi_han)),
+    xemTrenPhanMem: lienKetSoChiPhi(f),
     ghiChu: 'Đơn vị: đồng. Dòng mới nhất trước. soLuong / donGia = null là dòng "theo khoản" (chỉ có thành tiền).'
   };
 }
@@ -439,7 +470,8 @@ function tongHopChiPhi(a) {
       if (h.s) r.phu = h.s;
       if (cot) r.theoCot = Object.fromEntries(res.cot.map((c) => [c.k === '__khac__' ? 'Khác' : c.t, h.o[c.k]]));
       return r;
-    })
+    }),
+    xemTrenPhanMem: lienKetSoChiPhi(f)
   };
 }
 
@@ -454,6 +486,7 @@ function soQuyTool(a) {
   return {
     ky: kyMoTa(f), tonDauKy: res.tonDauKy, tongThu: res.tongThu, tongChi: res.tongChi, tonCuoiKy: res.tonCuoiKy,
     phieu: cat(rows, gioiHan(a.gioi_han)),
+    xemTrenPhanMem: lienKet('so-thu-chi', { ct: f.duAn, ncc: f.ncc, loai: f.loai, q: f.q, tu: f.from, den: f.to }),
     ghiChu: 'Đơn vị: đồng. Dòng mới nhất trước. Tồn đầu / cuối kỳ là tồn quỹ chung (không theo bộ lọc công trình / NCC); "ton" ở từng dòng là tồn quỹ chung sau dòng đó.'
   };
 }
@@ -475,7 +508,8 @@ function tongHopThuChi(a) {
   rows.sort(['thang', 'quy', 'nam'].includes(theo) ? (x, y) => String(x.ma).localeCompare(String(y.ma)) : (x, y) => (y.chi + y.thu) - (x.chi + x.thu));
   const tongThu = thu.tongTien;
   const tongChi = chi.tongTien;
-  return { ky: kyMoTa(f), tongThu, tongChi, chenhLech: tongThu - tongChi, hang: cat(rows, gioiHan(a.gioi_han)), ghiChu: 'Đơn vị: đồng.' };
+  return { ky: kyMoTa(f), tongThu, tongChi, chenhLech: tongThu - tongChi, hang: cat(rows, gioiHan(a.gioi_han)),
+    xemTrenPhanMem: lienKet('so-thu-chi', { ct: f.ct, ncc, tu: f.from, den: f.to }), ghiChu: 'Đơn vị: đồng.' };
 }
 
 function giaVatTu(a) {
@@ -510,6 +544,7 @@ function giaVatTu(a) {
     giaBinhQuan: tongSL ? Math.round(tongTien / tongSL) : null,
     theoNCC: nccRows,
     lichSu: cat(ls.slice().reverse().map((h) => ({ ngay: h.ngay, ncc: h.tenNCC || h.maNCC, congTrinh: h.maCT, soLuong: h.soLuong, donGia: h.donGia, thanhTien: h.thanhTien, soPhieu: h.soPhieu, chenhLechSoVoiLanTruocCungNCC: h.chenhLech })), n),
+    xemTrenPhanMem: lienKet('cp-gia', { vt: m ? m.ma : vt, ncc }),
     ghiChu: 'Đơn vị: đồng. Không tính dòng "theo khoản" (không có đơn giá).'
   };
 }
@@ -522,6 +557,7 @@ function canhBao(a) {
   return {
     tong: ds.length, theoNhom: dem,
     canhBao: cat(ds.map((x) => ({ nhom: KT.ANOMALY_TYPES[x.loai] || x.loai, tieuDe: x.tieuDe, chiTiet: x.chiTiet || '', ngay: x.ngay || '', soTien: x.soTien })), gioiHan(a.gioi_han)),
+    xemTrenPhanMem: lienKet('kiem-soat'),
     ghiChu: 'Xem và xử lý trong phần mềm: mục Kiểm soát → Cần xử lý.'
   };
 }
@@ -536,7 +572,9 @@ const HUONG_DAN = 'Công cụ tra cứu (chỉ đọc) số liệu phần mềm 
   'Tiền tính bằng đồng (VND); khi trả lời hãy viết số có dấu chấm ngăn cách hàng nghìn (1.250.000 đ). Ngày dạng YYYY-MM-DD. ' +
   'Công trình / NCC / vật tư nhận mã hoặc tên; nếu công cụ báo khớp nhiều mục, hãy hỏi lại người dùng hoặc dùng tim_danh_muc. ' +
   'Chưa biết số liệu có từ ngày nào thì gọi tong_quan trước. Công nợ: cuối kỳ dương = còn phải trả (Dư Có), âm = đã ứng trước (Dư Nợ). ' +
-  'Các công cụ này không sửa được dữ liệu; muốn ghi / sửa phiếu người dùng phải làm trong phần mềm.';
+  'Các công cụ này không sửa được dữ liệu; muốn ghi / sửa phiếu người dùng phải làm trong phần mềm. ' +
+  'Mỗi kết quả có xemTrenPhanMem.url mở đúng màn hình đã lọc sẵn trên phần mềm: cuối câu trả lời hãy đưa link dạng markdown [Xem trên phần mềm](url) ' +
+  '(dùng nguyên văn url, không tự sửa); nếu có xemTrenPhanMem.luuY thì nhắc người dùng. Link chỉ mở được trên máy cài phần mềm.';
 
 function xuLy(msg) {
   if (!msg || msg.jsonrpc !== '2.0' || typeof msg.method !== 'string') {

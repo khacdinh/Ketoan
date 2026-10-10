@@ -69,7 +69,29 @@ có sẵn và chỉ thêm mục `ke-toan-cong-trinh`.
    Muốn biết đường dẫn `node.exe`, mở Command Prompt và gõ `where node`.
 3. Lưu file, thoát hẳn rồi mở lại Claude Desktop.
 
-## 4. Mẹo hỏi cho đúng
+## 4. Link "Xem trên phần mềm"
+
+Cuối mỗi câu trả lời, Claude kèm một link **Xem trên phần mềm**. Bấm vào thì trình duyệt mở **đúng màn hình, đã lọc sẵn**
+công trình, NCC, vật tư và kỳ đúng như câu trả lời, để bạn đối chiếu ngay:
+
+| Câu hỏi về | Link mở màn hình |
+|---|---|
+| Công nợ một NCC | Sổ chi tiết NCC |
+| Công nợ nhiều NCC | Công nợ NCC theo kỳ |
+| Công nợ theo công trình | Công nợ theo công trình |
+| Tuổi nợ | Phân tích → Tuổi nợ NCC |
+| Chi phí, tổng hợp chi phí | Sổ chi phí |
+| Thu chi, phiếu thu / chi | Sổ quỹ thu chi |
+| Giá vật tư | Giá vật tư |
+| Cảnh báo | Kiểm soát → Cần xử lý |
+
+- Phần mềm phải **đang chạy** (bấm `KhoiDong.bat`). Nếu phần mềm đang tắt, Claude sẽ nhắc mở trước rồi mới bấm link.
+- Link chỉ mở được **trên chính máy cài phần mềm**. Gửi cho người khác thì họ không mở được.
+- Bấm link sẽ **thay bộ lọc** đang chọn trên màn hình đó (kể cả công trình ở thanh trên cùng) bằng bộ lọc của câu trả lời.
+- Nếu đã bật đăng nhập, bạn đăng nhập trước, rồi phần mềm mở đúng màn hình. Phân quyền vẫn được giữ.
+- Claude không đưa link thì bạn nói thêm: *"cho link xem trên phần mềm"*.
+
+## 5. Mẹo hỏi cho đúng
 
 - **Nói rõ kỳ**: "tháng 9/2026", "từ 01/07 đến 30/09", "quý 3". Không nói kỳ thì trợ lý tính trên toàn bộ số liệu.
 - **Tên công trình / NCC** gõ gần đúng cũng được. Nếu khớp nhiều mục, trợ lý sẽ hỏi lại bạn muốn mục nào.
@@ -78,7 +100,7 @@ có sẵn và chỉ thêm mục `ke-toan-cong-trinh`.
   lớn hơn tổng tính theo NCC. Lý do: một NCC còn nợ ở công trình này nhưng ứng dư ở công trình khác thì chỉ được bù trừ khi tính theo NCC. Số thuần luôn bằng nhau.
 - Câu trả lời quan trọng (để trả tiền, ký biên bản) nên **đối chiếu lại trên màn hình phần mềm**.
 
-## 5. An toàn và quyền riêng tư
+## 6. An toàn và quyền riêng tư
 
 - Trợ lý **chỉ đọc**. Ghi, sửa, xóa vẫn phải làm trong phần mềm.
 - Khi bạn hỏi, **phần kết quả liên quan tới câu hỏi** được gửi lên Claude qua internet để Claude soạn câu trả lời.
@@ -86,12 +108,12 @@ có sẵn và chỉ thêm mục `ke-toan-cong-trinh`.
 - Trợ lý đọc thẳng file dữ liệu, nên **không áp dụng phân quyền đăng nhập** của phần mềm. Ai dùng Claude Desktop trên máy đó cũng
   hỏi được mọi số liệu. Chỉ nên cài trên máy của chủ / kế toán trưởng.
 
-## 6. Gỡ trợ lý
+## 7. Gỡ trợ lý
 
 Mở Command Prompt trong thư mục phần mềm, chạy `CaiTroLyAI.bat go`, rồi thoát hẳn và mở lại Claude Desktop.
 Hoặc xóa mục `ke-toan-cong-trinh` trong file cấu hình (mục 3).
 
-## 7. Xử lý sự cố
+## 8. Xử lý sự cố
 
 | Hiện tượng | Cách xử lý |
 |---|---|
@@ -100,6 +122,7 @@ Hoặc xóa mục `ke-toan-cong-trinh` trong file cấu hình (mục 3).
 | "Không thấy file dữ liệu" | Mở phần mềm một lần. Nếu đã dời thư mục phần mềm, chạy lại `CaiTroLyAI.bat`. |
 | Số khác màn hình | Kiểm tra kỳ và bộ lọc trong câu hỏi. Trợ lý không tính phiếu nháp. Màn hình đang lọc công trình ở thanh trên cùng thì phải hỏi đúng công trình đó. |
 | "File cấu hình đang bị lỗi định dạng JSON" | File cấu hình bị sửa sai. Mở bằng Notepad và sửa lại, hoặc đổi tên file rồi chạy lại `CaiTroLyAI.bat`. |
+| Bấm link "Xem trên phần mềm" không mở được | Mở phần mềm (`KhoiDong.bat`) trước rồi bấm lại. Phần mềm vừa mở thì hỏi lại để Claude lấy link mới, vì cổng có thể đã đổi. |
 | Đổi máy hoặc dời thư mục phần mềm | Chạy lại `CaiTroLyAI.bat` trên máy mới / ở thư mục mới. |
 
 Kiểm tra nhanh cổng tra cứu không cần Claude: mở Command Prompt trong thư mục phần mềm và gõ

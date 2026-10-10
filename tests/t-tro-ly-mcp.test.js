@@ -8,6 +8,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { ROOT, startServer } = require('./helpers');
+const { SKIP, chromium, settle } = require('./ui-helpers');
 
 const SCRIPT = path.join(ROOT, 'scripts', 'mcp-ketoan.js');
 
@@ -228,4 +229,83 @@ test('T4 --kiem-tra: báo đọc được dữ liệu / báo lỗi rõ khi khôn
   const loi = await chay(path.join(srv.dataDir, 'khong-co'));
   assert.equal(loi.code, 1);
   assert.match(loi.out, /LỖI: Không thấy file dữ liệu/);
+});
+
+test('T5 link "Xem trên phần mềm": đúng cổng, mở đúng màn hình đã lọc sẵn, đặt lại bộ lọc cũ', { skip: SKIP }, async () => {
+  const srv = await startServer({ seed: seed() });
+  const fileCong = path.join(srv.dataDir, '.dang-chay-cong.json');
+  const c = moCong(srv.dataDir);
+  const browser = await chromium.launch();
+  try {
+    assert.equal(JSON.parse(fs.readFileSync(fileCong, 'utf8')).port, srv.port, 'phần mềm ghi cổng đang chạy');
+    await c.gui('initialize', { protocolVersion: '2025-06-18' });
+    const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    const mo = async (lk) => {
+      assert.equal(lk.luuY, undefined, 'phần mềm đang chạy: không cần nhắc mở');
+      assert.match(lk.url, new RegExp('^http://localhost:' + srv.port + '/#/'));
+      await page.goto('about:blank');
+      await page.goto(lk.url);
+      await page.waitForFunction(() => document.querySelector('#view') && document.querySelector('#view').innerText.trim().length > 10, null, { timeout: 30000 });
+      await settle(page);
+      return page.evaluate(() => ({ hash: location.hash, view: document.querySelector('#view').innerText, ct: (document.querySelector('#tb-ct-val') || {}).textContent || '', ls: Object.fromEntries(Object.keys(localStorage).map((k) => [k, JSON.parse(localStorage.getItem(k))])) }));
+    };
+
+    // Sổ quỹ tháng 7, chỉ phiếu chi: tổng chi 15 tr
+    let r = await mo((await c.so('so_quy', { tu: '2026-07-01', den: '2026-07-31', loai: 'chi' })).xemTrenPhanMem);
+    assert.equal(r.hash, '#/so-thu-chi', 'bỏ phần "?…" sau khi áp dụng');
+    const so = r.ls['stc.filter.so'];
+    assert.deepEqual([so.period, so.from, so.to, so.loai], ['khoang', '2026-07-01', '2026-07-31', 'chi']);
+    assert.match(r.view, /15\.000\.000/);
+    assert.doesNotMatch(r.view, /PT001\/07/, 'phiếu thu không hiện khi lọc chi');
+
+    // Link không lọc gì: đặt lại bộ lọc cũ của Sổ quỹ
+    r = await mo((await c.so('tong_hop_thu_chi', { theo: 'thang' })).xemTrenPhanMem);
+    assert.deepEqual([r.ls['stc.filter.so'].period, r.ls['stc.filter.so'].loai], ['tat-ca', '']);
+    assert.match(r.view, /PT001\/07/);
+
+    // Một NCC, một công trình → Sổ chi tiết NCC, công trình chung ở thanh trên
+    const cn = await c.so('cong_no_ncc', { ncc: 'hoa phat', cong_trinh: 'le loi', tu: '2026-07' });
+    assert.equal(cn.tong.cuoiKy, 46800000);
+    r = await mo(cn.xemTrenPhanMem);
+    assert.equal(r.hash, '#/so-chi-tiet-ncc');
+    assert.equal(r.ls['stc.sct.ncc'], 'NCC_A');
+    assert.equal(r.ls['stc.ct'], 'CT1');
+    assert.match(r.ct, /CT1/);
+    assert.match(r.view, /Số dư đầu kỳ 01\/07/);
+    assert.match(r.view, /Cộng phát sinh từ ngày 01\/07\/2026[^\n]*46\.800\.000/, 'màn hình ra đúng số cuối kỳ trợ lý trả lời');
+
+    // Sổ chi phí theo vật tư: 1,5 tr + 0,8 tr
+    r = await mo((await c.so('so_chi_phi', { vat_tu: 'thep phi 10' })).xemTrenPhanMem);
+    assert.equal(r.hash, '#/cp-so');
+    assert.equal(r.ls['stc.filter.cpSo'].vt, 'VT1');
+    assert.equal(r.ls['stc.ct'], '', 'link không ghi công trình: bỏ công trình đang chọn');
+    assert.match(r.view, /2\.300\.000/);
+
+    // Tuổi nợ → Phân tích, báo cáo tuổi nợ, ngày tính đến
+    r = await mo((await c.so('tuoi_no', { den: '2026-08-31' })).xemTrenPhanMem);
+    assert.equal(r.hash, '#/phan-tich');
+    assert.deepEqual([r.ls['stc.filter.bi'].rep, r.ls['stc.filter.bi'].den], ['tuoi-no', '2026-08-31']);
+    assert.match(r.view, /84\.800\.000|84,8/);
+
+    // Giá vật tư, công nợ theo công trình, cảnh báo
+    r = await mo((await c.so('gia_vat_tu', { vat_tu: 'VT1' })).xemTrenPhanMem);
+    assert.equal(r.ls['stc.filter.cpGia'].vt, 'VT1');
+    r = await mo((await c.so('cong_no_theo_cong_trinh', { cong_trinh: 'CT2', tinh_trang: 'no' })).xemTrenPhanMem);
+    assert.equal(r.hash, '#/cong-no-ct');
+    assert.equal(r.ls['stc.filter.cnCt'].tt, 'no');
+    assert.equal(r.ls['stc.ct'], 'CT2');
+    r = await mo((await c.so('canh_bao', {})).xemTrenPhanMem);
+    assert.equal(r.hash, '#/kiem-soat');
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); await c.dong(); await srv.stop(); }
+
+  assert.equal(fs.existsSync(fileCong), false, 'tắt phần mềm thì xóa file cổng');
+  const c2 = moCong(srv.dataDir);
+  try {
+    await c2.gui('initialize', { protocolVersion: '2025-06-18' });
+    const lk = (await c2.so('tong_quan', {})).xemTrenPhanMem;
+    assert.match(lk.luuY, /Phần mềm đang tắt/);
+  } finally { await c2.dong(); }
 });

@@ -910,9 +910,19 @@ function listen(port, attempt) {
     console.log('  Dữ liệu lưu ở: ' + store.file);
     console.log('  (Đóng cửa sổ này để tắt phần mềm)');
     console.log('');
+    ghiCongDangChay(port);
     openBrowser(link);
   });
 }
+
+// Ghi cổng đang chạy để trợ lý AI (scripts/mcp-ketoan.js) tạo đúng đường link mở màn hình; xóa khi tắt phần mềm
+const FILE_CONG = path.join(DATA_DIR, '.dang-chay-cong.json');
+function ghiCongDangChay(port) {
+  try { fs.writeFileSync(FILE_CONG, JSON.stringify({ port, pid: process.pid, luc: new Date().toISOString() })); } catch (e) { /* không ghi được: trợ lý dùng cổng mặc định */ }
+}
+process.on('exit', () => {
+  try { if (JSON.parse(fs.readFileSync(FILE_CONG, 'utf8')).pid === process.pid) fs.unlinkSync(FILE_CONG); } catch (e) { /* không có file */ }
+});
 
 // Tắt phần mềm (Ctrl+C, đóng cửa sổ, lệnh dừng): đóng file dữ liệu gọn gàng. Mọi lần ghi đều trọn một giao dịch nên
 // kể cả khi bị tắt ngang, lần mở sau SQLite tự hoàn tác phần dở dang.

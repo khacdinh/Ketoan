@@ -822,6 +822,7 @@ người đăng nhập — ô “Người đang dùng máy này” ở Cài đ�
 Hỏi bằng tiếng Việt trong ứng dụng **Claude Desktop**, ví dụ *"Còn nợ Hòa Phát bao nhiêu?"*, *"Tháng 9 công trình K85 chi bao nhiêu?"*.
 Claude sẽ tự lấy số từ phần mềm. Trợ lý **chỉ xem**, không ghi hay sửa gì.
 
+- Mỗi câu trả lời kèm link **Xem trên phần mềm**: bấm vào là mở đúng màn hình đã lọc sẵn. Phần mềm phải đang chạy.
 - Cài: bấm đúp **`CaiTroLyAI.bat`**, rồi thoát hẳn và mở lại Claude Desktop.
 - Gỡ: chạy `CaiTroLyAI.bat go`.
 - Hướng dẫn đầy đủ, cài bằng tay, an toàn và quyền riêng tư, xử lý sự cố: xem file **`HUONG_DAN_TRO_LY_AI.md`**.
