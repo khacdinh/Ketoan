@@ -122,6 +122,7 @@ Hoặc xóa mục `ke-toan-cong-trinh` trong file cấu hình (mục 3).
 | "Không thấy file dữ liệu" | Mở phần mềm một lần. Nếu đã dời thư mục phần mềm, chạy lại `CaiTroLyAI.bat`. |
 | Số khác màn hình | Kiểm tra kỳ và bộ lọc trong câu hỏi. Trợ lý không tính phiếu nháp. Màn hình đang lọc công trình ở thanh trên cùng thì phải hỏi đúng công trình đó. |
 | "File cấu hình đang bị lỗi định dạng JSON" | File cấu hình bị sửa sai. Mở bằng Notepad và sửa lại, hoặc đổi tên file rồi chạy lại `CaiTroLyAI.bat`. |
+| Hỏi xong không có link "Xem trên phần mềm" | Mở Command Prompt trong thư mục phần mềm, gõ `node scripts\mcp-ketoan.js --kiem-tra`: phải thấy "Phiên bản cổng trợ lý: 1.2.0" trở lên. Thấp hơn là chưa cập nhật code. Rồi thoát hẳn Claude Desktop, mở lại, hỏi trong cuộc trò chuyện mới. |
 | Bấm link "Xem trên phần mềm" không mở được | Mở phần mềm (`KhoiDong.bat`) trước rồi bấm lại. Phần mềm vừa mở thì hỏi lại để Claude lấy link mới, vì cổng có thể đã đổi. |
 | Đổi máy hoặc dời thư mục phần mềm | Chạy lại `CaiTroLyAI.bat` trên máy mới / ở thư mục mới. |
 

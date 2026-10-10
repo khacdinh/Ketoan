@@ -15,7 +15,7 @@ const readline = require('readline');
 const KT = require('../public/js/shared.js');
 
 const TEN = 'ke-toan-cong-trinh';
-const PHIEN_BAN = '1.0.0';
+const PHIEN_BAN = '1.2.0'; // 1.1: link xem trên phần mềm; 1.2: lời nhắc đưa link nằm trong mô tả công cụ
 const GIAO_THUC = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const DATA_DIR = path.resolve(process.env.KETOAN_DATA || path.join(__dirname, '..', 'data'));
 const DB_FILE = path.join(DATA_DIR, 'ketoan.db');
@@ -333,6 +333,7 @@ function tongQuan(a) {
   const cn = KT.supplierPeriod(db, {}).total;
   const cb = dsCanhBao(c);
   return {
+    phienBanCong: PHIEN_BAN,
     soLieuTu: dau, soLieuDen: cuoi,
     tonQuyHienTai: led.length ? led[led.length - 1].ton : 0,
     thang: { thang, thu: quyThang.tongThu, chi: quyThang.tongChi, tonCuoiThang: quyThang.tonCuoiKy, chiPhiCongTrinh: cpThang.total, chiPhiTheoLoai: cpThang.byLoai },
@@ -623,6 +624,7 @@ function kiemTra() {
   try {
     const t = tongQuan({});
     process.stdout.write('OK: đọc được dữ liệu ' + DB_FILE + '\n' +
+      '  Phiên bản cổng trợ lý: ' + PHIEN_BAN + '\n' +
       '  Số liệu từ ' + KT.fmtDate(t.soLieuTu) + ' đến ' + KT.fmtDate(t.soLieuDen) + '\n' +
       '  Tồn quỹ: ' + KT.fmtMoney(t.tonQuyHienTai) + ' đ · Còn phải trả NCC: ' + KT.fmtMoney(t.congNoNCC.conPhaiTra) + ' đ\n');
     return 0;
