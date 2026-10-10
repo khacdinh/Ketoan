@@ -89,7 +89,7 @@ công trình, NCC, vật tư và kỳ đúng như câu trả lời, để bạn 
 - Link chỉ mở được **trên chính máy cài phần mềm**. Gửi cho người khác thì họ không mở được.
 - Bấm link sẽ **thay bộ lọc** đang chọn trên màn hình đó (kể cả công trình ở thanh trên cùng) bằng bộ lọc của câu trả lời.
 - Nếu đã bật đăng nhập, bạn đăng nhập trước, rồi phần mềm mở đúng màn hình. Phân quyền vẫn được giữ.
-- Claude không đưa link thì bạn nói thêm: *"cho link xem trên phần mềm"*.
+- Claude không đưa link thì kiểm tra 3 việc: (1) đã cập nhật code mới; (2) đã **thoát hẳn Claude Desktop** (Quit ở thanh tác vụ) rồi mở lại, vì Claude chỉ đọc lại công cụ khi mở lại; (3) mở cuộc trò chuyện **mới**. Vẫn không có thì nói thêm: *"cho link xem trên phần mềm"*.
 
 ## 5. Mẹo hỏi cho đúng
 

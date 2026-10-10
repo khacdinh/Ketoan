@@ -312,7 +312,11 @@ const CONG_CU = [
     inputSchema: { type: 'object', properties: { loai: { type: 'string', enum: Object.keys(KT.ANOMALY_TYPES), description: 'Chỉ một nhóm cảnh báo.' }, gioi_han: GH } },
     chay: canhBao
   }
-].map((t) => Object.assign(t, { annotations: { readOnlyHint: true, openWorldHint: false } }));
+].map((t) => Object.assign(t, {
+  // Nhiều ứng dụng không chuyển phần "instructions" của máy chủ cho Claude, nên lời nhắc đưa link nằm ngay trong mô tả từng công cụ
+  description: t.description + ' QUAN TRỌNG: kết quả có trường xemTrenPhanMem.url; cuối câu trả lời LUÔN đưa link dạng [Xem trên phần mềm](url), dùng nguyên văn url.',
+  annotations: { readOnlyHint: true, openWorldHint: false }
+}));
 
 function tongQuan(a) {
   const c = duLieu();
@@ -595,7 +599,12 @@ function xuLy(msg) {
       const t = CONG_CU.find((x) => x.name === p.name);
       if (!t) return baoLoi(msg.id, -32602, 'Không có công cụ ' + p.name);
       try {
-        const kq = t.chay(p.arguments || {});
+        let kq = t.chay(p.arguments || {});
+        // đặt link và lời nhắc lên đầu kết quả để không bị bỏ sót
+        if (kq.xemTrenPhanMem) {
+          const { xemTrenPhanMem, ...con } = kq;
+          kq = Object.assign({ xemTrenPhanMem, nhacTraLoi: 'Cuối câu trả lời hãy đưa link: [Xem trên phần mềm](' + xemTrenPhanMem.url + ')' + (xemTrenPhanMem.luuY ? ' và nhắc: ' + xemTrenPhanMem.luuY : '') }, con);
+        }
         return traLoi(msg.id, { content: [{ type: 'text', text: JSON.stringify(kq) }], structuredContent: kq, isError: false });
       } catch (e) {
         if (!(e instanceof LoiNguoiDung)) log('Lỗi khi chạy', p.name + ':', e && e.stack || e);

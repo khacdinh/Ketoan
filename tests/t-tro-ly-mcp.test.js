@@ -109,6 +109,10 @@ test('T1 giao thức MCP: initialize, tools/list, lỗi đúng chuẩn', async (
       assert.equal(t.annotations.readOnlyHint, true, t.name + ' phải đánh dấu chỉ đọc');
       assert.ok(t.description.length > 20, t.name);
     });
+    ds.result.tools.forEach((t) => assert.match(t.description, /xemTrenPhanMem/, t.name + ' phải nhắc đưa link'));
+    const tq = await c.so('tong_quan', {});
+    assert.equal(Object.keys(tq)[0], 'xemTrenPhanMem', 'link đứng đầu kết quả');
+    assert.match(tq.nhacTraLoi, /\[Xem trên phần mềm\]\(http/);
     assert.deepEqual((await c.gui('ping')).result, {});
     assert.equal((await c.gui('khong/co')).error.code, -32601);
     assert.equal((await c.gui('tools/call', { name: 'xoa_het', arguments: {} })).error.code, -32602);
