@@ -1,5 +1,13 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Trợ lý AI: cổng MCP chỉ đọc cho Claude Desktop (10/10/2026)
+
+- `scripts/mcp-ketoan.js`: cổng MCP qua stdio (JSON-RPC 2.0, không thêm thư viện). Mở `data/ketoan.db` **chỉ đọc**, tự đọc lại khi file thay đổi, tính bằng `shared.js`, bỏ phiếu nháp.
+- 11 công cụ: `tong_quan`, `tim_danh_muc`, `cong_no_ncc`, `cong_no_theo_cong_trinh`, `tuoi_no`, `so_chi_phi`, `tong_hop_chi_phi`, `so_quy`, `tong_hop_thu_chi`, `gia_vat_tu`, `canh_bao`. Công trình / NCC / vật tư nhận mã, mã cũ đã gộp, hoặc tên không dấu; khớp nhiều mục thì báo lại để hỏi người dùng.
+- `CaiTroLyAI.bat` → `scripts/cai-tro-ly-ai.ps1`: đọc thử dữ liệu, ghi mục `ke-toan-cong-trinh` vào `claude_desktop_config.json` (bản cài thường và bản Microsoft Store), giữ các mục cũ, sao lưu file cũ; `CaiTroLyAI.bat go` để gỡ.
+- `node scripts/mcp-ketoan.js --kiem-tra`: đọc thử dữ liệu, in tồn quỹ và công nợ.
+- Hướng dẫn: `HUONG_DAN_TRO_LY_AI.md`, mục 21 trong Hướng dẫn sử dụng. Test T1–T4 (`tests/t-tro-ly-mcp.test.js`).
+
 ## Rà soát Phân tích: sửa lỗi nhỏ (09/10/2026)
 
 - Lọc ra rỗng không còn báo lỗi trang (biểu đồ cũ được xóa trước khi vẽ lại).

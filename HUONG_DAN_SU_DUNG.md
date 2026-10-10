@@ -816,3 +816,12 @@ người đăng nhập — ô “Người đang dùng máy này” ở Cài đ�
 - **Tắt đăng nhập**: Cài đặt → Đăng nhập và phân quyền → **Tắt đăng nhập** (nhập lại mật khẩu của bạn). Phần mềm quay về như chưa bật;
   các tài khoản vẫn được giữ, **Bật lại đăng nhập** chỉ cần đăng nhập bằng một tài khoản Chủ cũ.
 - Mở phần mềm ở máy khác qua mạng LAN: KHÔNG hỗ trợ (phần mềm chỉ nghe trên chính máy này).
+
+## 21. Trợ lý AI (Claude) tra cứu số liệu (tùy chọn)
+
+Hỏi bằng tiếng Việt trong ứng dụng **Claude Desktop**, ví dụ *"Còn nợ Hòa Phát bao nhiêu?"*, *"Tháng 9 công trình K85 chi bao nhiêu?"*.
+Claude sẽ tự lấy số từ phần mềm. Trợ lý **chỉ xem**, không ghi hay sửa gì.
+
+- Cài: bấm đúp **`CaiTroLyAI.bat`**, rồi thoát hẳn và mở lại Claude Desktop.
+- Gỡ: chạy `CaiTroLyAI.bat go`.
+- Hướng dẫn đầy đủ, cài bằng tay, an toàn và quyền riêng tư, xử lý sự cố: xem file **`HUONG_DAN_TRO_LY_AI.md`**.
