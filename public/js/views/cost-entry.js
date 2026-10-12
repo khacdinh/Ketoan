@@ -16,17 +16,18 @@ const has = (v) => String(v == null ? '' : v).trim() !== '';
 
 // Bản nháp giữ lại khi chuyển màn hình hoặc khi dữ liệu được tải lại (thêm nhanh danh mục...)
 let draft = LS.get('cp.draft', null);
-// Phiếu MỚI đang nhập dở: ngày về hôm nay mỗi lần mở lại phần mềm hoặc rời trang rồi quay lại
-// (vẫn giữ ngày đã chọn khi trang tự vẽ lại lúc dữ liệu đổi, vd vừa thêm vật tư). Phiếu đang sửa giữ ngày của phiếu.
-function ngayVeHomNay() {
-  if (!draft || draft.mode !== 'new' || !draft.header || draft.header.ngay === KT.todayISO()) return;
-  draft.header.ngay = KT.todayISO();
-  if (LS.get('cp.draft', null)) LS.set('cp.draft', draft);
+// Phiếu MỚI đang nhập dở chỉ sống trong lúc còn ở trang này (và qua các lần trang tự vẽ lại khi dữ liệu đổi, vd vừa thêm vật tư).
+// Rời trang rồi quay lại, hoặc mở lại phần mềm → phiếu mới tinh, trống nhà cung cấp / công trình / dòng hàng (không giữ lại để khỏi ghi nhầm).
+// Phiếu đang sửa / nhân bản vẫn giữ bản nháp như cũ.
+function boPhieuMoiDangNhap() {
+  if (!draft || draft.mode !== 'new') return;
+  draft = null;
+  LS.set('cp.draft', null);
 }
-ngayVeHomNay();
+boPhieuMoiDangNhap();
 const soMH = (ngay) => KT.soChungTuTiep(S.all, 'mh', ngay).soPhieu;
 const trangCua = (url) => String(url || '').split('#')[1] ? String(url).split('#')[1].replace(/^\/?/, '').split('?')[0] : '';
-window.addEventListener('hashchange', (e) => { if (trangCua(e.oldURL) === 'cp-nhap' && trangCua(e.newURL) !== 'cp-nhap') ngayVeHomNay(); });
+window.addEventListener('hashchange', (e) => { if (trangCua(e.oldURL) === 'cp-nhap' && trangCua(e.newURL) !== 'cp-nhap') boPhieuMoiDangNhap(); });
 let pendingFocus = null;
 
 // Hạng mục của vật tư (gắn sẵn ở Danh mục vật tư, kéo theo nhóm chi phí): dòng có mã vật tư luôn theo hạng mục này
@@ -136,6 +137,8 @@ async function moLaiDaLuu(params, hash) {
 }
 
 function saveDraft(st) {
+  // form cũ bị gỡ khi rời trang còn bắn sự kiện change (freshRoot): không được ghi lại bản nháp vừa bỏ
+  if (trangCua(location.hash) !== 'cp-nhap') return;
   draft = st;
   const hasData = st.lines.some((l) => !isBlank(l));
   LS.set('cp.draft', hasData || st.mode !== 'new' ? st : null);

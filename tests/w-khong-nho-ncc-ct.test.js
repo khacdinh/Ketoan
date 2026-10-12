@@ -34,7 +34,21 @@ test('KN1 phiếu nhập chi phí: không nhớ NCC / công trình (thanh trên,
     await page.waitForSelector('tr[data-row="1"]');
     assert.equal(await page.inputValue('tr[data-row="1"] [data-col=ct]'), '', 'dòng mới không chép công trình của dòng trên');
     assert.equal(await page.inputValue('tr[data-row="1"] [data-col=nha]'), '');
-    // rời trang rồi quay lại, mở phiếu mới (bản nháp đang gõ dở được giữ nguyên là chuyện khác): xóa trắng rồi kiểm tra bằng phiếu thật bên dưới
+    // nhập dở rồi chuyển sang tab khác và quay lại: phiếu mới tinh, không còn NCC / công trình / dòng hàng đã gõ
+    await page.fill('#cp-head input[name=maNCC]', 'NCC1'); await page.locator('#cp-head input[name=maNCC]').dispatchEvent('change');
+    await page.evaluate(() => { location.hash = '#/cp-so'; });
+    await page.waitForSelector('#cl-body'); await settle(page);
+    await page.evaluate(() => { location.hash = '#/cp-nhap'; });
+    await page.waitForSelector('#cp-head'); await settle(page);
+    assert.equal(await page.inputValue('#cp-head input[name=maNCC]'), '', 'quay lại: NCC đã reset');
+    assert.equal(await page.inputValue('tr[data-row="0"] [data-col=ct]'), '', 'quay lại: công trình đã reset');
+    assert.equal(await page.inputValue('tr[data-row="0"] [data-col=dienGiai]'), '', 'quay lại: dòng hàng đã reset');
+    assert.equal(await page.locator('#cp-body tr[data-row]').count(), 1);
+    // tải lại cả phần mềm giữa lúc đang nhập: cũng về trống
+    await page.fill('#cp-head input[name=maNCC]', 'NCC1'); await page.locator('#cp-head input[name=maNCC]').dispatchEvent('change');
+    await page.fill('tr[data-row="0"] [data-col=dienGiai]', 'Tiền xe');
+    await page.reload(); await page.waitForSelector('#cp-head'); await settle(page);
+    assert.equal(await page.inputValue('#cp-head input[name=maNCC]'), '', 'mở lại phần mềm: NCC trống');
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });

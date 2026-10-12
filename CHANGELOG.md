@@ -5,7 +5,8 @@
 - **Phiếu nhập chi phí**: phiếu mới trống Nhà cung cấp và Công trình (không lấy công trình đang chọn ở thanh trên, không lấy NCC / công trình của phiếu trước); dòng mới không chép công trình, nhà / khu từ dòng trên; ghi xong thì phiếu kế tiếp trống hoàn toàn. Bỏ khóa `cp.lastHeader`.
 - **Ghi thu / chi**: không còn nhớ NCC, công trình của phiếu vừa ghi (chỉ nhớ loại phiếu và số phiếu vừa ghi).
 - **Công nợ**: nút thêm số dư đầu kỳ không điền sẵn NCC (đã chọn trước đó) và công trình (đang lọc).
-- Giữ nguyên: điền sẵn khi bấm **Trả tiền** / thêm khoản trên đúng một dòng công nợ (dữ liệu của dòng đó, hiện rõ trong form), nhà / khu dùng chung sau khi chọn công trình, bản nháp phiếu đang gõ dở.
+- **Phiếu nhập chi phí mới đang gõ dở không còn được giữ khi rời trang** (chuyển tab rồi quay lại, F3 sang Ghi thu / chi, tải lại phần mềm): quay lại là phiếu mới tinh, trống NCC, công trình, dòng hàng. Lỗi cũ: form bị gỡ khi rời trang còn bắn sự kiện `change` làm ghi lại bản nháp (`saveDraft` giờ bỏ qua khi không ở trang này). Phiếu đang sửa / nhân bản vẫn giữ bản nháp.
+- Giữ nguyên: điền sẵn khi bấm **Trả tiền** / thêm khoản trên đúng một dòng công nợ (dữ liệu của dòng đó, hiện rõ trong form), nhà / khu dùng chung sau khi chọn công trình.
 - Test KN1–KN3; sửa F1, F1c, W6 theo cách nhập mới.
 
 ## Trợ lý AI: link "Xem trên phần mềm" mở đúng màn hình đã lọc (10/10/2026)

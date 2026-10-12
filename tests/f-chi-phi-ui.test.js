@@ -209,16 +209,19 @@ test('F1b phiếu nhập: kiểm tra dữ liệu bằng bàn phím (báo lỗi, 
     await page.waitForFunction(() => /thiếu Đơn giá/.test(document.querySelector('#toast-root').textContent), null, { timeout: 4000 });
     a = await active(page); assert.deepEqual([a.col, a.row], ['donGia', '0']);
     assert.equal((await srv.db()).costs.length, 0, 'không có dòng nào được lưu khi còn lỗi');
-    // bản nháp: rời màn hình rồi quay lại vẫn còn
+    // phiếu MỚI đang gõ dở: rời màn hình rồi quay lại thì reset hoàn toàn (không giữ NCC, công trình, dòng hàng)
     await type(page, '5k');
     await page.evaluate(() => { location.hash = '#/cp-so'; });
     await page.waitForSelector('#cl-body');
     await page.evaluate(() => { location.hash = '#/cp-nhap'; });
     await page.waitForSelector('#cp-head');
     await page.waitForTimeout(200);
-    assert.equal(await page.inputValue('tr[data-row="0"] [data-col=maVT]'), 'VT_MOI', 'bản nháp phải còn');
-    assert.equal(await page.inputValue('tr[data-row="0"] [data-col=donGia]'), '5.000');
-    assert.equal(await page.inputValue('#cp-head input[name=maNCC]'), 'NCC_MOI');
+    assert.equal(await page.inputValue('tr[data-row="0"] [data-col=maVT]'), '', 'phiếu mới: quay lại thì reset');
+    assert.equal(await page.inputValue('#cp-head input[name=maNCC]'), '', 'quay lại: không giữ nhà cung cấp');
+    // gõ lại dòng và lưu thành công sau khi chọn công trình
+    await page.fill('#cp-head input[name=maNCC]', 'NCC_MOI'); await page.locator('#cp-head input[name=maNCC]').dispatchEvent('change');
+    await page.fill('tr[data-row="0"] [data-col=maVT]', 'VT_MOI'); await page.locator('tr[data-row="0"] [data-col=maVT]').dispatchEvent('change');
+    await page.fill('tr[data-row="0"] [data-col=soLuong]', '2'); await page.fill('tr[data-row="0"] [data-col=donGia]', '5k');
     // lưu thành công sau khi sửa xong (chọn công trình cho dòng), nháp bị xóa
     await page.fill('#cp-body [data-row="0"][data-col=ct]', 'CT1'); await page.locator('#cp-body [data-row="0"][data-col=ct]').dispatchEvent('change');
     await page.focus('tr[data-row="0"] [data-col=donGia]');

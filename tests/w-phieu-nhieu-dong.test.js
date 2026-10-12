@@ -333,13 +333,13 @@ test('W8 mở Ghi thu / chi từ Phiếu nhập chi phí (F3) rồi Ghi sổ / C
   const { browser, page, errors } = await openPage(srv, '#/tong-quan');
   try {
     // phiếu nhập chi phí đang nhập dở: đã chọn NCC và có một dòng hợp lệ (chưa bấm Ghi)
-    await page.evaluate(() => {
-      localStorage.setItem('stc.cp.draft', JSON.stringify({ key: 'new:', mode: 'new', header: { ngay: new Date().toISOString().slice(0, 10), maNCC: 'ONGA', soPhieu: '', maCT: '', maNha: '' },
-        lines: [{ ct: 'CT1', nha: '', maVT: 'XM', dienGiai: '', soLuong: '2', donGia: '100000', thanhTien: '', ttTuDong: true, dgTuDong: false, hmCu: '', goiY: '' }] }));
-    });
-    await page.reload(); await settle(page); // tải lại để phần mềm đọc phiếu dở, rồi mới mở trang
     await page.evaluate(() => { location.hash = '#/cp-nhap'; });
     await page.waitForSelector('#cp-head'); await settle(page);
+    // gõ dở một phiếu nhập chi phí ngay trên giao diện (phiếu dở không được lưu lại khi rời trang)
+    await page.fill('#cp-head input[name=maNCC]', 'ONGA'); await page.locator('#cp-head input[name=maNCC]').dispatchEvent('change');
+    await page.fill('tr[data-row="0"] [data-col=ct]', 'CT1'); await page.locator('tr[data-row="0"] [data-col=ct]').dispatchEvent('change');
+    await page.fill('tr[data-row="0"] [data-col=maVT]', 'XM'); await page.locator('tr[data-row="0"] [data-col=maVT]').dispatchEvent('change');
+    await page.fill('tr[data-row="0"] [data-col=soLuong]', '2'); await page.fill('tr[data-row="0"] [data-col=donGia]', '100k');
     assert.equal(await page.inputValue('#cp-head input[name=maNCC]'), 'ONGA');
     const cp0 = readStored(srv.dataDir).costs.length;
     for (const cach of ['nut', 'phim']) {
@@ -358,7 +358,7 @@ test('W8 mở Ghi thu / chi từ Phiếu nhập chi phí (F3) rồi Ghi sổ / C
       await page.evaluate(() => { document.querySelector('#toast-root').innerHTML = ''; });
     }
     assert.equal(readStored(srv.dataDir).entries.filter((e) => /^Ghi từ phiếu nhập/.test(e.noiDung)).length, 2, 'mỗi lần ghi đúng một dòng sổ quỹ');
-    assert.equal(await page.inputValue('#cp-body tr:first-child [data-f=maVT], #cp-body tr:first-child input[name=maVT]').catch(() => 'XM'), 'XM', 'dòng nhập dở vẫn còn');
+    assert.equal(await page.inputValue('#cp-head input[name=maNCC]'), '', 'rời trang để mở Ghi thu / chi: phiếu nhập dở được reset (không giữ NCC / công trình)');
     assert.deepEqual(errors, []);
   } finally { await browser.close(); await srv.stop(); }
 });
