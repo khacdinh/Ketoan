@@ -15,7 +15,7 @@ const readline = require('readline');
 const KT = require('../public/js/shared.js');
 
 const TEN = 'ke-toan-cong-trinh';
-const PHIEN_BAN = '1.3.0'; // 1.1: link xem trên phần mềm; 1.2: lời nhắc đưa link nằm trong mô tả công cụ; 1.3: lập phiếu (xem trước → đồng ý → ghi)
+const PHIEN_BAN = '1.4.0'; // 1.4: thêm danh mục (NCC, công trình, vật tư, nhà / khu); 1.1: link xem trên phần mềm; 1.2: lời nhắc đưa link nằm trong mô tả công cụ; 1.3: lập phiếu (xem trước → đồng ý → ghi)
 const GIAO_THUC = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const DATA_DIR = path.resolve(process.env.KETOAN_DATA || path.join(__dirname, '..', 'data'));
 const DB_FILE = path.join(DATA_DIR, 'ketoan.db');
@@ -64,7 +64,7 @@ function lienKet(route, p) {
   const q = Object.keys(p || {}).filter((k) => p[k]).map((k) => k + '=' + encodeURIComponent(p[k])).join('&');
   const pm = phanMem();
   // màn có bộ lọc luôn kèm "?" (kể cả rỗng) để link đặt lại bộ lọc cũ đang lưu trong trình duyệt
-  const coLoc = !['tong-quan', 'kiem-soat'].includes(route);
+  const coLoc = ['so-thu-chi', 'cp-so', 'cp-cong-no', 'cong-no-ct', 'so-chi-tiet-ncc', 'cp-chi-tiet', 'cp-tong-hop', 'cp-gia', 'phan-tich'].includes(route);
   const out = { url: 'http://localhost:' + pm.port + '/#/' + route + (coLoc || q ? '?' + q : '') };
   if (!pm.dangChay) out.luuY = 'Phần mềm đang tắt: mở phần mềm (KhoiDong.bat) rồi mới bấm link.';
   return out;
@@ -115,7 +115,7 @@ function timMa(db, loai, vao) {
   if (!chua.length) {
     // mã có trong chứng từ nhưng chưa có trong danh mục: vẫn lọc được. Không có ở đâu cả: báo lại, không trả số 0 gây hiểu nhầm
     if ((CHUNG_TU[loai] || []).some(([l, f]) => (db[l] || []).some((r) => KT.keyOf(r[f]) === k))) return s;
-    throw new LoiNguoiDung('Không thấy ' + def.ten + ' “' + s + '” trong danh mục hay chứng từ. Dùng tim_danh_muc để tìm đúng tên / mã.');
+    throw new LoiNguoiDung('Không thấy ' + def.ten + ' “' + s + '” trong danh mục hay chứng từ. Dùng tim_danh_muc để tìm đúng tên / mã; nếu thật sự là mục mới (cần ghi phiếu) thì hỏi người dùng rồi dùng xem_truoc_them_danh_muc để thêm.');
   }
   throw new LoiNguoiDung('“' + s + '” khớp ' + chua.length + ' ' + def.ten + ': ' +
     chua.slice(0, 12).map((x) => x.ma + ' (' + x.ten + ')').join('; ') + (chua.length > 12 ? '; …' : '') + '. Hãy chọn đúng một mã.');
@@ -382,10 +382,38 @@ const CONG_CU = [
     chay: xemTruocPhieuNhapChiPhi
   },
   {
+    name: 'xem_truoc_them_danh_muc',
+    coLink: false,
+    ghi: false,
+    description: 'BƯỚC 1 để THÊM MỚI nhà cung cấp, công trình, vật tư hoặc nhà / khu khi tìm mãi vẫn không có (đã thử tim_danh_muc và tên gần đúng). KHÔNG ghi gì. Trả bảng xem trước gồm mã dự kiến, thông tin và các mục GẦN GIỐNG đã có để tránh tạo trùng. ' +
+      'Hiện NGUYÊN bảng xem trước (banXemTruoc) cho người dùng, hỏi "OK tạo không?"; chỉ gọi ghi_phieu khi người dùng đồng ý rõ ràng. Không tự bịa thông tin: tên, đơn vị tính, hạng mục của vật tư... thiếu thì hỏi người dùng. Mã do người dùng đồng ý (có thể đổi). Chỉ thêm mới; sửa / xóa / gộp mã làm trong phần mềm.',
+    inputSchema: {
+      type: 'object',
+      required: ['loai', 'ten'],
+      properties: {
+        loai: { type: 'string', enum: ['ncc', 'ct', 'vt', 'nha'], description: 'ncc = nhà cung cấp / đối tượng, ct = công trình, vt = vật tư, nha = nhà / khu thuộc một công trình.' },
+        ten: { type: 'string', description: 'Tên (bắt buộc).' },
+        ma: { type: 'string', description: 'Mã đề nghị. Bỏ trống = công cụ gợi ý mã theo tên, người dùng xem và đồng ý.' },
+        loai_ncc: { type: 'string', description: 'ncc: loại (Vật tư, Nhân công, Thầu phụ…), tùy chọn.' },
+        sdt: { type: 'string', description: 'ncc: số điện thoại, tùy chọn.' },
+        dia_chi: { type: 'string', description: 'ncc / ct: địa chỉ, tùy chọn.' },
+        ngan_sach: { type: 'integer', description: 'ct: ngân sách (đồng), tùy chọn.' },
+        dvt: { type: 'string', description: 'vt: đơn vị tính (bắt buộc với vật tư), ví dụ kg, m3, bao.' },
+        hang_muc: { type: 'string', description: 'vt: hạng mục (mã hoặc tên, bắt buộc với vật tư, phải đã có).' },
+        cong_trinh: { type: 'string', description: 'nha: công trình chứa nhà này (bắt buộc, phải đã có).' },
+        dien_tich: { type: 'number', description: 'nha: diện tích, tùy chọn.' },
+        chu_nha: { type: 'string', description: 'nha: chủ nhà, tùy chọn.' },
+        dung_chung: { type: 'boolean', description: 'nha: true nếu là "nhà / khu dùng chung" của công trình.' },
+        ghi_chu: { type: 'string', description: 'Ghi chú, tùy chọn.' }
+      }
+    },
+    chay: xemTruocThemDanhMuc
+  },
+  {
     name: 'ghi_phieu',
     coLink: true,
     ghi: true,
-    description: 'BƯỚC 2: ghi phiếu đã xem trước. CHỈ gọi sau khi người dùng đã xem bảng xem trước và trả lời đồng ý rõ ràng (ví dụ "OK", "ghi đi") trong cuộc trò chuyện; tuyệt đối không tự quyết định. ' +
+    description: 'BƯỚC 2: ghi phiếu HOẶC thêm danh mục đã xem trước (xem_truoc_phieu_*, xem_truoc_them_danh_muc). CHỈ gọi sau khi người dùng đã xem bảng xem trước và trả lời đồng ý rõ ràng (ví dụ "OK", "ghi đi") trong cuộc trò chuyện; tuyệt đối không tự quyết định. ' +
       'Cần ma_xac_nhan từ công cụ xem_truoc_*; mã dùng một lần, hết hạn sau 15 phút, chỉ ghi đúng nội dung đã xem. Cần phần mềm đang chạy. Sau khi ghi, đưa link xem phiếu cho người dùng.',
     inputSchema: {
       type: 'object',
@@ -705,7 +733,7 @@ function xemTruocPhieuThuChi(a) {
   kiemTraKhoa(db, ngayP);
   if (!a.ncc || !String(a.ncc).trim()) throw new LoiNguoiDung('Thiếu nhà cung cấp: hỏi người dùng phiếu này của nhà cung cấp / đối tượng nào.');
   const ncc = timMa(db, 'ncc', a.ncc);
-  if (ncc === '__none__' || !(db.suppliers || []).some((x) => KT.keyOf(x.ma) === KT.keyOf(ncc))) throw new LoiNguoiDung('Nhà cung cấp “' + a.ncc + '” chưa có trong danh mục. Dùng tim_danh_muc hoặc tạo trong phần mềm trước.');
+  if (ncc === '__none__' || !(db.suppliers || []).some((x) => KT.keyOf(x.ma) === KT.keyOf(ncc))) throw new LoiNguoiDung('Nhà cung cấp “' + a.ncc + '” chưa có trong danh mục. Thử tim_danh_muc (tên gần đúng); thật sự mới thì hỏi người dùng rồi dùng xem_truoc_them_danh_muc để thêm.');
   const dong = Array.isArray(a.dong) ? a.dong : [];
   if (!dong.length) throw new LoiNguoiDung('Phiếu cần ít nhất một dòng.');
   if (dong.length > 50) throw new LoiNguoiDung('Một phiếu tối đa 50 dòng.');
@@ -716,7 +744,7 @@ function xemTruocPhieuThuChi(a) {
     try {
       if (!d || !String(d.cong_trinh || '').trim()) throw new LoiNguoiDung('thiếu công trình: hỏi người dùng dòng này thuộc công trình nào (không tự đoán).');
       const ct = timMa(db, 'ct', d.cong_trinh);
-      if (ct === '__none__' || !(db.projects || []).some((x) => KT.keyOf(x.ma) === KT.keyOf(ct))) throw new LoiNguoiDung('công trình “' + d.cong_trinh + '” chưa có trong danh mục.');
+      if (ct === '__none__' || !(db.projects || []).some((x) => KT.keyOf(x.ma) === KT.keyOf(ct))) throw new LoiNguoiDung('công trình “' + d.cong_trinh + '” chưa có trong danh mục (thử tim_danh_muc; thật sự mới thì hỏi người dùng rồi dùng xem_truoc_them_danh_muc).');
       const nd = String(d.noi_dung || '').trim();
       if (!nd) throw new LoiNguoiDung('thiếu nội dung.');
       const tien = soTien(d.so_tien, 'so_tien');
@@ -868,6 +896,11 @@ async function ghiPhieu(a) {
   const nhap = p.cheDo !== 'ghi_so';
   const c = duLieu();
   try {
+    if (p.kieu === 'danh-muc') {
+      const j = await goiPhanMem(pm, DM_API[p.loai], p.body);
+      cache = null;
+      return { daGhi: true, loai: DM_TEN[p.loai], ma: p.body.ma, ten: p.body.ten, ghiChu: 'Đã thêm vào danh mục. Có thể tiếp tục lập phiếu.', xemTrenPhanMem: lienKet(DM_ROUTE[p.loai], {}), id: j.id };
+    }
     if (p.kieu === 'thu-chi') {
       // đánh số tại thời điểm ghi (lấy số mới nhất, tránh trùng nếu có phiếu khác được ghi từ lúc xem trước)
       const soPhieu = p.soPhieu || KT.soChungTuTiep(c.db, p.loai === 'thu' ? 'thu' : 'chi', p.ngay, p.ncc).soPhieu;
@@ -895,6 +928,86 @@ async function ghiPhieu(a) {
     if (e instanceof LoiNguoiDung) { cho.set(ma, x); } // lỗi trước khi ghi: giữ mã để thử lại
     throw e;
   }
+}
+
+
+/* ---------- thêm danh mục (NCC, công trình, vật tư, nhà / khu): xem trước → đồng ý → ghi ---------- */
+
+const DM_API = { ncc: '/api/suppliers', ct: '/api/projects', vt: '/api/materials', nha: '/api/houses' };
+const DM_TEN = { ncc: 'nhà cung cấp', ct: 'công trình', vt: 'vật tư', nha: 'nhà / khu' };
+const DM_LIST = { ncc: 'suppliers', ct: 'projects', vt: 'materials', nha: 'houses' };
+const DM_TIEN_TO = { ncc: 'NCC_', ct: '', vt: 'VT_', nha: '' };
+const DM_ROUTE = { ncc: 'ncc', ct: 'du-an', vt: 'cp-danh-muc', nha: 'cp-danh-muc' };
+
+function goiYMa(db, loai, ten, ctMa) {
+  const goc = chuan(ten).split(' ').filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join('').replace(/[^A-Za-z0-9]/g, '');
+  let base = DM_TIEN_TO[loai] + (loai === 'nha' && ctMa ? ctMa + '_' : '') + (goc || 'MoI');
+  base = base.slice(0, 40);
+  const dung = new Set((db[DM_LIST[loai]] || []).map((x) => KT.keyOf(x.ma)));
+  let ma = base;
+  for (let i = 2; dung.has(KT.keyOf(ma)); i++) ma = base + i;
+  return ma;
+}
+
+function xemTruocThemDanhMuc(a) {
+  const c = duLieu();
+  const db = c.db;
+  const loai = chon(a.loai, ['ncc', 'ct', 'vt', 'nha'], 'loai');
+  if (!loai) throw new LoiNguoiDung('Cần loai = ncc, ct, vt hoặc nha.');
+  const ten = String(a.ten || '').trim();
+  if (!ten) throw new LoiNguoiDung('Thiếu tên ' + DM_TEN[loai] + ': hỏi người dùng.');
+  const list = db[DM_LIST[loai]] || [];
+  const canhBao = [];
+  const body = { ten, ghiChu: String(a.ghi_chu || '').trim() };
+  const thongTin = [['Tên', ten]];
+  let ctMa = '';
+  if (loai === 'ncc') {
+    Object.assign(body, { loai: String(a.loai_ncc || '').trim(), sdt: String(a.sdt || '').trim(), diaChi: String(a.dia_chi || '').trim() });
+    thongTin.push(['Loại', body.loai || '(chưa ghi)'], ['Điện thoại', body.sdt || '(chưa ghi)'], ['Địa chỉ', body.diaChi || '(chưa ghi)']);
+  } else if (loai === 'ct') {
+    Object.assign(body, { nganSach: a.ngan_sach ? soTien(a.ngan_sach, 'ngan_sach') : 0, diaChi: String(a.dia_chi || '').trim() });
+    thongTin.push(['Ngân sách', body.nganSach ? money(body.nganSach) : '(chưa đặt)'], ['Địa chỉ', body.diaChi || '(chưa ghi)']);
+  } else if (loai === 'vt') {
+    const dvt = String(a.dvt || '').trim();
+    if (!dvt) throw new LoiNguoiDung('Thiếu đơn vị tính của vật tư (kg, m3, bao…): hỏi người dùng.');
+    if (!a.hang_muc || !String(a.hang_muc).trim()) throw new LoiNguoiDung('Thiếu hạng mục của vật tư: hỏi người dùng vật tư này thuộc hạng mục nào (mỗi vật tư phải thuộc một hạng mục).');
+    const hm = timMa(db, 'hm', a.hang_muc);
+    const it = (db.costItems || []).find((x) => KT.keyOf(x.ma) === KT.keyOf(hm));
+    if (!it) throw new LoiNguoiDung('Hạng mục “' + a.hang_muc + '” chưa có trong danh mục: thêm hạng mục trong phần mềm trước (hoặc hỏi người dùng chọn hạng mục khác).');
+    Object.assign(body, { dvt, maHM: it.ma });
+    thongTin.push(['Đơn vị tính', dvt], ['Hạng mục', it.ma + ' – ' + it.ten]);
+  } else {
+    if (!a.cong_trinh || !String(a.cong_trinh).trim()) throw new LoiNguoiDung('Thiếu công trình của nhà / khu: hỏi người dùng.');
+    ctMa = timMa(db, 'ct', a.cong_trinh);
+    if (!(db.projects || []).some((x) => KT.keyOf(x.ma) === KT.keyOf(ctMa))) throw new LoiNguoiDung('Công trình “' + a.cong_trinh + '” chưa có trong danh mục: thêm công trình trước.');
+    Object.assign(body, { maCT: ctMa, chung: a.dung_chung === true, chuNha: String(a.chu_nha || '').trim(), dienTich: a.dien_tich == null ? '' : Number(a.dien_tich) });
+    thongTin.push(['Công trình', ctMa + ' – ' + tenCua(db, 'ct', ctMa)], ['Loại', body.chung ? 'Dùng chung cả công trình' : 'Nhà / khu riêng'], ['Chủ nhà', body.chuNha || '(chưa ghi)'], ['Diện tích', body.dienTich === '' ? '(chưa ghi)' : String(body.dienTich)]);
+  }
+  // mã: người dùng đề nghị hoặc gợi ý; không được trùng, kể cả mã đã gộp vào mục khác
+  const maDeNghi = String(a.ma || '').trim();
+  const ma = maDeNghi || goiYMa(db, loai, ten, ctMa);
+  if (!/^[^\s]{1,60}$/.test(ma)) throw new LoiNguoiDung('Mã không được có khoảng trắng và tối đa 60 ký tự: “' + ma + '”.');
+  const trungMa = (c.goc[DM_LIST[loai]] || []).find((x) => KT.keyOf(x.ma) === KT.keyOf(ma));
+  if (trungMa) throw new LoiNguoiDung('Mã ' + ma + ' ' + (trungMa.gopVao ? 'đã được gộp vào ' + trungMa.gopVao : 'ĐÃ CÓ (' + trungMa.ten + ')') + '. Dùng mã đó hoặc chọn mã khác.');
+  // trùng / gần giống theo tên
+  const q = chuan(ten);
+  const tuongTu = list.filter((x) => {
+    const n = chuan(x.ten);
+    return n === q || (q.length >= 3 && n.length >= 3 && (n.includes(q) || q.includes(n)));
+  }).filter((x) => loai !== 'nha' || KT.keyOf(x.maCT) === KT.keyOf(ctMa));
+  const giongHet = tuongTu.find((x) => chuan(x.ten) === q);
+  if (giongHet) throw new LoiNguoiDung('Đã có ' + DM_TEN[loai] + ' tên giống hệt: ' + giongHet.ma + ' – ' + giongHet.ten + '. Dùng mã đó thay vì tạo mới (nếu thật sự là mục khác, đặt tên phân biệt được).');
+  if (tuongTu.length) canhBao.push('Có ' + DM_TEN[loai] + ' tên GẦN GIỐNG: ' + tuongTu.slice(0, 5).map((x) => x.ma + ' – ' + x.ten).join('; ') + '. Kiểm tra xem có phải mục này không trước khi tạo mới.');
+  const payload = { kieu: 'danh-muc', loai, body: Object.assign({ ma }, body) };
+  const maXN = taoMaXacNhan('danh-muc', payload);
+  const banXemTruoc = '**THÊM ' + DM_TEN[loai].toUpperCase() + ' MỚI**\n\n' +
+    bang(['Thông tin', 'Giá trị'], [['Mã', '**' + ma + '**' + (maDeNghi ? '' : ' (gợi ý, đổi được)')]].concat(thongTin)) + '\n\n' +
+    'Khi bạn đồng ý, mình sẽ **tạo ' + DM_TEN[loai] + ' này** trong phần mềm. Sửa, xóa, gộp mã sau này làm trong phần mềm.' +
+    (canhBao.length ? '\n\n⚠️ Cảnh báo:\n' + canhBao.map((x) => '- ' + x).join('\n') : '');
+  return {
+    chuaGhi: true, maXacNhan: maXN, hetHanSau: '15 phút', maDuKien: ma, canhBao, banXemTruoc,
+    nhacTraLoi: 'Hiện NGUYÊN trường banXemTruoc cho người dùng (cả cảnh báo), hỏi "OK tạo không?". CHƯA tạo gì. Chỉ gọi ghi_phieu(ma_xac_nhan, nguoi_dung_da_dong_y=true) sau khi người dùng đồng ý rõ ràng; muốn đổi mã / thông tin thì gọi lại công cụ xem trước.'
+  };
 }
 
 /* ---------- giao thức MCP (JSON-RPC 2.0 qua stdio) ---------- */

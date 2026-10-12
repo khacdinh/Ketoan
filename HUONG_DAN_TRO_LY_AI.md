@@ -109,6 +109,24 @@ Quy tắc an toàn:
 - Nếu đã **bật đăng nhập**, trợ lý chưa ghi được phiếu (vẫn tra cứu được). Hãy nhập trong phần mềm.
 - Phiếu nhập chi phí: dòng **không có vật tư** (hoặc vật tư chưa gắn hạng mục) phải nói rõ **hạng mục**. File đính kèm (ảnh hóa đơn) vẫn đính kèm trong phần mềm.
 
+### Thêm nhà cung cấp, công trình, vật tư, nhà / khu chưa có
+
+Khi lập phiếu mà gặp mục chưa có trong danh mục, trợ lý **không tự tạo**. Trợ lý tìm lại theo tên gần đúng, rồi hỏi bạn. Nếu thật sự là mục mới thì làm 2 bước như phiếu:
+
+1. **Xem trước:** bảng gồm mã dự kiến (trợ lý gợi ý theo tên, ví dụ `NCC_XuanTrang`, bạn có thể đổi) và các thông tin kèm theo, cùng danh sách mục **gần giống đã có** để bạn tránh tạo trùng.
+2. **Bạn trả lời "OK"** thì mới tạo, rồi trợ lý tiếp tục lập phiếu đang dở.
+
+| Loại | Thông tin trợ lý sẽ hỏi |
+|---|---|
+| Nhà cung cấp | tên (bắt buộc); loại, điện thoại, địa chỉ nếu bạn có |
+| Công trình | tên (bắt buộc); ngân sách, địa chỉ nếu có |
+| Vật tư | tên, **đơn vị tính**, **hạng mục** (đều bắt buộc, hạng mục phải đã có) |
+| Nhà / khu | tên, **công trình** đã có (bắt buộc); diện tích, chủ nhà, "dùng chung" nếu có |
+
+- Tên **giống hệt** mục đã có thì trợ lý từ chối và dùng mục cũ; mã trùng cũng bị từ chối.
+- Chỉ **thêm mới**. Sửa tên, xóa, **gộp mã** làm trong phần mềm. Hạng mục và nhóm chi phí cũng thêm trong phần mềm.
+- Giống phiếu: cần phần mềm đang chạy, chưa dùng được khi bật đăng nhập.
+
 ## 6. Mẹo hỏi cho đúng
 
 - **Nói rõ kỳ**: "tháng 9/2026", "từ 01/07 đến 30/09", "quý 3". Không nói kỳ thì trợ lý tính trên toàn bộ số liệu.
@@ -140,7 +158,7 @@ Hoặc xóa mục `ke-toan-cong-trinh` trong file cấu hình (mục 3).
 | "Không thấy file dữ liệu" | Mở phần mềm một lần. Nếu đã dời thư mục phần mềm, chạy lại `CaiTroLyAI.bat`. |
 | Số khác màn hình | Kiểm tra kỳ và bộ lọc trong câu hỏi. Trợ lý không tính phiếu nháp. Màn hình đang lọc công trình ở thanh trên cùng thì phải hỏi đúng công trình đó. |
 | "File cấu hình đang bị lỗi định dạng JSON" | File cấu hình bị sửa sai. Mở bằng Notepad và sửa lại, hoặc đổi tên file rồi chạy lại `CaiTroLyAI.bat`. |
-| Hỏi xong không có link "Xem trên phần mềm" | Mở Command Prompt trong thư mục phần mềm, gõ `node scripts\mcp-ketoan.js --kiem-tra`: phải thấy "Phiên bản cổng trợ lý: 1.3.0" trở lên. Thấp hơn là chưa cập nhật code. Rồi thoát hẳn Claude Desktop, mở lại, hỏi trong cuộc trò chuyện mới. |
+| Hỏi xong không có link "Xem trên phần mềm" | Mở Command Prompt trong thư mục phần mềm, gõ `node scripts\mcp-ketoan.js --kiem-tra`: phải thấy "Phiên bản cổng trợ lý: 1.4.0" trở lên. Thấp hơn là chưa cập nhật code. Rồi thoát hẳn Claude Desktop, mở lại, hỏi trong cuộc trò chuyện mới. |
 | Bấm link "Xem trên phần mềm" không mở được | Mở phần mềm (`KhoiDong.bat`) trước rồi bấm lại. Phần mềm vừa mở thì hỏi lại để Claude lấy link mới, vì cổng có thể đã đổi. |
 | Đổi máy hoặc dời thư mục phần mềm | Chạy lại `CaiTroLyAI.bat` trên máy mới / ở thư mục mới. |
 

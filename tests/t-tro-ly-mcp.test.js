@@ -103,7 +103,7 @@ test('T1 giao thức MCP: initialize, tools/list, lỗi đúng chuẩn', async (
     c.raw(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }));
     const ds = await c.gui('tools/list', {});
     const ten = ds.result.tools.map((t) => t.name).sort();
-    assert.deepEqual(ten, ['canh_bao', 'cong_no_ncc', 'cong_no_theo_cong_trinh', 'ghi_phieu', 'gia_vat_tu', 'so_chi_phi', 'so_quy', 'tim_danh_muc', 'tong_hop_chi_phi', 'tong_hop_thu_chi', 'tong_quan', 'tuoi_no', 'xem_truoc_phieu_nhap_chi_phi', 'xem_truoc_phieu_thu_chi']);
+    assert.deepEqual(ten, ['canh_bao', 'cong_no_ncc', 'cong_no_theo_cong_trinh', 'ghi_phieu', 'gia_vat_tu', 'so_chi_phi', 'so_quy', 'tim_danh_muc', 'tong_hop_chi_phi', 'tong_hop_thu_chi', 'tong_quan', 'tuoi_no', 'xem_truoc_phieu_nhap_chi_phi', 'xem_truoc_phieu_thu_chi', 'xem_truoc_them_danh_muc']);
     ds.result.tools.forEach((t) => {
       assert.equal(t.inputSchema.type, 'object', t.name);
       assert.equal(t.annotations.readOnlyHint, t.name !== 'ghi_phieu', t.name + ': chỉ ghi_phieu được ghi, mọi công cụ khác chỉ đọc');
@@ -432,5 +432,74 @@ test('T7 lập phiếu nhập chi phí: xem trước (thành tiền, cảnh báo
     await srv.stop();
     r = await c.goi('ghi_phieu', { ma_xac_nhan: xt2.maXacNhan, nguoi_dung_da_dong_y: true });
     assert.equal(r.isError, true); assert.match(r.content[0].text, /Phần mềm đang tắt/);
+  } finally { await c.dong(); await srv.stop(); }
+});
+
+test('T8 thêm danh mục (NCC, công trình, vật tư, nhà / khu): xem trước → đồng ý → tạo; chặn trùng, thiếu thông tin; dùng ngay được trong phiếu', async () => {
+  const srv = await startServer({ seed: seed() });
+  const c = moCong(srv.dataDir);
+  const dem = async () => { const d = await srv.db(); return [d.suppliers.length, d.projects.length, d.materials.length, d.houses.length]; };
+  try {
+    await c.gui('initialize', { protocolVersion: '2025-06-18' });
+    const d0 = await dem();
+
+    // NCC chưa có: phiếu báo chưa có và chỉ sang công cụ thêm mới
+    let r = await c.goi('xem_truoc_phieu_thu_chi', { loai: 'chi', ncc: 'Xuân Trang', dong: [{ cong_trinh: 'CT1', noi_dung: 'x', so_tien: 1000 }] });
+    assert.equal(r.isError, true); assert.match(r.content[0].text, /xem_truoc_them_danh_muc/);
+
+    // tên giống hệt / mã trùng: từ chối
+    r = await c.goi('xem_truoc_them_danh_muc', { loai: 'ncc', ten: 'vat lieu hoa phat' });
+    assert.equal(r.isError, true); assert.match(r.content[0].text, /tên giống hệt: NCC_A/);
+    r = await c.goi('xem_truoc_them_danh_muc', { loai: 'ncc', ten: 'Công ty mới', ma: 'ncc_a' });
+    assert.equal(r.isError, true); assert.match(r.content[0].text, /ĐÃ CÓ/);
+    // tên gần giống: cảnh báo nhưng cho xem trước
+    const gg = await c.so('xem_truoc_them_danh_muc', { loai: 'ncc', ten: 'Hòa Phát' });
+    assert.ok(gg.canhBao.some((x) => /GẦN GIỐNG: NCC_A/.test(x)), JSON.stringify(gg.canhBao));
+
+    // NCC mới: xem trước không ghi; mã gợi ý; ghi sau khi đồng ý
+    const xt = await c.so('xem_truoc_them_danh_muc', { loai: 'ncc', ten: 'Xuân Trang', loai_ncc: 'Vật tư', sdt: '0905123456' });
+    assert.equal(xt.maDuKien, 'NCC_XuanTrang');
+    assert.match(xt.banXemTruoc, /NCC_XuanTrang/);
+    assert.deepEqual(await dem(), d0, 'xem trước không ghi');
+    r = await c.goi('ghi_phieu', { ma_xac_nhan: xt.maXacNhan, nguoi_dung_da_dong_y: false });
+    assert.equal(r.isError, true);
+    const g = await c.so('ghi_phieu', { ma_xac_nhan: xt.maXacNhan, nguoi_dung_da_dong_y: true });
+    assert.equal(g.daGhi, true); assert.equal(g.ma, 'NCC_XuanTrang');
+    const ncc = (await srv.db()).suppliers.find((x) => x.ma === 'NCC_XuanTrang');
+    assert.deepEqual([ncc.ten, ncc.loai, ncc.sdt], ['Xuân Trang', 'Vật tư', '0905123456']);
+    r = await c.goi('ghi_phieu', { ma_xac_nhan: xt.maXacNhan, nguoi_dung_da_dong_y: true });
+    assert.equal(r.isError, true, 'mã dùng một lần');
+
+    // dùng ngay trong phiếu
+    const xp = await c.so('xem_truoc_phieu_thu_chi', { loai: 'chi', ncc: 'xuan trang', dong: [{ cong_trinh: 'CT1', noi_dung: 'x', so_tien: 1000 }] });
+    assert.equal(xp.chuaGhi, true);
+
+    // công trình mới
+    const xc = await c.so('xem_truoc_them_danh_muc', { loai: 'ct', ten: 'Nhà anh Bình', ma: 'NHA_BINH', ngan_sach: 800000000, dia_chi: '12 Lê Lợi' });
+    await c.so('ghi_phieu', { ma_xac_nhan: xc.maXacNhan, nguoi_dung_da_dong_y: true });
+    const ct = (await srv.db()).projects.find((x) => x.ma === 'NHA_BINH');
+    assert.deepEqual([ct.ten, ct.nganSach], ['Nhà anh Bình', 800000000]);
+
+    // vật tư: thiếu đơn vị / hạng mục / hạng mục không có → hỏi; đủ thì tạo
+    r = await c.goi('xem_truoc_them_danh_muc', { loai: 'vt', ten: 'Xi măng PCB40', hang_muc: 'HM01' });
+    assert.equal(r.isError, true); assert.match(r.content[0].text, /đơn vị tính/);
+    r = await c.goi('xem_truoc_them_danh_muc', { loai: 'vt', ten: 'Xi măng PCB40', dvt: 'bao' });
+    assert.equal(r.isError, true); assert.match(r.content[0].text, /hạng mục/);
+    r = await c.goi('xem_truoc_them_danh_muc', { loai: 'vt', ten: 'Xi măng PCB40', dvt: 'bao', hang_muc: 'KHONGCO' });
+    assert.equal(r.isError, true);
+    const xv = await c.so('xem_truoc_them_danh_muc', { loai: 'vt', ten: 'Xi măng PCB40', dvt: 'bao', hang_muc: 'sat thep' });
+    assert.equal(xv.maDuKien, 'VT_XiMangPcb40');
+    await c.so('ghi_phieu', { ma_xac_nhan: xv.maXacNhan, nguoi_dung_da_dong_y: true });
+    const vt = (await srv.db()).materials.find((x) => x.ma === 'VT_XiMangPcb40');
+    assert.deepEqual([vt.ten, vt.dvt, vt.maHM], ['Xi măng PCB40', 'bao', 'HM01']);
+
+    // nhà / khu: cần công trình có sẵn
+    r = await c.goi('xem_truoc_them_danh_muc', { loai: 'nha', ten: 'Nhà A', cong_trinh: 'KHONGCO' });
+    assert.equal(r.isError, true);
+    const xn = await c.so('xem_truoc_them_danh_muc', { loai: 'nha', ten: 'Nhà A', cong_trinh: 'CT1', dung_chung: false, dien_tich: 85 });
+    await c.so('ghi_phieu', { ma_xac_nhan: xn.maXacNhan, nguoi_dung_da_dong_y: true });
+    const nha = (await srv.db()).houses.find((x) => x.ten === 'Nhà A');
+    assert.deepEqual([nha.maCT, nha.chung], ['CT1', false]);
+    assert.deepEqual(await dem(), [d0[0] + 1, d0[1] + 1, d0[2] + 1, d0[3] + 1]);
   } finally { await c.dong(); await srv.stop(); }
 });

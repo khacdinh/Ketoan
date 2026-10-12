@@ -1,5 +1,10 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Trợ lý AI thêm danh mục: nhà cung cấp, công trình, vật tư, nhà / khu (12/10/2026)
+
+- Công cụ `xem_truoc_them_danh_muc` (cổng 1.4.0): xem trước không ghi, gợi ý mã theo tên, chặn mã trùng / tên giống hệt, cảnh báo tên gần giống, bắt buộc đơn vị tính + hạng mục (vật tư) và công trình có sẵn (nhà / khu); `ghi_phieu` tạo sau khi người dùng đồng ý (cùng mã xác nhận một lần, qua API phần mềm). Chỉ thêm mới.
+- Lỗi "chưa có trong danh mục" khi lập phiếu chỉ sang công cụ thêm mới. Test T8.
+
 ## Trợ lý AI lập phiếu: xem trước → đồng ý → ghi (12/10/2026)
 
 - 3 công cụ MCP mới (cổng 1.3.0): `xem_truoc_phieu_thu_chi`, `xem_truoc_phieu_nhap_chi_phi` (không ghi gì; trả bảng xem trước, cảnh báo, ảnh hưởng công nợ theo công trình, mã xác nhận) và `ghi_phieu` (cần mã xác nhận + `nguoi_dung_da_dong_y: true`).
