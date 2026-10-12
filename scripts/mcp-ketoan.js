@@ -15,7 +15,7 @@ const readline = require('readline');
 const KT = require('../public/js/shared.js');
 
 const TEN = 'ke-toan-cong-trinh';
-const PHIEN_BAN = '1.2.0'; // 1.1: link xem trên phần mềm; 1.2: lời nhắc đưa link nằm trong mô tả công cụ
+const PHIEN_BAN = '1.3.0'; // 1.1: link xem trên phần mềm; 1.2: lời nhắc đưa link nằm trong mô tả công cụ; 1.3: lập phiếu (xem trước → đồng ý → ghi)
 const GIAO_THUC = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const DATA_DIR = path.resolve(process.env.KETOAN_DATA || path.join(__dirname, '..', 'data'));
 const DB_FILE = path.join(DATA_DIR, 'ketoan.db');
@@ -311,11 +311,96 @@ const CONG_CU = [
     description: 'Danh sách cảnh báo trong mục "Cần xử lý": nghi trùng, đơn giá lệch, ngày bất thường, thiếu mã, công nợ cần xem lại, sổ thu chi / chi phí cần xem lại… (bỏ các cảnh báo người dùng đã đánh dấu bỏ qua).',
     inputSchema: { type: 'object', properties: { loai: { type: 'string', enum: Object.keys(KT.ANOMALY_TYPES), description: 'Chỉ một nhóm cảnh báo.' }, gioi_han: GH } },
     chay: canhBao
+  },
+  {
+    name: 'xem_truoc_phieu_thu_chi',
+    coLink: false,
+    ghi: false,
+    description: 'BƯỚC 1 để lập phiếu thu / chi tiền (sổ quỹ). KHÔNG ghi gì. Kiểm tra dữ liệu, tìm đúng mã, đánh số phiếu, tính ảnh hưởng công nợ, cảnh báo trùng / bất thường, rồi trả bảng xem trước. ' +
+      'Bắt buộc hiện NGUYÊN bảng xem trước (trường banXemTruoc) cho người dùng và hỏi "OK ghi phiếu không?". Chỉ gọi ghi_phieu khi người dùng trả lời đồng ý rõ ràng; sai / muốn sửa thì gọi lại công cụ này với nội dung đã sửa. ' +
+      'Mỗi phiếu PHẢI nói rõ nhà cung cấp và công trình của TỪNG dòng, không được tự đoán hay lấy từ phiếu trước: thiếu thì hỏi người dùng. Mặc định lưu thành phiếu NHÁP (chưa tính vào sổ, người dùng bấm Ghi sổ trong phần mềm); chỉ dùng che_do "ghi_so" khi người dùng nói rõ muốn ghi sổ luôn.',
+    inputSchema: {
+      type: 'object',
+      required: ['loai', 'ncc', 'dong'],
+      properties: {
+        loai: { type: 'string', enum: ['chi', 'thu'], description: 'chi = phiếu chi (trả tiền), thu = phiếu thu (nhận tiền).' },
+        ngay: { type: 'string', description: 'Ngày phiếu YYYY-MM-DD. Bỏ trống = hôm nay.' },
+        ncc: Object.assign({}, NCC, { description: 'Nhà cung cấp / đối tượng (bắt buộc): mã hoặc tên.' }),
+        so_phieu: { type: 'string', description: 'Số phiếu. Bỏ trống = phần mềm tự đánh số theo trang Đánh số chứng từ.' },
+        nguoi_nhan: { type: 'string', description: 'Người nhận / người nộp tiền (tùy chọn).' },
+        ghi_chu: { type: 'string', description: 'Ghi chú (tùy chọn).' },
+        che_do: { type: 'string', enum: ['nhap', 'ghi_so'], description: 'nhap (mặc định) = lưu nháp; ghi_so = ghi sổ luôn (chỉ khi người dùng yêu cầu).' },
+        dong: {
+          type: 'array', minItems: 1, maxItems: 50,
+          description: 'Các dòng của phiếu, mỗi dòng một công trình.',
+          items: {
+            type: 'object', required: ['cong_trinh', 'noi_dung', 'so_tien'],
+            properties: {
+              cong_trinh: { type: 'string', description: 'Công trình của dòng (bắt buộc): mã hoặc tên. Khoản chung / văn phòng thì chọn công trình chung.' },
+              noi_dung: { type: 'string', description: 'Nội dung dòng.' },
+              so_tien: { type: 'integer', description: 'Số tiền (đồng), số nguyên dương.' },
+              vat_tu: { type: 'string', description: 'Vật tư (tùy chọn): mã hoặc tên.' }
+            }
+          }
+        }
+      }
+    },
+    chay: xemTruocPhieuThuChi
+  },
+  {
+    name: 'xem_truoc_phieu_nhap_chi_phi',
+    coLink: false,
+    ghi: false,
+    description: 'BƯỚC 1 để lập phiếu nhập chi phí công trình (vật tư, nhân công, dịch vụ). KHÔNG ghi gì. Kiểm tra, tìm mã, tính thành tiền, so với giá lần mua trước, tính ảnh hưởng công nợ, rồi trả bảng xem trước. ' +
+      'Bắt buộc hiện NGUYÊN bảng xem trước (banXemTruoc) cho người dùng và hỏi "OK ghi phiếu không?"; chỉ gọi ghi_phieu khi người dùng đồng ý rõ ràng. ' +
+      'Nhà cung cấp và công trình của TỪNG dòng phải do người dùng nói rõ, không tự đoán hay lấy từ phiếu trước. Mỗi dòng cần vat_tu hoặc dien_giai, và (so_luong + don_gia) hoặc thanh_tien (hoặc so_luong + thanh_tien). Mặc định lưu NHÁP; chỉ dùng che_do "ghi_so" khi người dùng yêu cầu rõ.',
+    inputSchema: {
+      type: 'object',
+      required: ['ncc', 'dong'],
+      properties: {
+        ngay: { type: 'string', description: 'Ngày phiếu YYYY-MM-DD. Bỏ trống = hôm nay.' },
+        ncc: Object.assign({}, NCC, { description: 'Nhà cung cấp (bắt buộc): mã hoặc tên.' }),
+        so_phieu: { type: 'string', description: 'Số phiếu / số phiếu giao hàng. Bỏ trống = phần mềm tự đánh số MH.' },
+        che_do: { type: 'string', enum: ['nhap', 'ghi_so'], description: 'nhap (mặc định) = lưu nháp; ghi_so = ghi sổ luôn (chỉ khi người dùng yêu cầu).' },
+        dong: {
+          type: 'array', minItems: 1, maxItems: 50,
+          items: {
+            type: 'object', required: ['cong_trinh'],
+            properties: {
+              cong_trinh: { type: 'string', description: 'Công trình của dòng (bắt buộc).' },
+              vat_tu: { type: 'string', description: 'Vật tư: mã hoặc tên.' },
+              dien_giai: { type: 'string', description: 'Diễn giải (cần khi không có vat_tu).' },
+              hang_muc: { type: 'string', description: 'Hạng mục (mã hoặc tên). BẮT BUỘC khi dòng không có vat_tu, hoặc vật tư chưa gắn hạng mục; có vật tư đã gắn hạng mục thì bỏ qua (lấy theo vật tư).' },
+              so_luong: { type: 'number' },
+              don_gia: { type: 'number', description: 'Đơn giá (đồng).' },
+              thanh_tien: { type: 'number', description: 'Thành tiền (đồng). Chỉ nhập thành tiền = dòng theo khoản.' }
+            }
+          }
+        }
+      }
+    },
+    chay: xemTruocPhieuNhapChiPhi
+  },
+  {
+    name: 'ghi_phieu',
+    coLink: true,
+    ghi: true,
+    description: 'BƯỚC 2: ghi phiếu đã xem trước. CHỈ gọi sau khi người dùng đã xem bảng xem trước và trả lời đồng ý rõ ràng (ví dụ "OK", "ghi đi") trong cuộc trò chuyện; tuyệt đối không tự quyết định. ' +
+      'Cần ma_xac_nhan từ công cụ xem_truoc_*; mã dùng một lần, hết hạn sau 15 phút, chỉ ghi đúng nội dung đã xem. Cần phần mềm đang chạy. Sau khi ghi, đưa link xem phiếu cho người dùng.',
+    inputSchema: {
+      type: 'object',
+      required: ['ma_xac_nhan', 'nguoi_dung_da_dong_y'],
+      properties: {
+        ma_xac_nhan: { type: 'string', description: 'Mã xác nhận từ bước xem trước.' },
+        nguoi_dung_da_dong_y: { type: 'boolean', description: 'Chỉ đặt true khi người dùng đã nói đồng ý ghi sau khi xem bảng xem trước.' }
+      }
+    },
+    chay: ghiPhieu
   }
 ].map((t) => Object.assign(t, {
   // Nhiều ứng dụng không chuyển phần "instructions" của máy chủ cho Claude, nên lời nhắc đưa link nằm ngay trong mô tả từng công cụ
-  description: t.description + ' QUAN TRỌNG: kết quả có trường xemTrenPhanMem.url; cuối câu trả lời LUÔN đưa link dạng [Xem trên phần mềm](url), dùng nguyên văn url.',
-  annotations: { readOnlyHint: true, openWorldHint: false }
+  description: t.description + (t.coLink === false ? '' : ' QUAN TRỌNG: kết quả có trường xemTrenPhanMem.url; cuối câu trả lời LUÔN đưa link dạng [Xem trên phần mềm](url), dùng nguyên văn url.'),
+  annotations: t.ghi ? { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false } : { readOnlyHint: true, openWorldHint: false }
 }));
 
 function tongQuan(a) {
@@ -567,6 +652,251 @@ function canhBao(a) {
   };
 }
 
+/* ---------- lập phiếu: xem trước → người dùng đồng ý → ghi (qua phần mềm đang chạy) ---------- */
+
+const cho = new Map(); // ma_xac_nhan → { loai, payload, hetHan }
+const HAN_XAC_NHAN = 15 * 60 * 1000;
+const money = (n) => KT.fmtMoney(n) + ' đ';
+const homNay = () => KT.todayISO();
+
+function soTien(v, ten) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0 || Math.round(n) !== n) throw new LoiNguoiDung(ten + ' phải là số nguyên dương (đồng), nhận được “' + v + '”.');
+  if (n > 1e13) throw new LoiNguoiDung(ten + ' quá lớn.');
+  return n;
+}
+function ngayPhieu(v) {
+  const d = v ? String(v).trim() : homNay();
+  if (!KT.isISODate(d)) throw new LoiNguoiDung('ngay phải có dạng YYYY-MM-DD (ví dụ 2026-10-12), nhận được “' + v + '”.');
+  return d;
+}
+function kiemTraKhoa(db, ngayP) {
+  if (KT.isLockedDate(db, ngayP)) throw new LoiNguoiDung(KT.lockMessage(KT.monthOf(ngayP), 'ghi phiếu'));
+}
+function canhBaoNgay(ngayP, ds) {
+  const t = homNay();
+  if (ngayP > t) ds.push('Ngày phiếu ' + KT.fmtDate(ngayP) + ' ở TƯƠNG LAI (hôm nay ' + KT.fmtDate(t) + ').');
+  else if (ngayP < new Date(Date.parse(t) - 60 * 864e5).toISOString().slice(0, 10)) ds.push('Ngày phiếu ' + KT.fmtDate(ngayP) + ' đã cũ hơn 60 ngày.');
+}
+// NCC chưa có chi phí / số dư / trả ngoài quỹ ở công trình này (như cảnh báo ở form Ghi thu / chi)
+function nccChuaCoOCongTrinh(db, ncc, ct) {
+  const k = KT.keyOf(ncc);
+  const c = KT.keyOf(ct);
+  const cap = (x, f) => KT.keyOf(x.maNCC) === k && KT.keyOf(x[f]) === c;
+  return !((db.costs || []).some((x) => cap(x, 'maCT')) || (db.soDuDauKy || []).some((x) => cap(x, 'maDuAn')) || (db.extPayments || []).some((x) => cap(x, 'maDuAn')));
+}
+function taoMaXacNhan(loai, payload) {
+  const now = Date.now();
+  cho.forEach((v, k) => { if (v.hetHan < now) cho.delete(k); });
+  const ma = require('crypto').randomBytes(4).toString('hex').toUpperCase();
+  cho.set(ma, { loai, payload, hetHan: now + HAN_XAC_NHAN });
+  return ma;
+}
+const bang = (cot, dong) => '| ' + cot.join(' | ') + ' |\n|' + cot.map(() => '---').join('|') + '|\n' + dong.map((r) => '| ' + r.join(' | ') + ' |').join('\n');
+const cheDoNhan = (cd) => (cd === 'ghi_so' ? 'GHI SỔ NGAY (tính vào sổ quỹ / chi phí / công nợ)' : 'LƯU NHÁP (chưa tính vào sổ; bạn mở phần mềm bấm Ghi sổ sau khi kiểm tra)');
+
+function xemTruocPhieuThuChi(a) {
+  const c = duLieu();
+  const db = c.db;
+  const loai = chon(a.loai, ['chi', 'thu'], 'loai');
+  if (!loai) throw new LoiNguoiDung('Cần loai = chi hoặc thu.');
+  const cheDo = chon(a.che_do, ['nhap', 'ghi_so'], 'che_do') || 'nhap';
+  const ngayP = ngayPhieu(a.ngay);
+  kiemTraKhoa(db, ngayP);
+  if (!a.ncc || !String(a.ncc).trim()) throw new LoiNguoiDung('Thiếu nhà cung cấp: hỏi người dùng phiếu này của nhà cung cấp / đối tượng nào.');
+  const ncc = timMa(db, 'ncc', a.ncc);
+  if (ncc === '__none__' || !(db.suppliers || []).some((x) => KT.keyOf(x.ma) === KT.keyOf(ncc))) throw new LoiNguoiDung('Nhà cung cấp “' + a.ncc + '” chưa có trong danh mục. Dùng tim_danh_muc hoặc tạo trong phần mềm trước.');
+  const dong = Array.isArray(a.dong) ? a.dong : [];
+  if (!dong.length) throw new LoiNguoiDung('Phiếu cần ít nhất một dòng.');
+  if (dong.length > 50) throw new LoiNguoiDung('Một phiếu tối đa 50 dòng.');
+  const canhBao = [];
+  canhBaoNgay(ngayP, canhBao);
+  const rows = dong.map((d, i) => {
+    const at = 'Dòng ' + (i + 1) + ': ';
+    try {
+      if (!d || !String(d.cong_trinh || '').trim()) throw new LoiNguoiDung('thiếu công trình: hỏi người dùng dòng này thuộc công trình nào (không tự đoán).');
+      const ct = timMa(db, 'ct', d.cong_trinh);
+      if (ct === '__none__' || !(db.projects || []).some((x) => KT.keyOf(x.ma) === KT.keyOf(ct))) throw new LoiNguoiDung('công trình “' + d.cong_trinh + '” chưa có trong danh mục.');
+      const nd = String(d.noi_dung || '').trim();
+      if (!nd) throw new LoiNguoiDung('thiếu nội dung.');
+      const tien = soTien(d.so_tien, 'so_tien');
+      const vt = d.vat_tu ? timMa(db, 'vt', d.vat_tu) : '';
+      return { ct, nd, tien, vt };
+    } catch (e) { if (e instanceof LoiNguoiDung) throw new LoiNguoiDung(at + e.message); throw e; }
+  });
+  const tong = rows.reduce((t, r) => t + r.tien, 0);
+  const soPhieu = a.so_phieu && String(a.so_phieu).trim() ? String(a.so_phieu).trim() : '';
+  const soDuKien = soPhieu || KT.soChungTuTiep(db, loai === 'thu' ? 'thu' : 'chi', ngayP, ncc).soPhieu;
+  if (soPhieu) {
+    const trungSo = (c.goc.entries || []).some((e) => KT.keyOf(e.soPhieu) === KT.keyOf(soPhieu));
+    if (trungSo) canhBao.push('Số phiếu ' + soPhieu + ' ĐÃ CÓ trong sổ. Bỏ trống so_phieu để phần mềm tự đánh số, hoặc kiểm tra xem có nhập trùng không.');
+  }
+  // trùng: cùng ngày + NCC + số tiền (kể cả phiếu nháp)
+  rows.forEach((r, i) => {
+    const t = (c.goc.entries || []).filter((e) => e.ngay === ngayP && KT.keyOf(e.maNCC) === KT.keyOf(ncc) && ((loai === 'chi' ? e.chi : e.thu) || 0) === r.tien);
+    if (t.length) canhBao.push('Dòng ' + (i + 1) + ': đã có ' + t.length + ' phiếu CÙNG ngày, NCC và số tiền ' + money(r.tien) + ' (' + t.map((e) => (e.soPhieu || 'không số') + (KT.isDraft(e) ? ' nháp' : '')).join(', ') + '). Nghi nhập trùng.');
+    if (loai === 'chi' && nccChuaCoOCongTrinh(db, ncc, r.ct)) canhBao.push('Dòng ' + (i + 1) + ': ' + tenCua(db, 'ncc', ncc) + ' CHƯA có chi phí / số dư nào ở công trình ' + r.ct + '. Khoản chi có thể thành ứng trước hoặc chọn nhầm công trình.');
+  });
+  // ảnh hưởng công nợ NCC theo từng công trình (chỉ có nghĩa khi ghi sổ)
+  const theoCT = new Map();
+  rows.forEach((r) => theoCT.set(r.ct, (theoCT.get(r.ct) || 0) + r.tien));
+  const congNo = Array.from(theoCT.entries()).map(([ct, t]) => {
+    const truoc = ((KT.debtOf(db, ncc, ct) || {}).conLai) || 0;
+    const sau = truoc + (loai === 'chi' ? -t : t);
+    return { congTrinh: ct, truoc, sau };
+  });
+  const payload = {
+    kieu: 'thu-chi', cheDo, loai, ngay: ngayP, ncc, soPhieu, nguoiNhan: String(a.nguoi_nhan || '').trim(), ghiChu: String(a.ghi_chu || '').trim(),
+    rows: rows.map((r) => ({ maDuAn: r.ct, noiDung: r.nd, soTien: r.tien, maVT: r.vt }))
+  };
+  const ma = taoMaXacNhan('thu-chi', payload);
+  const banXemTruoc = '**PHIẾU ' + (loai === 'chi' ? 'CHI' : 'THU') + ' — ' + soDuKien + (soPhieu ? '' : ' (số tự đánh, có thể đổi nếu có phiếu khác được ghi trước)') + '**\n' +
+    'Ngày: ' + KT.fmtDate(ngayP) + ' · ' + (loai === 'chi' ? 'Trả' : 'Nhận từ') + ': **' + tenCua(db, 'ncc', ncc) + '** (' + ncc + ')' + (payload.nguoiNhan ? ' · Người nhận: ' + payload.nguoiNhan : '') + '\n\n' +
+    bang(['#', 'Công trình', 'Nội dung', 'Vật tư', 'Số tiền'], rows.map((r, i) => [i + 1, r.ct + ' – ' + tenCua(db, 'ct', r.ct), r.nd, r.vt || '', money(r.tien)])) + '\n\n' +
+    '**Tổng: ' + money(tong) + '**\n\n' +
+    'Công nợ ' + tenCua(db, 'ncc', ncc) + ' theo công trình' + (cheDo === 'ghi_so' ? '' : ' (nếu sau này ghi sổ)') + ' — dương = còn phải trả:\n' +
+    bang(['Công trình', 'Trước', 'Sau'], congNo.map((x) => [x.congTrinh, money(x.truoc), money(x.sau)])) + '\n\n' +
+    'Khi bạn đồng ý, mình sẽ: **' + cheDoNhan(cheDo) + '**.' + (canhBao.length ? '\n\n⚠️ Cảnh báo:\n' + canhBao.map((x) => '- ' + x).join('\n') : '');
+  return {
+    chuaGhi: true, maXacNhan: ma, hetHanSau: '15 phút', cheDo, soPhieuDuKien: soDuKien, tongTien: tong, canhBao, banXemTruoc,
+    nhacTraLoi: 'Hiện NGUYÊN trường banXemTruoc cho người dùng (cả cảnh báo), hỏi "OK ghi phiếu không?". CHƯA ghi gì. Chỉ gọi ghi_phieu(ma_xac_nhan, nguoi_dung_da_dong_y=true) sau khi người dùng đồng ý rõ ràng; nếu họ muốn sửa thì gọi lại công cụ xem trước.'
+  };
+}
+
+function xemTruocPhieuNhapChiPhi(a) {
+  const c = duLieu();
+  const db = c.db;
+  const cheDo = chon(a.che_do, ['nhap', 'ghi_so'], 'che_do') || 'nhap';
+  const ngayP = ngayPhieu(a.ngay);
+  kiemTraKhoa(db, ngayP);
+  if (!a.ncc || !String(a.ncc).trim()) throw new LoiNguoiDung('Thiếu nhà cung cấp: hỏi người dùng phiếu này của nhà cung cấp nào.');
+  const ncc = timMa(db, 'ncc', a.ncc);
+  if (ncc === '__none__' || !(db.suppliers || []).some((x) => KT.keyOf(x.ma) === KT.keyOf(ncc))) throw new LoiNguoiDung('Nhà cung cấp “' + a.ncc + '” chưa có trong danh mục.');
+  const dong = Array.isArray(a.dong) ? a.dong : [];
+  if (!dong.length) throw new LoiNguoiDung('Phiếu cần ít nhất một dòng.');
+  if (dong.length > 50) throw new LoiNguoiDung('Một phiếu tối đa 50 dòng.');
+  const canhBao = [];
+  canhBaoNgay(ngayP, canhBao);
+  const soPhieu = a.so_phieu && String(a.so_phieu).trim() ? String(a.so_phieu).trim() : '';
+  const soDuKien = soPhieu || KT.soChungTuTiep(db, 'mh', ngayP).soPhieu;
+  const mat = new Map((db.materials || []).map((m) => [KT.keyOf(m.ma), m]));
+  const rows = dong.map((d, i) => {
+    const at = 'Dòng ' + (i + 1) + ': ';
+    try {
+      if (!d || !String(d.cong_trinh || '').trim()) throw new LoiNguoiDung('thiếu công trình: hỏi người dùng dòng này thuộc công trình nào (không tự đoán).');
+      const ct = timMa(db, 'ct', d.cong_trinh);
+      if (ct === '__none__' || !(db.projects || []).some((x) => KT.keyOf(x.ma) === KT.keyOf(ct))) throw new LoiNguoiDung('công trình “' + d.cong_trinh + '” chưa có trong danh mục.');
+      const vt = d.vat_tu ? timMa(db, 'vt', d.vat_tu) : '';
+      const m = vt ? mat.get(KT.keyOf(vt)) : null;
+      if (vt && !m) throw new LoiNguoiDung('vật tư “' + d.vat_tu + '” chưa có trong danh mục.');
+      const dg = String(d.dien_giai || '').trim();
+      if (!vt && !dg) throw new LoiNguoiDung('cần vat_tu hoặc dien_giai.');
+      const num = (v, ten) => { if (v === undefined || v === null || v === '') return null; const n = Number(v); if (!Number.isFinite(n) || n < 0) throw new LoiNguoiDung(ten + ' không hợp lệ.'); return n; };
+      const r = KT.costFromInput(num(d.so_luong, 'so_luong'), num(d.don_gia, 'don_gia'), num(d.thanh_tien, 'thanh_tien'));
+      if (r.loi) throw new LoiNguoiDung(r.loi + '.');
+      if (!(r.thanhTien > 0)) throw new LoiNguoiDung('thành tiền phải lớn hơn 0.');
+      let hm = m && m.maHM ? m.maHM : '';
+      if (!hm) {
+        if (!d.hang_muc || !String(d.hang_muc).trim()) throw new LoiNguoiDung(vt ? 'vật tư ' + vt + ' chưa gắn hạng mục trong danh mục: cần hang_muc (hỏi người dùng).' : 'dòng không có vật tư: cần hang_muc (hỏi người dùng khoản này thuộc hạng mục nào).');
+        hm = timMa(db, 'hm', d.hang_muc);
+        if (!(db.costItems || []).some((x) => KT.keyOf(x.ma) === KT.keyOf(hm))) throw new LoiNguoiDung('hạng mục “' + d.hang_muc + '” chưa có trong danh mục.');
+      }
+      if (m && r.donGia) {
+        const lp = KT.lastPrice(db, m.ma, ncc);
+        if (lp && lp.donGia > 0) {
+          const lech = (r.donGia - lp.donGia) / lp.donGia;
+          if (Math.abs(lech) >= 0.3) canhBao.push(at + 'đơn giá ' + money(r.donGia) + ' lệch ' + Math.round(lech * 100) + '% so với lần mua gần nhất ' + money(lp.donGia) + ' (' + KT.fmtDate(lp.ngay) + (lp.cungNCC ? ', cùng NCC' : ', NCC ' + lp.maNCC) + ').');
+        }
+      }
+      return { ct, vt, dg, sl: r.soLuong, dgia: r.donGia, tt: r.thanhTien, ten: m ? m.ten : '', dvt: m ? m.dvt || '' : '', hm, hmGhi: m && m.maHM ? '' : hm };
+    } catch (e) { if (e instanceof LoiNguoiDung) throw new LoiNguoiDung(at + e.message); throw e; }
+  });
+  const tong = rows.reduce((t, r) => t + r.tt, 0);
+  if (soPhieu && (c.goc.costs || []).some((x) => KT.keyOf(x.soPhieu) === KT.keyOf(soPhieu) && KT.keyOf(x.maNCC) === KT.keyOf(ncc))) canhBao.push('Số phiếu ' + soPhieu + ' của NCC này ĐÃ CÓ trong sổ chi phí. Nghi nhập trùng.');
+  rows.forEach((r, i) => {
+    const t = (c.goc.costs || []).filter((x) => x.ngay === ngayP && KT.keyOf(x.maNCC) === KT.keyOf(ncc) && x.thanhTien === r.tt && (KT.keyOf(x.maVT) || '') === KT.keyOf(r.vt));
+    if (t.length) canhBao.push('Dòng ' + (i + 1) + ': đã có ' + t.length + ' dòng chi phí CÙNG ngày, NCC, vật tư và thành tiền ' + money(r.tt) + '. Nghi nhập trùng.');
+  });
+  const theoCT = new Map();
+  rows.forEach((r) => theoCT.set(r.ct, (theoCT.get(r.ct) || 0) + r.tt));
+  const congNo = Array.from(theoCT.entries()).map(([ct, t]) => {
+    const truoc = ((KT.debtOf(db, ncc, ct) || {}).conLai) || 0;
+    return { congTrinh: ct, truoc, sau: truoc + t };
+  });
+  const payload = {
+    kieu: 'nhap-chi-phi', cheDo, ngay: ngayP, ncc, soPhieu,
+    rows: rows.map((r) => ({ maCT: r.ct, maVT: r.vt, dienGiai: r.dg, maHM: r.hmGhi, soLuong: r.sl, donGia: r.dgia, thanhTien: r.tt }))
+  };
+  const ma = taoMaXacNhan('nhap-chi-phi', payload);
+  const banXemTruoc = '**PHIẾU NHẬP CHI PHÍ — ' + soDuKien + (soPhieu ? '' : ' (số tự đánh, có thể đổi nếu có phiếu khác được ghi trước)') + '**\n' +
+    'Ngày: ' + KT.fmtDate(ngayP) + ' · Nhà cung cấp: **' + tenCua(db, 'ncc', ncc) + '** (' + ncc + ')\n\n' +
+    bang(['#', 'Công trình', 'Vật tư / diễn giải', 'Hạng mục', 'SL', 'Đơn giá', 'Thành tiền'], rows.map((r, i) => [i + 1, r.ct + ' – ' + tenCua(db, 'ct', r.ct), (r.vt ? r.vt + ' ' + r.ten : r.dg) + (r.vt && r.dg ? ' · ' + r.dg : ''), r.hm + ' ' + (((db.costItems || []).find((x) => KT.keyOf(x.ma) === KT.keyOf(r.hm)) || {}).ten || ''), r.sl == null ? 'theo khoản' : r.sl + (r.dvt ? ' ' + r.dvt : ''), r.dgia == null ? '' : money(r.dgia), money(r.tt)])) + '\n\n' +
+    '**Tổng: ' + money(tong) + '**\n\n' +
+    'Công nợ ' + tenCua(db, 'ncc', ncc) + ' theo công trình' + (cheDo === 'ghi_so' ? '' : ' (nếu sau này ghi sổ)') + ' — dương = còn phải trả:\n' +
+    bang(['Công trình', 'Trước', 'Sau'], congNo.map((x) => [x.congTrinh, money(x.truoc), money(x.sau)])) + '\n\n' +
+    'Khi bạn đồng ý, mình sẽ: **' + cheDoNhan(cheDo) + '**.' + (canhBao.length ? '\n\n⚠️ Cảnh báo:\n' + canhBao.map((x) => '- ' + x).join('\n') : '');
+  return {
+    chuaGhi: true, maXacNhan: ma, hetHanSau: '15 phút', cheDo, soPhieuDuKien: soDuKien, tongTien: tong, canhBao, banXemTruoc,
+    nhacTraLoi: 'Hiện NGUYÊN trường banXemTruoc cho người dùng (cả cảnh báo), hỏi "OK ghi phiếu không?". CHƯA ghi gì. Chỉ gọi ghi_phieu(ma_xac_nhan, nguoi_dung_da_dong_y=true) sau khi người dùng đồng ý rõ ràng; nếu họ muốn sửa thì gọi lại công cụ xem trước.'
+  };
+}
+
+// Gọi API của phần mềm đang chạy (giữ nguyên khóa sổ, nhật ký, kiểm tra dữ liệu). Cổng MCP không bao giờ ghi thẳng vào file dữ liệu.
+async function goiPhanMem(pm, duongDan, body) {
+  let res;
+  try {
+    res = await fetch('http://127.0.0.1:' + pm.port + duongDan, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  } catch (e) {
+    throw new LoiNguoiDung('Không kết nối được phần mềm Kế Toán Công Trình (cổng ' + pm.port + '). Mở phần mềm (KhoiDong.bat) rồi gọi lại ghi_phieu: mã xác nhận vẫn dùng được trong 15 phút.');
+  }
+  let j = null;
+  try { j = await res.json(); } catch (e) { /* không phải JSON */ }
+  if (res.status === 401 || res.status === 403) throw new LoiNguoiDung('Phần mềm đang bật đăng nhập nên trợ lý chưa ghi được phiếu (chỉ xem được). Hãy nhập phiếu trong phần mềm.');
+  if (!res.ok || !j || j.ok === false) throw new LoiNguoiDung('Phần mềm từ chối ghi phiếu: ' + ((j && j.error) || ('lỗi ' + res.status)) + '. Chưa ghi gì.');
+  return j;
+}
+
+async function ghiPhieu(a) {
+  const ma = String(a.ma_xac_nhan || '').trim().toUpperCase();
+  const x = cho.get(ma);
+  if (!x || x.hetHan < Date.now()) { cho.delete(ma); throw new LoiNguoiDung('Mã xác nhận không có hoặc đã hết hạn (15 phút). Gọi lại công cụ xem trước để tạo bản xem trước mới và cho người dùng xem lại.'); }
+  if (a.nguoi_dung_da_dong_y !== true) throw new LoiNguoiDung('Chưa ghi: cần nguoi_dung_da_dong_y = true, chỉ khi người dùng đã xem bảng xem trước và đồng ý rõ ràng.');
+  const pm = phanMem();
+  if (!pm.dangChay) throw new LoiNguoiDung('Phần mềm đang tắt. Mở phần mềm (KhoiDong.bat) rồi gọi lại ghi_phieu: mã xác nhận vẫn dùng được trong 15 phút. Chưa ghi gì.');
+  cho.delete(ma); // dùng một lần: gọi lại bằng cùng mã sẽ bị từ chối (tránh ghi đôi)
+  const p = x.payload;
+  const nhap = p.cheDo !== 'ghi_so';
+  const c = duLieu();
+  try {
+    if (p.kieu === 'thu-chi') {
+      // đánh số tại thời điểm ghi (lấy số mới nhất, tránh trùng nếu có phiếu khác được ghi từ lúc xem trước)
+      const soPhieu = p.soPhieu || KT.soChungTuTiep(c.db, p.loai === 'thu' ? 'thu' : 'chi', p.ngay, p.ncc).soPhieu;
+      const rows = p.rows.map((r) => Object.assign({
+        ngay: p.ngay, soPhieu, maDuAn: r.maDuAn, maNCC: p.ncc, noiDung: r.noiDung, thu: p.loai === 'thu' ? r.soTien : 0, chi: p.loai === 'chi' ? r.soTien : 0,
+        nguoiNhan: p.nguoiNhan, ghiChu: p.ghiChu
+      }, r.maVT ? { maVT: r.maVT } : {}, nhap ? { trangThai: 'nhap' } : {}));
+      const j = await goiPhanMem(pm, '/api/entries/phieu', { rows });
+      const tong = p.rows.reduce((t, r) => t + r.soTien, 0);
+      cache = null;
+      return {
+        daGhi: true, loai: 'phiếu ' + (p.loai === 'chi' ? 'chi' : 'thu'), soPhieu, soDong: j.ids.length, tongTien: tong, trangThai: nhap ? 'NHÁP (chưa ghi sổ: mở phần mềm kiểm tra rồi bấm Ghi sổ)' : 'ĐÃ GHI SỔ',
+        xemTrenPhanMem: lienKet('so-thu-chi', { q: soPhieu })
+      };
+    }
+    const soPhieu = p.soPhieu || KT.soChungTuTiep(c.db, 'mh', p.ngay).soPhieu;
+    const body = { header: Object.assign({ ngay: p.ngay, maNCC: p.ncc, soPhieu }, nhap ? { trangThai: 'nhap' } : {}), lines: p.rows.map((r) => ({ maCT: r.maCT, maVT: r.maVT, dienGiai: r.dienGiai, maHM: r.maHM, soLuong: r.soLuong == null ? '' : r.soLuong, donGia: r.donGia == null ? '' : r.donGia, thanhTien: r.thanhTien })) };
+    const j = await goiPhanMem(pm, '/api/cost-slips', body);
+    cache = null;
+    return {
+      daGhi: true, loai: 'phiếu nhập chi phí', soPhieu, soDong: j.count, tongTien: j.total, trangThai: nhap ? 'NHÁP (chưa ghi sổ: mở phần mềm kiểm tra rồi bấm Ghi sổ)' : 'ĐÃ GHI SỔ',
+      xemTrenPhanMem: lienKet('cp-so', { q: soPhieu })
+    };
+  } catch (e) {
+    if (e instanceof LoiNguoiDung) { cho.set(ma, x); } // lỗi trước khi ghi: giữ mã để thử lại
+    throw e;
+  }
+}
+
 /* ---------- giao thức MCP (JSON-RPC 2.0 qua stdio) ---------- */
 
 const gui = (msg) => process.stdout.write(JSON.stringify(msg) + '\n');
@@ -577,7 +907,7 @@ const HUONG_DAN = 'Công cụ tra cứu (chỉ đọc) số liệu phần mềm 
   'Tiền tính bằng đồng (VND); khi trả lời hãy viết số có dấu chấm ngăn cách hàng nghìn (1.250.000 đ). Ngày dạng YYYY-MM-DD. ' +
   'Công trình / NCC / vật tư nhận mã hoặc tên; nếu công cụ báo khớp nhiều mục, hãy hỏi lại người dùng hoặc dùng tim_danh_muc. ' +
   'Chưa biết số liệu có từ ngày nào thì gọi tong_quan trước. Công nợ: cuối kỳ dương = còn phải trả (Dư Có), âm = đã ứng trước (Dư Nợ). ' +
-  'Các công cụ này không sửa được dữ liệu; muốn ghi / sửa phiếu người dùng phải làm trong phần mềm. ' +
+  'Các công cụ tra cứu chỉ đọc. Lập phiếu thu / chi / nhập chi phí theo 2 bước: xem_truoc_phieu_* (không ghi gì) → hiện NGUYÊN bảng xem trước cho người dùng và hỏi OK → CHỈ khi người dùng đồng ý rõ ràng mới gọi ghi_phieu. Không bao giờ tự đoán nhà cung cấp / công trình hay lấy từ phiếu trước: thiếu thì hỏi. Không sửa / xóa phiếu đã ghi sổ (người dùng làm trong phần mềm). ' +
   'Mỗi kết quả có xemTrenPhanMem.url mở đúng màn hình đã lọc sẵn trên phần mềm: cuối câu trả lời hãy đưa link dạng markdown [Xem trên phần mềm](url) ' +
   '(dùng nguyên văn url, không tự sửa); nếu có xemTrenPhanMem.luuY thì nhắc người dùng. Link chỉ mở được trên máy cài phần mềm.';
 
@@ -599,18 +929,18 @@ function xuLy(msg) {
     case 'tools/call': {
       const t = CONG_CU.find((x) => x.name === p.name);
       if (!t) return baoLoi(msg.id, -32602, 'Không có công cụ ' + p.name);
-      try {
-        let kq = t.chay(p.arguments || {});
+      return Promise.resolve().then(() => t.chay(p.arguments || {})).then((kq0) => {
+        let kq = kq0;
         // đặt link và lời nhắc lên đầu kết quả để không bị bỏ sót
         if (kq.xemTrenPhanMem) {
           const { xemTrenPhanMem, ...con } = kq;
           kq = Object.assign({ xemTrenPhanMem, nhacTraLoi: 'Cuối câu trả lời hãy đưa link: [Xem trên phần mềm](' + xemTrenPhanMem.url + ')' + (xemTrenPhanMem.luuY ? ' và nhắc: ' + xemTrenPhanMem.luuY : '') }, con);
         }
         return traLoi(msg.id, { content: [{ type: 'text', text: JSON.stringify(kq) }], structuredContent: kq, isError: false });
-      } catch (e) {
+      }).catch((e) => {
         if (!(e instanceof LoiNguoiDung)) log('Lỗi khi chạy', p.name + ':', e && e.stack || e);
         return traLoi(msg.id, { content: [{ type: 'text', text: (e instanceof LoiNguoiDung ? '' : 'Lỗi: ') + (e && e.message || String(e)) }], isError: true });
-      }
+      });
     }
     default:
       if (msg.method.startsWith('notifications/')) return undefined; // thông báo: không trả lời

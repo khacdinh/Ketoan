@@ -1,5 +1,11 @@
 # Nhật ký phiên bản (CHANGELOG)
 
+## Trợ lý AI lập phiếu: xem trước → đồng ý → ghi (12/10/2026)
+
+- 3 công cụ MCP mới (cổng 1.3.0): `xem_truoc_phieu_thu_chi`, `xem_truoc_phieu_nhap_chi_phi` (không ghi gì; trả bảng xem trước, cảnh báo, ảnh hưởng công nợ theo công trình, mã xác nhận) và `ghi_phieu` (cần mã xác nhận + `nguoi_dung_da_dong_y: true`).
+- An toàn: mặc định lưu **Nháp** (`che_do: ghi_so` chỉ khi người dùng yêu cầu); NCC và công trình từng dòng bắt buộc, không tự đoán; mã xác nhận dùng một lần, 15 phút; ghi qua API của phần mềm đang chạy (khóa sổ, nhật ký, đánh số) chứ không ghi thẳng file dữ liệu; phần mềm tắt hoặc bật đăng nhập thì không ghi; trùng phiếu / lệch giá / ngày bất thường chỉ cảnh báo.
+- Test T6, T7.
+
 ## Form nhập không tự nhớ nhà cung cấp, công trình (12/10/2026)
 
 - **Phiếu nhập chi phí**: phiếu mới trống Nhà cung cấp và Công trình (không lấy công trình đang chọn ở thanh trên, không lấy NCC / công trình của phiếu trước); dòng mới không chép công trình, nhà / khu từ dòng trên; ghi xong thì phiếu kế tiếp trống hoàn toàn. Bỏ khóa `cp.lastHeader`.

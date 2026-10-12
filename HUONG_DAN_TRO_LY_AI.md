@@ -17,7 +17,7 @@ Ví dụ:
 
 | Được | Không được |
 |---|---|
-| Xem sổ quỹ, chi phí công trình, công nợ NCC, tuổi nợ, giá vật tư, cảnh báo | Ghi, sửa, xóa phiếu hay danh mục |
+| Xem sổ quỹ, chi phí công trình, công nợ NCC, tuổi nợ, giá vật tư, cảnh báo | Sửa, xóa phiếu hay danh mục; ghi phiếu khi bạn chưa đồng ý |
 | Tổng hợp theo công trình, NCC, nhóm, hạng mục, vật tư, tháng, quý, năm | Xem file đính kèm, nhật ký, tài khoản đăng nhập |
 | Hiểu tên gần đúng, không dấu ("hoa phat", "thep phi 10") | Đoán số khi không có dữ liệu |
 
@@ -91,7 +91,25 @@ công trình, NCC, vật tư và kỳ đúng như câu trả lời, để bạn 
 - Nếu đã bật đăng nhập, bạn đăng nhập trước, rồi phần mềm mở đúng màn hình. Phân quyền vẫn được giữ.
 - Claude không đưa link thì kiểm tra 3 việc: (1) đã cập nhật code mới; (2) đã **thoát hẳn Claude Desktop** (Quit ở thanh tác vụ) rồi mở lại, vì Claude chỉ đọc lại công cụ khi mở lại; (3) mở cuộc trò chuyện **mới**. Vẫn không có thì nói thêm: *"cho link xem trên phần mềm"*.
 
-## 5. Mẹo hỏi cho đúng
+## 5. Nhờ trợ lý lập phiếu (xem trước rồi mới ghi)
+
+Bạn nói, ví dụ: *"Lập phiếu chi hôm nay 15 triệu trả Hòa Phát, công trình K85, tiền thép đợt 1"* hoặc *"Nhập phiếu mua 20 kg thép phi 10 giá 22.000 của Xuân Trang cho K57"*.
+
+Trợ lý làm **2 bước**, luôn **hiện bảng xem trước rồi hỏi bạn trước khi ghi**:
+
+1. **Xem trước (chưa ghi gì):** trợ lý tìm đúng mã, kiểm tra dữ liệu, rồi hiện bảng: số phiếu dự kiến, nhà cung cấp, từng dòng (công trình, nội dung, số tiền), tổng tiền, công nợ của nhà cung cấp theo từng công trình **trước và sau** khi ghi, kèm **cảnh báo** (nghi trùng với phiếu đã có, đơn giá lệch nhiều so với lần mua trước, nhà cung cấp chưa có chi phí ở công trình đó, ngày ở tương lai hoặc quá cũ, số phiếu đã tồn tại). Tháng đã khóa sổ thì báo lỗi ngay.
+2. **Bạn trả lời "OK"** thì trợ lý mới ghi. Bạn sửa hoặc nói "không" thì trợ lý chỉ xem trước lại, **không ghi**.
+
+Quy tắc an toàn:
+- **Mặc định lưu NHÁP**: phiếu chưa tính vào sổ quỹ, chi phí hay công nợ. Bạn mở link **Xem trên phần mềm**, kiểm tra rồi bấm **Ghi sổ**. Muốn ghi sổ luôn thì nói rõ *"ghi sổ luôn"*.
+- **Không tự đoán nhà cung cấp, công trình**: thiếu thì trợ lý hỏi lại. Mỗi dòng phải có công trình riêng, đúng như khi nhập trên phần mềm.
+- Mỗi lần xem trước có **mã xác nhận dùng một lần, hết hạn sau 15 phút**, chỉ ghi đúng nội dung bạn đã xem. Ghi xong không ghi đôi được.
+- Phiếu đi qua **chính phần mềm**: có số phiếu tự đánh, nhật ký ai làm gì, kiểm tra khóa sổ. Vì vậy **phần mềm phải đang chạy** khi ghi (tra cứu thì không cần).
+- Trợ lý **không sửa hoặc xóa** phiếu đã ghi sổ. Phiếu ghi nhầm thì xóa / sửa trong phần mềm (vào Thùng rác được khôi phục).
+- Nếu đã **bật đăng nhập**, trợ lý chưa ghi được phiếu (vẫn tra cứu được). Hãy nhập trong phần mềm.
+- Phiếu nhập chi phí: dòng **không có vật tư** (hoặc vật tư chưa gắn hạng mục) phải nói rõ **hạng mục**. File đính kèm (ảnh hóa đơn) vẫn đính kèm trong phần mềm.
+
+## 6. Mẹo hỏi cho đúng
 
 - **Nói rõ kỳ**: "tháng 9/2026", "từ 01/07 đến 30/09", "quý 3". Không nói kỳ thì trợ lý tính trên toàn bộ số liệu.
 - **Tên công trình / NCC** gõ gần đúng cũng được. Nếu khớp nhiều mục, trợ lý sẽ hỏi lại bạn muốn mục nào.
@@ -100,20 +118,20 @@ công trình, NCC, vật tư và kỳ đúng như câu trả lời, để bạn 
   lớn hơn tổng tính theo NCC. Lý do: một NCC còn nợ ở công trình này nhưng ứng dư ở công trình khác thì chỉ được bù trừ khi tính theo NCC. Số thuần luôn bằng nhau.
 - Câu trả lời quan trọng (để trả tiền, ký biên bản) nên **đối chiếu lại trên màn hình phần mềm**.
 
-## 6. An toàn và quyền riêng tư
+## 7. An toàn và quyền riêng tư
 
-- Trợ lý **chỉ đọc**. Ghi, sửa, xóa vẫn phải làm trong phần mềm.
+- Tra cứu **chỉ đọc**. Lập phiếu chỉ sau khi bạn xem trước và đồng ý (mục 5), mặc định lưu nháp; sửa, xóa vẫn làm trong phần mềm.
 - Khi bạn hỏi, **phần kết quả liên quan tới câu hỏi** được gửi lên Claude qua internet để Claude soạn câu trả lời.
   Cả file dữ liệu không bị gửi đi. Không có internet thì trợ lý không trả lời được, còn phần mềm vẫn chạy bình thường.
 - Trợ lý đọc thẳng file dữ liệu, nên **không áp dụng phân quyền đăng nhập** của phần mềm. Ai dùng Claude Desktop trên máy đó cũng
   hỏi được mọi số liệu. Chỉ nên cài trên máy của chủ / kế toán trưởng.
 
-## 7. Gỡ trợ lý
+## 8. Gỡ trợ lý
 
 Mở Command Prompt trong thư mục phần mềm, chạy `CaiTroLyAI.bat go`, rồi thoát hẳn và mở lại Claude Desktop.
 Hoặc xóa mục `ke-toan-cong-trinh` trong file cấu hình (mục 3).
 
-## 8. Xử lý sự cố
+## 9. Xử lý sự cố
 
 | Hiện tượng | Cách xử lý |
 |---|---|
@@ -122,7 +140,7 @@ Hoặc xóa mục `ke-toan-cong-trinh` trong file cấu hình (mục 3).
 | "Không thấy file dữ liệu" | Mở phần mềm một lần. Nếu đã dời thư mục phần mềm, chạy lại `CaiTroLyAI.bat`. |
 | Số khác màn hình | Kiểm tra kỳ và bộ lọc trong câu hỏi. Trợ lý không tính phiếu nháp. Màn hình đang lọc công trình ở thanh trên cùng thì phải hỏi đúng công trình đó. |
 | "File cấu hình đang bị lỗi định dạng JSON" | File cấu hình bị sửa sai. Mở bằng Notepad và sửa lại, hoặc đổi tên file rồi chạy lại `CaiTroLyAI.bat`. |
-| Hỏi xong không có link "Xem trên phần mềm" | Mở Command Prompt trong thư mục phần mềm, gõ `node scripts\mcp-ketoan.js --kiem-tra`: phải thấy "Phiên bản cổng trợ lý: 1.2.0" trở lên. Thấp hơn là chưa cập nhật code. Rồi thoát hẳn Claude Desktop, mở lại, hỏi trong cuộc trò chuyện mới. |
+| Hỏi xong không có link "Xem trên phần mềm" | Mở Command Prompt trong thư mục phần mềm, gõ `node scripts\mcp-ketoan.js --kiem-tra`: phải thấy "Phiên bản cổng trợ lý: 1.3.0" trở lên. Thấp hơn là chưa cập nhật code. Rồi thoát hẳn Claude Desktop, mở lại, hỏi trong cuộc trò chuyện mới. |
 | Bấm link "Xem trên phần mềm" không mở được | Mở phần mềm (`KhoiDong.bat`) trước rồi bấm lại. Phần mềm vừa mở thì hỏi lại để Claude lấy link mới, vì cổng có thể đã đổi. |
 | Đổi máy hoặc dời thư mục phần mềm | Chạy lại `CaiTroLyAI.bat` trên máy mới / ở thư mục mới. |
 

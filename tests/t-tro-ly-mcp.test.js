@@ -103,13 +103,13 @@ test('T1 giao thức MCP: initialize, tools/list, lỗi đúng chuẩn', async (
     c.raw(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }));
     const ds = await c.gui('tools/list', {});
     const ten = ds.result.tools.map((t) => t.name).sort();
-    assert.deepEqual(ten, ['canh_bao', 'cong_no_ncc', 'cong_no_theo_cong_trinh', 'gia_vat_tu', 'so_chi_phi', 'so_quy', 'tim_danh_muc', 'tong_hop_chi_phi', 'tong_hop_thu_chi', 'tong_quan', 'tuoi_no']);
+    assert.deepEqual(ten, ['canh_bao', 'cong_no_ncc', 'cong_no_theo_cong_trinh', 'ghi_phieu', 'gia_vat_tu', 'so_chi_phi', 'so_quy', 'tim_danh_muc', 'tong_hop_chi_phi', 'tong_hop_thu_chi', 'tong_quan', 'tuoi_no', 'xem_truoc_phieu_nhap_chi_phi', 'xem_truoc_phieu_thu_chi']);
     ds.result.tools.forEach((t) => {
       assert.equal(t.inputSchema.type, 'object', t.name);
-      assert.equal(t.annotations.readOnlyHint, true, t.name + ' phải đánh dấu chỉ đọc');
+      assert.equal(t.annotations.readOnlyHint, t.name !== 'ghi_phieu', t.name + ': chỉ ghi_phieu được ghi, mọi công cụ khác chỉ đọc');
       assert.ok(t.description.length > 20, t.name);
     });
-    ds.result.tools.forEach((t) => assert.match(t.description, /xemTrenPhanMem/, t.name + ' phải nhắc đưa link'));
+    ds.result.tools.filter((t) => !/^xem_truoc_/.test(t.name)).forEach((t) => assert.match(t.description, /xemTrenPhanMem/, t.name + ' phải nhắc đưa link'));
     const tq = await c.so('tong_quan', {});
     assert.equal(Object.keys(tq)[0], 'xemTrenPhanMem', 'link đứng đầu kết quả');
     assert.match(tq.nhacTraLoi, /\[Xem trên phần mềm\]\(http/);
@@ -204,7 +204,7 @@ test('T3 chỉ đọc: file dữ liệu không đổi; phần mềm ghi thêm th
     await c.gui('initialize', { protocolVersion: '2025-06-18' });
     const truoc = bam(file);
     const ds = (await c.gui('tools/list', {})).result.tools;
-    for (const t of ds) {
+    for (const t of ds.filter((x) => x.name !== 'ghi_phieu' && !/^xem_truoc_/.test(x.name))) {
       const args = t.name === 'gia_vat_tu' ? { vat_tu: 'VT1' } : (t.inputSchema.required || []).includes('theo') ? { theo: 'thang' } : {};
       const r = await c.goi(t.name, args);
       assert.equal(r.isError, false, t.name + ': ' + r.content[0].text);
@@ -312,4 +312,125 @@ test('T5 link "Xem trên phần mềm": đúng cổng, mở đúng màn hình đ
     const lk = (await c2.so('tong_quan', {})).xemTrenPhanMem;
     assert.match(lk.luuY, /Phần mềm đang tắt/);
   } finally { await c2.dong(); }
+});
+
+test('T6 lập phiếu: xem trước KHÔNG ghi; chỉ ghi sau khi người dùng đồng ý; nháp / ghi sổ; mã dùng một lần; thiếu NCC / công trình bị từ chối', async () => {
+  const srv = await startServer({ seed: seed() });
+  const c = moCong(srv.dataDir);
+  const nEntries = async () => (await srv.db()).entries.length;
+  try {
+    await c.gui('initialize', { protocolVersion: '2025-06-18' });
+    const n0 = await nEntries();
+    const ton0 = (await c.so('tong_quan', {})).tonQuyHienTai;
+    const dong = [{ cong_trinh: 'le loi', noi_dung: 'Trả tiền thép đợt 1', so_tien: 4000000 }, { cong_trinh: 'CT2', noi_dung: 'Trả tiền thép đợt 2', so_tien: 1000000 }];
+
+    // thiếu NCC / thiếu công trình / sai số tiền / công trình lạ: từ chối, không ghi
+    let r = await c.goi('xem_truoc_phieu_thu_chi', { loai: 'chi', dong });
+    assert.equal(r.isError, true); assert.match(r.content[0].text, /Thiếu nhà cung cấp/);
+    r = await c.goi('xem_truoc_phieu_thu_chi', { loai: 'chi', ncc: 'hoa phat', dong: [{ noi_dung: 'x', so_tien: 1000 }] });
+    assert.equal(r.isError, true); assert.match(r.content[0].text, /Dòng 1: thiếu công trình/);
+    r = await c.goi('xem_truoc_phieu_thu_chi', { loai: 'chi', ncc: 'hoa phat', dong: [{ cong_trinh: 'CT1', noi_dung: 'x', so_tien: 10.5 }] });
+    assert.equal(r.isError, true); assert.match(r.content[0].text, /số nguyên dương/);
+    r = await c.goi('xem_truoc_phieu_thu_chi', { loai: 'chi', ncc: 'hoa phat', dong: [{ cong_trinh: 'KHONGCO', noi_dung: 'x', so_tien: 1000 }] });
+    assert.equal(r.isError, true);
+
+    // xem trước hợp lệ: bảng đầy đủ, chưa ghi gì
+    const xt = await c.so('xem_truoc_phieu_thu_chi', { loai: 'chi', ncc: 'hoa phat', ngay: '2026-08-04', dong });
+    assert.equal(xt.chuaGhi, true);
+    assert.match(xt.maXacNhan, /^[0-9A-F]{8}$/);
+    assert.equal(xt.tongTien, 5000000);
+    assert.equal(xt.cheDo, 'nhap', 'mặc định lưu nháp');
+    assert.match(xt.soPhieuDuKien, /^PC\d{3}\/08$/);
+    assert.match(xt.banXemTruoc, /Vật liệu Hòa Phát/);
+    assert.match(xt.banXemTruoc, /CT1 – Công trình Lê Lợi/);
+    assert.match(xt.banXemTruoc, /5\.000\.000 đ/);
+    assert.match(xt.banXemTruoc, /LƯU NHÁP/);
+    assert.equal(await nEntries(), n0, 'xem trước không ghi gì');
+
+    // chưa đồng ý / mã sai: từ chối
+    r = await c.goi('ghi_phieu', { ma_xac_nhan: xt.maXacNhan, nguoi_dung_da_dong_y: false });
+    assert.equal(r.isError, true); assert.match(r.content[0].text, /nguoi_dung_da_dong_y/);
+    r = await c.goi('ghi_phieu', { ma_xac_nhan: 'ZZZZZZZZ', nguoi_dung_da_dong_y: true });
+    assert.equal(r.isError, true); assert.match(r.content[0].text, /không có hoặc đã hết hạn/);
+    assert.equal(await nEntries(), n0);
+
+    // đồng ý: ghi NHÁP qua phần mềm (có số phiếu, tính cả nhật ký / khóa sổ của phần mềm)
+    const g = await c.so('ghi_phieu', { ma_xac_nhan: xt.maXacNhan, nguoi_dung_da_dong_y: true });
+    assert.equal(g.daGhi, true); assert.equal(g.soDong, 2); assert.equal(g.tongTien, 5000000);
+    assert.match(g.trangThai, /NHÁP/);
+    assert.match(g.xemTrenPhanMem.url, /#\/so-thu-chi\?/);
+    const db = await srv.db();
+    const moi = db.entries.filter((e) => e.soPhieu === g.soPhieu);
+    assert.equal(moi.length, 2);
+    assert.deepEqual(moi.map((e) => [e.maDuAn, e.maNCC, e.chi, e.thu, e.trangThai]), [['CT1', 'NCC_A', 4000000, 0, 'nhap'], ['CT2', 'NCC_A', 1000000, 0, 'nhap']]);
+    assert.equal(moi[0].ngay, '2026-08-04');
+    assert.equal((await c.so('tong_quan', {})).tonQuyHienTai, ton0, 'phiếu nháp chưa tính vào tồn quỹ');
+
+    // mã dùng một lần: gọi lại không ghi đôi
+    r = await c.goi('ghi_phieu', { ma_xac_nhan: xt.maXacNhan, nguoi_dung_da_dong_y: true });
+    assert.equal(r.isError, true);
+    assert.equal(await nEntries(), n0 + 2);
+
+    // xem trước lại đúng phiếu vừa ghi: cảnh báo nghi trùng (cả phiếu nháp)
+    const trung = await c.so('xem_truoc_phieu_thu_chi', { loai: 'chi', ncc: 'NCC_A', ngay: '2026-08-04', dong: [dong[0]] });
+    assert.ok(trung.canhBao.some((x) => /CÙNG ngày, NCC và số tiền/.test(x)), JSON.stringify(trung.canhBao));
+
+    // ghi sổ luôn: chỉ khi chọn rõ che_do ghi_so; tồn quỹ giảm đúng
+    const xs = await c.so('xem_truoc_phieu_thu_chi', { loai: 'chi', ncc: 'NCC_B', ngay: '2026-08-05', che_do: 'ghi_so', dong: [{ cong_trinh: 'CT1', noi_dung: 'Trả công', so_tien: 2000000 }] });
+    assert.match(xs.banXemTruoc, /GHI SỔ NGAY/);
+    const gs = await c.so('ghi_phieu', { ma_xac_nhan: xs.maXacNhan, nguoi_dung_da_dong_y: true });
+    assert.match(gs.trangThai, /ĐÃ GHI SỔ/);
+    assert.equal((await c.so('tong_quan', {})).tonQuyHienTai, ton0 - 2000000);
+    const nhatKy = fs.readFileSync(path.join(srv.dataDir, 'nhat-ky.jsonl'), 'utf8');
+    assert.match(nhatKy, /PC\d+\/08|Trả công/, 'đi qua phần mềm nên có nhật ký');
+
+    // tháng đã khóa sổ: từ chối ngay ở bước xem trước, không cấp mã
+    await srv.ok('POST', '/api/locks', { months: ['2026-06'] });
+    r = await c.goi('xem_truoc_phieu_thu_chi', { loai: 'chi', ncc: 'NCC_A', ngay: '2026-06-10', dong: [{ cong_trinh: 'CT1', noi_dung: 'x', so_tien: 1000 }] });
+    assert.equal(r.isError, true); assert.match(r.content[0].text, /khóa|2026/i);
+
+    // phiếu thu
+    const xth = await c.so('xem_truoc_phieu_thu_chi', { loai: 'thu', ncc: 'NCC_A', ngay: '2026-08-06', che_do: 'ghi_so', so_phieu: 'PT-TAY-1', dong: [{ cong_trinh: 'CT1', noi_dung: 'NCC hoàn tiền', so_tien: 300000 }] });
+    const gth = await c.so('ghi_phieu', { ma_xac_nhan: xth.maXacNhan, nguoi_dung_da_dong_y: true });
+    assert.equal(gth.soPhieu, 'PT-TAY-1');
+    assert.equal((await srv.db()).entries.find((e) => e.soPhieu === 'PT-TAY-1').thu, 300000);
+
+  } finally { await c.dong(); await srv.stop(); }
+});
+
+test('T7 lập phiếu nhập chi phí: xem trước (thành tiền, cảnh báo lệch giá) → đồng ý → ghi nháp; phần mềm tắt thì không ghi', async () => {
+  const srv = await startServer({ seed: seed() });
+  const c = moCong(srv.dataDir);
+  try {
+    await c.gui('initialize', { protocolVersion: '2025-06-18' });
+    const n0 = (await srv.db()).costs.length;
+    // VT1 mua gần nhất 16.000; đơn giá 25.000 lệch > 30%
+    const xt = await c.so('xem_truoc_phieu_nhap_chi_phi', { ncc: 'hoa phat', ngay: '2026-08-10', dong: [
+      { cong_trinh: 'CT1', vat_tu: 'thep phi 10', so_luong: 20, don_gia: 25000 },
+      { cong_trinh: 'CT2', dien_giai: 'Tiền xe chở', thanh_tien: 300000, hang_muc: 'HM01' }
+    ] });
+    const thieuHM = await c.goi('xem_truoc_phieu_nhap_chi_phi', { ncc: 'hoa phat', dong: [{ cong_trinh: 'CT2', dien_giai: 'Tiền xe', thanh_tien: 1000 }] });
+    assert.equal(thieuHM.isError, true); assert.match(thieuHM.content[0].text, /cần hang_muc/);
+    assert.equal(xt.tongTien, 800000);
+    assert.match(xt.soPhieuDuKien, /^MH\d{4}\/08$/);
+    assert.match(xt.banXemTruoc, /VT1 Thép phi 10/);
+    assert.match(xt.banXemTruoc, /theo khoản/);
+    assert.ok(xt.canhBao.some((x) => /lệch 56%/.test(x)), JSON.stringify(xt.canhBao));
+    assert.equal((await srv.db()).costs.length, n0, 'xem trước không ghi');
+    let r = await c.goi('xem_truoc_phieu_nhap_chi_phi', { ncc: 'hoa phat', dong: [{ vat_tu: 'VT1', so_luong: 1, don_gia: 1000 }] });
+    assert.equal(r.isError, true); assert.match(r.content[0].text, /thiếu công trình/);
+
+    const g = await c.so('ghi_phieu', { ma_xac_nhan: xt.maXacNhan, nguoi_dung_da_dong_y: true });
+    assert.equal(g.soDong, 2); assert.equal(g.tongTien, 800000); assert.match(g.trangThai, /NHÁP/);
+    const cs = (await srv.db()).costs.filter((x) => x.soPhieu === g.soPhieu);
+    assert.deepEqual(cs.map((x) => [x.maCT, x.maNCC, x.thanhTien, x.trangThai, x.soLuong]), [['CT1', 'NCC_A', 500000, 'nhap', 20], ['CT2', 'NCC_A', 300000, 'nhap', null]]);
+    assert.equal(cs[0].maHM, 'HM01', 'hạng mục theo vật tư');
+    assert.equal(new Set(cs.map((x) => x.phieuId)).size, 1, 'một phiếu');
+
+    // phần mềm tắt: không ghi, báo rõ, mã còn dùng được sau khi mở lại
+    const xt2 = await c.so('xem_truoc_phieu_nhap_chi_phi', { ncc: 'NCC_B', ngay: '2026-08-11', dong: [{ cong_trinh: 'CT1', dien_giai: 'Công nhật', thanh_tien: 700000, hang_muc: 'HM01' }] });
+    await srv.stop();
+    r = await c.goi('ghi_phieu', { ma_xac_nhan: xt2.maXacNhan, nguoi_dung_da_dong_y: true });
+    assert.equal(r.isError, true); assert.match(r.content[0].text, /Phần mềm đang tắt/);
+  } finally { await c.dong(); await srv.stop(); }
 });
