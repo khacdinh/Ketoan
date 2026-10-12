@@ -18,7 +18,8 @@ export function nguoiThaoTacHtml(r) {
 }
 
 let soForm = 0;
-let lastUsed = { ngay: '', soPhieu: '', maDuAn: '', maNCC: '', loai: 'chi', loaiSo: 'chi' };
+// Chỉ nhớ loại phiếu và số phiếu vừa ghi. KHÔNG nhớ nhà cung cấp / công trình: mỗi phiếu mới phải tự chọn để không ghi nhầm
+let lastUsed = { ngay: '', soPhieu: '', loai: 'chi', loaiSo: 'chi' };
 
 /* Phiếu nhiều dòng: phần chung (ngày, số phiếu, đối tượng, người nhận, ghi chú) + bảng các dòng, mỗi dòng có nội dung, công trình, mã vật tư, số tiền riêng.
    Mỗi dòng là một dòng sổ thu chi (cùng số phiếu) nên công nợ NCC tách đúng theo công trình. Dòng đầu tiên giữ thuộc tính name (noiDung, maDuAn, maVT, chi, thu)
@@ -519,7 +520,7 @@ function mountEntryForm(root, entry, opts, pageKey) {
             if (box) { box.outerHTML = pendingBlock(choKey, 'Ghi sổ (hoặc Lưu nháp)'); bindPending(el); }
           }
         }
-        lastUsed = { ngay: chung.ngay, soPhieu: chung.soPhieu, maDuAn: lines[0].maDuAn, maNCC: chung.maNCC, loai, loaiSo: get('loaiSo').value };
+        lastUsed = { ngay: chung.ngay, soPhieu: chung.soPhieu, loai, loaiSo: get('loaiSo').value };
         const tongTien = lines.reduce((s, x) => s + (x.chi || x.thu), 0);
         toast(asDraft ? 'Đã lưu nháp (chưa ghi sổ, chưa tính vào tồn quỹ)' : isDraftRec ? 'Đã ghi sổ dòng nháp' : isEdit ? 'Đã lưu thay đổi' :
           lines.length > 1 ? 'Đã ghi sổ phiếu ' + lines.length + ' dòng, tổng ' + money(tongTien) + ' đ' :

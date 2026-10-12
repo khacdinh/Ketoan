@@ -42,8 +42,8 @@ function chungCua(ct) {
 }
 
 function blankLine() { return { ct: '', nha: '', maVT: '', dienGiai: '', soLuong: '', donGia: '', thanhTien: '', ttTuDong: false, dgTuDong: false, hmCu: '', goiY: '' }; }
-// dòng trống mới chép công trình, nhà / khu của dòng trên (thường nhiều dòng liền nhau cùng công trình)
-function dongMoiTheo(l) { return Object.assign(blankLine(), l ? { ct: l.ct || '', nha: l.nha || '' } : {}); }
+// Dòng trống mới LUÔN để trống công trình, nhà / khu: không chép từ dòng trên, phải chọn lại từng dòng để không sót / nhầm
+function dongMoiTheo() { return blankLine(); }
 function isBlank(l) { return !has(l.maVT) && !has(l.dienGiai) && !has(l.soLuong) && !has(l.donGia) && !has(l.thanhTien); }
 
 // SL / ĐG / Thành tiền của dòng theo quy tắc chung (KT.costFromInput); số sai -> { loi, cot }
@@ -106,11 +106,9 @@ function initialState(params, banSaoLuu) {
   const key = stateKey(params);
   if (!banSaoLuu && draft && draft.key === key) return draft;
   if (mode === 'new') {
-    const last = LS.get('cp.lastHeader', null);
-    // công trình gợi ý cho dòng đầu: công trình đang chọn ở thanh trên, không thì công trình của phiếu trước
-    const goiY = projectByCode(S.ct || '') ? projectByCode(S.ct).ma : last && last.ct && projectByCode(last.ct) ? projectByCode(last.ct).ma : '';
-    // ngày phiếu mới luôn là hôm nay (không lấy ngày của phiếu trước)
-    return { key, mode, header: Object.assign({ ngay: KT.todayISO(), maNCC: '', soPhieu: '' }, last ? { maNCC: last.maNCC || '' } : {}, { maCT: '', maNha: '', soPhieu: '', soTuDong: true }), lines: [Object.assign(blankLine(), { ct: goiY, nha: chungCua(goiY) })] };
+    // Phiếu mới: nhà cung cấp, công trình, nhà / khu đều để trống, không nhớ từ phiếu trước hay từ công trình đang chọn ở thanh trên
+    // (phải tự chọn để không ghi nhầm khi quên đổi). Ngày luôn là hôm nay.
+    return { key, mode, header: { ngay: KT.todayISO(), maNCC: '', maCT: '', maNha: '', soPhieu: '', soTuDong: true }, lines: [blankLine()] };
   }
   // nhanbandong = nhân bản MỘT dòng chi phí (từ Sổ chi phí) thành phiếu mới chưa lưu
   const lines = params.nhanbandong ? allCostLedger().filter((c) => String(c.id) === String(params.nhanbandong)) : slipLines(params.phieu || params.nhanban);
@@ -629,13 +627,12 @@ export function renderCostEntry(root) {
       }
       toast(asDraft ? 'Đã lưu nháp ' + r.count + ' dòng, tổng ' + money(r.total) + ' đ (chưa ghi sổ, chưa tính vào chi phí)'
         : (editing && !st.nhap ? 'Đã lưu phiếu: ' : 'Đã ghi ') + r.count + ' dòng, tổng ' + money(r.total) + ' đ vào sổ chi phí');
-      LS.set('cp.lastHeader', { ngay: h.ngay, maNCC: ncc.ma, ct: (lines[lines.length - 1] || {}).maCT || '' });
       draft = null;
       LS.set('cp.draft', null);
       if (editing || st.mode === 'dup') location.hash = '#/cp-nhap';
       else {
-        // giống macro: giữ đầu phiếu, xóa trắng phần hàng và số phiếu để nhập chuyến tiếp theo
-        pendingFocus = { col: 'maVT', row: 0 };
+        // phiếu mới tinh: không giữ lại nhà cung cấp / công trình của phiếu vừa ghi, phải chọn lại
+        pendingFocus = { col: 'ct', row: 0 };
         renderCostEntry(document.getElementById('view'));
       }
     } catch (err) {

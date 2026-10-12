@@ -63,15 +63,19 @@ test('F1 phiếu nhập chi phí: nhập toàn bộ bằng bàn phím (Enter san
     assert.equal((await active(page)).col, 'donGia');
     await type(page, '1.250.000'); await page.keyboard.press('Enter');
     a = await active(page);
-    assert.deepEqual([a.col, a.row], ['maVT', '1'], 'Enter ở ô đơn giá sang dòng kế tiếp');
+    assert.deepEqual([a.col, a.row], ['ct', '1'], 'Enter ở ô đơn giá sang dòng kế tiếp: Công trình để trống, phải chọn lại (không chép từ dòng trên)');
+    assert.equal(await page.inputValue('tr[data-row="1"] [data-col=ct]'), '');
+    assert.equal(await page.inputValue('tr[data-row="1"] [data-col=nha]'), '');
     assert.equal(await page.inputValue('tr[data-row="0"] [data-col=thanhTien]'), '3.125.000');
     // dòng 2
+    await type(page, 'CT1'); await page.keyboard.press('Enter');
     await type(page, 'CAT'); await page.keyboard.press('Enter');
     await type(page, 'cát vàng'); await page.keyboard.press('Enter');
     await type(page, '0,125'); await page.keyboard.press('Enter');
     await type(page, '8000'); await page.keyboard.press('Enter');
     assert.equal(await page.inputValue('tr[data-row="1"] [data-col=thanhTien]'), '1.000');
     // dòng 3: không mã VT, nhân công, SL là phép tính, đơn giá kiểu 300k
+    await type(page, 'CT1'); await page.keyboard.press('Enter');
     await type(page, 'NC'); await page.keyboard.press('Enter'); // nhân công cũng là vật tư (hạng mục theo vật tư)
     await type(page, 'Công thợ hồ'); await page.keyboard.press('Enter');
     await type(page, '10+5'); await page.keyboard.press('Enter');
@@ -102,15 +106,19 @@ test('F1 phiếu nhập chi phí: nhập toàn bộ bằng bàn phím (Enter san
     assert.deepEqual([by('CAT').soLuong, by('CAT').thanhTien], [0.125, 1000]);
     assert.deepEqual([by('Công thợ hồ').soLuong, by('Công thợ hồ').thanhTien, by('Công thợ hồ').loaiCP, by('Công thợ hồ').maHM], [15, 4500000, 'Nhân công', hm('Nhân công thợ nề')]);
     assert.equal(new Set(db.costs.map((c) => c.phieuId)).size, 1, 'một phiếu');
-    // sau khi lưu: giữ đầu phiếu, xóa số phiếu và các dòng, tiêu điểm về ô đầu tiên của dòng 1
+    // sau khi lưu: phiếu mới tinh. KHÔNG giữ nhà cung cấp / công trình / nhà của phiếu vừa ghi (phải chọn lại để không ghi nhầm)
     await page.waitForTimeout(200);
-    assert.equal(await page.inputValue('tr[data-row="0"] [data-col=ct]'), 'CT1', 'phiếu sau gợi ý công trình của phiếu vừa ghi');
-    assert.equal(await page.inputValue('#cp-head input[name=maNCC]'), 'S1');
+    assert.equal(await page.inputValue('tr[data-row="0"] [data-col=ct]'), '', 'không nhớ công trình của phiếu vừa ghi');
+    assert.equal(await page.inputValue('tr[data-row="0"] [data-col=nha]'), '');
+    assert.equal(await page.inputValue('#cp-head input[name=maNCC]'), '', 'không nhớ nhà cung cấp của phiếu vừa ghi');
     assert.equal(await page.inputValue('#cp-head input[name=soPhieu]'), 'MH0001/' + KT.todayISO().slice(5, 7), 'số phiếu mới tự đánh (số GH-77 gõ tay không theo mẫu MH nên không tính)');
     assert.equal(await page.locator('#cp-body input[data-col=maVT]').count(), 1, 'chỉ còn 1 dòng trống');
     a = await active(page);
-    assert.deepEqual([a.col, a.row], ['maVT', '0']);
-    // gợi ý đơn giá: lần mua gần nhất cùng NCC tự điền, gõ đè được
+    assert.deepEqual([a.col, a.row], ['ct', '0']);
+    // gợi ý đơn giá: lần mua gần nhất cùng NCC tự điền, gõ đè được (người nhập tự chọn lại NCC và công trình)
+    await page.fill('#cp-head input[name=maNCC]', 'S1');
+    await page.fill('#cp-body [data-row="0"][data-col=ct]', 'CT1'); await page.locator('#cp-body [data-row="0"][data-col=ct]').dispatchEvent('change');
+    await page.focus('tr[data-row="0"] [data-col=maVT]');
     await type(page, 'XM'); await page.keyboard.press('Enter'); await page.keyboard.press('Enter');
     assert.equal(await page.inputValue('tr[data-row="0"] [data-col=donGia]'), '1.250.000', 'tự điền giá lần mua gần nhất');
     assert.ok(await page.$eval('tr[data-row="0"] [data-col=donGia]', (e) => e.classList.contains('suggested')));
@@ -120,8 +128,10 @@ test('F1 phiếu nhập chi phí: nhập toàn bộ bằng bàn phím (Enter san
     assert.equal(await page.inputValue('tr[data-row="0"] [data-col=donGia]'), '1300000');
     assert.ok(!(await page.$eval('tr[data-row="0"] [data-col=donGia]', (e) => e.classList.contains('suggested'))), 'gõ đè thì hết dấu gợi ý');
     // mũi tên ↑ ↓ đổi dòng (giữ cột)
-    await page.keyboard.press('Enter'); // sang dòng 2
-    a = await active(page); assert.deepEqual([a.col, a.row], ['maVT', '1']);
+    await page.keyboard.press('Enter'); // sang dòng 2: ô Công trình trống nên dừng ở đó
+    a = await active(page); assert.deepEqual([a.col, a.row], ['ct', '1']);
+    await page.fill('#cp-body [data-row="1"][data-col=ct]', 'CT1'); await page.locator('#cp-body [data-row="1"][data-col=ct]').dispatchEvent('change');
+    await page.focus('tr[data-row="1"] [data-col=maVT]');
     // ô Mã VT có danh sách gợi ý: ↑ ↓ thuộc về danh sách, đổi dòng bằng Ctrl + ↑ ↓; ô Số lượng không có danh sách: ↑ ↓ đổi dòng ngay
     await page.keyboard.press('Control+ArrowUp');
     a = await active(page); assert.deepEqual([a.col, a.row], ['maVT', '0']);
@@ -240,7 +250,8 @@ test('F1c phiếu nhập: dòng chỉ có Thành tiền (khoán, không SL / ĐG
     assert.deepEqual([a.col, a.row], ['thanhTien', '0'], 'Đơn giá trống: Enter sang ô Thành tiền');
     await type(page, '12tr'); await page.keyboard.press('Enter');
     a = await active(page);
-    assert.deepEqual([a.col, a.row], ['maVT', '1'], 'Enter ở Thành tiền sang dòng sau');
+    assert.deepEqual([a.col, a.row], ['ct', '1'], 'Enter ở Thành tiền sang dòng sau: dừng ở ô Công trình (để trống)');
+    await type(page, 'CT1'); await page.keyboard.press('Enter');
     assert.equal(await page.inputValue('tr[data-row="0"] [data-col=thanhTien]'), '12.000.000');
     assert.equal(await page.$eval('#cp-total', (e) => e.textContent.trim()), '12.000.000');
     // dòng 2: Số lượng + Thành tiền → Đơn giá tự tính
@@ -256,6 +267,7 @@ test('F1c phiếu nhập: dòng chỉ có Thành tiền (khoán, không SL / ĐG
     assert.equal(await page.inputValue('tr[data-row="1"] [data-col=donGia]'), '200.000');
     assert.equal(await page.inputValue('tr[data-row="1"] [data-col=thanhTien]'), '1.000.000');
     // dòng 3: SL × ĐG như cũ, Thành tiền tự tính; không chia chẵn → Đơn giá để máy chủ tính tới 0,01
+    await page.fill('#cp-body [data-row="2"][data-col=ct]', 'CT1'); await page.locator('#cp-body [data-row="2"][data-col=ct]').dispatchEvent('change');
     await page.focus('#cp-body [data-row="2"][data-col=maVT]');
     await type(page, 'NC'); await page.keyboard.press('Enter');
     await type(page, 'Công lẻ'); await page.keyboard.press('Enter');

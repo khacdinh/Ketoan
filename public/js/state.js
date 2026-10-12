@@ -99,8 +99,6 @@ function remapSavedCodes() {
     [['maCT', 'da'], ['maNha', 'nha'], ['maNCC', 'ncc']].forEach(([k, l]) => { if (h[k]) { const v = map(l, h[k]); if (v !== h[k]) { h[k] = v; c = true; } } });
     return c;
   };
-  const last = LS.get('cp.lastHeader', null);
-  if (fixHead(last)) LS.set('cp.lastHeader', last);
   const draft = LS.get('cp.draft', null);
   if (draft) {
     let c = fixHead(draft.header);

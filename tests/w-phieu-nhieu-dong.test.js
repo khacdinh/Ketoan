@@ -271,6 +271,8 @@ test('W6 phiếu nhập chi phí trên giao diện: không còn ô hạng mục 
     await page.fill(cell(0, 'soLuong'), '10'); await page.fill(cell(0, 'donGia'), '95k'); await page.locator(cell(0, 'donGia')).dispatchEvent('change');
     assert.match(await page.$eval('tr[data-row="0"] .vt-hm', (e) => e.textContent), /Vật liệu.*›.*Vật tư/, 'hiện nhóm › hạng mục của vật tư');
     // dòng không có mã vật tư → không ghi, báo cần mã vật tư
+    assert.equal(await page.inputValue(cell(1, 'ct')), '', 'dòng mới không chép công trình từ dòng trên');
+    await page.fill(cell(1, 'ct'), 'CT1'); await page.locator(cell(1, 'ct')).dispatchEvent('change');
     await page.fill(cell(1, 'dienGiai'), 'Công thợ'); await page.fill(cell(1, 'thanhTien'), '2tr'); await page.locator(cell(1, 'thanhTien')).dispatchEvent('change');
     await page.focus(cell(1, 'thanhTien'));
     await page.keyboard.press('Control+Enter');

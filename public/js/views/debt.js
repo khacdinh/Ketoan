@@ -48,7 +48,7 @@ export function renderDebt(root) {
   const action = (act) => {
     if (act === 'export') download('/api/export/suppliers?' + ['from', 'to'].filter((k) => f[k]).map((k) => k + '=' + f[k]).concat(f.coSoLieu ? ['chiCoPhatSinh=1'] : [], nccs.map((x) => 'nccs=' + encodeURIComponent(x))).join('&'));
     else if (act === 'print') printView('CÔNG NỢ NHÀ CUNG CẤP THEO KỲ', KT.describeRange(f.from, f.to) + '. ' + ctNhan(f.ct) + (nccs.length ? '. NCC: ' + nccs.map(nameOf).join(', ') : ''), S.db.settings);
-    else if (act === 'dk-list' || act === 'dk-add') openSoDuDauForm(null, { maNCC: LS.get('cp.cn.sel', ''), maDuAn: f.ct || '' });
+    else if (act === 'dk-list' || act === 'dk-add') openSoDuDauForm(null, {}); // không điền sẵn NCC / công trình: người nhập tự chọn
     else if (act === 'bien-ban') {
       const cur = LS.get('cp.cn.sel', '');
       const go = (ma) => moBienBan(ma, { from: f.from, to: f.to, ct: f.ct });
