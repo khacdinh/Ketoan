@@ -1,0 +1,27 @@
+/* Tailwind CSS v4: dán vào file CSS gốc (sau @import "tailwindcss";).
+ * Tên màu giữ nguyên để dùng: bg-paper, bg-sheet, text-ink, text-ink-2, border-rule, bg-pen, text-alert, bg-accent-500… */
+@theme {
+  --font-sans: "Archivo Variable", "Segoe UI", system-ui, sans-serif;
+
+  --color-paper: #ECEAE5;   --color-sheet: #FDFDFB;   --color-surface: #F4F2EC;   --color-head: #E8E0CB;
+  --color-ink: #25282D;     --color-ink-2: #4A4F56;   --color-ink-3: #5A5F66;
+  --color-rule: #D9D6CD;    --color-rule-2: #C2BEB2;  --color-field: #8E8B83;
+  --color-cover: #3E4248;   --color-cover-2: #33373C; --color-cover-ink: #F1EEE6; --color-cover-ink-2: #BDB8AA;
+
+  --color-neutral-100: #F4F2EC; --color-neutral-200: #E8E5DD; --color-neutral-300: #D9D6CD; --color-neutral-400: #C2BEB2; --color-neutral-500: #8E8B83;
+  --color-neutral-600: #5A5F66; --color-neutral-700: #4A4F56; --color-neutral-800: #34383E; --color-neutral-900: #25282D;
+  --color-accent-100: #F6F0DD; --color-accent-200: #EBDFBC; --color-accent-300: #DDCB96; --color-accent-400: #CDB26A; --color-accent-500: #B8963F;
+  --color-accent-600: #8F7230; --color-accent-700: #705A26; --color-accent-800: #50411B; --color-accent-900: #25282D;
+
+  --color-pen: #7A5F22; --color-pen-hover: #5F4A19; --color-pen-soft: #F6F0DD;
+  --color-alert: #B3261E;   --color-alert-soft: #F8E6E0;
+  --color-caution: #7A5A12; --color-caution-soft: #F3E7C4;
+  --color-income: #1D6B47;  --color-income-soft: #E0EBDD;
+  --color-highlight: #F1E6BF;
+
+  /* vuông góc */
+  --radius-xs: 0; --radius-sm: 0; --radius-md: 0; --radius-lg: 0; --radius-xl: 0; --radius-2xl: 0; --radius-3xl: 0; --radius-4xl: 0;
+  --shadow-sm: 0 1px 2px rgb(43 43 45 / .14);
+  --shadow-md: 0 3px 10px rgb(43 43 45 / .16);
+  --shadow-lg: 0 12px 32px rgb(43 43 45 / .22);
+}

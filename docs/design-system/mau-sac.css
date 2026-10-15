@@ -1,0 +1,94 @@
+/* ============================================================
+ * Bảng màu "Industry – hành Kim" (Kế Toán Công Trình)
+ * CSS thuần: dán vào bất kỳ web nào, không cần Tailwind.
+ * Trắng, xám ấm, champagne và vàng đồng cổ. Không dùng đỏ cam hồng tím làm màu nhấn.
+ * Chỉ lỗi / xóa dùng đỏ; tiền thu dùng xanh lá.
+ * ============================================================ */
+:root {
+  /* ----- Nền & mặt ----- */
+  --paper:        #ECEAE5;  /* nền trang */
+  --sheet:        #FDFDFB;  /* thẻ, bảng, hộp thoại, ô nhập */
+  --surface:      #F4F2EC;  /* dòng tổng, ô phụ */
+  --head:         #E8E0CB;  /* đầu cột bảng (champagne) */
+
+  /* ----- Chữ ----- */
+  --ink:          #25282D;  /* chữ chính, nút chính */
+  --ink-2:        #4A4F56;  /* chữ phụ */
+  --ink-3:        #5A5F66;  /* chữ mờ (vẫn đạt 4.5:1 trên nền trang) */
+
+  /* ----- Đường kẻ & viền ----- */
+  --rule:         #D9D6CD;  /* đường kẻ thường */
+  --rule-2:       #C2BEB2;  /* đường kẻ đậm */
+  --field:        #8E8B83;  /* viền ô nhập (≥ 3:1) */
+
+  /* ----- Thanh bên tối (nếu dùng) ----- */
+  --cover:        #3E4248;
+  --cover-2:      #33373C;
+  --cover-ink:    #F1EEE6;
+  --cover-ink-2:  #BDB8AA;
+
+  /* ----- Màu nhấn vàng đồng (accent) ----- */
+  --accent-100:   #F6F0DD;
+  --accent-200:   #EBDFBC;
+  --accent-300:   #DDCB96;
+  --accent-400:   #CDB26A;
+  --accent-500:   #B8963F;  /* màu chi trong biểu đồ */
+  --accent-600:   #8F7230;
+  --accent-700:   #705A26;  /* mục menu đang chọn */
+  --accent-800:   #50411B;
+  --accent-900:   #25282D;
+
+  /* ----- Nút chính, liên kết, viền focus ----- */
+  --pen:          #7A5F22;
+  --pen-hover:    #5F4A19;
+  --pen-soft:     #F6F0DD;
+
+  /* ----- Trạng thái (luôn kèm biểu tượng + chữ, không chỉ dựa vào màu) ----- */
+  --alert:        #B3261E;  --alert-soft:   #F8E6E0;  /* lỗi, âm, xóa, vượt ngân sách */
+  --caution:      #7A5A12;  --caution-soft: #F3E7C4;  /* cảnh báo, ứng dư, nghi trùng */
+  --income:       #1D6B47;  --income-soft:  #E0EBDD;  /* tiền thu, hoàn tất */
+  --highlight:    #F1E6BF;  /* bút dạ quang, vùng chọn chữ */
+
+  /* ----- Xám trung tính ----- */
+  --neutral-100:  #F4F2EC;  --neutral-200: #E8E5DD;  --neutral-300: #D9D6CD;
+  --neutral-400:  #C2BEB2;  --neutral-500: #8E8B83;  --neutral-600: #5A5F66;
+  --neutral-700:  #4A4F56;  --neutral-800: #34383E;  --neutral-900: #25282D;
+
+  /* ----- Biểu đồ (đã kiểm tra người khó phân biệt màu) ----- */
+  --chart-1:      #A57A12;  /* vàng đồng  */
+  --chart-2:      #2E6DAA;  /* xanh thép  */
+  --chart-3:      #6E8B2B;  /* xanh rêu   */
+  --chart-other:  #8E8B83;  /* "Khác"     */
+  --heat-1: #F6F0DD; --heat-2: #EBDFBC; --heat-3: #DDCB96; --heat-4: #CDB26A; --heat-5: #B8963F; /* thang nhiệt */
+  --age-1:  #CDB26A; --age-2:  #B8963F; --age-3:  #8F7230; --age-4:  #50411B;                     /* thang tuổi nợ, đậm dần */
+
+  /* ----- Hình khối ----- */
+  --radius: 0;  /* vuông góc, kiểu bản vẽ kỹ thuật */
+  --shadow-sm: 0 1px 2px rgb(43 43 45 / .14);
+  --shadow-md: 0 3px 10px rgb(43 43 45 / .16);
+  --shadow-lg: 0 12px 32px rgb(43 43 45 / .22);
+
+  /* ----- Chữ ----- */
+  --font-sans: "Archivo Variable", "Segoe UI", system-ui, sans-serif;
+}
+
+/* ===== Mẫu áp dụng nhanh ===== */
+body { background: var(--paper); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 1.4; }
+::selection { background: var(--highlight); color: var(--ink); }
+:focus-visible { outline: 2px solid var(--pen); outline-offset: 2px; }
+a { color: var(--pen); }
+.card, .sheet { background: var(--sheet); border: 1px solid var(--rule); }
+table th { background: var(--head); color: var(--ink); border-bottom: 1px solid var(--rule-2); text-align: left; }
+table td { border-bottom: 1px solid var(--rule); }
+table tfoot td { background: var(--surface); font-weight: 600; }
+input, select, textarea { background: var(--sheet); color: var(--ink); border: 1px solid var(--field); border-radius: 0; }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--pen); outline-offset: -1px; }
+.btn-primary   { background: var(--pen);   color: var(--paper); border: 1px solid var(--pen); }
+.btn-primary:hover { background: var(--pen-hover); }
+.btn-secondary { background: transparent;  color: var(--ink);   border: 1px solid var(--rule-2); }
+.btn-danger    { background: var(--alert); color: var(--paper); border: 1px solid var(--alert); }
+.chip-ok   { background: var(--income-soft);  color: var(--income); }
+.chip-warn { background: var(--caution-soft); color: var(--caution); }
+.chip-err  { background: var(--alert-soft);   color: var(--alert); }
+.sidebar   { background: var(--neutral-200); border-right: 1px solid var(--neutral-300); color: var(--ink); }
+.sidebar .active { background: var(--accent-700); color: var(--paper); font-weight: 700; }
